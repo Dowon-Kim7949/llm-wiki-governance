@@ -1,0 +1,11 @@
+{
+  "status": "needs_review",
+  "projectType": "frontend",
+  "activeProfiles": ["core", "frontend"],
+  "requiredDocuments": [
+    "docs/llm-wiki/profiles/frontend.md",
+    "docs/llm-wiki/COMPONENT_INVENTORY.md",
+    "docs/llm-wiki/WCAG.md",
+    "docs/llm-wiki/E2E_WORKFLOWS.md"
+  ]
+}

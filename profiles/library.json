@@ -1,0 +1,12 @@
+{
+  "status": "needs_review",
+  "projectType": "library",
+  "activeProfiles": ["core", "library"],
+  "requiredDocuments": [
+    "docs/llm-wiki/profiles/library.md",
+    "docs/llm-wiki/PUBLIC_API.md",
+    "docs/llm-wiki/VERSIONING.md",
+    "docs/llm-wiki/EXAMPLES.md",
+    "docs/llm-wiki/RELEASE_FLOW.md"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "status": "needs_review",
+  "projectType": "backend",
+  "activeProfiles": ["core", "backend"],
+  "requiredDocuments": [
+    "docs/llm-wiki/profiles/backend.md",
+    "docs/llm-wiki/API_CONTRACTS.md",
+    "docs/llm-wiki/DATA_MODEL.md",
+    "docs/llm-wiki/SECURITY.md",
+    "docs/llm-wiki/OPERATIONS.md"
+  ]
+}

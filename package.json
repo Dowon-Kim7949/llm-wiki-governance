@@ -1,0 +1,41 @@
+{
+  "name": "@dowon-kim7949/llm-wiki-standard",
+  "version": "0.0.1-internal.0",
+  "private": false,
+  "type": "module",
+  "description": "Prototype CLI for the cross-platform LLM-WIKI common standard.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dowon-Kim7949/llm-wiki-standard.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "rules",
+    "adapters",
+    "profiles",
+    "README.md",
+    "GATE_REVIEW.md",
+    "VERIFICATION.md",
+    "PRERELEASE_CHECKLIST.md"
+  ],
+  "bin": {
+    "llm-wiki": "./bin/llm-wiki.js"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "verify": "node --test tests/*.test.js && node bin/llm-wiki.js validate-frontmatter",
+    "doctor": "node bin/llm-wiki.js doctor",
+    "audit": "node bin/llm-wiki.js audit",
+    "validate": "node bin/llm-wiki.js validate",
+    "validate-frontmatter": "node bin/llm-wiki.js validate-frontmatter"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "license": "UNLICENSED"
+}

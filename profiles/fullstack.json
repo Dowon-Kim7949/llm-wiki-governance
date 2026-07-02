@@ -1,0 +1,13 @@
+{
+  "status": "needs_review",
+  "projectType": "fullstack",
+  "activeProfiles": ["core", "frontend", "backend", "fullstack"],
+  "requiredDocuments": [
+    "docs/llm-wiki/profiles/fullstack.md",
+    "docs/llm-wiki/CONTRACT_BOUNDARIES.md",
+    "docs/llm-wiki/API_CONTRACTS.md",
+    "docs/llm-wiki/ENVIRONMENT_MATRIX.md",
+    "docs/llm-wiki/E2E_WORKFLOWS.md",
+    "docs/llm-wiki/RELEASE_FLOW.md"
+  ]
+}
