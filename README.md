@@ -67,6 +67,48 @@ node bin/llm-wiki.js audit
 node bin/llm-wiki.js init --dry-run --agent claude
 ```
 
+### 도구별 빠른 시작
+
+Zero Base 프로젝트 루트에서 아래 명령을 실행합니다. 현재 prerelease는 실제 파일 생성보다 dry-run 계획 확인을 우선합니다.
+
+Codex:
+
+```bash
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 init --dry-run --type frontend --agent codex
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 audit --agent codex
+```
+
+Claude Code:
+
+```bash
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 init --dry-run --type frontend --agent claude
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 audit --agent claude
+```
+
+Google Antigravity:
+
+```bash
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 init --dry-run --type frontend --agent antigravity
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 audit --agent antigravity
+```
+
+모든 adapter 후보를 한 번에 확인:
+
+```bash
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 init --dry-run --type frontend --agent all
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 audit --agent all
+```
+
+Yarn을 쓰는 프로젝트에서는 먼저 설치한 뒤 같은 명령을 실행합니다.
+
+```bash
+yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.1
+yarn llm-wiki init --dry-run --type frontend --agent codex
+yarn llm-wiki audit --agent codex
+```
+
+`--type frontend`는 예시입니다. Back-end, Full Stack, Library 프로젝트라면 각각 `--type backend`, `--type fullstack`, `--type library`로 바꿉니다.
+
 ### 주요 옵션
 
 - `--cwd <path>`: 대상 프로젝트 루트
@@ -145,6 +187,48 @@ When running from the package repository without installing:
 node bin/llm-wiki.js audit
 node bin/llm-wiki.js init --dry-run --agent claude
 ```
+
+### Tool-Specific Quick Start
+
+Run these commands from the root of a zero-base project. This prerelease favors dry-run planning over writing files.
+
+Codex:
+
+```bash
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 init --dry-run --type frontend --agent codex
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 audit --agent codex
+```
+
+Claude Code:
+
+```bash
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 init --dry-run --type frontend --agent claude
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 audit --agent claude
+```
+
+Google Antigravity:
+
+```bash
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 init --dry-run --type frontend --agent antigravity
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 audit --agent antigravity
+```
+
+Check every adapter candidate at once:
+
+```bash
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 init --dry-run --type frontend --agent all
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 audit --agent all
+```
+
+For Yarn projects, install the package first and then run the same CLI:
+
+```bash
+yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.1
+yarn llm-wiki init --dry-run --type frontend --agent codex
+yarn llm-wiki audit --agent codex
+```
+
+`--type frontend` is only an example. Use `--type backend`, `--type fullstack`, or `--type library` for other project shapes.
 
 ### Key Options
 
