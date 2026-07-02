@@ -206,7 +206,7 @@ test("package metadata targets GitHub Packages without committed tokens", async 
   assert.equal(packageJson.version, "0.0.1-internal.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig.registry, "https://npm.pkg.github.com");
-  assert.equal(packageJson.repository.url, "https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
+  assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
   assert.ok(npmrc.includes("@dowon-kim7949:registry=https://npm.pkg.github.com"));
   assert.equal(npmrc.includes("_authToken"), false);
 });

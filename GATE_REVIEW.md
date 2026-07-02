@@ -77,8 +77,9 @@ Implemented safety behavior:
 - `--agent` can be repeated to opt into Codex, Claude Code, or Antigravity adapter checks and dry-run suggestions.
 - No-agent `audit`, `validate`, `init --dry-run`, and `migrate --dry-run` do not require adapter files or emit adapter suggestions.
 - `--agent all` expands to Codex, Claude Code, and Antigravity; Antigravity remains info-level only.
-- `package.json` is prepared with `name: @dowon-kim7949/llm-wiki-standard`, `version: 0.0.1-internal.0`, `publishConfig.registry: https://npm.pkg.github.com`, and the private repository URL.
+- `package.json` is configured with `name: @dowon-kim7949/llm-wiki-standard`, `version: 0.0.1-internal.0`, `publishConfig.registry: https://npm.pkg.github.com`, and the private repository URL.
 - Package-level `.npmrc` maps `@dowon-kim7949` to GitHub Packages without storing a token.
+- The private repository `Dowon-Kim7949/llm-wiki-standard` was created, `main` and `v0.0.1-internal.0` were pushed, and `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0` was published to GitHub Packages.
 - `--format markdown` prints Markdown report output, while `--format json` prints structured JSON.
 - Unknown options, missing option values, and unsupported output formats are rejected with usage error exit code `3`.
 - Markdown reports include `needs_review` frontmatter.
@@ -138,13 +139,12 @@ These files should not be created in this review-preparation step. They remain m
 
 - Run the package test and basic CLI commands on macOS and Linux shells.
 - Confirm the Google Antigravity instruction filename and automatic loading behavior.
-- Re-authenticate `gh` for `Dowon-Kim7949`, then create the private package repository and publish to GitHub Packages.
+- Run install checks from additional consumer repositories and CI environments as adoption expands.
 - Decide when a real project should resolve the current review-only missing docs.
 
 ## Caveats
 
-- [needs_review] This package remains a prototype and is private/unpublished.
-- [needs_review] `gh auth status` shows `Dowon-Kim7949` as the active account, but the stored token is invalid; repository creation and package publish are blocked until re-authentication.
+- [needs_review] This package remains a prototype and internal prerelease even though `0.0.1-internal.0` is published privately.
 - [needs_review] macOS and Linux shell execution still require direct verification.
 - [needs_review] Secret-pattern detection is conservative and can produce false positives.
 - [needs_review] Gate 5 should not be treated as approval for migration apply behavior.

@@ -38,7 +38,7 @@ Package metadata:
 - package: `@dowon-kim7949/llm-wiki-standard`
 - version: `0.0.1-internal.0`
 - registry: `https://npm.pkg.github.com`
-- repository: `https://github.com/Dowon-Kim7949/llm-wiki-standard.git`
+- repository: `git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git`
 
 The package-level `.npmrc` maps only the lowercase GitHub Packages scope:
 
@@ -55,7 +55,7 @@ npm install @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0
 yarn add @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0
 ```
 
-Current local caveat: `gh auth status` identifies the active account as `Dowon-Kim7949`, but the stored token is invalid. Re-authentication is required before creating the private repository or publishing.
+Current distribution status: the private repository `https://github.com/Dowon-Kim7949/llm-wiki-standard` exists, `main` and `v0.0.1-internal.0` were pushed, and `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0` was published to GitHub Packages. A temporary consumer install verified the CLI with `llm-wiki doctor`.
 
 ## Implemented Commands
 

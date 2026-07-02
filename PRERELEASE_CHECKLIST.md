@@ -59,12 +59,14 @@ Use this checklist before sharing `packages/llm-wiki-standard/` as an internal p
 
 ## GitHub Packages Release Prep
 
-- [ ] Re-authenticate `gh` for `Dowon-Kim7949`; current stored token is invalid.
-- [ ] Create the private `Dowon-Kim7949/llm-wiki-standard` repository.
-- [ ] Push the package source to the private repository.
-- [ ] Authenticate npm with a personal access token classic or CI `GITHUB_TOKEN`; do not commit the token.
-- [ ] Run `npm publish` from `packages/llm-wiki-standard/` after local verification passes.
-- [ ] Verify consumer install with `npm install @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`.
+- [x] Re-authenticate `gh` for `Dowon-Kim7949`.
+- [x] Create the private `Dowon-Kim7949/llm-wiki-standard` repository.
+- [x] Push the package source to the private repository.
+- [x] Push tag `v0.0.1-internal.0`.
+- [x] Authenticate npm using an environment token; do not commit the token.
+- [x] Run `npm pack --dry-run` from the package staging directory.
+- [x] Publish `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`.
+- [x] Verify consumer install with `npm install @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`.
 
 ## External Verification
 

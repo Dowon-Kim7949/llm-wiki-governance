@@ -64,6 +64,9 @@ The current repository was also checked with:
 - `llm-wiki audit --out <temp-report.md>`
 - `llm-wiki doctor --format markdown` from the package root
 - `gh auth status` for the intended GitHub Packages account
+- `npm pack --dry-run` from the package staging directory
+- `npm publish` for `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`
+- `npm install @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0` in a temporary consumer project
 
 ## Current Repository Result
 
@@ -77,6 +80,9 @@ The current repository was also checked with:
 - package metadata: prepared for `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`
 - publish registry: `https://npm.pkg.github.com`
 - package scope mapping: `.npmrc` maps `@dowon-kim7949` to GitHub Packages without a token
+- private repository: `https://github.com/Dowon-Kim7949/llm-wiki-standard`
+- published package: `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`
+- consumer install: pass; installed CLI ran `llm-wiki doctor`
 
 Current warnings:
 
@@ -96,7 +102,7 @@ Selected-agent adapter findings:
 - Keep `migrate --apply` blocked.
 - Use `validate` as the initial CI/review command and reserve `--strict` for later adoption.
 - Keep root adapter creation and selected-agent adapter findings as dry-run/report review items.
-- Use GitHub Packages through the private `Dowon-Kim7949/llm-wiki-standard` repository after GitHub CLI re-authentication.
+- Use GitHub Packages through the private `Dowon-Kim7949/llm-wiki-standard` repository for internal prerelease adoption.
 
 ## Caveats
 
@@ -106,5 +112,4 @@ Selected-agent adapter findings:
 - [needs_review] Fixture tests cover representative profile detection, not every framework or language ecosystem.
 - [needs_review] Report output is implemented for local files; CI artifact conventions remain a team decision.
 - [needs_review] CLI usage parsing is still intentionally small and does not yet support combined short flags.
-- [needs_review] `gh auth status` reports active account `Dowon-Kim7949`, but the local token is invalid; private repository creation and package publish were not run.
-- [needs_review] `npm pack --dry-run` was attempted but this Codex runtime has no `npm` executable on PATH or in the bundled Node bin directory; run pack/publish verification in a Node+npm shell after re-authentication.
+- [needs_review] Publish was verified on Windows with npm available in the normal user environment; macOS/Linux npm publish/install checks are still external follow-ups.

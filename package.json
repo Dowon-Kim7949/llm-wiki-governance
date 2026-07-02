@@ -6,7 +6,7 @@
   "description": "Prototype CLI for the cross-platform LLM-WIKI common standard.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Dowon-Kim7949/llm-wiki-standard.git"
+    "url": "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
