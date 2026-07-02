@@ -63,10 +63,10 @@ The current repository was also checked with:
 - `llm-wiki migrate --apply`
 - `llm-wiki audit --out <temp-report.md>`
 - `llm-wiki doctor --format markdown` from the package root
-- `gh auth status` for the intended GitHub Packages account
+- `gh auth status` for the source repository account
 - `npm pack --dry-run` from the package staging directory
-- `npm publish` for `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`
-- `npm install @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0` in a temporary consumer project
+- `npm pack --dry-run` for `@dowonk-7949/llm-wiki-standard@0.0.1-internal.1`
+- `npm publish --access public` attempt for npmjs public distribution
 
 ## Current Repository Result
 
@@ -77,12 +77,14 @@ The current repository was also checked with:
 - dry-run migration: no files written
 - apply migration: blocked by design
 - report output: UTF-8 Markdown with `needs_review` frontmatter
-- package metadata: prepared for `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`
-- publish registry: `https://npm.pkg.github.com`
-- package scope mapping: `.npmrc` maps `@dowon-kim7949` to GitHub Packages without a token
-- private repository: `https://github.com/Dowon-Kim7949/llm-wiki-standard`
-- published package: `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`
-- consumer install: pass; installed CLI ran `llm-wiki doctor`
+- package metadata: prepared for `@dowonk-7949/llm-wiki-standard@0.0.1-internal.1`
+- publish registry: `https://registry.npmjs.org`
+- package scope mapping: no package-level `.npmrc` required for public npmjs consumers
+- public source repository: `https://github.com/Dowon-Kim7949/llm-wiki-standard`
+- npmjs published package: `@dowonk-7949/llm-wiki-standard@0.0.1-internal.1`
+- npm install: pass; installed CLI ran `llm-wiki doctor`
+- npx: pass; `npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 doctor` ran successfully
+- yarn: pass; `yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.1` and `yarn llm-wiki doctor` ran successfully
 
 Current warnings:
 
@@ -102,7 +104,7 @@ Selected-agent adapter findings:
 - Keep `migrate --apply` blocked.
 - Use `validate` as the initial CI/review command and reserve `--strict` for later adoption.
 - Keep root adapter creation and selected-agent adapter findings as dry-run/report review items.
-- Use GitHub Packages through the private `Dowon-Kim7949/llm-wiki-standard` repository for internal prerelease adoption.
+- Use npmjs public package distribution for authentication-free npm, npx, and yarn testing.
 
 ## Caveats
 
@@ -112,4 +114,5 @@ Selected-agent adapter findings:
 - [needs_review] Fixture tests cover representative profile detection, not every framework or language ecosystem.
 - [needs_review] Report output is implemented for local files; CI artifact conventions remain a team decision.
 - [needs_review] CLI usage parsing is still intentionally small and does not yet support combined short flags.
-- [needs_review] Publish was verified on Windows with npm available in the normal user environment; macOS/Linux npm publish/install checks are still external follow-ups.
+- [needs_review] npmjs public publish requires the npm account scope `@dowonk-7949`; GitHub username scope `@dowon-kim7949` is not available on npmjs for the current account.
+- [needs_review] npm/npx/yarn consumer checks passed on Windows; macOS/Linux shell checks remain external follow-ups.

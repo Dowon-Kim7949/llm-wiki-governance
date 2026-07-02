@@ -45,14 +45,14 @@ This document prepares Gate 5 implementation review for `packages/llm-wiki-stand
 | Area | Recommendation | Reason |
 | --- | --- | --- |
 | Release level | Ship as internal prerelease only. | The package is useful for review and CI trials, but Gate 2 through Gate 4 are still `needs_review`. |
-| Package identity | Use `@dowon-kim7949/llm-wiki-standard` and `0.0.1-internal.0` for the GitHub Packages internal prerelease. | The personal-account registry path has been selected, while the release remains non-stable and `needs_review`. |
+| Package identity | Use `@dowonk-7949/llm-wiki-standard` and `0.0.1-internal.1` for the npmjs public internal prerelease. | npmjs scope ownership follows the npm account `dowonk-7949`; the release remains non-stable and `needs_review`. |
 | CLI command set | Keep `doctor`, `validate`, `validate-frontmatter`, `audit`, `init --dry-run`, and `migrate --dry-run`. | This covers review workflows without writing project files. |
 | `validate` behavior | Keep `validate` audit-backed for prerelease; do not split stricter validators yet. | The audit-backed path is already tested and easier for teams to adopt incrementally. |
 | CI default | Start with `llm-wiki validate` as warning-friendly. Delay `--strict` until missing docs are intentionally resolved. | Current repositories can adopt checks without immediate build failures from review-only warnings. |
 | Report artifacts | Allow `--out` reports for PR/review attachments. Commit reports only when they document an approved migration or audit milestone. | Avoid noisy generated artifacts while preserving review evidence when useful. |
 | Adapter handling | Keep root adapter creation/modification opt-in and dry-run/suggestion oriented through repeated `--agent`. | Existing `AGENTS.md`, `CLAUDE.md`, and Antigravity files can contain team-specific policy. |
 | Antigravity | Keep `ANTIGRAVITY.md` as an info-level candidate until the tool contract is confirmed. | The actual loading filename is still tool-contract dependent. |
-| Distribution path | Publish through GitHub Packages linked to a private `Dowon-Kim7949/llm-wiki-standard` repository after re-authentication. | GitHub Packages supports private package access control while allowing npm/yarn consumers to install through `npm.pkg.github.com`. |
+| Distribution path | Publish through the public npm registry and keep `Dowon-Kim7949/llm-wiki-standard` as a public source repository. | Public npmjs distribution allows npm, npx, and yarn consumers to install without GitHub Packages authentication. |
 | Missing docs in this repository | Keep the current five audit findings as review items. Do not create them in this package-hardening task. | The user explicitly constrained missing docs to dry-run/report/review handling. |
 | `migrate --apply` | Keep blocked. Do not implement partial safe-add apply in this prerelease. | Even safe-add writes can create ownership and review ambiguity before Gate 4 is accepted. |
 | Cross-platform verification | Mark Windows local verification complete; track macOS/Linux as prerelease follow-up. | The current workspace can verify Windows directly, while shell differences still need real environments. |
@@ -77,9 +77,10 @@ Implemented safety behavior:
 - `--agent` can be repeated to opt into Codex, Claude Code, or Antigravity adapter checks and dry-run suggestions.
 - No-agent `audit`, `validate`, `init --dry-run`, and `migrate --dry-run` do not require adapter files or emit adapter suggestions.
 - `--agent all` expands to Codex, Claude Code, and Antigravity; Antigravity remains info-level only.
-- `package.json` is configured with `name: @dowon-kim7949/llm-wiki-standard`, `version: 0.0.1-internal.0`, `publishConfig.registry: https://npm.pkg.github.com`, and the private repository URL.
-- Package-level `.npmrc` maps `@dowon-kim7949` to GitHub Packages without storing a token.
-- The private repository `Dowon-Kim7949/llm-wiki-standard` was created, `main` and `v0.0.1-internal.0` were pushed, and `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0` was published to GitHub Packages.
+- `package.json` is configured with `name: @dowonk-7949/llm-wiki-standard`, `version: 0.0.1-internal.1`, no `publishConfig`, and the public source repository URL.
+- Package-level `.npmrc` is not required for npmjs public consumers.
+- The repository `Dowon-Kim7949/llm-wiki-standard` was switched to public for easier source inspection.
+- `@dowonk-7949/llm-wiki-standard@0.0.1-internal.1` was published to npmjs with public access and verified with npm, npx, and yarn on Windows.
 - `--format markdown` prints Markdown report output, while `--format json` prints structured JSON.
 - Unknown options, missing option values, and unsupported output formats are rejected with usage error exit code `3`.
 - Markdown reports include `needs_review` frontmatter.
@@ -144,7 +145,7 @@ These files should not be created in this review-preparation step. They remain m
 
 ## Caveats
 
-- [needs_review] This package remains a prototype and internal prerelease even though `0.0.1-internal.0` is published privately.
+- [needs_review] This package remains a prototype and internal prerelease; `0.0.1-internal.0` exists on GitHub Packages, while npmjs public distribution uses the npm account scope `@dowonk-7949`.
 - [needs_review] macOS and Linux shell execution still require direct verification.
 - [needs_review] Secret-pattern detection is conservative and can produce false positives.
 - [needs_review] Gate 5 should not be treated as approval for migration apply behavior.

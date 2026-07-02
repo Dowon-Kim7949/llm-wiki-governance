@@ -198,17 +198,14 @@ test("doctor reports package prerelease readiness for package roots", async () =
   assert.ok(result.text.includes("Package Prerelease Readiness"));
 });
 
-test("package metadata targets GitHub Packages without committed tokens", async () => {
+test("package metadata targets npmjs public publish without committed tokens", async () => {
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
-  const npmrc = await readFile(path.join(process.cwd(), ".npmrc"), { encoding: "utf8" });
 
-  assert.equal(packageJson.name, "@dowon-kim7949/llm-wiki-standard");
-  assert.equal(packageJson.version, "0.0.1-internal.0");
+  assert.equal(packageJson.name, "@dowonk-7949/llm-wiki-standard");
+  assert.equal(packageJson.version, "0.0.1-internal.1");
   assert.equal(packageJson.private, false);
-  assert.equal(packageJson.publishConfig.registry, "https://npm.pkg.github.com");
+  assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
-  assert.ok(npmrc.includes("@dowon-kim7949:registry=https://npm.pkg.github.com"));
-  assert.equal(npmrc.includes("_authToken"), false);
 });
 
 test("parseArgs reports missing option values and unknown options", () => {

@@ -50,14 +50,14 @@ Use this checklist before sharing `packages/llm-wiki-standard/` as an internal p
 
 ## Release Metadata
 
-- [ ] Confirm package name is `@dowon-kim7949/llm-wiki-standard`.
-- [ ] Confirm version is `0.0.1-internal.0`.
-- [ ] Confirm `publishConfig.registry` is `https://npm.pkg.github.com`.
-- [ ] Confirm package-level `.npmrc` maps `@dowon-kim7949` to GitHub Packages and does not contain a token.
+- [ ] Confirm package name is `@dowonk-7949/llm-wiki-standard`.
+- [ ] Confirm version is `0.0.1-internal.1`.
+- [ ] Confirm package has no `publishConfig` override so npmjs default registry is used.
+- [ ] Confirm package-level `.npmrc` is absent.
 - [ ] Confirm `repository.url` points to `https://github.com/Dowon-Kim7949/llm-wiki-standard.git`.
 - [ ] Do not label this package stable while Gate 2 through Gate 4 remain `needs_review`.
 
-## GitHub Packages Release Prep
+## GitHub Packages Historical Release Prep
 
 - [x] Re-authenticate `gh` for `Dowon-Kim7949`.
 - [x] Create the private `Dowon-Kim7949/llm-wiki-standard` repository.
@@ -67,6 +67,16 @@ Use this checklist before sharing `packages/llm-wiki-standard/` as an internal p
 - [x] Run `npm pack --dry-run` from the package staging directory.
 - [x] Publish `@dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`.
 - [x] Verify consumer install with `npm install @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0`.
+
+## npmjs Public Release Prep
+
+- [x] Switch `Dowon-Kim7949/llm-wiki-standard` repository visibility to public.
+- [x] Rename npm package scope to `@dowonk-7949`.
+- [x] Remove package-level GitHub Packages `.npmrc`.
+- [x] Publish `@dowonk-7949/llm-wiki-standard@0.0.1-internal.1` with `npm publish --access public`.
+- [x] Verify `npm install @dowonk-7949/llm-wiki-standard@0.0.1-internal.1`.
+- [x] Verify `npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 doctor`.
+- [x] Verify `yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.1`.
 
 ## External Verification
 
@@ -83,7 +93,7 @@ Go for internal prerelease when:
 - package readiness is visible in `doctor`,
 - `migrate --apply` remains blocked,
 - known no-agent and selected-agent warnings are documented,
-- GitHub Packages auth and private repository setup are confirmed,
+- npmjs public package publish and npm/npx/yarn install checks are confirmed,
 - no sensitive values appear in reports.
 
 No-go for stable publication until:

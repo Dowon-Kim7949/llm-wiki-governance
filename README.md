@@ -27,32 +27,27 @@ contains_sensitive_info: false
 
 ## 한국어
 
-`@dowon-kim7949/llm-wiki-standard`는 여러 개발 도구와 CI에서 같은 LLM-WIKI 운영 규칙을 점검하고 초기화 계획을 만들기 위한 내부 prerelease CLI 패키지입니다. Codex 전용 플러그인이 아니라 Codex, Claude Code, Google Antigravity 후보 adapter, 로컬 터미널, CI에서 함께 쓰는 공통 표준 패키지를 목표로 합니다.
+`@dowonk-7949/llm-wiki-standard`는 여러 개발 도구와 CI에서 같은 LLM-WIKI 운영 규칙을 점검하고 초기화 계획을 만들기 위한 내부 prerelease CLI 패키지입니다. Codex 전용 플러그인이 아니라 Codex, Claude Code, Google Antigravity 후보 adapter, 로컬 터미널, CI에서 함께 쓰는 공통 표준 패키지를 목표로 합니다.
 
-현재 버전은 `0.0.1-internal.0`이며 안정 release가 아닙니다. Gate 2~4 정책은 여전히 `needs_review`이므로, 실제 파일 변경보다 audit, validate, dry-run, report 중심으로 동작합니다.
+현재 버전은 `0.0.1-internal.1`이며 안정 release가 아닙니다. Gate 2~4 정책은 여전히 `needs_review`이므로, 실제 파일 변경보다 audit, validate, dry-run, report 중심으로 동작합니다.
 
 ### 배포 상태
 
-- package: `@dowon-kim7949/llm-wiki-standard`
-- version: `0.0.1-internal.0`
-- registry: `https://npm.pkg.github.com`
+- package: `@dowonk-7949/llm-wiki-standard`
+- version: `0.0.1-internal.1`
+- registry: `https://registry.npmjs.org`
 - repository: `git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git`
-- status: private GitHub repository 생성, `main` push, `v0.0.1-internal.0` tag push, GitHub Packages publish 완료
-
-소비 프로젝트의 `.npmrc`에는 scope registry mapping만 추가합니다. token은 commit하지 않습니다.
-
-```ini
-@dowon-kim7949:registry=https://npm.pkg.github.com
-```
+- status: GitHub repository public 전환 완료, npmjs public publish 완료, npm/npx/yarn consumer 검증 완료
 
 설치:
 
 ```bash
-npm install @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0
-yarn add @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0
+npm install @dowonk-7949/llm-wiki-standard@0.0.1-internal.1
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 doctor
+yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.1
 ```
 
-private package 설치에는 GitHub Packages 인증이 필요합니다. 로컬에서는 user-level `.npmrc`, `npm login --scope=@dowon-kim7949 --auth-type=legacy --registry=https://npm.pkg.github.com`, 또는 CI secret을 사용하십시오.
+npmjs public package로 배포하면 소비자는 별도 GitHub Packages 인증이나 `.npmrc` 없이 설치할 수 있습니다.
 
 ### 명령어
 
@@ -101,7 +96,7 @@ node --test tests/*.test.js
 node bin/llm-wiki.js validate-frontmatter
 ```
 
-현재 Windows 환경에서 package tests, frontmatter validation, GitHub Packages publish, temporary consumer install, `llm-wiki doctor` 실행을 확인했습니다. macOS/Linux shell 검증은 후속 외부 항목입니다.
+현재 Windows 환경에서 package tests, frontmatter validation, GitHub repository public 전환, npmjs public publish, npm install, npx 실행, yarn add 및 `yarn llm-wiki doctor` 실행을 확인했습니다. macOS/Linux shell 검증은 후속 항목입니다.
 
 ### 관련 문서
 
@@ -111,32 +106,27 @@ node bin/llm-wiki.js validate-frontmatter
 
 ## English
 
-`@dowon-kim7949/llm-wiki-standard` is an internal prerelease CLI package for checking and planning LLM-WIKI adoption across multiple developer tools and CI environments. It is not a Codex-only plugin. It is intended to work from Codex, Claude Code, Google Antigravity candidate adapters, local terminals, and CI.
+`@dowonk-7949/llm-wiki-standard` is an internal prerelease CLI package for checking and planning LLM-WIKI adoption across multiple developer tools and CI environments. It is not a Codex-only plugin. It is intended to work from Codex, Claude Code, Google Antigravity candidate adapters, local terminals, and CI.
 
-The current version is `0.0.1-internal.0`. It is not a stable release. Gate 2 through Gate 4 policies are still `needs_review`, so the package intentionally favors audit, validate, dry-run, and report workflows over file-writing automation.
+The current version is `0.0.1-internal.1`. It is not a stable release. Gate 2 through Gate 4 policies are still `needs_review`, so the package intentionally favors audit, validate, dry-run, and report workflows over file-writing automation.
 
 ### Distribution Status
 
-- package: `@dowon-kim7949/llm-wiki-standard`
-- version: `0.0.1-internal.0`
-- registry: `https://npm.pkg.github.com`
+- package: `@dowonk-7949/llm-wiki-standard`
+- version: `0.0.1-internal.1`
+- registry: `https://registry.npmjs.org`
 - repository: `git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git`
-- status: private GitHub repository created, `main` pushed, `v0.0.1-internal.0` tag pushed, and GitHub Packages publish completed
-
-Consumer projects should add only the scope registry mapping to `.npmrc`. Do not commit tokens.
-
-```ini
-@dowon-kim7949:registry=https://npm.pkg.github.com
-```
+- status: GitHub repository public conversion completed, npmjs public publish completed, and npm/npx/yarn consumer checks passed
 
 Install:
 
 ```bash
-npm install @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0
-yarn add @dowon-kim7949/llm-wiki-standard@0.0.1-internal.0
+npm install @dowonk-7949/llm-wiki-standard@0.0.1-internal.1
+npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 doctor
+yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.1
 ```
 
-Private package installation requires GitHub Packages authentication. Use a user-level `.npmrc`, `npm login --scope=@dowon-kim7949 --auth-type=legacy --registry=https://npm.pkg.github.com`, or a CI secret.
+As an npmjs public package, consumers can install it without GitHub Packages authentication or a project `.npmrc`.
 
 ### Commands
 
@@ -185,7 +175,7 @@ node --test tests/*.test.js
 node bin/llm-wiki.js validate-frontmatter
 ```
 
-Verified locally on Windows: package tests, frontmatter validation, GitHub Packages publish, temporary consumer install, and `llm-wiki doctor`. macOS/Linux shell checks remain external follow-ups.
+Verified locally on Windows: package tests, frontmatter validation, GitHub repository public conversion, npmjs public publish, npm install, npx execution, yarn add, and `yarn llm-wiki doctor`. macOS/Linux shell checks remain follow-ups.
 
 ### Related Documents
 
