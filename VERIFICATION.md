@@ -65,7 +65,7 @@ The current repository was also checked with:
 - `llm-wiki doctor --format markdown` from the package root
 - `gh auth status` for the source repository account
 - `npm pack --dry-run` from the package staging directory
-- `npm pack --dry-run` for `@dowonk-7949/llm-wiki-standard@0.0.1-internal.1`
+- `npm pack --dry-run` for `@dowonk-7949/llm-wiki-standard@0.0.1-internal.2`
 - `npm publish --access public` attempt for npmjs public distribution
 
 ## Current Repository Result
@@ -77,14 +77,14 @@ The current repository was also checked with:
 - dry-run migration: no files written
 - apply migration: blocked by design
 - report output: UTF-8 Markdown with `needs_review` frontmatter
-- package metadata: prepared for `@dowonk-7949/llm-wiki-standard@0.0.1-internal.1`
+- package metadata: prepared for `@dowonk-7949/llm-wiki-standard@0.0.1-internal.2`
 - publish registry: `https://registry.npmjs.org`
 - package scope mapping: no package-level `.npmrc` required for public npmjs consumers
 - public source repository: `https://github.com/Dowon-Kim7949/llm-wiki-standard`
-- npmjs published package: `@dowonk-7949/llm-wiki-standard@0.0.1-internal.1`
+- npmjs published package: `@dowonk-7949/llm-wiki-standard@0.0.1-internal.2`
 - npm install: pass; installed CLI ran `llm-wiki doctor`
-- npx: pass; `npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 doctor` ran successfully
-- yarn: pass; `yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.1` and `yarn llm-wiki doctor` ran successfully
+- npx: pass; `npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.2 doctor` ran successfully
+- yarn: pass; `yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.2` and `yarn llm-wiki doctor` ran successfully
 
 Current warnings:
 

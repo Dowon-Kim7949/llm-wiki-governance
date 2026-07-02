@@ -51,7 +51,7 @@ Use this checklist before sharing `packages/llm-wiki-standard/` as an internal p
 ## Release Metadata
 
 - [ ] Confirm package name is `@dowonk-7949/llm-wiki-standard`.
-- [ ] Confirm version is `0.0.1-internal.1`.
+- [ ] Confirm version is `0.0.1-internal.2`.
 - [ ] Confirm package has no `publishConfig` override so npmjs default registry is used.
 - [ ] Confirm package-level `.npmrc` is absent.
 - [ ] Confirm `repository.url` points to `https://github.com/Dowon-Kim7949/llm-wiki-standard.git`.
@@ -77,6 +77,10 @@ Use this checklist before sharing `packages/llm-wiki-standard/` as an internal p
 - [x] Verify `npm install @dowonk-7949/llm-wiki-standard@0.0.1-internal.1`.
 - [x] Verify `npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.1 doctor`.
 - [x] Verify `yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.1`.
+- [x] Publish `@dowonk-7949/llm-wiki-standard@0.0.1-internal.2` with `npm publish --access public`.
+- [x] Verify `npm install @dowonk-7949/llm-wiki-standard@0.0.1-internal.2`.
+- [x] Verify `npx @dowonk-7949/llm-wiki-standard@0.0.1-internal.2 doctor`.
+- [x] Verify `yarn add @dowonk-7949/llm-wiki-standard@0.0.1-internal.2`.
 
 ## External Verification
 
