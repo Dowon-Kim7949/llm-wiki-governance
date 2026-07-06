@@ -182,7 +182,7 @@ function exitCodeFor(result, options) {
 }
 
 function printHelp() {
-  console.log(`llm-wiki prototype
+  console.log(`llm-wiki
 
 Usage:
   llm-wiki doctor [--cwd <path>] [--format text|json|markdown]

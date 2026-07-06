@@ -148,11 +148,21 @@ test("audit detects backend profile document needs", async () => {
   await writeJson(path.join(cwd, "package.json"), {
     dependencies: { express: "^4.18.0" }
   });
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.");
 
   const result = await audit({ cwd, type: null, format: "text", strict: false });
 
   assert.equal(result.detection.projectType, "backend");
   assert.ok(result.findings.some((finding) => finding.path === "docs/llm-wiki/API_CONTRACTS.md"));
+});
+
+test("audit collapses uninitialized wiki structure into one confirmation finding", async () => {
+  const cwd = await makeProject("missing-wiki-");
+  const result = await audit({ cwd, type: null, profiles: [], format: "text", strict: false });
+
+  assert.equal(result.findings.filter((finding) => finding.rule === "structure.wiki_missing").length, 1);
+  assert.equal(result.findings.some((finding) => finding.rule === "structure.required_doc"), false);
+  assert.ok(result.findings[0].message.includes("ask the user whether to proceed"));
 });
 
 test("init dry-run detects fullstack projects", async () => {
@@ -189,7 +199,7 @@ test("migrate dry-run reports safe additions without writing files", async () =>
   assert.equal(result.text.includes("No files were written"), true);
 });
 
-test("migrate apply is blocked pending Gate 4", async () => {
+test("migrate apply is blocked by stable safety policy", async () => {
   const cwd = await makeProject("apply-blocked-");
   const result = await migrateCommand({ cwd, type: null, format: "text", strict: false, apply: true });
 
@@ -292,7 +302,7 @@ test("unknown explicit profiles are surfaced as review items", async () => {
   assert.ok(result.findings.some((finding) => finding.message.includes("made-up")));
 });
 
-test("doctor reports package prerelease readiness for package roots", async () => {
+test("doctor reports package release readiness for package roots", async () => {
   const cwd = await makeProject("doctor-package-");
   await writeJson(path.join(cwd, "package.json"), {
     name: "@company/llm-wiki-standard",
@@ -300,19 +310,19 @@ test("doctor reports package prerelease readiness for package roots", async () =
     private: true,
     bin: { "llm-wiki": "./bin/llm-wiki.js" }
   });
-  await writeFile(path.join(cwd, "PRERELEASE_CHECKLIST.md"), "# Checklist\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "RELEASE_CHECKLIST.md"), "# Checklist\n", { encoding: "utf8" });
 
   const result = await doctor({ cwd, type: null, profiles: [], format: "text" });
 
   assert.ok(result.packageReadiness.some((line) => line.includes("package_name: @company/llm-wiki-standard")));
-  assert.ok(result.text.includes("Package Prerelease Readiness"));
+  assert.ok(result.text.includes("Package Release Readiness"));
 });
 
 test("package metadata targets npmjs public publish without committed tokens", async () => {
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "@dowonk-7949/llm-wiki-standard");
-  assert.equal(packageJson.version, "0.0.1-internal.4");
+  assert.equal(packageJson.version, "0.1.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");

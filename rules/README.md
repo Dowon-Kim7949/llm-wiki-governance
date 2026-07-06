@@ -21,4 +21,4 @@ contains_sensitive_info: false
 
 # LLM-WIKI Rule Assets
 
-This directory stores machine-readable rule prototypes for the CLI. All rules are `needs_review` until the relevant gates are approved.
+This directory stores machine-readable rules for the CLI. Rules remain `needs_review` until a human reviewer verifies changes for the consuming project.

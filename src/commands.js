@@ -52,12 +52,12 @@ export async function doctor(options) {
     `wiki_entry: ${wikiExists ? "present" : "missing"}`,
     `project_type: ${detection.projectType} (${detection.confidence})`,
     "utf8_policy: explicit read/write helpers enabled",
-    "migration_apply: blocked in this prototype pending Gate 4 review"
+    "migration_apply: blocked by stable safety policy"
   ];
 
   const sections = [{ title: "Checks", body: checks }];
   if (packageReadiness.length > 0) {
-    sections.push({ title: "Package Prerelease Readiness", body: packageReadiness });
+    sections.push({ title: "Package Release Readiness", body: packageReadiness });
   }
 
   return withText({
@@ -150,7 +150,7 @@ export async function audit(options) {
   }, "LLM-WIKI Audit", [
     { title: "Summary", body: summary },
     { title: "Findings", body: findings.map(formatFinding) },
-    { title: "Caveats", body: ["Phase 7/8 prototype only; Gate 2 through Gate 4 remain needs_review."] }
+    { title: "Caveats", body: ["Stable validation is warning-friendly by default; use --strict when warnings should fail CI."] }
   ]);
 }
 
@@ -182,7 +182,7 @@ export async function validateCommand(options) {
   }, "LLM-WIKI Validation", [
     { title: "Summary", body: summary },
     { title: "Findings", body: findings.map(formatFinding) },
-    { title: "Caveats", body: ["Prototype validation reuses audit coverage for core, profile, selected-agent adapter, encoding, and sensitive-information checks."] }
+    { title: "Caveats", body: ["Validation reuses audit coverage for core, profile, selected-agent adapter, encoding, and sensitive-information checks."] }
   ]);
 }
 
@@ -234,13 +234,13 @@ async function initDryRun(options, detection, agents, candidates) {
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
     { title: "Planned Creates", body: planned },
     { title: "Skipped Existing", body: skipped },
-    { title: "Caveats", body: ["No files were written. Existing adapter files are not overwritten by this prototype."] }
+    { title: "Caveats", body: ["No files were written. Existing adapter files are not overwritten."] }
   ]);
 }
 
 export async function migrateCommand(options) {
   if (options.apply) {
-    return blockedApply("migrate", "migrate --apply is intentionally blocked until Gate 4 approves automatic migration scope. Use migrate --dry-run or migrate --dry-run --out <path> to prepare a reviewable migration plan.");
+    return blockedApply("migrate", "migrate --apply is intentionally blocked until automatic migration scope is accepted. Use migrate --dry-run or migrate --dry-run --out <path> to prepare a reviewable migration plan.");
   }
 
   const auditResult = await audit({ ...options, dryRun: true });
@@ -287,6 +287,17 @@ async function listTargetMarkdown(cwd) {
 
 async function findMissingDocs(cwd, projectType, profiles = []) {
   const findings = [];
+  const wikiEntry = path.join(cwd, "docs", "llm-wiki", "index.md");
+  if (!(await pathExists(wikiEntry))) {
+    findings.push({
+      severity: "warning",
+      rule: "structure.wiki_missing",
+      path: "docs/llm-wiki/index.md",
+      message: "LLM-WIKI is not initialized; ask the user whether to proceed as-is or run init --write first."
+    });
+    return findings;
+  }
+
   for (const rel of plannedDocs(projectType, false, profiles)) {
     if (!(await pathExists(path.join(cwd, rel)))) {
       findings.push({
@@ -672,16 +683,16 @@ async function inspectPackageReadiness(cwd) {
 
   if (!packageJson?.bin?.["llm-wiki"]) return [];
 
-  const checklistExists = await pathExists(path.join(cwd, "PRERELEASE_CHECKLIST.md"));
+  const checklistExists = await pathExists(path.join(cwd, "RELEASE_CHECKLIST.md"));
   return [
     `package_name: ${packageJson.name ?? "missing"}`,
     `version: ${packageJson.version ?? "missing"}`,
     `private: ${packageJson.private === true ? "true" : "false"}`,
     `bin.llm-wiki: ${packageJson.bin["llm-wiki"]}`,
-    `prerelease_checklist: ${checklistExists ? "present" : "missing"}`,
-    "recommended_release_level: internal prerelease only",
+    `release_checklist: ${checklistExists ? "present" : "missing"}`,
+    "recommended_release_level: stable",
     "migrate_apply: keep blocked",
-    "external_shells: macOS/Linux verification still required"
+    "external_shells: verify in release CI before publish"
   ];
 }
 

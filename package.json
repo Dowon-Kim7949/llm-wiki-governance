@@ -1,9 +1,9 @@
 {
   "name": "@dowonk-7949/llm-wiki-standard",
-  "version": "0.0.1-internal.4",
+  "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Prototype CLI for the cross-platform LLM-WIKI common standard.",
+  "description": "Stable CLI for the cross-platform LLM-WIKI common standard.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git"
@@ -18,7 +18,7 @@
     "README.md",
     "GATE_REVIEW.md",
     "VERIFICATION.md",
-    "PRERELEASE_CHECKLIST.md"
+    "RELEASE_CHECKLIST.md"
   ],
   "bin": {
     "llm-wiki": "./bin/llm-wiki.js"

@@ -49,7 +49,7 @@ export async function detectProject(cwd, explicitType, explicitProfiles = []) {
   const activeProfiles = [...new Set([...baseProfiles, ...explicitProfiles.filter((profile) => profile !== "core")])];
   const profileReviewItems = explicitProfiles
     .filter((profile) => !KNOWN_PROFILES.has(profile))
-    .map((profile) => `Explicit profile '${profile}' is not a known prototype profile.`);
+    .map((profile) => `Explicit profile '${profile}' is not a known profile.`);
   const typeReviewItems = explicitType && explicitType !== detectedType.projectType
     ? [`Explicit type '${explicitType}' differs from detected '${detectedType.projectType}'.`]
     : [];
