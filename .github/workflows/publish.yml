@@ -46,7 +46,7 @@ jobs:
         run: npm pack --dry-run
 
       - name: Publish to npm
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         # Trusted Publishing/OIDC is the default path for this workflow.
         # If a legacy token fallback is ever required, add NODE_AUTH_TOKEN
         # from a short-lived npm automation token in a separate reviewed change.

@@ -21,7 +21,7 @@
     "RELEASE_CHECKLIST.md"
   ],
   "bin": {
-    "llm-wiki": "./bin/llm-wiki.js"
+    "llm-wiki": "bin/llm-wiki.js"
   },
   "scripts": {
     "test": "node --test tests/*.test.js",
