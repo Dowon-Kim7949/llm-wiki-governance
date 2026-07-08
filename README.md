@@ -1,4 +1,4 @@
----
+﻿---
 title: LLM-WIKI Standard Package
 tags:
   - llm-wiki
@@ -25,6 +25,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 ---
+
+> Language: [English](./README.md) | [한국어](./README.ko.md)
 
 # LLM-WIKI Standard Package
 
@@ -252,11 +254,11 @@ CI runs verification on pull requests and `main` pushes. Publishing is restricte
 
 Before automated publish, register an npm Trusted Publisher for GitHub Actions with workflow filename `publish.yml`. The publish job uses the GitHub Environment `npm-release`; configure required reviewers or deployment approval rules for that environment in GitHub UI.
 
-To publish version `0.1.1` after verification:
+To publish version `0.1.2` after verification:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 ## Related Documents

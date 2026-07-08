@@ -1,6 +1,6 @@
 {
   "name": "@dowonk-7949/llm-wiki-standard",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "type": "module",
   "description": "Stable CLI for the cross-platform LLM-WIKI common standard.",
@@ -16,6 +16,7 @@
     "adapters",
     "profiles",
     "README.md",
+    "README.ko.md",
     "ROADMAP.md",
     "GATE_REVIEW.md",
     "VERIFICATION.md",

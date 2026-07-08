@@ -15,6 +15,7 @@ wiki_block_version: v1
 source_files:
   - package.json
   - README.md
+  - README.ko.md
   - VERIFICATION.md
 related:
   - GATE_REVIEW.md
@@ -24,7 +25,7 @@ contains_sensitive_info: false
 
 # LLM-WIKI Standard Package Release Checklist
 
-Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.1`.
+Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.2`.
 
 ## Local Verification
 
@@ -52,11 +53,13 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.1`.
 ## Release Metadata
 
 - [ ] Confirm package name is `@dowonk-7949/llm-wiki-standard`.
-- [ ] Confirm version is `0.1.1`.
+- [ ] Confirm version is `0.1.2`.
 - [ ] Confirm package has no `publishConfig` override.
 - [ ] Confirm package-level `.npmrc` is absent.
 - [ ] Confirm `repository.url` points to `https://github.com/Dowon-Kim7949/llm-wiki-standard.git`.
-- [ ] Confirm `README.md`, `GATE_REVIEW.md`, `VERIFICATION.md`, and `RELEASE_CHECKLIST.md` mention stable release behavior.
+- [ ] Confirm `README.md`, `README.ko.md`, `GATE_REVIEW.md`, `VERIFICATION.md`, and `RELEASE_CHECKLIST.md` mention stable release behavior.
+- [ ] Confirm `README.md` starts with language links to English and Korean.
+- [ ] Confirm `README.ko.md` is included in `package.json` files.
 
 ## External Verification
 
@@ -70,9 +73,9 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.1`.
 
 - [ ] Configure npm Trusted Publisher for GitHub Actions with workflow filename `publish.yml`.
 - [ ] Configure GitHub Environment `npm-release`; set required reviewers in GitHub UI if human approval is required before publish.
-- [ ] Create the release tag after local verification: `git tag v0.1.1`.
-- [ ] Push only the release tag to start publish: `git push origin v0.1.1`.
+- [ ] Create the release tag after local verification: `git tag v0.1.2`.
+- [ ] Push only the release tag to start publish: `git push origin v0.1.2`.
 - [ ] Confirm the publish workflow validates the tag version against `package.json`.
-- [ ] Verify `npm install -D @dowonk-7949/llm-wiki-standard@0.1.1`.
-- [ ] Verify `npx @dowonk-7949/llm-wiki-standard@0.1.1 doctor`.
-- [ ] Verify `yarn add -D @dowonk-7949/llm-wiki-standard@0.1.1`.
+- [ ] Verify `npm install -D @dowonk-7949/llm-wiki-standard@0.1.2`.
+- [ ] Verify `npx @dowonk-7949/llm-wiki-standard@0.1.2 doctor`.
+- [ ] Verify `yarn add -D @dowonk-7949/llm-wiki-standard@0.1.2`.
