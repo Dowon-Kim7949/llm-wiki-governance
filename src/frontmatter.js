@@ -50,7 +50,7 @@ export function parseFrontmatter(markdown) {
   };
 }
 
-export function validateFrontmatter(frontmatter) {
+export function validateFrontmatter(frontmatter, options = {}) {
   const findings = [];
 
   if (!frontmatter) {
@@ -111,9 +111,11 @@ export function validateFrontmatter(frontmatter) {
 
   if (frontmatter.status === "verified" && (!frontmatter.reviewed_by || !frontmatter.reviewed_at)) {
     findings.push({
-      severity: "warning",
+      severity: options.strict ? "error" : "warning",
       rule: "frontmatter.verified_review",
-      message: "verified documents should include reviewed_by and reviewed_at once the team adopts that policy."
+      message: options.strict
+        ? "verified documents must include reviewed_by and reviewed_at in strict mode."
+        : "verified documents should include reviewed_by and reviewed_at once the team adopts that policy."
     });
   }
 

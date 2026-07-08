@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CORE_REQUIRED_DOCS, PROFILE_DOCS } from "./config.js";
+import { CORE_REQUIRED_DOCS, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
 import { detectProject } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
@@ -80,7 +80,7 @@ export async function validateFrontmatterCommand(options) {
     for (const message of parsed.errors) {
       findings.push({ severity: "error", rule: "frontmatter.parse", path: rel, message });
     }
-    for (const finding of validateFrontmatter(parsed.frontmatter)) {
+    for (const finding of validateFrontmatter(parsed.frontmatter, { strict: options.strict })) {
       findings.push({ ...finding, path: rel });
     }
   }
@@ -90,14 +90,84 @@ export async function validateFrontmatterCommand(options) {
     `findings: ${findings.length}`,
     `result: ${findings.some((finding) => finding.severity === "error") ? "fail" : "pass"}`
   ];
+  const findingSummary = summarizeFindings(findings);
 
   return withText({
     command: "validate-frontmatter",
     summary,
+    findingSummary,
     findings
   }, "LLM-WIKI Frontmatter Validation", [
     { title: "Summary", body: summary },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) }
+  ]);
+}
+
+export async function statusCommand(options) {
+  const detection = await detectProject(options.cwd, options.type, options.profiles);
+  const agents = selectedAgents(options);
+  const wikiEntry = path.join(options.cwd, "docs", "llm-wiki", "index.md");
+  const initialized = await pathExists(wikiEntry);
+  const markdownFiles = initialized
+    ? await listMarkdownFiles(path.join(options.cwd, "docs", "llm-wiki"))
+    : [];
+  const documentStatus = await summarizeDocumentStatuses(options.cwd, markdownFiles);
+  const detectionFindings = detection.reviewItems.map((message) => ({
+    severity: "warning",
+    rule: "project.review_item",
+    path: ".",
+    message
+  }));
+  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles);
+  const sourceFileFindings = await scanSourceFiles(options.cwd);
+  const linkFindings = await scanMarkdownLinks(options.cwd);
+  const adapterFindings = await scanAdapters(options.cwd, agents);
+  const findings = [
+    ...detectionFindings,
+    ...documentStatus.findings,
+    ...structureFindings,
+    ...sourceFileFindings,
+    ...linkFindings,
+    ...adapterFindings
+  ];
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const adapterStatus = await summarizeAdapterStatus(options.cwd, agents);
+  const summary = [
+    `result: ${result}`,
+    `initialized: ${initialized ? "yes" : "no"}`,
+    `project_type: ${detection.projectType}`,
+    `confidence: ${detection.confidence}`,
+    `active_profiles: ${detection.activeProfiles.join(", ")}`,
+    `selected_agents: ${agents.length ? agents.join(", ") : "none"}`,
+    `wiki_docs: ${markdownFiles.length}`,
+    `missing_required_docs: ${structureFindings.filter((finding) => finding.rule === "structure.required_doc").length}`,
+    `findings: ${findings.length}`
+  ];
+  const findingSummary = summarizeFindings(findings);
+
+  return withText({
+    command: "status",
+    result,
+    initialized,
+    detection,
+    documentStatus,
+    adapterStatus,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Status", [
+    { title: "Summary", body: summary },
+    { title: "Document Statuses", body: formatStatusCounts(documentStatus.counts) },
+    { title: "Adapters", body: adapterStatus.length ? adapterStatus : ["none selected"] },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.map(formatFinding) },
+    { title: "Next Steps", body: statusNextSteps(initialized, documentStatus.counts, findings, agents) }
   ]);
 }
 
@@ -114,6 +184,8 @@ export async function audit(options) {
   const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles);
   const encodingFindings = await scanEncoding(options.cwd);
   const sensitiveFindings = await scanSensitive(options.cwd);
+  const sourceFileFindings = await scanSourceFiles(options.cwd);
+  const linkFindings = await scanMarkdownLinks(options.cwd);
   const adapterFindings = await scanAdapters(options.cwd, agents);
 
   const findings = [
@@ -122,6 +194,8 @@ export async function audit(options) {
     ...frontmatter.findings,
     ...encodingFindings,
     ...sensitiveFindings,
+    ...sourceFileFindings,
+    ...linkFindings,
     ...adapterFindings
   ];
 
@@ -141,14 +215,17 @@ export async function audit(options) {
     `selected_agents: ${agents.length ? agents.join(", ") : "none"}`,
     `findings: ${findings.length}`
   ];
+  const findingSummary = summarizeFindings(findings);
 
   return withText({
     command: "audit",
     result,
     detection,
+    findingSummary,
     findings
   }, "LLM-WIKI Audit", [
     { title: "Summary", body: summary },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: ["Stable validation is warning-friendly by default; use --strict when warnings should fail CI."] }
   ]);
@@ -173,16 +250,95 @@ export async function validateCommand(options) {
     `selected_agents: ${selectedAgents(options).join(", ") || "none"}`,
     `findings: ${findings.length}`
   ];
+  const findingSummary = summarizeFindings(findings);
 
   return withText({
     command: "validate",
     result,
     detection: auditResult.detection,
+    findingSummary,
     findings
   }, "LLM-WIKI Validation", [
     { title: "Summary", body: summary },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: ["Validation reuses audit coverage for core, profile, selected-agent adapter, encoding, and sensitive-information checks."] }
+  ]);
+}
+
+export async function quickstartCommand(options) {
+  if (options.dryRun && options.write) {
+    return blockedApply("quickstart", "Choose either quickstart --dry-run or quickstart --write. The two modes cannot be used together.");
+  }
+
+  if (!options.dryRun && !options.write) {
+    return blockedApply("quickstart", "Use quickstart --dry-run to preview setup or quickstart --write to create missing LLM-WIKI files and print the Codex/Claude Code handoff prompt.");
+  }
+
+  const doctorResult = await doctor(options);
+  const initResult = await initCommand(options);
+  const frontmatterResult = options.write
+    ? await validateFrontmatterCommand(options)
+    : null;
+  const handoff = buildHandoff(options, doctorResult.detection);
+  const findings = [
+    ...(initResult.findings ?? []),
+    ...(frontmatterResult?.findings ?? []),
+    ...handoff.findings
+  ];
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const completedSteps = [
+    "doctor completed.",
+    options.write ? "init --write completed." : "init --dry-run completed.",
+    options.write ? "validate-frontmatter completed." : "validate-frontmatter skipped because no files were written.",
+    "handoff prompt prepared."
+  ];
+
+  return withText({
+    command: "quickstart",
+    dryRun: options.dryRun,
+    write: options.write,
+    result,
+    doctor: {
+      checks: doctorResult.checks,
+      detection: doctorResult.detection,
+      packageReadiness: doctorResult.packageReadiness
+    },
+    init: initResult,
+    frontmatter: frontmatterResult,
+    handoff,
+    findings
+  }, "LLM-WIKI Quickstart", [
+    { title: "Completed Steps", body: completedSteps },
+    { title: "Init Summary", body: quickstartInitSummary(initResult) },
+    { title: "Frontmatter Summary", body: frontmatterResult?.summary ?? ["not run"] },
+    { title: "Next Step", body: [handoff.message] },
+    { title: "Handoff Prompt", body: `\`\`\`text\n${handoff.prompt}\n\`\`\`` },
+    { title: "Caveats", body: ["CLI-created or CLI-edited wiki documents remain needs_review until human review. Run llm-wiki validate separately for structure or CI validation."] }
+  ]);
+}
+
+export async function handoffCommand(options) {
+  const detection = await detectProject(options.cwd, options.type, options.profiles);
+  const handoff = buildHandoff(options, detection);
+  const result = handoff.findings.some((finding) => finding.severity === "blocked") ? "blocked" : "pass";
+
+  return withText({
+    command: "handoff",
+    result,
+    detection,
+    handoff,
+    findings: handoff.findings
+  }, "LLM-WIKI Handoff", [
+    { title: "Next Step", body: [handoff.message] },
+    { title: "Handoff Prompt", body: `\`\`\`text\n${handoff.prompt}\n\`\`\`` },
+    { title: "Caveats", body: ["Run this prompt in the selected agent after CLI setup. Keep generated or edited documents as needs_review until human review."] }
   ]);
 }
 
@@ -426,6 +582,109 @@ async function scanSensitive(cwd) {
   return findings;
 }
 
+async function scanSourceFiles(cwd) {
+  const findings = [];
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    const content = await readUtf8(file);
+    const parsed = parseFrontmatter(content);
+    const sourceFiles = parsed.frontmatter?.source_files;
+
+    if (!Array.isArray(sourceFiles)) continue;
+
+    for (const sourceFile of sourceFiles) {
+      if (typeof sourceFile !== "string") continue;
+
+      const source = sourceFile.trim();
+      if (!source || isExternalSourceReference(source)) continue;
+
+      if (!(await pathExists(path.join(cwd, source)))) {
+        findings.push({
+          severity: "warning",
+          rule: "source_files.missing",
+          path: rel,
+          message: `source_files entry does not exist: ${source}.`
+        });
+      }
+    }
+  }
+  return findings;
+}
+
+function isExternalSourceReference(source) {
+  return /^https?:\/\//i.test(source) || source.startsWith("#");
+}
+
+async function scanMarkdownLinks(cwd) {
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  if (!(await pathExists(wikiRoot))) return [];
+
+  const findings = [];
+  for (const file of await listMarkdownFiles(wikiRoot)) {
+    const rel = toPosix(path.relative(cwd, file));
+    const content = await readUtf8(file);
+
+    for (const target of extractMarkdownLinkTargets(content)) {
+      const link = normalizeMarkdownLinkTarget(target);
+      if (!link || isSkippedMarkdownLink(link)) continue;
+
+      const absoluteTarget = resolveMarkdownLinkTarget(cwd, file, link);
+      if (!(await pathExists(absoluteTarget))) {
+        findings.push({
+          severity: "warning",
+          rule: "markdown_link.missing",
+          path: rel,
+          message: `Markdown link target does not exist: ${link}.`
+        });
+      }
+    }
+  }
+  return findings;
+}
+
+function extractMarkdownLinkTargets(markdown) {
+  const targets = [];
+  const inlineLinkPattern = /(^|[^!])\[[^\]\n]+\]\(([^)\n]+)\)/g;
+  const referenceDefinitionPattern = /^\s*\[[^\]\n]+\]:\s*(\S+)(?:\s+.*)?$/gm;
+
+  for (const match of markdown.matchAll(inlineLinkPattern)) {
+    targets.push(match[2]);
+  }
+  for (const match of markdown.matchAll(referenceDefinitionPattern)) {
+    targets.push(match[1]);
+  }
+  return targets;
+}
+
+function normalizeMarkdownLinkTarget(target) {
+  const trimmed = target.trim();
+  const withoutTitle = trimmed.startsWith("<")
+    ? trimmed.match(/^<([^>]+)>/)?.[1] ?? trimmed
+    : trimmed.split(/\s+/)[0];
+  const withoutQuery = withoutTitle.split("?")[0];
+  const withoutAnchor = withoutQuery.split("#")[0];
+
+  try {
+    return decodeURIComponent(withoutAnchor).replaceAll("\\", "/");
+  } catch {
+    return withoutAnchor.replaceAll("\\", "/");
+  }
+}
+
+function isSkippedMarkdownLink(link) {
+  return link === "" || link.startsWith("#") || /^[a-z][a-z0-9+.-]*:/i.test(link);
+}
+
+function resolveMarkdownLinkTarget(cwd, fromFile, link) {
+  if (link.startsWith("/")) {
+    return path.join(cwd, link.slice(1));
+  }
+  if (link.startsWith("docs/")) {
+    return path.join(cwd, link);
+  }
+  return path.resolve(path.dirname(fromFile), link);
+}
+
 async function scanAdapters(cwd, agents) {
   const findings = [];
   for (const agent of agents) {
@@ -519,6 +778,24 @@ function renderGeneratedWikiDoc(rel, detection) {
     related: meta.related,
     body: meta.body
   });
+}
+
+async function summarizeAdapterStatus(cwd, agents) {
+  const statuses = [];
+  for (const agent of agents) {
+    const target = ADAPTER_TARGETS[agent];
+    if (!target) continue;
+
+    const exists = await pathExists(path.join(cwd, target.path));
+    if (exists) {
+      statuses.push(`${agent}: ${target.path} present`);
+    } else if (!target.writable) {
+      statuses.push(`${agent}: ${target.path} candidate only; tool contract unconfirmed`);
+    } else {
+      statuses.push(`${agent}: ${target.path} missing`);
+    }
+  }
+  return statuses;
 }
 
 function docMetadata(rel, detection) {
@@ -698,6 +975,215 @@ async function inspectPackageReadiness(cwd) {
 
 function formatFinding(finding) {
   return `[${finding.severity}] ${finding.rule} ${finding.path}: ${finding.message}`;
+}
+
+function summarizeFindings(findings) {
+  const summary = {
+    total: findings.length,
+    bySeverity: {},
+    byCategory: {}
+  };
+
+  for (const finding of findings) {
+    const severity = finding.severity ?? "unknown";
+    const category = findingCategory(finding.rule);
+    summary.bySeverity[severity] = (summary.bySeverity[severity] ?? 0) + 1;
+    summary.byCategory[category] = (summary.byCategory[category] ?? 0) + 1;
+  }
+
+  return summary;
+}
+
+function findingCategory(rule) {
+  if (!rule) return "unknown";
+  return String(rule).split(".")[0] || "unknown";
+}
+
+function formatFindingSummary(summary) {
+  if (summary.total === 0) return [];
+
+  return [
+    `total: ${summary.total}`,
+    `by_severity: ${formatCountMap(summary.bySeverity)}`,
+    `by_category: ${formatCountMap(summary.byCategory)}`
+  ];
+}
+
+function formatCountMap(counts) {
+  const entries = Object.entries(counts).sort(([left], [right]) => left.localeCompare(right));
+  return entries.length
+    ? entries.map(([key, count]) => `${key}=${count}`).join(", ")
+    : "none";
+}
+
+async function summarizeDocumentStatuses(cwd, markdownFiles) {
+  const counts = Object.fromEntries([...VALID_STATUSES].map((status) => [status, 0]));
+  counts.unknown = 0;
+  const findings = [];
+
+  for (const file of markdownFiles) {
+    const rel = toPosix(path.relative(cwd, file));
+    const content = await readUtf8(file);
+    const parsed = parseFrontmatter(content);
+
+    for (const message of parsed.errors) {
+      findings.push({ severity: "error", rule: "frontmatter.parse", path: rel, message });
+    }
+    for (const finding of validateFrontmatter(parsed.frontmatter)) {
+      findings.push({ ...finding, path: rel });
+    }
+
+    const status = parsed.frontmatter?.status;
+    if (status && VALID_STATUSES.has(status)) {
+      counts[status] += 1;
+    } else {
+      counts.unknown += 1;
+    }
+  }
+
+  return {
+    filesChecked: markdownFiles.length,
+    counts,
+    findings
+  };
+}
+
+function formatStatusCounts(counts) {
+  return Object.entries(counts).map(([status, count]) => `${status}: ${count}`);
+}
+
+function statusNextSteps(initialized, counts, findings, agents) {
+  const steps = [];
+  if (!initialized) {
+    steps.push("Run llm-wiki quickstart --write with the appropriate --type and --agent.");
+  }
+  if ((counts.needs_review ?? 0) > 0) {
+    steps.push("Run llm-wiki handoff --agent codex or --agent claude, then ask the agent to enrich needs_review docs from source evidence.");
+  }
+  if (findings.some((finding) => finding.rule === "structure.required_doc")) {
+    steps.push("Run llm-wiki init --write to create missing recommended docs, or review whether the selected profile is correct.");
+  }
+  if (agents.length === 0) {
+    steps.push("Pass --agent codex or --agent claude when you want adapter status and handoff guidance.");
+  }
+  if (steps.length === 0) {
+    steps.push("Run llm-wiki validate before CI or release.");
+  }
+  return steps;
+}
+
+function quickstartInitSummary(initResult) {
+  const lines = [];
+  if (initResult.result) lines.push(`result: ${initResult.result}`);
+  if (initResult.detection) {
+    lines.push(`project_type: ${initResult.detection.projectType}`);
+    lines.push(`confidence: ${initResult.detection.confidence}`);
+  }
+  if (initResult.created?.length) lines.push(`created: ${initResult.created.length}`);
+  if (initResult.overwritten?.length) lines.push(`overwritten: ${initResult.overwritten.length}`);
+  if (initResult.planned?.length) lines.push(`planned: ${initResult.planned.length}`);
+  if (initResult.skipped?.length) lines.push(`skipped: ${initResult.skipped.length}`);
+  if (initResult.blocked?.length) lines.push(`blocked: ${initResult.blocked.length}`);
+  return lines;
+}
+
+function buildHandoff(options, detection = null) {
+  const agents = selectedAgents(options);
+  const supportedAgents = agents.length === 0 ? ["codex", "claude"] : agents.filter((agent) => agent === "codex" || agent === "claude");
+  const unsupportedAgents = agents.filter((agent) => agent === "antigravity");
+  const projectType = detection?.projectType ?? options.type ?? "unknown";
+  const evidenceGuidance = handoffEvidenceGuidance(projectType);
+  const completionPrefix = options.dryRun && !options.write
+    ? "CLI 미리보기가 완료되었습니다. 실제 파일 생성 후"
+    : "CLI 작업이 완료되었습니다.";
+  const findings = unsupportedAgents.map((agent) => ({
+    severity: supportedAgents.length > 0 ? "warning" : "blocked",
+    rule: "handoff.unsupported_agent",
+    path: ".",
+    message: `${agent} handoff is not available because the adapter contract is unconfirmed.`
+  }));
+  const label = handoffLabel(supportedAgents);
+  const entrypoints = handoffEntrypoints(supportedAgents);
+  const unsupportedNote = unsupportedAgents.length > 0
+    ? ` ${unsupportedAgents.join(", ")} handoff는 adapter contract가 확정되지 않아 아직 지원하지 않습니다.`
+    : "";
+
+  if (supportedAgents.length === 0) {
+    return {
+      agents,
+      supportedAgents,
+      unsupportedAgents,
+      projectType,
+      evidenceGuidance,
+      label: unsupportedAgents.join(", "),
+      entrypoints: "docs/llm-wiki/index.md",
+      message: `${completionPrefix} ${unsupportedNote.trim()}`,
+      prompt: "No Codex or Claude Code handoff prompt is available for the selected agent. Select --agent codex or --agent claude, or run the next documentation work manually after reviewing docs/llm-wiki/index.md.",
+      findings
+    };
+  }
+
+  const message = `${completionPrefix} ${label}에게 넘어가서 아래 프롬프트를 실행하세요.`;
+  const prompt = `${entrypoints} 먼저 읽어주세요.
+그 다음 실제 코드, 설정 파일, 라우팅, API, 데이터 모델, 주요 워크플로우를 근거로 docs/llm-wiki 문서를 보강해주세요.
+${evidenceGuidance.join("\n")}
+CLI가 생성한 초안과 에이전트가 수정한 문서는 needs_review 상태로 유지해주세요.
+verified 승인은 하지 말고, 사람이 검토해야 할 항목과 근거 부족 항목을 docs/llm-wiki/log.md에 append-only로 남겨주세요.
+민감정보 raw value는 문서나 리포트에 기록하지 말고, 필요한 경우 redacted 형태로만 설명해주세요.
+작업이 끝나면 변경한 파일 목록, 확인한 source file, 남은 review item을 요약해주세요.`;
+
+  return {
+    agents,
+    supportedAgents,
+    unsupportedAgents,
+    projectType,
+    evidenceGuidance,
+    label,
+    entrypoints,
+    message: `${message}${unsupportedNote}`,
+    prompt,
+    findings
+  };
+}
+
+function handoffLabel(agents) {
+  if (agents.includes("codex") && agents.includes("claude")) return "Codex 또는 Claude Code";
+  if (agents.includes("codex")) return "Codex";
+  if (agents.includes("claude")) return "Claude Code";
+  return "Codex 또는 Claude Code";
+}
+
+function handoffEvidenceGuidance(projectType) {
+  const guidance = {
+    frontend: [
+      "Frontend evidence focus:",
+      "- Inspect routes, pages, components, state management, API clients, accessibility behavior, and end-to-end user workflows."
+    ],
+    backend: [
+      "Backend evidence focus:",
+      "- Inspect API routes, controllers, services, data models, persistence, auth/security boundaries, jobs, and operational configuration."
+    ],
+    fullstack: [
+      "Fullstack evidence focus:",
+      "- Inspect UI flows, API contracts, client/server boundaries, shared schemas, environment configuration, data model changes, and release flow."
+    ],
+    library: [
+      "Library evidence focus:",
+      "- Inspect public exports, package entrypoints, type declarations, examples, versioning policy, compatibility guarantees, and release flow."
+    ]
+  };
+
+  return guidance[projectType] ?? [
+    "General evidence focus:",
+    "- Inspect the files referenced by source_files first, then map architecture, workflows, configuration, tests, and open review questions from real code evidence."
+  ];
+}
+
+function handoffEntrypoints(agents) {
+  const files = ["docs/llm-wiki/index.md"];
+  if (agents.length === 0 || agents.includes("codex")) files.unshift("AGENTS.md");
+  if (agents.length === 0 || agents.includes("claude")) files.unshift("CLAUDE.md");
+  return `${files.join("와 ")}를`;
 }
 
 function withText(payload, title, sections) {

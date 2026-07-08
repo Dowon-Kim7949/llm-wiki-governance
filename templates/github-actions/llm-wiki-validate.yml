@@ -1,0 +1,39 @@
+name: LLM-WIKI Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  llm-wiki:
+    name: Validate LLM-WIKI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run project tests
+        run: npm test
+
+      - name: Validate LLM-WIKI frontmatter
+        run: npx llm-wiki validate-frontmatter
+
+      - name: Validate LLM-WIKI strictly
+        run: npx llm-wiki validate --strict --agent codex

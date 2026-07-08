@@ -6,15 +6,17 @@ tags:
   - needs-review
 status: needs_review
 doc_type: rule_asset_index
-project: sinkholemonitor-frontend
+project: llm-wiki-standard
 last_updated: 2026-07-02
 author: ai-generated
 last_edited_by: Codex
 wiki_block_version: v1
 source_files:
-  - LLM_WIKI_STANDARD_MODEL.md
+  - rules/frontmatter-required.json
+  - src/frontmatter.js
+  - src/config.js
 related:
-  - packages/llm-wiki-standard/rules/frontmatter-required.json
+  - README.md
 visibility: internal
 contains_sensitive_info: false
 ---

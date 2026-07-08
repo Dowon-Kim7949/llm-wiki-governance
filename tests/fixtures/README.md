@@ -7,16 +7,16 @@ tags:
   - needs-review
 status: needs_review
 doc_type: test_fixture_index
-project: sinkholemonitor-frontend
+project: llm-wiki-standard
 last_updated: 2026-07-02
 author: ai-generated
 last_edited_by: Codex
 wiki_block_version: v1
 source_files:
-  - ACTION_PLAN.md
-  - packages/llm-wiki-standard/tests/verification.test.js
+  - tests/verification.test.js
+  - tests/frontmatter.test.js
 related:
-  - packages/llm-wiki-standard/README.md
+  - README.md
 visibility: internal
 contains_sensitive_info: false
 ---

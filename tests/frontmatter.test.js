@@ -56,3 +56,33 @@ test("renders needs_review wiki document templates", () => {
   assert.equal(parsed.frontmatter.doc_type, "test_doc");
   assert.deepEqual(validateFrontmatter(parsed.frontmatter), []);
 });
+
+test("verified documents require review metadata only as errors in strict mode", () => {
+  const parsed = parseFrontmatter(`---
+title: Verified Sample
+tags:
+  - llm-wiki
+status: verified
+doc_type: test
+project: sample
+last_updated: 2026-07-02
+author: maintainer
+last_edited_by: maintainer
+wiki_block_version: v1
+source_files:
+  - package.json
+related:
+  - docs/llm-wiki/log.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# Verified Sample
+`);
+
+  const standardFindings = validateFrontmatter(parsed.frontmatter);
+  const strictFindings = validateFrontmatter(parsed.frontmatter, { strict: true });
+
+  assert.equal(standardFindings.find((finding) => finding.rule === "frontmatter.verified_review")?.severity, "warning");
+  assert.equal(strictFindings.find((finding) => finding.rule === "frontmatter.verified_review")?.severity, "error");
+});

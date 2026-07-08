@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, doctor, initCommand, migrateCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, doctor, handoffCommand, initCommand, migrateCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport } from "../src/report.js";
 
@@ -43,10 +43,239 @@ test("parseArgs supports init write and existing policy", () => {
   assert.deepEqual(parsed.errors, []);
 });
 
+test("parseArgs supports quickstart write and handoff options", () => {
+  const quickstart = parseArgs(["quickstart", "--write", "--type", "frontend", "--agent", "codex"]);
+  const handoff = parseArgs(["handoff", "--type", "backend", "--profile", "library", "--agent", "claude"]);
+  const status = parseArgs(["status", "--agent", "codex"]);
+
+  assert.equal(quickstart.command, "quickstart");
+  assert.equal(quickstart.options.write, true);
+  assert.equal(quickstart.options.type, "frontend");
+  assert.deepEqual(quickstart.options.agents, ["codex"]);
+  assert.deepEqual(quickstart.errors, []);
+  assert.equal(handoff.command, "handoff");
+  assert.equal(handoff.options.type, "backend");
+  assert.deepEqual(handoff.options.profiles, ["library"]);
+  assert.deepEqual(handoff.options.agents, ["claude"]);
+  assert.deepEqual(handoff.errors, []);
+  assert.equal(status.command, "status");
+  assert.deepEqual(status.options.agents, ["codex"]);
+  assert.deepEqual(status.errors, []);
+});
+
+test("parseArgs rejects conflicting and command-specific options", () => {
+  const conflicting = parseArgs(["quickstart", "--dry-run", "--write"]);
+  const validateWrite = parseArgs(["validate", "--write"]);
+  const handoffExisting = parseArgs(["handoff", "--existing", "overwrite"]);
+
+  assert.ok(conflicting.errors.includes("Options --dry-run and --write cannot be used together."));
+  assert.deepEqual(validateWrite.errors, ["Option --write is not supported by validate."]);
+  assert.deepEqual(handoffExisting.errors, ["Option --existing is not supported by handoff."]);
+});
+
 test("parseArgs rejects unsupported existing policy", () => {
   const parsed = parseArgs(["init", "--write", "--existing", "merge"]);
 
   assert.deepEqual(parsed.errors, ["Unsupported existing policy: merge"]);
+});
+
+test("quickstart rejects direct dry-run and write conflict", async () => {
+  const cwd = await makeProject("quickstart-conflict-");
+  const result = await quickstartCommand({
+    cwd,
+    dryRun: true,
+    write: true,
+    minimal: false,
+    withAdapters: false,
+    type: null,
+    profiles: [],
+    agents: ["codex"],
+    existing: "skip"
+  });
+
+  assert.equal(result.result, "blocked");
+  assert.ok(result.text.includes("Choose either quickstart --dry-run or quickstart --write"));
+});
+
+test("quickstart dry-run prints preview handoff wording", async () => {
+  const cwd = await makeProject("quickstart-preview-");
+  const result = await quickstartCommand({
+    cwd,
+    dryRun: true,
+    write: false,
+    minimal: true,
+    withAdapters: false,
+    type: "frontend",
+    profiles: [],
+    agents: ["codex"],
+    existing: "skip"
+  });
+
+  assert.equal(result.dryRun, true);
+  assert.ok(result.text.includes("CLI 미리보기가 완료되었습니다. 실제 파일 생성 후 Codex에게 넘어가서 아래 프롬프트를 실행하세요."));
+  assert.ok(result.text.includes("validate-frontmatter skipped because no files were written."));
+});
+
+test("quickstart writes wiki docs, validates frontmatter, and prints handoff prompt", async () => {
+  const cwd = await makeProject("quickstart-");
+  await writeJson(path.join(cwd, "package.json"), {
+    dependencies: { vue: "^3.0.0" },
+    devDependencies: { vite: "^6.0.0" }
+  });
+
+  const result = await quickstartCommand({
+    cwd,
+    dryRun: false,
+    write: true,
+    minimal: true,
+    withAdapters: false,
+    type: "frontend",
+    profiles: [],
+    agents: ["codex"],
+    existing: "skip"
+  });
+
+  assert.equal(result.command, "quickstart");
+  assert.equal(result.result, "pass");
+  assert.ok(result.init.created.some((line) => line.includes("docs/llm-wiki/index.md created")));
+  assert.ok(result.text.includes("CLI 작업이 완료되었습니다. Codex에게 넘어가서 아래 프롬프트를 실행하세요."));
+  assert.ok(result.handoff.prompt.includes("AGENTS.md"));
+  assert.ok(result.handoff.prompt.includes("needs_review"));
+  assert.ok(result.handoff.prompt.includes("Frontend evidence focus:"));
+  assert.ok((await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), { encoding: "utf8" })).includes("status: needs_review"));
+});
+
+test("handoff command prints Claude Code entrypoint without writing files", async () => {
+  const cwd = await makeProject("handoff-");
+  const result = await handoffCommand({
+    cwd,
+    dryRun: false,
+    write: false,
+    minimal: false,
+    withAdapters: false,
+    type: null,
+    profiles: [],
+    agents: ["claude"],
+    existing: "skip"
+  });
+
+  assert.equal(result.command, "handoff");
+  assert.equal(result.handoff.label, "Claude Code");
+  assert.ok(result.text.includes("Claude Code에게 넘어가서 아래 프롬프트를 실행하세요."));
+  assert.ok(result.handoff.prompt.includes("CLAUDE.md"));
+  assert.ok(result.handoff.prompt.includes("verified 승인은 하지 말고"));
+});
+
+test("handoff command blocks Antigravity until adapter contract is confirmed", async () => {
+  const cwd = await makeProject("handoff-antigravity-");
+  const result = await handoffCommand({
+    cwd,
+    dryRun: false,
+    write: false,
+    minimal: false,
+    withAdapters: false,
+    type: null,
+    profiles: [],
+    agents: ["antigravity"],
+    existing: "skip"
+  });
+
+  assert.equal(result.result, "blocked");
+  assert.ok(result.findings.some((finding) => finding.rule === "handoff.unsupported_agent"));
+  assert.equal(result.text.includes("Codex 또는 Claude Code에게 넘어가서"), false);
+  assert.ok(result.text.includes("handoff는 adapter contract가 확정되지 않아 아직 지원하지 않습니다."));
+});
+
+test("handoff prompt includes project-type-specific evidence guidance", async () => {
+  const cases = [
+    ["frontend", "Frontend evidence focus:", "routes, pages, components"],
+    ["backend", "Backend evidence focus:", "API routes, controllers, services"],
+    ["fullstack", "Fullstack evidence focus:", "client/server boundaries"],
+    ["library", "Library evidence focus:", "public exports"]
+  ];
+
+  for (const [projectType, marker, detail] of cases) {
+    const cwd = await makeProject(`handoff-${projectType}-`);
+    const result = await handoffCommand({
+      cwd,
+      dryRun: false,
+      write: false,
+      minimal: false,
+      withAdapters: false,
+      type: projectType,
+      profiles: [],
+      agents: ["codex"],
+      existing: "skip"
+    });
+
+    assert.equal(result.handoff.projectType, projectType);
+    assert.ok(result.handoff.prompt.includes(marker));
+    assert.ok(result.handoff.prompt.includes(detail));
+  }
+});
+
+test("handoff report can be written for reviewable prompt storage", async () => {
+  const cwd = await makeProject("handoff-out-");
+  const out = path.join(cwd, "docs", "llm-wiki", "tasks", "initial-enrichment.prompt.md");
+  const result = await handoffCommand({
+    cwd,
+    dryRun: false,
+    write: false,
+    minimal: false,
+    withAdapters: false,
+    type: null,
+    profiles: [],
+    agents: ["codex"],
+    existing: "skip"
+  });
+
+  await writeReport(out, result, { format: "text", out });
+  const content = await readFile(out, { encoding: "utf8" });
+
+  assert.ok(content.includes("# LLM-WIKI Handoff"));
+  assert.ok(content.includes("AGENTS.md와 docs/llm-wiki/index.md"));
+  assert.ok(content.includes("status: needs_review"));
+});
+
+test("status command reports uninitialized wiki and selected adapter state", async () => {
+  const cwd = await makeProject("status-missing-");
+  const result = await statusCommand({
+    cwd,
+    type: null,
+    profiles: [],
+    agents: ["codex"],
+    format: "text"
+  });
+
+  assert.equal(result.command, "status");
+  assert.equal(result.initialized, false);
+  assert.equal(result.result, "warning");
+  assert.ok(result.findings.some((finding) => finding.rule === "structure.wiki_missing"));
+  assert.ok(result.adapterStatus.some((line) => line.includes("codex: AGENTS.md missing")));
+  assert.equal(result.findingSummary.byCategory.structure, 1);
+  assert.equal(result.findingSummary.byCategory.adapter, 1);
+  assert.equal(result.findingSummary.bySeverity.warning, 2);
+  assert.ok(result.text.includes("by_category: adapter=1, structure=1"));
+  assert.ok(result.text.includes("Run llm-wiki quickstart --write"));
+});
+
+test("status command counts wiki document frontmatter statuses", async () => {
+  const cwd = await makeProject("status-docs-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.");
+  await writeWikiDoc(cwd, "README.md", "LLM-WIKI README", "Existing wiki readme.");
+
+  const result = await statusCommand({
+    cwd,
+    type: "unknown",
+    profiles: [],
+    agents: [],
+    format: "text"
+  });
+
+  assert.equal(result.initialized, true);
+  assert.equal(result.documentStatus.filesChecked, 2);
+  assert.equal(result.documentStatus.counts.needs_review, 2);
+  assert.ok(result.text.includes("needs_review: 2"));
 });
 
 test("init write creates zero-base wiki docs and selected adapter", async () => {
@@ -188,6 +417,27 @@ test("existing wiki frontmatter validates with Korean UTF-8 content", async () =
   assert.equal(auditResult.findings.some((finding) => finding.rule === "encoding.mojibake"), false);
 });
 
+test("strict validation requires verified review metadata", async () => {
+  const cwd = await makeProject("verified-strict-");
+  await writeJson(path.join(cwd, "package.json"), { name: "verified-strict" });
+  await writeVerifiedWikiDocMissingReview(cwd);
+
+  const standardFrontmatter = await validateFrontmatterCommand({ cwd, type: null, format: "text", strict: false });
+  const strictFrontmatter = await validateFrontmatterCommand({ cwd, type: null, format: "text", strict: true });
+  const strictValidation = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: true });
+
+  assert.equal(standardFrontmatter.result, undefined);
+  assert.equal(standardFrontmatter.findings.find((finding) => finding.rule === "frontmatter.verified_review")?.severity, "warning");
+  assert.ok(standardFrontmatter.summary.includes("result: pass"));
+  assert.equal(strictFrontmatter.findings.find((finding) => finding.rule === "frontmatter.verified_review")?.severity, "error");
+  assert.equal(strictFrontmatter.findingSummary.byCategory.frontmatter, 1);
+  assert.equal(strictFrontmatter.findingSummary.bySeverity.error, 1);
+  assert.ok(strictFrontmatter.summary.includes("result: fail"));
+  assert.equal(strictValidation.result, "fail");
+  assert.equal(strictValidation.findings.find((finding) => finding.rule === "frontmatter.verified_review")?.severity, "error");
+  assert.equal(strictValidation.findingSummary.byCategory.frontmatter, 1);
+});
+
 test("migrate dry-run reports safe additions without writing files", async () => {
   const cwd = await makeProject("migrate-");
   await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.");
@@ -217,6 +467,8 @@ test("validate command reuses audit coverage for CI checks", async () => {
   assert.equal(result.command, "validate");
   assert.equal(result.text.includes("# LLM-WIKI Validation"), true);
   assert.ok(result.findings.some((finding) => finding.rule === "structure.required_doc"));
+  assert.ok(result.findingSummary.byCategory.structure > 0);
+  assert.ok(result.text.includes("## Finding Summary"));
 });
 
 test("sensitive findings omit raw values", async () => {
@@ -228,6 +480,66 @@ test("sensitive findings omit raw values", async () => {
 
   assert.ok(result.findings.some((finding) => finding.rule === "sensitive.redacted"));
   assert.equal(serialized.includes("very-secret-token-value"), false);
+});
+
+test("audit reports missing source_files entries without exposing file contents", async () => {
+  const cwd = await makeProject("source-missing-");
+  await writeWikiDocWithSourceFiles(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.", ["missing/source.js"]);
+
+  const result = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.ok(result.findings.some((finding) => finding.rule === "source_files.missing" && finding.message.includes("missing/source.js")));
+  assert.equal(result.findingSummary.byCategory.source_files, 1);
+});
+
+test("audit accepts existing source_files entries", async () => {
+  const cwd = await makeProject("source-present-");
+  await writeJson(path.join(cwd, "package.json"), { name: "source-present" });
+  await writeWikiDocWithSourceFiles(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.", ["package.json"]);
+
+  const result = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.equal(result.findings.some((finding) => finding.rule === "source_files.missing"), false);
+});
+
+test("audit and validate report missing local markdown links in wiki docs", async () => {
+  const cwd = await makeProject("links-missing-");
+  await writeJson(path.join(cwd, "package.json"), { name: "links-missing" });
+  await writeWikiDoc(
+    cwd,
+    "index.md",
+    "LLM-WIKI Index",
+    "See [missing details](missing-details.md), [external docs](https://example.com), [email](mailto:docs@example.com), and [local section](#local-section)."
+  );
+
+  const auditResult = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const validateResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.ok(auditResult.findings.some((finding) => finding.rule === "markdown_link.missing" && finding.message.includes("missing-details.md")));
+  assert.ok(validateResult.findings.some((finding) => finding.rule === "markdown_link.missing" && finding.message.includes("missing-details.md")));
+  assert.equal(auditResult.findingSummary.byCategory.markdown_link, 1);
+  assert.equal(validateResult.findingSummary.byCategory.markdown_link, 1);
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "markdown_link.missing" && finding.message.includes("https://example.com")), false);
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "markdown_link.missing" && finding.message.includes("mailto:docs@example.com")), false);
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "markdown_link.missing" && finding.message.includes("#local-section")), false);
+});
+
+test("status reports missing markdown links and accepts existing local links", async () => {
+  const cwd = await makeProject("links-status-");
+  await writeJson(path.join(cwd, "package.json"), { name: "links-status" });
+  await writeWikiDoc(cwd, "README.md", "LLM-WIKI README", "Existing target.");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "See [readme](README.md) and [missing](missing.md).");
+
+  const result = await statusCommand({
+    cwd,
+    type: "unknown",
+    profiles: [],
+    agents: [],
+    format: "text"
+  });
+
+  assert.ok(result.findings.some((finding) => finding.rule === "markdown_link.missing" && finding.message.includes("missing.md")));
+  assert.equal(result.findings.some((finding) => finding.rule === "markdown_link.missing" && finding.message.includes("README.md")), false);
 });
 
 test("parseArgs supports report output path", () => {
@@ -322,10 +634,19 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "@dowonk-7949/llm-wiki-standard");
-  assert.equal(packageJson.version, "0.1.0");
+  assert.equal(packageJson.version, "0.1.1");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
+  assert.ok(packageJson.files.includes("ROADMAP.md"));
+});
+
+test("GitHub Actions validation example includes strict LLM-WIKI checks", async () => {
+  const workflow = await readFile(path.join(process.cwd(), "templates", "github-actions", "llm-wiki-validate.yml"), { encoding: "utf8" });
+
+  assert.ok(workflow.includes("run: npm test"));
+  assert.ok(workflow.includes("run: npx llm-wiki validate-frontmatter"));
+  assert.ok(workflow.includes("run: npx llm-wiki validate --strict --agent codex"));
 });
 
 test("parseArgs reports missing option values and unknown options", () => {
@@ -357,12 +678,45 @@ async function writeJson(filePath, value) {
 }
 
 async function writeWikiDoc(cwd, filename, title, body) {
-  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
-  await mkdir(wikiRoot, { recursive: true });
-  await writeFile(path.join(wikiRoot, filename), frontmatter(title, body), { encoding: "utf8" });
+  return writeWikiDocWithSourceFiles(cwd, filename, title, body, ["package.json"]);
 }
 
-function frontmatter(title, body) {
+async function writeWikiDocWithSourceFiles(cwd, filename, title, body, sourceFiles) {
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  await mkdir(wikiRoot, { recursive: true });
+  await writeFile(path.join(wikiRoot, filename), frontmatter(title, body, sourceFiles), { encoding: "utf8" });
+}
+
+async function writeVerifiedWikiDocMissingReview(cwd) {
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  await mkdir(wikiRoot, { recursive: true });
+  await writeFile(path.join(wikiRoot, "index.md"), `---
+title: Verified Wiki
+tags:
+  - llm-wiki
+status: verified
+doc_type: wiki_index
+project: fixture
+last_updated: 2026-07-02
+author: test
+last_edited_by: node-test
+wiki_block_version: v1
+source_files:
+  - package.json
+related:
+  - docs/llm-wiki/log.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# Verified Wiki
+
+Existing verified wiki without review metadata.
+`, { encoding: "utf8" });
+}
+
+function frontmatter(title, body, sourceFiles = ["package.json"]) {
+  const renderedSourceFiles = sourceFiles.map((sourceFile) => `  - ${sourceFile}`).join("\n");
   return `---
 title: ${title}
 tags:
@@ -375,7 +729,7 @@ author: test
 last_edited_by: node-test
 wiki_block_version: v1
 source_files:
-  - package.json
+${renderedSourceFiles}
 related:
   - docs/llm-wiki/log.md
 visibility: internal
