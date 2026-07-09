@@ -106,7 +106,7 @@ Goal: catch stale, broken, or unverifiable wiki content before it spreads.
 Goal: help maintainers decide the next useful action without reading every document.
 
 - Keep improving `llm-wiki status`.
-- Consider `llm-wiki next` for recommended next actions.
+- Add `llm-wiki next` for recommended next actions. Status: implemented as an advisory command backed by audit findings and wikiGraph.
 - Consider `llm-wiki explain <finding>` for remediation guidance.
 - Add `llm-wiki prompt --task <name>` for repeatable agent workflows after the project LLM-WIKI is already initialized and enriched. Status: implemented.
 - Add task prompt presets for `feature`, `fix`, `refactor`, `docs-sync`, and `okf-extract`. Status: implemented.

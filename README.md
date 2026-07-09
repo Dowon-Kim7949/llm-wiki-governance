@@ -169,7 +169,8 @@ Expected Claude Code work is the same as Codex work: read the adapter and wiki e
 | Command | When to use |
 | --- | --- |
 | `llm-wiki doctor` | Check local runtime, package readiness, and project detection. |
-| `llm-wiki status` | Show initialization state, document status counts, missing docs, selected adapter state, markdown link findings, and source file reference findings. |
+| `llm-wiki status` | Show initialization state, document status counts, missing docs, selected adapter state, link findings, source file reference findings, and wiki graph summary. |
+| `llm-wiki next` | Recommend the next review, repair, or setup actions from audit findings and wiki graph data. |
 | `llm-wiki quickstart --dry-run` | Preview the setup and handoff prompt without writing files. |
 | `llm-wiki quickstart --write` | Create missing wiki files, validate frontmatter, and print the Codex/Claude Code handoff prompt. |
 | `llm-wiki handoff` | Print the next prompt for Codex or Claude Code after setup, including project-type-specific evidence focus. |
@@ -190,6 +191,7 @@ Use command-specific help when you are unsure:
 ```bash
 npx llm-wiki help quickstart
 npx llm-wiki help status
+npx llm-wiki help next
 ```
 
 To save the handoff prompt as a reviewable report:
@@ -202,6 +204,12 @@ To save an ongoing task prompt as a reviewable report:
 
 ```bash
 npx llm-wiki prompt --task feature --agent codex --out docs/llm-wiki/tasks/feature.prompt.md
+```
+
+To ask the CLI for the next useful maintenance action:
+
+```bash
+npx llm-wiki next --agent codex
 ```
 
 Pass `--type frontend`, `--type backend`, `--type fullstack`, or `--type library` when you want the handoff prompt to use a specific evidence focus instead of auto-detection.

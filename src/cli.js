@@ -1,5 +1,5 @@
 import path from "node:path";
-import { audit, doctor, handoffCommand, initCommand, migrateCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, doctor, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 
 const COMMANDS = new Map([
@@ -7,6 +7,7 @@ const COMMANDS = new Map([
   ["validate", validateCommand],
   ["validate-frontmatter", validateFrontmatterCommand],
   ["status", statusCommand],
+  ["next", nextCommand],
   ["audit", audit],
   ["quickstart", quickstartCommand],
   ["handoff", handoffCommand],
@@ -182,6 +183,7 @@ const COMMAND_OPTION_RULES = {
   validate: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
   "validate-frontmatter": new Set(["cwd", "strict", "format", "out"]),
   status: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
+  next: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
   audit: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
   quickstart: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "dry-run", "write", "format", "out"]),
   handoff: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
@@ -256,6 +258,7 @@ function printHelp() {
 Usage:
   llm-wiki doctor [--cwd <path>] [--format text|json|markdown]
   llm-wiki status [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|antigravity|all>...] [--format text|json|markdown] [--out <path>]
+  llm-wiki next [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|antigravity|all>...] [--strict] [--format text|json|markdown] [--out <path>]
   llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|antigravity|all>...] [--strict] [--format text|json|markdown] [--out <path>]
   llm-wiki validate-frontmatter [--cwd <path>] [--strict]
   llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|antigravity|all>...] [--strict] [--format text|json|markdown] [--out <path>]
@@ -273,6 +276,7 @@ Safety:
   Existing adapter files are never overwritten. migrate --apply remains blocked.
   Adapter checks and suggestions are opt-in with --agent. ANTIGRAVITY.md remains an info-level candidate.
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
+  next is advisory: it reuses audit coverage and recommends follow-up actions without writing files.
 
 Use llm-wiki help <command> for command-specific guidance.
 `);
@@ -306,6 +310,14 @@ Usage:
 
 Purpose:
   Shows whether LLM-WIKI is initialized, counts document statuses, reports missing recommended docs, markdown links, source file references, and selected adapter state.
+`,
+  next: `llm-wiki next
+
+Usage:
+  llm-wiki next [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|antigravity|all>...] [--strict] [--format text|json|markdown] [--out <path>]
+
+Purpose:
+  Reuses audit coverage and wikiGraph data to recommend the next review, repair, or setup actions. This command is advisory and does not write files.
 `,
   quickstart: `llm-wiki quickstart
 

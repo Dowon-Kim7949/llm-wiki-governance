@@ -180,6 +180,43 @@ export async function statusCommand(options) {
   ]);
 }
 
+export async function nextCommand(options) {
+  const auditResult = await audit(options);
+  const actions = buildNextActions(auditResult, options);
+  const result = actions.some((action) => action.priority === "blocked")
+    ? "blocked"
+    : actions.some((action) => action.priority === "high")
+      ? "action_required"
+      : actions.length > 0
+        ? "ready"
+        : "pass";
+  const summary = [
+    `result: ${result}`,
+    `project_type: ${auditResult.detection.projectType}`,
+    `confidence: ${auditResult.detection.confidence}`,
+    `active_profiles: ${auditResult.detection.activeProfiles.join(", ")}`,
+    `selected_agents: ${selectedAgents(options).join(", ") || "none"}`,
+    `audit_findings: ${auditResult.findings.length}`,
+    `recommended_actions: ${actions.length}`
+  ];
+
+  return withText({
+    command: "next",
+    result,
+    detection: auditResult.detection,
+    wikiGraph: auditResult.wikiGraph,
+    auditFindingSummary: auditResult.findingSummary,
+    auditFindings: auditResult.findings,
+    actions,
+    findings: []
+  }, "LLM-WIKI Next Actions", [
+    { title: "Summary", body: summary },
+    { title: "Recommended Actions", body: formatNextActions(actions) },
+    { title: "Wiki Graph", body: formatWikiGraphSummary(auditResult.wikiGraph) },
+    { title: "Caveats", body: ["This command is advisory and does not write files. Run validate or audit when you need pass/fail validation."] }
+  ]);
+}
+
 export async function audit(options) {
   const detection = await detectProject(options.cwd, options.type, options.profiles);
   const agents = selectedAgents(options);
@@ -1586,6 +1623,182 @@ async function inspectPackageReadiness(cwd) {
   ];
 }
 
+function buildNextActions(auditResult, options) {
+  const actions = [];
+  const seen = new Set();
+  const findings = auditResult.findings ?? [];
+  const wikiGraph = auditResult.wikiGraph ?? emptyWikiGraph();
+
+  const add = (action) => {
+    if (seen.has(action.id)) return;
+    seen.add(action.id);
+    actions.push(action);
+  };
+
+  if (findings.some((finding) => finding.severity === "blocked")) {
+    add(nextAction({
+      id: "blocked-sensitive",
+      priority: "blocked",
+      title: "Remove blocked safety findings",
+      reason: "Blocked findings must be resolved before generated reports or release checks are safe.",
+      command: "llm-wiki audit",
+      findings: findings.filter((finding) => finding.severity === "blocked")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "structure.wiki_missing")) {
+    add(nextAction({
+      id: "initialize-wiki",
+      priority: "high",
+      title: "Initialize the LLM-WIKI structure",
+      reason: "The project does not have docs/llm-wiki/index.md yet.",
+      command: "llm-wiki init --write",
+      findings: findings.filter((finding) => finding.rule === "structure.wiki_missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "structure.required_doc")) {
+    add(nextAction({
+      id: "create-required-docs",
+      priority: "high",
+      title: "Create missing required or profile documents",
+      reason: "Required LLM-WIKI documents are missing for the active project type or profiles.",
+      command: "llm-wiki init --write",
+      findings: findings.filter((finding) => finding.rule === "structure.required_doc")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule?.startsWith("frontmatter."))) {
+    add(nextAction({
+      id: "repair-frontmatter",
+      priority: "high",
+      title: "Repair frontmatter contract violations",
+      reason: "Frontmatter errors can block reliable validation, reports, and downstream agents.",
+      command: options.strict ? "llm-wiki validate-frontmatter --strict" : "llm-wiki validate-frontmatter",
+      findings: findings.filter((finding) => finding.rule?.startsWith("frontmatter."))
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule?.startsWith("okf."))) {
+    add(nextAction({
+      id: "repair-okf-profile",
+      priority: "high",
+      title: "Repair OKF v0.1 metadata",
+      reason: "OKF profile documents need explicit type fields and valid aliases/tags arrays.",
+      command: "llm-wiki validate --profile okf-v0.1",
+      findings: findings.filter((finding) => finding.rule?.startsWith("okf."))
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "source_files.missing")) {
+    add(nextAction({
+      id: "repair-source-files",
+      priority: "medium",
+      title: "Fix missing source evidence references",
+      reason: "source_files entries should point to existing local files or explicit external references.",
+      command: "llm-wiki audit",
+      findings: findings.filter((finding) => finding.rule === "source_files.missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "markdown_link.missing")) {
+    add(nextAction({
+      id: "repair-markdown-links",
+      priority: "medium",
+      title: "Fix missing Markdown links",
+      reason: "Broken local Markdown links make wiki navigation unreliable.",
+      command: "llm-wiki validate",
+      findings: findings.filter((finding) => finding.rule === "markdown_link.missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "wiki_link.missing")) {
+    add(nextAction({
+      id: "repair-wiki-links",
+      priority: "medium",
+      title: "Resolve missing wiki link targets",
+      reason: "Unresolved [[wiki links]] should point to a file path, basename, title, or alias.",
+      command: "llm-wiki validate",
+      findings: findings.filter((finding) => finding.rule === "wiki_link.missing")
+    }));
+  }
+
+  if (wikiGraph.unresolvedConcepts.length > 0) {
+    add({
+      id: "review-unresolved-concepts",
+      priority: "medium",
+      category: "wiki_graph",
+      title: "Review unresolved concepts",
+      reason: `${wikiGraph.unresolvedConcepts.length} wiki-link target(s) are unresolved in wikiGraph.`,
+      command: "llm-wiki audit --format markdown",
+      paths: unique(wikiGraph.unresolvedConcepts.flatMap((item) => item.sources)),
+      targets: wikiGraph.unresolvedConcepts.map((item) => item.target)
+    });
+  }
+
+  if (findings.some((finding) => finding.rule === "adapter.missing")) {
+    const agents = selectedAgents(options);
+    add(nextAction({
+      id: "create-selected-adapters",
+      priority: "medium",
+      title: "Create selected adapter entrypoints",
+      reason: "Selected agents need their adapter files before handoff workflows are smooth.",
+      command: agents.length ? `llm-wiki init --write ${agents.map((agent) => `--agent ${agent}`).join(" ")}` : "llm-wiki init --write --agent codex",
+      findings: findings.filter((finding) => finding.rule === "adapter.missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule?.startsWith("encoding."))) {
+    add(nextAction({
+      id: "review-encoding",
+      priority: "low",
+      title: "Review encoding findings",
+      reason: "Encoding issues such as BOM or mojibake can make generated docs harder to diff and review.",
+      command: "llm-wiki audit",
+      findings: findings.filter((finding) => finding.rule?.startsWith("encoding."))
+    }));
+  }
+
+  if (wikiGraph.orphanDocuments.length > 0) {
+    add({
+      id: "connect-orphan-documents",
+      priority: "low",
+      category: "wiki_graph",
+      title: "Connect orphan wiki documents",
+      reason: `${wikiGraph.orphanDocuments.length} document(s) have no inbound wiki links.`,
+      command: "llm-wiki status",
+      paths: wikiGraph.orphanDocuments,
+      targets: []
+    });
+  }
+
+  return actions.sort(compareNextActions);
+}
+
+function nextAction({ id, priority, title, reason, command, findings }) {
+  return {
+    id,
+    priority,
+    category: findingCategory(findings[0]?.rule),
+    title,
+    reason,
+    command,
+    paths: unique(findings.map((finding) => finding.path).filter(Boolean)),
+    targets: []
+  };
+}
+
+function compareNextActions(left, right) {
+  const priorityOrder = { blocked: 0, high: 1, medium: 2, low: 3 };
+  const leftPriority = priorityOrder[left.priority] ?? 9;
+  const rightPriority = priorityOrder[right.priority] ?? 9;
+  return leftPriority - rightPriority || left.title.localeCompare(right.title);
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
 function formatFinding(finding) {
   return `[${finding.severity}] ${finding.rule} ${finding.path}: ${finding.message}`;
 }
@@ -1646,6 +1859,20 @@ function formatWikiGraphSummary(wikiGraph) {
   }
 
   return lines;
+}
+
+function formatNextActions(actions) {
+  if (actions.length === 0) return ["No next actions recommended. Run llm-wiki status or llm-wiki validate when the project changes."];
+
+  return actions.map((action) => {
+    const details = [
+      `[${action.priority}] ${action.title}: ${action.reason}`,
+      `command: ${action.command}`
+    ];
+    if (action.paths.length > 0) details.push(`paths: ${action.paths.join(", ")}`);
+    if (action.targets.length > 0) details.push(`targets: ${action.targets.join(", ")}`);
+    return details.join(" ");
+  });
 }
 
 function formatCountMap(counts) {

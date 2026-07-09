@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, doctor, handoffCommand, initCommand, migrateCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, doctor, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport } from "../src/report.js";
 
@@ -47,6 +47,7 @@ test("parseArgs supports quickstart write and handoff options", () => {
   const quickstart = parseArgs(["quickstart", "--write", "--type", "frontend", "--agent", "codex"]);
   const handoff = parseArgs(["handoff", "--type", "backend", "--profile", "library", "--agent", "claude"]);
   const status = parseArgs(["status", "--agent", "codex"]);
+  const next = parseArgs(["next", "--profile", "okf-v0.1", "--agent", "codex", "--strict"]);
 
   assert.equal(quickstart.command, "quickstart");
   assert.equal(quickstart.options.write, true);
@@ -61,6 +62,11 @@ test("parseArgs supports quickstart write and handoff options", () => {
   assert.equal(status.command, "status");
   assert.deepEqual(status.options.agents, ["codex"]);
   assert.deepEqual(status.errors, []);
+  assert.equal(next.command, "next");
+  assert.deepEqual(next.options.profiles, ["okf-v0.1"]);
+  assert.deepEqual(next.options.agents, ["codex"]);
+  assert.equal(next.options.strict, true);
+  assert.deepEqual(next.errors, []);
 });
 
 test("parseArgs supports prompt task options", () => {
@@ -719,6 +725,28 @@ test("audit and validate include wiki graph summary with aliases, unresolved con
   assert.ok(auditResult.text.includes("unresolved_concepts: 1"));
   assert.equal(validateResult.wikiGraph.summary.orphanDocuments, 1);
   assert.ok(validateResult.text.includes("orphan_documents: 1"));
+});
+
+test("next command recommends prioritized actions from audit findings and wiki graph", async () => {
+  const cwd = await makeProject("next-actions-");
+  await writeJson(path.join(cwd, "package.json"), { name: "next-actions" });
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "See [[Known Concept]], [[Missing Next Concept]], and [missing](missing.md).");
+  await writeWikiDocWithSourceFiles(cwd, "concepts/known.md", "Known Concept", "Known but not linked from another page.", ["missing-source.ts"]);
+  await writeWikiDoc(cwd, "concepts/orphan.md", "Orphan Concept", "No inbound wiki links.");
+
+  const result = await nextCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.equal(result.command, "next");
+  assert.equal(result.findings.length, 0);
+  assert.ok(result.auditFindings.some((finding) => finding.rule === "source_files.missing"));
+  assert.ok(result.actions.some((action) => action.id === "repair-source-files" && action.priority === "medium"));
+  assert.ok(result.actions.some((action) => action.id === "repair-markdown-links"));
+  assert.ok(result.actions.some((action) => action.id === "repair-wiki-links"));
+  assert.ok(result.actions.some((action) => action.id === "review-unresolved-concepts" && action.targets.includes("Missing Next Concept")));
+  assert.ok(result.actions.some((action) => action.id === "connect-orphan-documents" && action.paths.includes("docs/llm-wiki/concepts/orphan.md")));
+  assert.ok(result.text.includes("# LLM-WIKI Next Actions"));
+  assert.ok(result.text.includes("## Recommended Actions"));
+  assert.ok(result.text.includes("command: llm-wiki validate"));
 });
 
 test("parseArgs supports report output path", () => {
