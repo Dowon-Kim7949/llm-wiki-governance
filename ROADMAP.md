@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-standard
-last_updated: 2026-07-08
+last_updated: 2026-07-09
 author: ai-generated
 last_edited_by: Codex
 wiki_block_version: v1
@@ -39,6 +39,23 @@ Codex or Claude Code enriches docs from source evidence.
 Humans review and approve verified status.
 CI continuously checks quality.
 ```
+
+## Current Release Snapshot
+
+As of 2026-07-09, `@dowonk-7949/llm-wiki-standard@0.1.3` is published to npm and the matching source changes are committed on `main`.
+
+Release state:
+
+- `0.1.3` includes the evidence reference contract, body `## Evidence` alignment checks, strict-mode evidence promotion, template updates, and release documentation updates.
+- Local verification passed before commit: `node --test tests/*.test.js`, `validate-frontmatter`, `doctor`, and `diff --check`.
+- `main` push runs CI only. npm publish is reserved for `v*` tag pushes through `.github/workflows/publish.yml`.
+- Do not push `v0.1.3` for this release. The package version was already published manually, so a tag-triggered publish would attempt to republish the same version.
+
+Next release policy:
+
+- Use the automated publish flow starting with the next version, for example `0.1.4` plus a matching `v0.1.4` tag.
+- Keep version, roadmap, release checklist, package contents, and npm registry verification aligned before pushing a release tag.
+- Treat evidence validation as part of the stable document contract, but keep new evidence reference shapes conservative until real project usage proves the need.
 
 ## OKF v0.1 Comparison
 
@@ -147,11 +164,8 @@ Goal: support OKF v0.1 without weakening the existing LLM-WIKI safety model.
 
 ## Near-Term Priority
 
-1. Add `llm-wiki prompt --task <name>` with `feature`, `fix`, `refactor`, `docs-sync`, and `okf-extract` presets. Status: implemented.
-2. Add API service inventory requirements to domain document templates and handoff/task prompts. Status: implemented.
-3. Publish the frontmatter contract as JSON Schema and validate against it. Status: implemented.
-4. Add `aliases` as an optional frontmatter field and decide how `doc_type` and OKF `type` coexist. Status: implemented; OKF `type` is explicit and does not get inferred from LLM-WIKI `doc_type`.
-5. Add `[[wiki links]]` parsing and missing-target validation. Status: implemented.
-6. Design `--profile okf-v0.1` before adding conversion commands. Status: implemented for validation-first profile behavior.
-7. Improve generated document templates with evidence, open questions, review notes, and OKF-style concise summaries. Status: implemented for current generated drafts and OKF profile guide.
-8. Decide whether raw-text OKF extraction is a CLI command or an agent prompt workflow. Status: implemented as an agent prompt workflow first.
+1. Verify the `0.1.3` package from a clean consumer project and record any install or CLI smoke-test issues.
+2. Exercise evidence references on one real project document set and note whether file, line, symbol, section, and route references are enough.
+3. Decide how strict evidence validation should be introduced in CI: advisory first, strict only for release gates, or strict on every validation run.
+4. Add Node LTS matrix and cross-platform smoke tests before the next release tag.
+5. Prepare the next release through the automated tag-based publish flow instead of a manual npm publish.
