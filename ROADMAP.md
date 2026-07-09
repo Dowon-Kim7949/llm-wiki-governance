@@ -169,3 +169,12 @@ Goal: support OKF v0.1 without weakening the existing LLM-WIKI safety model.
 3. Decide how strict evidence validation should be introduced in CI: advisory first, strict only for release gates, or strict on every validation run.
 4. Add Node LTS matrix and cross-platform smoke tests before the next release tag.
 5. Prepare the next release through the automated tag-based publish flow instead of a manual npm publish.
+
+## Additional Work Candidates
+
+These items are not yet committed to a release phase, but they are strong candidates for future roadmap refinement after real project usage.
+
+1. Code-change drift detection and automatic review downgrade: detect when source evidence linked from a document changes in Git, then downgrade affected documents from `verified` to `needs_review`. This would actively reduce stale knowledge by forcing review when referenced code, routes, sections, or line ranges move.
+2. Static HTML dashboard reports: export `wikiGraph` and audit results as a readable dashboard for maintainers and tech leads. Useful views include documentation progress, unresolved links, orphan documents, review status distribution, and broken evidence references.
+3. Cross-repository knowledge links for multi-repo systems: define a conservative reference format for API specs, domain documents, and service contracts that live in separate repositories. This should build on the future `monorepo` profile without assuming all knowledge lives in one physical repo.
+4. AI-agent conflict resolution guidance: document safe merge and recovery policies for teams using multiple agents such as Codex and Claude Code against the same wiki corpus. Consider whether CLI helpers are needed for conflict detection, document status reset, and post-merge validation.
