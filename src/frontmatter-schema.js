@@ -35,7 +35,14 @@ export const FRONTMATTER_SCHEMA = {
     contains_sensitive_info: { type: "boolean" },
     reviewed_by: { type: "string", minLength: 1 },
     reviewed_at: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-    aliases: { type: "array", items: { type: "string" } }
+    aliases: { type: "array", items: { type: "string" } },
+    evidence: {
+      type: "array",
+      items: {
+        type: "string",
+        pattern: "^(https?:\\/\\/[^\\s]+|[^#\\s][^#]*(#(L[1-9][0-9]*(-L?[1-9][0-9]*)?|symbol:.+|section:.+|route:\\/.+))?)$"
+      }
+    }
   },
   allOf: [
     {

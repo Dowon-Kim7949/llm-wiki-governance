@@ -7,12 +7,13 @@ export function renderTemplate(template, variables) {
   });
 }
 
-export function renderWikiDocumentTemplate({ title, docType, project, body, sourceFiles = [], related = [] }) {
+export function renderWikiDocumentTemplate({ title, docType, project, body, sourceFiles = [], evidence = [], related = [] }) {
   return renderTemplate(WIKI_DOCUMENT_TEMPLATE, {
     title,
     doc_type: docType,
     project,
     source_files: sourceFiles.map((item) => `  - ${item}`),
+    evidence: evidence.map((item) => `  - ${item}`),
     related: related.map((item) => `  - ${item}`),
     body
   });
@@ -36,6 +37,8 @@ last_edited_by: llm-wiki-cli
 wiki_block_version: v1
 source_files:
 {{ source_files }}
+evidence:
+{{ evidence }}
 related:
 {{ related }}
 visibility: internal

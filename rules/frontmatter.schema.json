@@ -99,6 +99,13 @@
       "items": {
         "type": "string"
       }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(https?:\\/\\/[^\\s]+|[^#\\s][^#]*(#(L[1-9][0-9]*(-L?[1-9][0-9]*)?|symbol:.+|section:.+|route:\\/.+))?)$"
+      }
     }
   },
   "allOf": [

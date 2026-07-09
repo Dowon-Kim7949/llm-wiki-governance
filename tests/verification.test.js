@@ -628,6 +628,86 @@ test("audit accepts existing source_files entries", async () => {
   assert.equal(result.findings.some((finding) => finding.rule === "source_files.missing"), false);
 });
 
+test("audit accepts precise evidence references for files, lines, symbols, sections, and routes", async () => {
+  const cwd = await makeProject("evidence-present-");
+  await writeJson(path.join(cwd, "package.json"), { name: "evidence-present" });
+  await mkdir(path.join(cwd, "src"), { recursive: true });
+  await writeFile(path.join(cwd, "src", "routes.ts"), "export function loadUsers() {}\nexport const route = '/users';\n", { encoding: "utf8" });
+  const evidence = [
+    "package.json",
+    "src/routes.ts#L1-L2",
+    "src/routes.ts#symbol:loadUsers",
+    "docs/llm-wiki/index.md#section:Evidence",
+    "src/routes.ts#route:/users",
+    "https://example.com/spec#external-anchor"
+  ];
+  await writeWikiDocWithEvidence(cwd, "index.md", "LLM-WIKI Index", evidenceBody(evidence), ["package.json"], evidence);
+
+  const auditResult = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const validateResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.equal(auditResult.findings.some((finding) => finding.rule?.startsWith("evidence.")), false);
+  assert.equal(validateResult.findings.some((finding) => finding.rule?.startsWith("evidence.")), false);
+});
+
+test("audit and validate report malformed, missing, and out-of-range evidence references", async () => {
+  const cwd = await makeProject("evidence-invalid-");
+  await writeJson(path.join(cwd, "package.json"), { name: "evidence-invalid" });
+  const evidence = [
+    "missing/source.ts#symbol:loadUsers",
+    "package.json#L99",
+    "package.json#unknown:target",
+    "package.json#route:users"
+  ];
+  await writeWikiDocWithEvidence(cwd, "index.md", "LLM-WIKI Index", evidenceBody(evidence), ["package.json"], evidence);
+
+  const auditResult = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const validateResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.missing" && finding.message.includes("missing/source.ts")));
+  assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.line_range" && finding.message.includes("package.json")));
+  assert.equal(auditResult.findings.filter((finding) => finding.rule === "evidence.shape").length, 2);
+  assert.equal(validateResult.findingSummary.byCategory.evidence, 4);
+  assert.ok(validateResult.findings.some((finding) => finding.rule === "evidence.shape"));
+});
+
+test("audit and validate enforce body Evidence section alignment for frontmatter evidence", async () => {
+  const cwd = await makeProject("evidence-section-");
+  await writeJson(path.join(cwd, "package.json"), { name: "evidence-section" });
+  await writeWikiDocWithEvidence(cwd, "missing-section.md", "Missing Evidence Section", "No evidence section here.", ["package.json"], ["package.json#L1"]);
+  await writeWikiDocWithEvidence(cwd, "unlisted.md", "Unlisted Evidence", "## Evidence\n\n- package.json\n", ["package.json"], ["package.json#L1"]);
+  await writeWikiDoc(cwd, "empty-section.md", "Empty Evidence Section", "## Evidence\n\n## Review Notes\n\n- Nothing yet.");
+
+  const auditResult = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const validateResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_missing" && finding.path.includes("missing-section.md")));
+  assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_unlisted" && finding.path.includes("unlisted.md")));
+  assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_empty" && finding.path.includes("empty-section.md")));
+  assert.equal(validateResult.findingSummary.byCategory.evidence, 3);
+});
+
+test("strict validate promotes evidence contract warnings to errors", async () => {
+  const cwd = await makeProject("evidence-strict-");
+  await writeJson(path.join(cwd, "package.json"), { name: "evidence-strict" });
+  await writeWikiDocWithEvidence(cwd, "index.md", "Strict Evidence", "## Evidence\n\n- package.json#L99\n- missing/source.ts#symbol:loadUsers\n", ["package.json"], [
+    "package.json#L99",
+    "missing/source.ts#symbol:loadUsers"
+  ]);
+  await writeWikiDocWithEvidence(cwd, "unlisted.md", "Strict Unlisted Evidence", "## Evidence\n\n- package.json\n", ["package.json"], ["package.json#L1"]);
+
+  const standardResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const strictResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: true });
+
+  for (const rule of ["evidence.line_range", "evidence.missing", "evidence.section_unlisted"]) {
+    assert.equal(standardResult.findings.find((finding) => finding.rule === rule)?.severity, "warning");
+    assert.equal(strictResult.findings.find((finding) => finding.rule === rule)?.severity, "error");
+  }
+  assert.equal(strictResult.result, "fail");
+  assert.equal(strictResult.findingSummary.byCategory.evidence, 3);
+  assert.equal(strictResult.findingSummary.bySeverity.error, 3);
+});
+
 test("audit and validate report missing local markdown links in wiki docs", async () => {
   const cwd = await makeProject("links-missing-");
   await writeJson(path.join(cwd, "package.json"), { name: "links-missing" });
@@ -893,6 +973,7 @@ test("okf-v0.1 fixture corpus validates expected document types and links", asyn
   assert.equal(result.findings.some((finding) => finding.rule?.startsWith("okf.")), false);
   assert.equal(result.findings.some((finding) => finding.rule === "wiki_link.missing"), false);
   assert.equal(result.findings.some((finding) => finding.rule === "source_files.missing"), false);
+  assert.equal(result.findings.some((finding) => finding.rule?.startsWith("evidence.")), false);
   assert.equal(result.wikiGraph.summary.documents, 6);
   assert.equal(result.wikiGraph.summary.unresolvedWikiLinks, 0);
   assert.equal(result.wikiGraph.summary.aliases, 6);
@@ -900,6 +981,8 @@ test("okf-v0.1 fixture corpus validates expected document types and links", asyn
   for (const type of ["concept", "project", "person", "meeting_note", "event", "api_reference"]) {
     assert.ok(corpus.includes(`type: ${type}`));
   }
+  assert.ok(corpus.includes("evidence:\n  - package.json#L1-L3"));
+  assert.ok(corpus.includes("`package.json#L1-L3` identifies the fixture package metadata"));
 });
 
 test("init dry-run includes okf-v0.1 profile guide", async () => {
@@ -965,7 +1048,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "@dowonk-7949/llm-wiki-standard");
-  assert.equal(packageJson.version, "0.1.2");
+  assert.equal(packageJson.version, "0.1.3");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
@@ -1018,6 +1101,16 @@ async function writeWikiDocWithSourceFiles(cwd, filename, title, body, sourceFil
   const targetPath = path.join(wikiRoot, filename);
   await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(targetPath, frontmatter(title, body, sourceFiles), { encoding: "utf8" });
+}
+
+async function writeWikiDocWithEvidence(cwd, filename, title, body, sourceFiles, evidence) {
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  const targetPath = path.join(wikiRoot, filename);
+  const evidenceBlock = evidence.length
+    ? `evidence:\n${evidence.map((item) => `  - ${item}`).join("\n")}\n`
+    : "";
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await writeFile(targetPath, frontmatter(title, body, sourceFiles).replace("related:", `${evidenceBlock}related:`), { encoding: "utf8" });
 }
 
 async function writeWikiDocWithAliases(cwd, filename, title, body, aliases) {
@@ -1093,6 +1186,15 @@ contains_sensitive_info: false
 # ${title}
 
 ${body}
+`;
+}
+
+function evidenceBody(evidence) {
+  return `Existing wiki entry.
+
+## Evidence
+
+${evidence.map((item) => `- ${item}`).join("\n")}
 `;
 }
 

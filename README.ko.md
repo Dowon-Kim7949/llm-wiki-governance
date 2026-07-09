@@ -273,11 +273,11 @@ npx llm-wiki validate --strict --agent codex
 
 CI는 pull request와 `main` push에서 검증을 실행합니다. Publish는 `.github/workflows/publish.yml`을 통한 `v*` tag push로 제한됩니다.
 
-검증 후 version `0.1.2`를 배포하려면 다음을 실행합니다.
+검증 후 version `0.1.3`를 배포하려면 다음을 실행합니다.
 
 ```bash
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 ## 관련 문서

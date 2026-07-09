@@ -13,6 +13,8 @@ last_edited_by: test-fixture
 wiki_block_version: v1
 source_files:
   - package.json
+evidence:
+  - package.json#L1-L3
 related:
   - docs/llm-wiki/projects/llm-wiki-standard.md
 visibility: internal
@@ -36,6 +38,7 @@ aliases:
 ## Evidence
 
 - package.json
+- `package.json#L1-L3` identifies the fixture package metadata used while validating the prompt command API document.
 
 ## Review Notes
 

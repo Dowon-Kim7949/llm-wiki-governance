@@ -12,6 +12,8 @@ last_edited_by: llm-wiki-cli
 wiki_block_version: v1
 source_files:
 {{ source_files }}
+evidence:
+{{ evidence }}
 related:
 {{ related }}
 visibility: internal

@@ -30,6 +30,7 @@ This directory stores machine-readable rules for the CLI. Rules remain `needs_re
 ## Frontmatter Schema
 
 - `rules/frontmatter.schema.json` is the published JSON Schema contract for LLM-WIKI frontmatter.
-- The schema defines required fields, valid `status` values, valid `visibility` values, optional `aliases`, and the review metadata expected when a document is `verified`.
+- The schema defines required fields, valid `status` values, valid `visibility` values, optional `aliases` and `evidence`, and the review metadata expected when a document is `verified`.
+- Optional `evidence` entries are small string references: `file`, `file#L10`, `file#L10-L20`, `file#symbol:Name`, `file#section:Heading`, or `file#route:/path`.
 - Runtime validation uses the same contract through `src/frontmatter-schema.js`.
 - `rules/frontmatter-required.json` remains a compact legacy summary for wrappers that only need field and enum lists.

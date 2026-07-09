@@ -97,7 +97,7 @@ Goal: catch stale, broken, or unverifiable wiki content before it spreads.
 - Add wiki-link validation for `[[Concept Name]]` references, including missing target detection and optional alias resolution. Status: implemented for file path, basename, frontmatter `title`, and frontmatter `aliases`.
 - Validate that `source_files` entries exist. Status: implemented for local path references.
 - Add stricter `verified` policy checks in `--strict` mode. Status: implemented for missing `reviewed_by` and `reviewed_at`.
-- Add evidence-span references so important claims can point to a file, symbol, route, section, or line range instead of only a broad source file.
+- Add evidence-span references so important claims can point to a file, symbol, route, section, or line range instead of only a broad source file. Status: implemented as optional `evidence` frontmatter string references with local file, line-range, and body `## Evidence` section alignment validation.
 - Split validation findings by category for easier CI reporting. Status: implemented with `findingSummary.byCategory` and text report summaries.
 - Keep sensitive-info detection conservative and non-leaking.
 

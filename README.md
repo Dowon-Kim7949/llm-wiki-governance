@@ -152,6 +152,7 @@ Expected Claude Code work is the same as Codex work: read the adapter and wiki e
 - Validates frontmatter, encoding, local markdown links, `[[wiki links]]`, adapter entrypoints, and sensitive-info rules.
 - Publishes the LLM-WIKI frontmatter contract as `rules/frontmatter.schema.json` and validates frontmatter against the same runtime contract.
 - Checks that local `source_files` entries in wiki frontmatter exist.
+- Checks optional `evidence` entries for small precise references such as `src/file.ts#L10-L20`, `src/file.ts#symbol:Name`, `README.md#section:Usage`, or `src/routes.ts#route:/users`.
 - Prints a handoff prompt for Codex or Claude Code with frontend, backend, fullstack, or library evidence focus.
 - Keeps CLI-generated documents in `needs_review`.
 
@@ -256,16 +257,44 @@ It also creates `docs/llm-wiki/OKF_CONVERSION_GUIDE.md`, which explains how to r
 
 `--agent antigravity` remains an adapter candidate only. The CLI can report or suggest the candidate adapter, but it does not print an Antigravity handoff prompt until that tool contract is confirmed. Use `--agent codex` or `--agent claude` for handoff prompts.
 
+## Evidence Contract
+
+Use three evidence layers together:
+
+- `source_files` lists broad project-root file evidence for the document.
+- Optional `evidence` lists precise references to files, lines, symbols, sections, or routes.
+- Body `## Evidence` gives reviewers a readable bullet list and must mention each frontmatter `evidence` reference when precise references are present.
+
+```markdown
+---
+source_files:
+  - package.json
+  - src/routes/users.ts
+evidence:
+  - package.json#L1-L5
+  - src/routes/users.ts#symbol:loadUsers
+  - src/routes/users.ts#route:/users
+---
+
+## Evidence
+
+- `package.json#L1-L5` identifies the package metadata used for project context.
+- `src/routes/users.ts#symbol:loadUsers` supports the user-loading behavior described above.
+- `src/routes/users.ts#route:/users` supports the documented route path.
+```
+
 ## Safety Policy
 
 - Markdown is read and written as UTF-8.
 - Sensitive-looking raw values are not printed or written to reports.
 - Existing wiki documents are kept by default and rewritten only with explicit `--existing overwrite`.
 - Local `source_files` entries should point to files that exist from the project root.
+- Optional `evidence` frontmatter entries should use `file`, `file#L10`, `file#L10-L20`, `file#symbol:Name`, `file#section:Heading`, or `file#route:/path`; local file targets and line ranges are validated.
+- When frontmatter `evidence` is present, the document body should include a `## Evidence` section with bullet entries that mention each precise reference.
 - Local markdown links inside `docs/llm-wiki` should point to existing relative files; URLs, `mailto:` links, and anchor-only links are ignored.
 - `[[wiki links]]` inside `docs/llm-wiki` should resolve to an existing wiki file path, basename, frontmatter `title`, or frontmatter `aliases` entry.
-- In `--strict` mode, `verified` documents must include `reviewed_by` and `reviewed_at`; standard mode keeps this as a warning.
-- `rules/frontmatter.schema.json` defines required frontmatter fields, valid `status` and `visibility` values, optional `aliases`, and review metadata for `verified` documents.
+- In `--strict` mode, `verified` documents must include `reviewed_by` and `reviewed_at`, and evidence contract warnings become errors; standard mode keeps these as warnings.
+- `rules/frontmatter.schema.json` defines required frontmatter fields, valid `status` and `visibility` values, optional `aliases` and `evidence`, and review metadata for `verified` documents.
 - `docs/llm-wiki/log.md` is append-only and is not overwritten.
 - Existing `AGENTS.md`, `CLAUDE.md`, and `ANTIGRAVITY.md` files are not overwritten.
 - `migrate --apply` remains blocked until automatic migration scope is intentionally accepted.
@@ -308,11 +337,11 @@ CI runs verification on pull requests and `main` pushes. Publishing is restricte
 
 Before automated publish, register an npm Trusted Publisher for GitHub Actions with workflow filename `publish.yml`. The publish job uses the GitHub Environment `npm-release`; configure required reviewers or deployment approval rules for that environment in GitHub UI.
 
-To publish version `0.1.2` after verification:
+To publish version `0.1.3` after verification:
 
 ```bash
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 ## Related Documents

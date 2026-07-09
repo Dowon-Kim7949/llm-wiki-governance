@@ -48,6 +48,12 @@ const FINDING_EXPLANATIONS = {
   "frontmatter.status": findingExplanation("frontmatter", "error", "The document status is not one of the supported LLM-WIKI status values.", "Status values drive review workflow and prevent AI-generated content from being treated as verified too early.", ["Use a supported status such as needs_review, in_progress, verified, or deprecated.", "Use needs_review for generated or recently edited documents.", "Run validate-frontmatter again."], ["llm-wiki validate-frontmatter"], ["frontmatter.verified_review"]),
   "frontmatter.verified_review": findingExplanation("frontmatter", "warning", "A verified document is missing review metadata.", "Verified documents should identify who reviewed them and when, especially in strict CI.", ["Add reviewed_by and reviewed_at when the document has truly been reviewed.", "Downgrade status to needs_review if review has not happened.", "Use --strict when warnings should fail CI."], ["llm-wiki validate-frontmatter --strict", "llm-wiki validate --strict"], ["frontmatter.status"]),
   "source_files.missing": findingExplanation("source_files", "warning", "A source_files entry points to a local file that does not exist.", "LLM-WIKI claims should stay traceable to real source evidence or explicit external references.", ["Fix the path if the referenced source file moved.", "Remove stale entries that no longer support the document.", "Use an explicit external URL only when the source is outside the repository."], ["llm-wiki audit", "llm-wiki validate"], ["markdown_link.missing"]),
+  "evidence.shape": findingExplanation("evidence", "error", "An evidence entry does not match the supported reference shape.", "Evidence references should stay small and machine-checkable so claims can point to a file, line range, symbol, section, or route.", ["Use file, file#L10, file#L10-L20, file#symbol:Name, file#section:Heading, or file#route:/path.", "Keep richer prose in the document body rather than the frontmatter entry.", "Run validate again."], ["llm-wiki validate", "llm-wiki explain evidence.shape"], ["source_files.missing"]),
+  "evidence.missing": findingExplanation("evidence", "warning", "An evidence entry points to a local file that does not exist.", "Precise evidence is only useful when the base file can be found from the project root.", ["Fix the path if the referenced source file moved.", "Remove stale evidence entries that no longer support a claim.", "Use an explicit external URL only when the source is outside the repository."], ["llm-wiki audit", "llm-wiki validate"], ["source_files.missing", "evidence.shape"]),
+  "evidence.line_range": findingExplanation("evidence", "warning", "An evidence line reference is outside the referenced file.", "Line references should remain close enough to the source to help reviewers verify a claim quickly.", ["Update the line number or range after source edits.", "Use symbol, route, or section evidence when line numbers churn too often.", "Run validate again."], ["llm-wiki validate"], ["evidence.missing"]),
+  "evidence.section_missing": findingExplanation("evidence", "warning", "A document with frontmatter evidence does not include a body ## Evidence section.", "The body section gives reviewers a readable explanation of the precise evidence references stored in frontmatter.", ["Add a ## Evidence section to the document body.", "Mention each frontmatter evidence entry in a bullet.", "Keep detailed interpretation in prose after the reference."], ["llm-wiki validate", "llm-wiki explain evidence.section_missing"], ["evidence.shape"]),
+  "evidence.section_empty": findingExplanation("evidence", "warning", "A body ## Evidence section exists but has no bullet entries.", "Evidence sections should be scan-friendly and consistent across generated and maintained wiki documents.", ["Add one or more bullet entries under ## Evidence.", "Use source references, commands, tests, or reviewed evidence notes.", "Remove the section only if it is not part of the document contract."], ["llm-wiki validate"], ["evidence.section_missing"]),
+  "evidence.section_unlisted": findingExplanation("evidence", "warning", "A frontmatter evidence reference is not mentioned in the body ## Evidence section.", "Keeping frontmatter and body evidence aligned lets tools validate references while humans can still review context in the document body.", ["Add the missing reference to a bullet under ## Evidence.", "Remove stale frontmatter evidence if it no longer supports the document.", "Run validate again."], ["llm-wiki validate"], ["evidence.section_missing", "evidence.shape"]),
   "markdown_link.missing": findingExplanation("markdown_link", "warning", "A local Markdown link target does not exist.", "Broken local links make the wiki harder to navigate and reduce trust in generated reports.", ["Check whether the target path was renamed or moved.", "Update the link or create the missing target document.", "External links, mailto links, and local anchors are intentionally skipped."], ["llm-wiki validate", "llm-wiki status"], ["wiki_link.missing"]),
   "wiki_link.missing": findingExplanation("wiki_link", "warning", "A [[wiki link]] target does not resolve to a file path, basename, title, or alias.", "Unresolved wiki links break concept navigation and weaken OKF-style knowledge graph output.", ["Create a document for the missing concept when it is real.", "Update the link text to match an existing title, basename, file path, or alias.", "Add a reviewed aliases entry to the intended target document when appropriate."], ["llm-wiki validate", "llm-wiki next", "llm-wiki audit --format markdown"], ["markdown_link.missing", "okf.array_shape"]),
   "okf.type_required": findingExplanation("okf", "error", "An OKF v0.1-profiled document is missing the required frontmatter type field.", "OKF requires explicit document type metadata and LLM-WIKI does not infer it from doc_type.", ["Add an explicit type field to the frontmatter.", "Use a reviewed OKF type such as concept, project, person, meeting_note, event, or api_reference.", "Keep doc_type when the document also needs the LLM-WIKI contract."], ["llm-wiki validate --profile okf-v0.1"], ["okf.type_shape", "okf.array_shape"]),
@@ -147,6 +153,8 @@ export async function statusCommand(options) {
   }));
   const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
+  const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
+  const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
   const linkFindings = [
@@ -159,6 +167,8 @@ export async function statusCommand(options) {
     ...documentStatus.findings,
     ...structureFindings,
     ...sourceFileFindings,
+    ...evidenceFindings,
+    ...evidenceSectionFindings,
     ...okfFindings,
     ...linkFindings,
     ...adapterFindings
@@ -297,6 +307,8 @@ export async function audit(options) {
   const encodingFindings = await scanEncoding(options.cwd);
   const sensitiveFindings = await scanSensitive(options.cwd);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
+  const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
+  const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
   const linkFindings = [
@@ -312,6 +324,8 @@ export async function audit(options) {
     ...encodingFindings,
     ...sensitiveFindings,
     ...sourceFileFindings,
+    ...evidenceFindings,
+    ...evidenceSectionFindings,
     ...okfFindings,
     ...linkFindings,
     ...adapterFindings
@@ -766,6 +780,181 @@ async function scanSourceFiles(cwd) {
     }
   }
   return findings;
+}
+
+async function scanEvidenceReferences(cwd, options = {}) {
+  const findings = [];
+  const lineCountByPath = new Map();
+  const strictSeverity = evidenceStrictSeverity(options);
+
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    const content = await readUtf8(file);
+    const parsed = parseFrontmatter(content);
+    const evidence = parsed.frontmatter?.evidence;
+
+    if (!Array.isArray(evidence)) continue;
+
+    for (const item of evidence) {
+      if (typeof item !== "string") continue;
+
+      const reference = item.trim();
+      const evidenceReference = parseEvidenceReference(reference);
+      if (!evidenceReference) {
+        findings.push({
+          severity: "error",
+          rule: "evidence.shape",
+          path: rel,
+          message: `Invalid evidence reference: ${reference || "(empty)"}.`
+        });
+        continue;
+      }
+
+      if (evidenceReference.external) continue;
+
+      const absoluteSourcePath = path.join(cwd, evidenceReference.source);
+      if (!(await pathExists(absoluteSourcePath))) {
+        findings.push({
+          severity: strictSeverity,
+          rule: "evidence.missing",
+          path: rel,
+          message: `Evidence source does not exist: ${evidenceReference.source}.`
+        });
+        continue;
+      }
+
+      if (evidenceReference.locator?.kind === "line") {
+        const lineCount = await getLineCount(absoluteSourcePath, lineCountByPath);
+        if (evidenceReference.locator.end > lineCount) {
+          findings.push({
+            severity: strictSeverity,
+            rule: "evidence.line_range",
+            path: rel,
+            message: `Evidence line range is outside ${evidenceReference.source}: ${evidenceReference.locator.start}-${evidenceReference.locator.end} (file has ${lineCount} line${lineCount === 1 ? "" : "s"}).`
+          });
+        }
+      }
+    }
+  }
+
+  return findings;
+}
+
+async function scanEvidenceSections(cwd, options = {}) {
+  const findings = [];
+  const strictSeverity = evidenceStrictSeverity(options);
+
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    const content = await readUtf8(file);
+    const parsed = parseFrontmatter(content);
+    const section = extractMarkdownSection(parsed.body, "Evidence");
+    const frontmatterEvidence = Array.isArray(parsed.frontmatter?.evidence)
+      ? parsed.frontmatter.evidence.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
+      : [];
+
+    if (!section && frontmatterEvidence.length === 0) continue;
+
+    if (!section) {
+      findings.push({
+        severity: strictSeverity,
+        rule: "evidence.section_missing",
+        path: rel,
+        message: "Document has frontmatter evidence entries but no body ## Evidence section."
+      });
+      continue;
+    }
+
+    if (section.bullets.length === 0) {
+      findings.push({
+        severity: strictSeverity,
+        rule: "evidence.section_empty",
+        path: rel,
+        message: "Body ## Evidence section should contain at least one bullet entry."
+      });
+    }
+
+    for (const reference of frontmatterEvidence) {
+      if (!section.text.includes(reference)) {
+        findings.push({
+          severity: strictSeverity,
+          rule: "evidence.section_unlisted",
+          path: rel,
+          message: `Frontmatter evidence entry is not mentioned in body ## Evidence: ${reference}.`
+        });
+      }
+    }
+  }
+
+  return findings;
+}
+
+function evidenceStrictSeverity(options) {
+  return options.strict ? "error" : "warning";
+}
+
+function extractMarkdownSection(markdown, title) {
+  const lines = String(markdown ?? "").split(/\r?\n/);
+  const headingPattern = new RegExp(`^##\\s+${escapeRegex(title)}\\s*$`, "i");
+  const start = lines.findIndex((line) => headingPattern.test(line.trim()));
+  if (start === -1) return null;
+
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^#{1,2}\s+\S/.test(lines[index].trim())) {
+      end = index;
+      break;
+    }
+  }
+
+  const sectionLines = lines.slice(start + 1, end);
+  const text = sectionLines.join("\n");
+  const bullets = sectionLines.filter((line) => /^\s*[-*]\s+\S/.test(line));
+
+  return { text, bullets };
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseEvidenceReference(reference) {
+  if (!reference) return null;
+  if (isExternalSourceReference(reference)) return { source: reference, locator: null, external: true };
+
+  const hashIndex = reference.indexOf("#");
+  const source = (hashIndex === -1 ? reference : reference.slice(0, hashIndex)).trim();
+  const locatorText = hashIndex === -1 ? null : reference.slice(hashIndex + 1).trim();
+
+  if (!source || source.startsWith("#")) return null;
+  if (locatorText === "") return null;
+  if (locatorText === null) return { source, locator: null, external: false };
+
+  const lineMatch = locatorText.match(/^L([1-9]\d*)(?:-(?:L)?([1-9]\d*))?$/i);
+  if (lineMatch) {
+    const start = Number(lineMatch[1]);
+    const end = Number(lineMatch[2] ?? lineMatch[1]);
+    if (end < start) return null;
+    return { source, locator: { kind: "line", start, end }, external: false };
+  }
+
+  const typedMatch = locatorText.match(/^(symbol|section|route):(.+)$/);
+  if (!typedMatch) return null;
+
+  const kind = typedMatch[1];
+  const value = typedMatch[2].trim();
+  if (!value) return null;
+  if (kind === "route" && !value.startsWith("/")) return null;
+
+  return { source, locator: { kind, value }, external: false };
+}
+
+async function getLineCount(file, cache) {
+  if (cache.has(file)) return cache.get(file);
+  const content = await readUtf8(file);
+  const lineCount = content.length === 0 ? 0 : content.split(/\r\n|\r|\n/).length;
+  cache.set(file, lineCount);
+  return lineCount;
 }
 
 function isExternalSourceReference(source) {
@@ -1304,6 +1493,7 @@ ${apiServiceInventoryChecklist().join("\n")}
 ## Evidence
 
 - Add source files, tests, routes, and client modules inspected while completing this map.
+- Mention any optional frontmatter \`evidence\` entries here, such as \`src/routes.ts#route:/example\`, when a claim depends on a specific route.
 
 ## Review Notes
 
@@ -1336,6 +1526,7 @@ This profile is for projects that want selected LLM-WIKI documents to double as 
 ## Evidence
 
 - Add source documents, source files, or extraction inputs inspected before making claims.
+- Mention any optional frontmatter \`evidence\` entries here for precise file, line, symbol, section, or route references.
 
 ## Open Questions
 
@@ -1512,6 +1703,7 @@ function projectProfileBody() {
 ## Evidence
 
 - Add source files and commands inspected while completing the project profile.
+- Mention any optional frontmatter \`evidence\` entries here for precise file, line, symbol, section, or route references.
 
 ## Open Questions
 
@@ -1564,6 +1756,7 @@ ${renderedSections}
 ## Evidence
 
 - Add source documents, source files, transcripts, tickets, commits, or extraction inputs inspected before making claims.
+- Mention any optional LLM-WIKI frontmatter \`evidence\` entries here for precise file, line, symbol, section, or route references.
 
 ## Open Questions
 
@@ -1593,6 +1786,7 @@ function defaultGeneratedDocBody(title, rel) {
 ## Evidence
 
 - Add file paths, symbols, routes, commands, or test names inspected while completing this document.
+- Mention any optional frontmatter \`evidence\` entries here, such as \`src/api.ts#symbol:getUser\`, \`src/routes.ts#route:/users\`, or \`README.md#section:Usage\`.
 - Prefer source-backed statements over guesses.
 ${domainApiServicesSection(rel)}
 
@@ -1764,6 +1958,17 @@ function buildNextActions(auditResult, options) {
       reason: "source_files entries should point to existing local files or explicit external references.",
       command: "llm-wiki audit",
       findings: findings.filter((finding) => finding.rule === "source_files.missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule?.startsWith("evidence."))) {
+    add(nextAction({
+      id: "repair-evidence-references",
+      priority: findings.some((finding) => finding.rule === "evidence.shape") ? "high" : "medium",
+      title: "Fix precise evidence references",
+      reason: "evidence entries should use supported file, line, symbol, section, or route references that can be checked from the project root.",
+      command: "llm-wiki validate",
+      findings: findings.filter((finding) => finding.rule?.startsWith("evidence."))
     }));
   }
 

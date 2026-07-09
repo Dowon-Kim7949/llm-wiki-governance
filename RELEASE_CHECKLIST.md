@@ -25,7 +25,7 @@ contains_sensitive_info: false
 
 # LLM-WIKI Standard Package Release Checklist
 
-Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.2`.
+Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.3`.
 
 ## Local Verification
 
@@ -56,6 +56,9 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.2`.
 - [ ] Confirm `prompt --task docs-sync` avoids unrelated code edits.
 - [ ] Confirm `prompt --task okf-extract` is prompt-assisted and keeps extracted LLM-WIKI documents as `needs_review`.
 - [ ] Confirm `validate` reports missing `[[wiki links]]` and accepts file path, basename, frontmatter `title`, and frontmatter `aliases` targets.
+- [ ] Confirm `validate` reports malformed or missing optional `evidence` references and accepts `file`, `file#L10-L20`, `file#symbol:Name`, `file#section:Heading`, and `file#route:/path`.
+- [ ] Confirm `validate` reports body `## Evidence` sections that are missing, empty, or not aligned with frontmatter `evidence` entries.
+- [ ] Confirm `validate --strict` promotes evidence contract warnings to errors while standard mode keeps them as warnings.
 - [ ] Confirm status, audit, and validate results include a `wikiGraph` summary for wiki links, unresolved concepts, aliases, and orphan documents.
 - [ ] Confirm `next` recommends prioritized actions from audit findings and wikiGraph without writing files.
 - [ ] Confirm `explain <finding>` describes known finding rules and blocks unknown rules.
@@ -70,7 +73,7 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.2`.
 ## Release Metadata
 
 - [ ] Confirm package name is `@dowonk-7949/llm-wiki-standard`.
-- [ ] Confirm version is `0.1.2`.
+- [ ] Confirm version is `0.1.3`.
 - [ ] Confirm package has no `publishConfig` override.
 - [ ] Confirm package-level `.npmrc` is absent.
 - [ ] Confirm `repository.url` points to `https://github.com/Dowon-Kim7949/llm-wiki-standard.git`.
@@ -91,9 +94,9 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@0.1.2`.
 
 - [ ] Configure npm Trusted Publisher for GitHub Actions with workflow filename `publish.yml`.
 - [ ] Configure GitHub Environment `npm-release`; set required reviewers in GitHub UI if human approval is required before publish.
-- [ ] Create the release tag after local verification: `git tag v0.1.2`.
-- [ ] Push only the release tag to start publish: `git push origin v0.1.2`.
+- [ ] Create the release tag after local verification: `git tag v0.1.3`.
+- [ ] Push only the release tag to start publish: `git push origin v0.1.3`.
 - [ ] Confirm the publish workflow validates the tag version against `package.json`.
-- [ ] Verify `npm install -D @dowonk-7949/llm-wiki-standard@0.1.2`.
-- [ ] Verify `npx @dowonk-7949/llm-wiki-standard@0.1.2 doctor`.
-- [ ] Verify `yarn add -D @dowonk-7949/llm-wiki-standard@0.1.2`.
+- [ ] Verify `npm install -D @dowonk-7949/llm-wiki-standard@0.1.3`.
+- [ ] Verify `npx @dowonk-7949/llm-wiki-standard@0.1.3 doctor`.
+- [ ] Verify `yarn add -D @dowonk-7949/llm-wiki-standard@0.1.3`.

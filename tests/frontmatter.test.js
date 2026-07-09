@@ -98,6 +98,7 @@ test("published frontmatter JSON Schema matches runtime contract", async () => {
   assert.ok(publishedSchema.required.includes("status"));
   assert.deepEqual(publishedSchema.properties.status.enum, ["draft", "needs_review", "verified", "deprecated"]);
   assert.deepEqual(publishedSchema.properties.visibility.enum, ["internal", "public", "restricted"]);
+  assert.equal(publishedSchema.properties.evidence.type, "array");
   assert.deepEqual(publishedSchema.allOf[0].then.required, ["reviewed_by", "reviewed_at"]);
 });
 
@@ -150,4 +151,57 @@ aliases: Sample Alias
 
   assert.deepEqual(validateFrontmatter(valid.frontmatter), []);
   assert.equal(validateFrontmatter(invalid.frontmatter).find((finding) => finding.message === "aliases must be an array.")?.severity, "error");
+});
+
+test("validates optional evidence as an array field", () => {
+  const valid = parseFrontmatter(`---
+title: Evidence Sample
+tags:
+  - llm-wiki
+status: needs_review
+doc_type: concept
+project: sample
+last_updated: 2026-07-09
+author: ai-generated
+last_edited_by: Codex
+wiki_block_version: v1
+source_files:
+  - package.json
+evidence:
+  - package.json#L1-L2
+  - src/routes.ts#route:/users
+  - README.md#section:Usage
+related:
+  - docs/llm-wiki/log.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# Evidence Sample
+`);
+  const invalid = parseFrontmatter(`---
+title: Evidence Sample
+tags:
+  - llm-wiki
+status: needs_review
+doc_type: concept
+project: sample
+last_updated: 2026-07-09
+author: ai-generated
+last_edited_by: Codex
+wiki_block_version: v1
+source_files:
+  - package.json
+evidence: package.json#L1
+related:
+  - docs/llm-wiki/log.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# Evidence Sample
+`);
+
+  assert.deepEqual(validateFrontmatter(valid.frontmatter), []);
+  assert.equal(validateFrontmatter(invalid.frontmatter).find((finding) => finding.message === "evidence must be an array.")?.severity, "error");
 });

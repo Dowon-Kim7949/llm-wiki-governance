@@ -51,7 +51,7 @@ export function apiServiceInventoryChecklist() {
     "- Retry or timeout behavior.",
     "- Cache or state update behavior.",
     "- Related UI or domain workflow.",
-    "- `source_files` evidence."
+    "- `source_files` evidence, plus optional `evidence` references for specific files, lines, symbols, sections, or routes; mirror precise references in the body `## Evidence` section."
   ];
 }
 
@@ -139,7 +139,7 @@ Required workflow:
 4. Use OKF v0.1 frontmatter: required type, optional aliases, and optional tags.
 5. Use clear Markdown headings and bullet lists.
 6. Connect related concepts in the body with wiki links such as [[Concept Name]].
-7. Preserve source evidence in LLM-WIKI source_files when documents are stored under docs/llm-wiki.
+7. Preserve broad source evidence in LLM-WIKI source_files and precise references in optional evidence entries when documents are stored under docs/llm-wiki; mention each precise reference in the body ## Evidence section.
 8. Keep AI-extracted documents as status: needs_review when stored in an LLM-WIKI project.
 9. Do not promote any extracted document to verified; verified is human-approved only.
 10. List unresolved concepts, aliases to review, and extraction caveats.

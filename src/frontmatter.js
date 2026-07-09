@@ -83,7 +83,7 @@ export function validateFrontmatter(frontmatter, options = {}) {
     });
   }
 
-  for (const arrayField of ["tags", "source_files", "related", "aliases"]) {
+  for (const arrayField of ["tags", "source_files", "related", "aliases", "evidence"]) {
     if (arrayField in frontmatter && !Array.isArray(frontmatter[arrayField])) {
       findings.push({
         severity: "error",

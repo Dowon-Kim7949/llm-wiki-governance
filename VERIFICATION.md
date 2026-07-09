@@ -26,7 +26,7 @@ contains_sensitive_info: false
 
 # LLM-WIKI Standard Package Verification Report
 
-This report records verification coverage for the `0.1.2` stable release line.
+This report records verification coverage for the `0.1.3` stable release line.
 
 ## Automated Coverage
 
@@ -48,6 +48,7 @@ The Node test suite covers:
 - repeated `--profile`, repeated `--agent`, and `--agent all`
 - package release readiness output in `doctor`
 - package metadata for npmjs public stable publish
+- evidence span/reference validation, body `## Evidence` alignment, and strict-mode evidence severity escalation
 - UTF-8 Markdown report output with `needs_review` frontmatter
 
 ## Local Commands
@@ -65,7 +66,7 @@ npm pack --dry-run
 ## Expected Repository Result
 
 - package: `@dowonk-7949/llm-wiki-standard`
-- version: `0.1.2`
+- version: `0.1.3`
 - publish registry: `https://registry.npmjs.org`
 - package-level `.npmrc`: not required
 - public source repository: `https://github.com/Dowon-Kim7949/llm-wiki-standard`
@@ -75,7 +76,7 @@ npm pack --dry-run
 ## Residual Risk
 
 - macOS/Linux shell execution should run in release CI before publish.
-- `migrate --apply` is intentionally omitted from `0.1.2`.
+- `migrate --apply` is intentionally omitted from `0.1.3`.
 - Fixture tests cover representative project detection, not every framework ecosystem.
 - CI artifact conventions remain a team decision.
 - CLI parsing remains intentionally small and does not support combined short flags.
