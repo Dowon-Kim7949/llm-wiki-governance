@@ -20,7 +20,8 @@
     "ROADMAP.md",
     "GATE_REVIEW.md",
     "VERIFICATION.md",
-    "RELEASE_CHECKLIST.md"
+    "RELEASE_CHECKLIST.md",
+    "LICENSE"
   ],
   "bin": {
     "llm-wiki": "bin/llm-wiki.js"
@@ -36,6 +37,6 @@
   "engines": {
     "node": ">=18.18.0"
   },
-  "license": "UNLICENSED"
+  "license": "MIT"
 }
 
