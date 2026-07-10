@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-standard
-last_updated: 2026-07-09
+last_updated: 2026-07-10
 author: ai-generated
 last_edited_by: Codex
 wiki_block_version: v1
@@ -42,18 +42,18 @@ CI continuously checks quality.
 
 ## Current Release Snapshot
 
-As of 2026-07-09, `@dowonk-7949/llm-wiki-standard@0.1.3` is published to npm and the matching source changes are committed on `main`.
+As of 2026-07-10, the source is versioned for `@dowonk-7949/llm-wiki-standard@0.1.5` and uses the automated `v0.1.5` tag release flow.
 
 Release state:
 
-- `0.1.3` includes the evidence reference contract, body `## Evidence` alignment checks, strict-mode evidence promotion, template updates, and release documentation updates.
+- `0.1.5` includes the evidence reference contract, body `## Evidence` alignment checks, strict-mode evidence promotion, and clearer English and Korean README guidance for reusable agent context, token-saving mechanics, generated document structure, CI exit codes, and supported workflows.
 - Local verification passed before commit: `node --test tests/*.test.js`, `validate-frontmatter`, `doctor`, and `diff --check`.
 - `main` push runs CI only. npm publish is reserved for `v*` tag pushes through `.github/workflows/publish.yml`.
-- Do not push `v0.1.3` for this release. The package version was already published manually, so a tag-triggered publish would attempt to republish the same version.
+- The release tag must match `package.json`; `v0.1.5` publishes version `0.1.5` through npm Trusted Publishing after workflow verification.
 
 Next release policy:
 
-- Use the automated publish flow starting with the next version, for example `0.1.4` plus a matching `v0.1.4` tag.
+- Continue using the automated publish flow for later versions with a matching package version and `v*` tag.
 - Keep version, roadmap, release checklist, package contents, and npm registry verification aligned before pushing a release tag.
 - Treat evidence validation as part of the stable document contract, but keep new evidence reference shapes conservative until real project usage proves the need.
 
@@ -164,11 +164,11 @@ Goal: support OKF v0.1 without weakening the existing LLM-WIKI safety model.
 
 ## Near-Term Priority
 
-1. Verify the `0.1.4` package from a clean consumer project and record any install or CLI smoke-test issues.
+1. Verify the `0.1.5` package from a clean consumer project after publish and record any install or CLI smoke-test issues.
 2. Exercise evidence references on one real project document set and note whether file, line, symbol, section, and route references are enough.
 3. Decide how strict evidence validation should be introduced in CI: advisory first, strict only for release gates, or strict on every validation run.
 4. Add Node LTS matrix and cross-platform smoke tests before the next release tag.
-5. Prepare the next release through the automated tag-based publish flow instead of a manual npm publish.
+5. Keep later releases on the automated tag-based publish flow instead of manual npm publishing.
 
 ## Additional Work Candidates
 

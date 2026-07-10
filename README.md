@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: package_readme
 project: llm-wiki-standard
-last_updated: 2026-07-08
+last_updated: 2026-07-10
 author: ai-generated
 last_edited_by: Codex
 wiki_block_version: v1
@@ -16,9 +16,12 @@ source_files:
   - package.json
   - src/cli.js
   - src/commands.js
+  - src/config.js
+  - src/task-prompts.js
   - templates/github-actions/llm-wiki-validate.yml
   - tests/verification.test.js
 related:
+  - ROADMAP.md
   - GATE_REVIEW.md
   - VERIFICATION.md
   - RELEASE_CHECKLIST.md
@@ -30,7 +33,23 @@ contains_sensitive_info: false
 
 # LLM-WIKI Standard Package
 
-`@dowonk-7949/llm-wiki-standard` is a CLI package for creating and validating a common LLM-WIKI documentation structure across local terminals, CI, Codex, Claude Code, and candidate adapter files.
+`@dowonk-7949/llm-wiki-standard` is a CLI package that creates and validates a standardized project knowledge base for AI agents. It organizes architecture, domains, APIs, coding conventions, technical decisions, workflows, and operational knowledge into reusable LLM-WIKI documents.
+
+Without a reusable project knowledge base, agents such as Codex and Claude Code may need to inspect large parts of the codebase again for every maintenance task. With LLM-WIKI, an agent starts from `docs/llm-wiki/index.md`, reads the documents related to the current task, and inspects only the source files needed to verify or complete the work. This can reduce repeated code exploration, token usage, and the risk of missing project-specific rules.
+
+Typical use cases include legacy project maintenance, feature development, incident response, onboarding new maintainers, complex project handovers, and sharing project knowledge across multiple AI agents.
+
+## Why LLM-WIKI
+
+```text
+Without LLM-WIKI:
+task request -> inspect the codebase -> rediscover structure and rules -> perform the task
+
+With LLM-WIKI:
+task request -> read index.md -> read relevant wiki docs -> inspect required source files -> perform the task
+```
+
+LLM-WIKI acts as a reusable project knowledge index, not as a replacement for source inspection. Wiki documents guide the agent to the relevant context, while `source_files` and precise `evidence` references keep important claims traceable to actual code. The amount of token and exploration-time reduction depends on project size, documentation coverage, and how current the wiki remains.
 
 The CLI does not finish the wiki by itself. It creates the safe starting structure, keeps generated documents as `needs_review`, and prints the next prompt to run in Codex or Claude Code.
 
@@ -50,6 +69,37 @@ CLI setup
 | Agent enrichment | Codex or Claude Code | Read the actual code and fill the wiki with source-backed architecture, domain, API, workflow, and operations details. |
 | Human review | Maintainer | Check accuracy, remove uncertain claims, decide whether a document may move from `needs_review` to `verified`. |
 | CI validation | `llm-wiki validate` | Check structure, selected adapter entrypoints, frontmatter, local markdown links, wiki links, source file references, encoding, and sensitive-info rules. |
+
+## What Gets Created
+
+The exact files depend on `--type`, `--profile`, and `--minimal`. A standard setup starts with a structure like this:
+
+```text
+AGENTS.md or CLAUDE.md
+docs/llm-wiki/
+|-- index.md
+|-- README.md
+|-- project-profile.md
+|-- ARCHITECTURE_CONVENTIONS.md
+|-- DOMAIN_FEATURES.md
+|-- GLOSSARY.md
+|-- log.md
+|-- domains/
+|   `-- 00_overview.md
+|-- profiles/
+|   `-- <project-type>.md
+`-- templates/
+    |-- DECISION_LOG.template.md
+    `-- TASK_PROMPT.template.md
+```
+
+Frontend, backend, fullstack, library, and OKF profiles add focused documents such as component inventories, API contracts, data models, security and operations guides, end-to-end workflows, public API references, and OKF knowledge templates. The generated files are safe starting drafts; Codex or Claude Code enriches them from real project evidence.
+
+## Requirements
+
+- Node.js 18.18.0 or newer.
+- A project directory that the CLI may inspect and, with explicit `--write`, update.
+- Codex or Claude Code when you want agent-assisted wiki enrichment. The CLI itself remains useful for initialization, audit, validation, and CI without an agent running.
 
 ## Quick Start
 
@@ -187,6 +237,15 @@ Expected Claude Code work is the same as Codex work: read the adapter and wiki e
 Command options are intentionally scoped. For example, `validate --write` and `handoff --existing overwrite` are rejected because those options do not belong to those commands.
 
 Validation-style commands include `findingSummary` in JSON output and a `Finding Summary` section in text output, grouped by severity and category for CI reporting.
+
+CLI exit codes are stable for local automation and CI:
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | The command completed without errors or blocked findings. Non-strict warnings do not fail the command. |
+| `1` | Validation found an error, or `--strict` promoted a warning to failure. |
+| `2` | The requested operation or selected workflow is blocked by safety policy. |
+| `3` | The command, argument, option, or format is invalid. |
 
 Use command-specific help when you are unsure:
 
@@ -337,15 +396,16 @@ CI runs verification on pull requests and `main` pushes. Publishing is restricte
 
 Before automated publish, register an npm Trusted Publisher for GitHub Actions with workflow filename `publish.yml`. The publish job uses the GitHub Environment `npm-release`; configure required reviewers or deployment approval rules for that environment in GitHub UI.
 
-To publish version `0.1.4` after verification:
+To publish version `0.1.5` after verification:
 
 ```bash
-git tag v0.1.4
-git push origin v0.1.4
+git tag v0.1.5
+git push origin v0.1.5
 ```
 
 ## Related Documents
 
+- `ROADMAP.md`: product direction, implemented phases, near-term priorities, and future work candidates.
 - `GATE_REVIEW.md`: stable release gate decisions and caveats.
 - `VERIFICATION.md`: verification record.
 - `RELEASE_CHECKLIST.md`: stable release checklist.
