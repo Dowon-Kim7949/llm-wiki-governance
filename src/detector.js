@@ -39,7 +39,14 @@ export async function detectProject(cwd, explicitType, explicitProfiles = []) {
     signals.push({ path: "docs/llm-wiki/index.md", reason: "existing LLM-WIKI entry point detected" });
   }
 
-  const detectedType = decideType(frontendSignals, backendSignals, signals);
+  const librarySignals = [];
+  if (packageJson?.bin) librarySignals.push("bin");
+  if (packageJson?.exports) librarySignals.push("exports");
+  if (librarySignals.length) {
+    signals.push({ path: "package.json", reason: `library/CLI signals detected: ${librarySignals.join(", ")}` });
+  }
+
+  const detectedType = decideType(frontendSignals, backendSignals, librarySignals, signals);
   const projectType = explicitType ?? detectedType.projectType;
   const baseProfiles = projectType === "fullstack"
     ? ["core", "frontend", "backend", "fullstack"]
@@ -71,12 +78,14 @@ function normalizeProjectName(name, cwd) {
   return path.basename(cwd) || "project";
 }
 
-function decideType(frontendSignals, backendSignals, signals) {
+function decideType(frontendSignals, backendSignals, librarySignals, signals) {
   const hasFrontend = frontendSignals.length > 0 || signals.some((signal) => signal.path === "src/components");
   const hasBackend = backendSignals.length > 0;
+  const hasLibrary = librarySignals.length > 0;
 
   if (hasFrontend && hasBackend) return { projectType: "fullstack", confidence: "medium" };
   if (hasFrontend) return { projectType: "frontend", confidence: "high" };
   if (hasBackend) return { projectType: "backend", confidence: "medium" };
+  if (hasLibrary) return { projectType: "library", confidence: "medium" };
   return { projectType: "unknown", confidence: "low" };
 }

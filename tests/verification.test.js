@@ -567,6 +567,32 @@ test("audit collapses uninitialized wiki structure into one confirmation finding
   assert.ok(result.findings[0].message.includes("ask the user whether to proceed"));
 });
 
+test("init dry-run detects library/CLI projects from bin field", async () => {
+  const cwd = await makeProject("library-detect-");
+  await writeJson(path.join(cwd, "package.json"), {
+    name: "my-cli",
+    bin: { "my-cli": "./bin/cli.js" }
+  });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(result.detection.projectType, "library");
+  assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/PUBLIC_API.md")));
+});
+
+test("library detection does not override frontend or backend signals", async () => {
+  const cwd = await makeProject("library-vs-frontend-");
+  await writeJson(path.join(cwd, "package.json"), {
+    name: "app",
+    bin: { app: "./bin/app.js" },
+    dependencies: { react: "^18.0.0" }
+  });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(result.detection.projectType, "frontend");
+});
+
 test("init dry-run detects fullstack projects", async () => {
   const cwd = await makeProject("fullstack-");
   await writeJson(path.join(cwd, "package.json"), {
