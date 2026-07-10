@@ -10,12 +10,14 @@ doc_type: roadmap
 project: llm-wiki-standard
 last_updated: 2026-07-10
 author: ai-generated
-last_edited_by: Codex
+last_edited_by: Claude Code
 wiki_block_version: v1
 source_files:
   - README.md
   - src/cli.js
   - src/commands.js
+  - src/template-renderer.js
+  - src/task-prompts.js
   - templates/github-actions/llm-wiki-validate.yml
   - tests/verification.test.js
 related:
@@ -101,6 +103,8 @@ Goal: make CLI-created drafts easier for agents and humans to complete.
 - Add OKF v0.1-oriented templates for `concept`, `project`, `api_reference`, `meeting_note`, and `event` documents. Status: implemented.
 - Ensure generated OKF-style documents use concise wiki tone, clear headings, bullet lists, and `[[wiki links]]` where related concepts are known. Status: implemented for OKF profile guide and OKF document templates.
 - Make `docs/llm-wiki/domains/00_overview.md` a stronger domain mapping guide.
+- Fix generated-document graph connectivity. Generated templates link relationships only through `related` frontmatter and Markdown links, but `wikiGraph` counts inbound links from `[[wiki links]]`, so a freshly generated project reports almost every document as an orphan (measured: 13 of 14 orphans right after `init --write`). Seed `[[wiki links]]` from the same relationships, or count `related` toward inbound links, so generated output is connected in the tool's own graph.
+- Decide whether handoff-critical metadata (document owner, decision rationale, last human review) should be part of the required core contract rather than optional templates. The handoff-replacement goal depends on these, but today `DECISION_LOG` is an optional template and `owner`/`reviewed_by` are only checked for `verified` documents.
 - Keep all generated documents in `needs_review`.
 - Consider project-local template overrides after the stable CLI contract is proven.
 
@@ -116,6 +120,8 @@ Goal: catch stale, broken, or unverifiable wiki content before it spreads.
 - Add stricter `verified` policy checks in `--strict` mode. Status: implemented for missing `reviewed_by` and `reviewed_at`.
 - Add evidence-span references so important claims can point to a file, symbol, route, section, or line range instead of only a broad source file. Status: implemented as optional `evidence` frontmatter string references with local file, line-range, and body `## Evidence` section alignment validation.
 - Split validation findings by category for easier CI reporting. Status: implemented with `findingSummary.byCategory` and text report summaries.
+- Validate that `related` frontmatter entries point to existing local documents. Only `source_files` and `evidence` are existence-checked today, so a generated document can reference a missing sibling (for example a `related` entry to `docs/llm-wiki/API_CONTRACTS.md` that was never created) and still validate as pass.
+- Add an enrichment-completeness signal so a project of untouched generated scaffolds does not report a clean pass. A freshly generated wiki currently returns `result: pass` with zero findings even though every document is still placeholder-only (`What to inspect`, `Open questions`, `Review notes`) with no source-backed content. Detect placeholder-only documents and surface a warning that the wiki has not been enriched yet, since a silent pass on empty scaffolds undercuts the token-saving and handoff-replacement goals.
 - Keep sensitive-info detection conservative and non-leaking.
 
 ## Phase 5: Developer Support Commands
@@ -140,6 +146,7 @@ Goal: make the package useful beyond a single personal project.
 - Provide GitHub Actions examples. Status: implemented with `templates/github-actions/llm-wiki-validate.yml`.
 - Document team review policy examples for `needs_review` and `verified`.
 - Document organization-level policy for internal, restricted, and public knowledge boundaries.
+- Provide a reader-friendly knowledge view for non-developers and cross-team readers. Generated output is raw Markdown plus frontmatter today, which serves agents well but is weak for the "easy knowledge transfer" goal. Track the static HTML dashboard (see Additional Work Candidates) as the delivery for this, after the Phase 3 graph-connectivity fix.
 
 ## Phase 7: Release Quality
 
@@ -164,17 +171,19 @@ Goal: support OKF v0.1 without weakening the existing LLM-WIKI safety model.
 
 ## Near-Term Priority
 
-1. Verify the `0.1.5` package from a clean consumer project after publish and record any install or CLI smoke-test issues.
-2. Exercise evidence references on one real project document set and note whether file, line, symbol, section, and route references are enough.
-3. Decide how strict evidence validation should be introduced in CI: advisory first, strict only for release gates, or strict on every validation run.
-4. Add Node LTS matrix and cross-platform smoke tests before the next release tag.
-5. Keep later releases on the automated tag-based publish flow instead of manual npm publishing.
+1. Fix the hardcoded generated `last_updated` date. The core template writes a fixed `2026-07-02` value (`src/template-renderer.js`) and the generated `log.md` body reuses the same fixed date (`src/commands.js`), so every generated document claims a stale last-updated date on the day it is created. Inject the real generation date at `init` time so freshness metadata is trustworthy.
+2. Dogfood this repository. The package's own repository has no `docs/llm-wiki/` and relies on ordinary Markdown (`README.md`, `GATE_REVIEW.md`, and this roadmap). Migrate the project's own maintainer knowledge into a `docs/llm-wiki/` set generated and enriched by the CLI. Running the standard on itself is the first credible evidence that it saves tokens and replaces handoff docs.
+3. Verify the `0.1.5` package from a clean consumer project after publish and record any install or CLI smoke-test issues.
+4. Exercise evidence references on one real project document set and note whether file, line, symbol, section, and route references are enough.
+5. Decide how strict evidence validation should be introduced in CI: advisory first, strict only for release gates, or strict on every validation run.
+6. Add Node LTS matrix and cross-platform smoke tests before the next release tag.
+7. Keep later releases on the automated tag-based publish flow instead of manual npm publishing.
 
 ## Additional Work Candidates
 
 These items are not yet committed to a release phase, but they are strong candidates for future roadmap refinement after real project usage.
 
 1. Code-change drift detection and automatic review downgrade: detect when source evidence linked from a document changes in Git, then downgrade affected documents from `verified` to `needs_review`. This would actively reduce stale knowledge by forcing review when referenced code, routes, sections, or line ranges move.
-2. Static HTML dashboard reports: export `wikiGraph` and audit results as a readable dashboard for maintainers and tech leads. Useful views include documentation progress, unresolved links, orphan documents, review status distribution, and broken evidence references.
+2. Static HTML dashboard reports: export `wikiGraph` and audit results as a readable dashboard for maintainers and tech leads. Useful views include documentation progress, unresolved links, orphan documents, review status distribution, and broken evidence references. Prerequisite: the Phase 3 graph-connectivity fix. Today a freshly generated project reports almost every document as an orphan, so a dashboard built before that fix would render an empty or misleading knowledge graph.
 3. Cross-repository knowledge links for multi-repo systems: define a conservative reference format for API specs, domain documents, and service contracts that live in separate repositories. This should build on the future `monorepo` profile without assuming all knowledge lives in one physical repo.
 4. AI-agent conflict resolution guidance: document safe merge and recovery policies for teams using multiple agents such as Codex and Claude Code against the same wiki corpus. Consider whether CLI helpers are needed for conflict detection, document status reset, and post-merge validation.
