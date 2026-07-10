@@ -686,6 +686,51 @@ test("init write generates documents whose related entries all resolve", async (
   assert.equal(auditResult.findings.some((finding) => finding.rule === "related.missing"), false);
 });
 
+test("audit flags un-enriched generated documents but not structural or template files", async () => {
+  const cwd = await makeProject("enrichment-");
+  await writeJson(path.join(cwd, "package.json"), {
+    dependencies: { vue: "^3.0.0" },
+    devDependencies: { vite: "^6.0.0" }
+  });
+
+  await initCommand({
+    cwd,
+    dryRun: false,
+    write: true,
+    minimal: false,
+    withAdapters: false,
+    type: "frontend",
+    profiles: [],
+    agents: [],
+    existing: "skip"
+  });
+
+  const auditResult = await audit({ cwd, type: "frontend", profiles: [], agents: [], format: "text", strict: false });
+  const flagged = auditResult.findings
+    .filter((finding) => finding.rule === "content.not_enriched")
+    .map((finding) => finding.path);
+
+  assert.ok(flagged.includes("docs/llm-wiki/DOMAIN_FEATURES.md"));
+  assert.ok(flagged.includes("docs/llm-wiki/domains/00_overview.md"));
+  assert.ok(flagged.includes("docs/llm-wiki/project-profile.md"));
+  assert.equal(flagged.includes("docs/llm-wiki/index.md"), false);
+  assert.equal(flagged.includes("docs/llm-wiki/README.md"), false);
+  assert.equal(flagged.includes("docs/llm-wiki/log.md"), false);
+  assert.equal(flagged.some((docPath) => docPath.includes("/templates/")), false);
+  assert.ok(auditResult.findingSummary.byCategory.content > 0);
+});
+
+test("enriched documents with real content clear the not_enriched signal", async () => {
+  const cwd = await makeProject("enriched-");
+  await writeJson(path.join(cwd, "package.json"), { name: "enriched" });
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.");
+  await writeWikiDoc(cwd, "DOMAIN_FEATURES.md", "Domain Features", "The billing domain handles invoices through src/billing.ts and the /invoices route.");
+
+  const auditResult = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "content.not_enriched"), false);
+});
+
 test("audit accepts existing source_files entries", async () => {
   const cwd = await makeProject("source-present-");
   await writeJson(path.join(cwd, "package.json"), { name: "source-present" });

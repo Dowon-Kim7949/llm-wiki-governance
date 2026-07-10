@@ -60,6 +60,7 @@ const FINDING_EXPLANATIONS = {
   "okf.type_required": findingExplanation("okf", "error", "An OKF v0.1-profiled document is missing the required frontmatter type field.", "OKF requires explicit document type metadata and LLM-WIKI does not infer it from doc_type.", ["Add an explicit type field to the frontmatter.", "Use a reviewed OKF type such as concept, project, person, meeting_note, event, or api_reference.", "Keep doc_type when the document also needs the LLM-WIKI contract."], ["llm-wiki validate --profile okf-v0.1"], ["okf.type_shape", "okf.array_shape"]),
   "okf.type_shape": findingExplanation("okf", "error", "The OKF type field exists but is not a string.", "Tools need a stable scalar type value to classify OKF documents.", ["Change type to a single scalar string.", "Avoid list or object values for type.", "Run validate with the OKF profile again."], ["llm-wiki validate --profile okf-v0.1"], ["okf.type_required"]),
   "okf.array_shape": findingExplanation("okf", "error", "An OKF aliases or tags field is present but is not an array.", "OKF-compatible aliases and tags need stable array shapes for graph and search workflows.", ["Rewrite aliases or tags as YAML lists.", "Keep aliases reviewed and intentional.", "Run validate with the OKF profile again."], ["llm-wiki validate --profile okf-v0.1"], ["frontmatter.array"]),
+  "content.not_enriched": findingExplanation("content", "warning", "A generated wiki document still contains placeholder guidance and has not been enriched with source-backed content.", "Empty scaffolds pass structural validation but hold no real knowledge, so the token-saving and handoff-replacement goals are not met until an agent or human fills them in from source evidence.", ["Read the document and the files listed in source_files, then replace the placeholder bullets with source-backed content.", "Run llm-wiki handoff --agent codex or --agent claude to get an enrichment prompt.", "Keep the document as needs_review until human review is complete."], ["llm-wiki handoff --agent codex", "llm-wiki validate"], ["structure.required_doc", "source_files.missing"]),
   "adapter.missing": findingExplanation("adapter", "warning", "A selected agent adapter file is missing.", "Adapter files tell Codex or Claude Code where the wiki entrypoint is and how to follow the project contract.", ["Run init --write with the selected agent.", "Review generated adapter text before relying on it.", "Existing adapter files are never overwritten."], ["llm-wiki init --write --agent codex", "llm-wiki init --write --agent claude"], ["adapter.entrypoint"]),
   "adapter.entrypoint": findingExplanation("adapter", "warning", "An adapter exists but does not point to docs/llm-wiki/index.md.", "Agents need a reliable entrypoint to find project knowledge before editing code.", ["Open the reported adapter file.", "Add or correct the docs/llm-wiki/index.md reference.", "Run audit again with the selected agent."], ["llm-wiki audit --agent codex", "llm-wiki audit --agent claude"], ["adapter.missing"]),
   "encoding.bom": findingExplanation("encoding", "info", "A UTF-8 BOM was detected.", "BOMs are usually harmless, but they can create noisy diffs or surprise simple parsers.", ["Leave it alone if your team accepts BOMs.", "Remove the BOM with an editor that preserves UTF-8 when you want cleaner diffs.", "Run audit again."], ["llm-wiki audit"], ["encoding.mojibake"]),
@@ -155,6 +156,7 @@ export async function statusCommand(options) {
   const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
   const relatedFindings = await scanRelatedReferences(options.cwd);
+  const enrichmentFindings = await scanEnrichment(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
@@ -170,6 +172,7 @@ export async function statusCommand(options) {
     ...structureFindings,
     ...sourceFileFindings,
     ...relatedFindings,
+    ...enrichmentFindings,
     ...evidenceFindings,
     ...evidenceSectionFindings,
     ...okfFindings,
@@ -311,6 +314,7 @@ export async function audit(options) {
   const sensitiveFindings = await scanSensitive(options.cwd);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
   const relatedFindings = await scanRelatedReferences(options.cwd);
+  const enrichmentFindings = await scanEnrichment(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
@@ -329,6 +333,7 @@ export async function audit(options) {
     ...sensitiveFindings,
     ...sourceFileFindings,
     ...relatedFindings,
+    ...enrichmentFindings,
     ...evidenceFindings,
     ...evidenceSectionFindings,
     ...okfFindings,
@@ -812,6 +817,40 @@ async function scanRelatedReferences(cwd) {
           message: `related entry does not exist: ${target}.`
         });
       }
+    }
+  }
+  return findings;
+}
+
+const ENRICHMENT_PLACEHOLDER_SENTINELS = [
+  "Concise summary: describe",
+  "Add file paths, symbols, routes, commands, or test names inspected",
+  "Add source files and commands inspected while completing",
+  "Add source files, tests, routes, and client modules inspected",
+  "Track unclear ownership",
+  "Keep uncertain claims here until source evidence",
+  "List each domain, owner area",
+  "이 프로젝트에서 해당 주제의 기준 정보를 정리합니다.",
+  "이 문서는 `llm-wiki init --write`가 생성한 초안입니다."
+];
+
+async function scanEnrichment(cwd) {
+  const findings = [];
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    if (rel.includes("/templates/")) continue;
+
+    const content = await readUtf8(file);
+    const parsed = parseFrontmatter(content);
+    const body = parsed.frontmatter ? parsed.body : content;
+
+    if (ENRICHMENT_PLACEHOLDER_SENTINELS.some((sentinel) => body.includes(sentinel))) {
+      findings.push({
+        severity: "warning",
+        rule: "content.not_enriched",
+        path: rel,
+        message: "Document still contains generated placeholder guidance and has not been enriched with source-backed content yet."
+      });
     }
   }
   return findings;
