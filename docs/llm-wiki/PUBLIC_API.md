@@ -48,12 +48,13 @@ contains_sensitive_info: false
 | `prompt --task <name>` | 반복 작업 프롬프트(feature/fix/refactor/docs-sync/okf-extract) | `--out` 시 |
 | `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성 | `--write` 시 |
 | `migrate --dry-run` | 이관 계획 미리보기(`--apply`는 차단) | 없음 |
+| `release-notes` | 마지막 `v*` 태그 이후 conventional commit으로 릴리스 노트 문서 생성 | `--out` 시 |
 
 ## Key Options
 
 - `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; cursor·copilot은 명시 선택)
-- `--format <text|json|markdown>`, `--out <path>`, `--strict`, `--minimal`
-- `--write`, `--dry-run`, `--existing <skip|overwrite>`
+- `--format <text|json|markdown|html>`, `--out <path>`, `--strict`, `--minimal`
+- `--write`, `--dry-run`, `--existing <skip|overwrite>`, `--version <x.y.z>` (release-notes)
 
 ## Exit Codes
 

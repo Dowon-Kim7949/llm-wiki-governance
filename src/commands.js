@@ -11,6 +11,7 @@ import { renderTextReport } from "./report.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { apiServiceInventoryChecklist, buildTaskPrompt } from "./task-prompts.js";
+import { buildReleaseNotes, collectCommitsSinceLastTag } from "./release-notes.js";
 
 const TEMPLATE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates");
 
@@ -541,6 +542,33 @@ export async function promptCommand(options) {
     { title: "Prompt", body: `\`\`\`text\n${taskPrompt.prompt}\n\`\`\`` },
     { title: "Caveats", body: ["Run this prompt in the selected agent after the initial LLM-WIKI is created and enriched. AI-edited wiki documents remain needs_review until human review."] }
   ]);
+}
+
+export async function releaseNotesCommand(options) {
+  let packageJson = {};
+  try {
+    packageJson = JSON.parse(await readUtf8(path.join(options.cwd, "package.json")));
+  } catch {
+    packageJson = {};
+  }
+
+  const version = options.version ?? packageJson.version ?? "0.0.0";
+  const project = String(packageJson.name ?? path.basename(options.cwd) ?? "project").replace(/^@[^/]+\//, "");
+  const date = todayIsoDate();
+  const { commits, gitAvailable } = collectCommitsSinceLastTag(options.cwd);
+  const document = buildReleaseNotes({ version, date, project, commits, gitAvailable });
+
+  return {
+    command: "release-notes",
+    result: "pass",
+    version,
+    project,
+    commitCount: commits.length,
+    gitAvailable,
+    document,
+    text: document,
+    findings: []
+  };
 }
 
 export async function initCommand(options) {

@@ -53,6 +53,10 @@ export function renderOutputFile(result, options) {
     return `${JSON.stringify(redactRuntimeText(result), null, 2)}\n`;
   }
 
+  if (result.command === "release-notes" && typeof result.document === "string") {
+    return result.document;
+  }
+
   if (options.format === "html" || options.out?.endsWith(".html")) {
     return renderHtmlDashboard(result);
   }

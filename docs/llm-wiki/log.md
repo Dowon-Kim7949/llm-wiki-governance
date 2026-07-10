@@ -24,6 +24,21 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-10 - release-notes 명령 추가 (docs-sync)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/release-notes.js (신규), src/commands.js, src/cli.js, src/report.js, tests/verification.test.js
+  - docs/llm-wiki/PUBLIC_API.md
+- summary:
+  - `llm-wiki release-notes [--version x.y.z] [--out]` 명령 추가. 마지막 `v*` 태그 이후 conventional commit을 Added/Changed/Fixed/Documentation/Other로 분류해 needs_review 릴리스 노트 문서를 생성. git 없으면 채워 넣기용 스캐폴드로 폴백.
+- evidence:
+  - src/release-notes.js
+- caveats:
+  - chore/release 타입 커밋은 노트에서 제외한다. README 반영은 다음 릴리스 시점.
+
 ## 2026-07-10 - llm-wiki.config.json 지원 추가 (docs-sync)
 
 - status: needs_review

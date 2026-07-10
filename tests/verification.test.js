@@ -3,10 +3,11 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard } from "../src/report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
+import { buildReleaseNotes, parseCommit } from "../src/release-notes.js";
 
 test("init dry-run works for an empty zero-base project", async () => {
   const cwd = await makeProject("empty-");
@@ -678,6 +679,73 @@ test("strict validation requires verified review metadata", async () => {
   assert.equal(strictValidation.result, "fail");
   assert.equal(strictValidation.findings.find((finding) => finding.rule === "frontmatter.verified_review")?.severity, "error");
   assert.equal(strictValidation.findingSummary.byCategory.frontmatter, 1);
+});
+
+test("parseCommit classifies conventional and non-conventional subjects", () => {
+  assert.deepEqual(parseCommit("abc123", "feat: add cursor adapter"), { type: "feat", description: "add cursor adapter", hash: "abc123" });
+  assert.deepEqual(parseCommit("def456", "fix(core): correct date"), { type: "fix", description: "correct date", hash: "def456" });
+  assert.deepEqual(parseCommit("ghi789", "just a note"), { type: "other", description: "just a note", hash: "ghi789" });
+});
+
+test("buildReleaseNotes groups commits by section and stays needs_review", () => {
+  const doc = buildReleaseNotes({
+    version: "1.2.3",
+    date: "2026-07-10",
+    project: "demo",
+    gitAvailable: true,
+    commits: [
+      { type: "feat", description: "add cursor adapter", hash: "aaa111" },
+      { type: "fix", description: "correct generated date", hash: "bbb222" },
+      { type: "docs", description: "update readme", hash: "ccc333" },
+      { type: "refactor", description: "simplify detector", hash: "ddd444" },
+      { type: "chore", description: "bump dep", hash: "eee555" },
+      { type: "release", description: "prepare 1.2.2", hash: "fff666" }
+    ]
+  });
+
+  assert.ok(doc.includes("# Release Notes v1.2.3"));
+  assert.ok(doc.includes("status: needs_review"));
+  assert.ok(doc.includes("## Added\n\n- add cursor adapter (aaa111)"));
+  assert.ok(doc.includes("## Fixed\n\n- correct generated date (bbb222)"));
+  assert.ok(doc.includes("## Changed\n\n- simplify detector (ddd444)"));
+  assert.ok(doc.includes("## Documentation\n\n- update readme (ccc333)"));
+  assert.equal(doc.includes("bump dep"), false);
+  assert.equal(doc.includes("prepare 1.2.2"), false);
+});
+
+test("buildReleaseNotes notes when git history is unavailable", () => {
+  const doc = buildReleaseNotes({ version: "1.0.0", date: "2026-07-10", project: "demo", commits: [], gitAvailable: false });
+
+  assert.ok(doc.includes("Git history was not available"));
+  assert.ok(doc.includes("# Release Notes v1.0.0"));
+});
+
+test("release-notes command builds a document for the package version", async () => {
+  const cwd = await makeProject("relnotes-");
+  await writeJson(path.join(cwd, "package.json"), { name: "@scope/relnotes", version: "9.9.9" });
+
+  const result = await releaseNotesCommand({ cwd, version: null, format: "text" });
+
+  assert.equal(result.command, "release-notes");
+  assert.equal(result.version, "9.9.9");
+  assert.equal(result.project, "relnotes");
+  assert.ok(result.document.includes("# Release Notes v9.9.9"));
+  assert.ok(result.document.includes("status: needs_review"));
+  assert.equal(result.text, result.document);
+});
+
+test("release-notes command honors an explicit --version and writes via --out", async () => {
+  const cwd = await makeProject("relnotes-out-");
+  await writeJson(path.join(cwd, "package.json"), { name: "relnotes", version: "1.0.0" });
+  const out = path.join(cwd, "docs", "llm-wiki", "releases", "v2.0.0.md");
+
+  const result = await releaseNotesCommand({ cwd, version: "2.0.0", format: "markdown", out });
+  await writeReport(out, result, { format: "markdown", out });
+  const content = await readFile(out, { encoding: "utf8" });
+
+  assert.equal(result.version, "2.0.0");
+  assert.ok(content.startsWith("---"));
+  assert.ok(content.includes("# Release Notes v2.0.0"));
 });
 
 test("migrate dry-run reports safe additions without writing files", async () => {

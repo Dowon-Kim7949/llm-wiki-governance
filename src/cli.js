@@ -1,5 +1,5 @@
 import path from "node:path";
-import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 
@@ -15,7 +15,8 @@ const COMMANDS = new Map([
   ["handoff", handoffCommand],
   ["prompt", promptCommand],
   ["init", initCommand],
-  ["migrate", migrateCommand]
+  ["migrate", migrateCommand],
+  ["release-notes", releaseNotesCommand]
 ]);
 
 const SUPPORTED_FORMATS = new Set(["text", "json", "markdown", "html"]);
@@ -89,6 +90,7 @@ export function parseArgs(argv) {
     cwd: process.cwd(),
     task: null,
     findingRule: null,
+    version: null,
     type: null,
     format: "text",
     dryRun: false,
@@ -124,6 +126,13 @@ export function parseArgs(argv) {
       const value = readOptionValue(rest, index, arg, errors);
       if (value) {
         options.type = value;
+        index += 1;
+      }
+    } else if (arg === "--version") {
+      usedOptions.add("version");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        options.version = value;
         index += 1;
       }
     } else if (arg === "--profile") {
@@ -216,7 +225,8 @@ const COMMAND_OPTION_RULES = {
   handoff: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
   prompt: new Set(["cwd", "task", "type", "profile", "agent", "format", "out"]),
   init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "dry-run", "write", "format", "out", "with-adapters", "no-adapters"]),
-  migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"])
+  migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
+  "release-notes": new Set(["cwd", "version", "format", "out"])
 };
 
 function validateCommandOptions(command, usedOptions, errors) {
@@ -298,6 +308,7 @@ Usage:
   llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
   llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki release-notes [--version <x.y.z>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Safety:
   init writes only when --write is explicit. Existing wiki docs default to --existing skip.
@@ -422,5 +433,13 @@ Usage:
 
 Purpose:
   Prepares a reviewable migration plan without writing files. migrate --apply remains intentionally blocked.
+`,
+  "release-notes": `llm-wiki release-notes
+
+Usage:
+  llm-wiki release-notes [--version <x.y.z>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Generates a needs_review release-notes document for a version. It groups conventional commits since the last v* tag (feat/fix/perf/refactor/docs) into Added/Changed/Fixed/Documentation/Other, and falls back to a fillable scaffold when git history is unavailable. Defaults the version to package.json; use --out to write the document.
 `
 };
