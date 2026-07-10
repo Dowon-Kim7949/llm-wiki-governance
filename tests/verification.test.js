@@ -436,6 +436,31 @@ test("init write creates zero-base wiki docs and selected adapter", async () => 
   assert.ok(agents.includes("docs/llm-wiki/index.md"));
 });
 
+test("init write stamps generated documents with the current date", async () => {
+  const cwd = await makeProject("write-date-");
+  await writeJson(path.join(cwd, "package.json"), { name: "write-date" });
+
+  const today = new Date().toISOString().slice(0, 10);
+  await initCommand({
+    cwd,
+    dryRun: false,
+    write: true,
+    minimal: true,
+    withAdapters: false,
+    type: "unknown",
+    profiles: [],
+    agents: [],
+    existing: "skip"
+  });
+
+  const index = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), { encoding: "utf8" });
+  const log = await readFile(path.join(cwd, "docs", "llm-wiki", "log.md"), { encoding: "utf8" });
+
+  assert.ok(index.includes(`last_updated: ${today}`));
+  assert.equal(index.includes("last_updated: 2026-07-02"), false);
+  assert.ok(log.includes(`## ${today} - LLM-WIKI 초기 문서 생성`));
+});
+
 test("init write keeps existing wiki docs by default and overwrites only when explicit", async () => {
   const cwd = await makeProject("write-existing-");
   const indexPath = path.join(cwd, "docs", "llm-wiki", "index.md");

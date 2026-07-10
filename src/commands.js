@@ -9,7 +9,7 @@ import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
 import { parseFrontmatter, validateFrontmatter } from "./frontmatter.js";
 import { renderTextReport } from "./report.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
-import { renderWikiDocumentTemplate } from "./template-renderer.js";
+import { renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { apiServiceInventoryChecklist, buildTaskPrompt } from "./task-prompts.js";
 
 const TEMPLATE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates");
@@ -643,6 +643,7 @@ async function initWrite(options, detection, agents, candidates) {
   const overwritten = [];
   const skipped = [];
   const blocked = [];
+  const lastUpdated = todayIsoDate();
 
   for (const rel of candidates) {
     const absolutePath = path.join(options.cwd, rel);
@@ -656,7 +657,7 @@ async function initWrite(options, detection, agents, candidates) {
       continue;
     }
 
-    const content = renderGeneratedWikiDoc(rel, detection);
+    const content = renderGeneratedWikiDoc(rel, detection, lastUpdated);
     const sensitiveFindings = scanSensitiveInfo(content);
     if (sensitiveFindings.length > 0) {
       blocked.push(`${rel} was not written because generated content matched sensitive-info rules.`);
@@ -1345,8 +1346,8 @@ async function writeAdapterFiles(cwd, agents) {
   return { created, skipped, blocked };
 }
 
-function renderGeneratedWikiDoc(rel, detection) {
-  const meta = docMetadata(rel, detection);
+function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate()) {
+  const meta = docMetadata(rel, detection, lastUpdated);
   const project = path.basename(detection.signals.find((signal) => signal.path === "package.json")?.path ?? "project") === "package.json"
     ? "project"
     : "project";
@@ -1355,6 +1356,7 @@ function renderGeneratedWikiDoc(rel, detection) {
     title: meta.title,
     docType: meta.docType,
     project,
+    lastUpdated,
     sourceFiles: meta.sourceFiles,
     related: meta.related,
     body: meta.body
@@ -1379,7 +1381,7 @@ async function summarizeAdapterStatus(cwd, agents) {
   return statuses;
 }
 
-function docMetadata(rel, detection) {
+function docMetadata(rel, detection, lastUpdated = todayIsoDate()) {
   const fallbackTitle = titleFromPath(rel);
   const commonRelated = ["docs/llm-wiki/index.md", "docs/llm-wiki/log.md"].filter((item) => item !== rel);
   const map = {
@@ -1428,7 +1430,7 @@ function docMetadata(rel, detection) {
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
-## 2026-07-02 - LLM-WIKI 초기 문서 생성
+## ${lastUpdated} - LLM-WIKI 초기 문서 생성
 
 - status: needs_review
 - actor: llm-wiki-cli

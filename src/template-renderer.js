@@ -7,16 +7,21 @@ export function renderTemplate(template, variables) {
   });
 }
 
-export function renderWikiDocumentTemplate({ title, docType, project, body, sourceFiles = [], evidence = [], related = [] }) {
+export function renderWikiDocumentTemplate({ title, docType, project, body, sourceFiles = [], evidence = [], related = [], lastUpdated }) {
   return renderTemplate(WIKI_DOCUMENT_TEMPLATE, {
     title,
     doc_type: docType,
     project,
+    last_updated: lastUpdated ?? todayIsoDate(),
     source_files: sourceFiles.map((item) => `  - ${item}`),
     evidence: evidence.map((item) => `  - ${item}`),
     related: related.map((item) => `  - ${item}`),
     body
   });
+}
+
+export function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function getValue(source, dottedKey) {
@@ -31,7 +36,7 @@ tags:
 status: needs_review
 doc_type: {{ doc_type }}
 project: {{ project }}
-last_updated: 2026-07-02
+last_updated: {{ last_updated }}
 author: cli-generated
 last_edited_by: llm-wiki-cli
 wiki_block_version: v1
