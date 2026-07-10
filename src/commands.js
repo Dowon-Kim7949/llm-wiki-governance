@@ -12,6 +12,7 @@ import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { apiServiceInventoryChecklist, buildTaskPrompt } from "./task-prompts.js";
 import { buildReleaseNotes, collectCommits } from "./release-notes.js";
+import { fileChangedSince } from "./git.js";
 
 const TEMPLATE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates");
 
@@ -72,6 +73,7 @@ const FINDING_EXPLANATIONS = {
   "evidence.line_range": findingExplanation("evidence", "warning", "An evidence line reference is outside the referenced file.", "Line references should remain close enough to the source to help reviewers verify a claim quickly.", ["Update the line number or range after source edits.", "Use symbol, route, or section evidence when line numbers churn too often.", "Run validate again."], ["llm-wiki validate"], ["evidence.missing"]),
   "evidence.section_missing": findingExplanation("evidence", "warning", "A document with frontmatter evidence does not include a body ## Evidence section.", "The body section gives reviewers a readable explanation of the precise evidence references stored in frontmatter.", ["Add a ## Evidence section to the document body.", "Mention each frontmatter evidence entry in a bullet.", "Keep detailed interpretation in prose after the reference."], ["llm-wiki validate", "llm-wiki explain evidence.section_missing"], ["evidence.shape"]),
   "evidence.section_empty": findingExplanation("evidence", "warning", "A body ## Evidence section exists but has no bullet entries.", "Evidence sections should be scan-friendly and consistent across generated and maintained wiki documents.", ["Add one or more bullet entries under ## Evidence.", "Use source references, commands, tests, or reviewed evidence notes.", "Remove the section only if it is not part of the document contract."], ["llm-wiki validate"], ["evidence.section_missing"]),
+  "evidence.stale": findingExplanation("evidence", "warning", "A verified document references source files that changed in git after it was reviewed.", "Verified documents assert reviewed, source-backed knowledge; when the referenced code moves afterward, the document may no longer match the source and should be re-checked.", ["Re-read the changed source and update the document.", "If the claims no longer hold, downgrade the document to needs_review.", "Refresh reviewed_by/reviewed_at after a new human review.", "This is a file-level heuristic based on git history; ignore it when the change did not affect the documented claims."], ["llm-wiki next", "llm-wiki audit"], ["evidence.missing", "frontmatter.verified_review"]),
   "evidence.section_unlisted": findingExplanation("evidence", "warning", "A frontmatter evidence reference is not mentioned in the body ## Evidence section.", "Keeping frontmatter and body evidence aligned lets tools validate references while humans can still review context in the document body.", ["Add the missing reference to a bullet under ## Evidence.", "Remove stale frontmatter evidence if it no longer supports the document.", "Run validate again."], ["llm-wiki validate"], ["evidence.section_missing", "evidence.shape"]),
   "related.missing": findingExplanation("related", "warning", "A related frontmatter entry points to a local document that does not exist.", "Related links help agents and readers navigate between connected wiki documents, so broken entries weaken the wiki graph and erode trust in generated reports.", ["Fix the path if the related document moved or was renamed.", "Remove stale related entries that no longer apply.", "Create the related document when it should exist.", "Use an explicit external URL only when the reference is outside the repository."], ["llm-wiki audit", "llm-wiki validate"], ["markdown_link.missing", "source_files.missing"]),
   "markdown_link.missing": findingExplanation("markdown_link", "warning", "A local Markdown link target does not exist.", "Broken local links make the wiki harder to navigate and reduce trust in generated reports.", ["Check whether the target path was renamed or moved.", "Update the link or create the missing target document.", "External links, mailto links, and local anchors are intentionally skipped."], ["llm-wiki validate", "llm-wiki status"], ["wiki_link.missing"]),
@@ -180,6 +182,7 @@ export async function statusCommand(options) {
   const enrichmentFindings = await scanEnrichment(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
+  const driftFindings = await scanEvidenceDrift(options.cwd);
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
   const linkFindings = [
@@ -196,6 +199,7 @@ export async function statusCommand(options) {
     ...enrichmentFindings,
     ...evidenceFindings,
     ...evidenceSectionFindings,
+    ...driftFindings,
     ...okfFindings,
     ...linkFindings,
     ...adapterFindings
@@ -338,6 +342,7 @@ export async function audit(options) {
   const enrichmentFindings = await scanEnrichment(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
+  const driftFindings = await scanEvidenceDrift(options.cwd);
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
   const linkFindings = [
@@ -357,6 +362,7 @@ export async function audit(options) {
     ...enrichmentFindings,
     ...evidenceFindings,
     ...evidenceSectionFindings,
+    ...driftFindings,
     ...okfFindings,
     ...linkFindings,
     ...adapterFindings
@@ -1014,6 +1020,66 @@ async function scanEvidenceSections(cwd, options = {}) {
 
 function evidenceStrictSeverity(options) {
   return options.strict ? "error" : "warning";
+}
+
+// Which local files a verified document's freshness depends on, and the
+// review baseline to compare against. Pure so it can be tested without git.
+export function driftTargets(frontmatter) {
+  if (frontmatter?.status !== "verified") return null;
+
+  const reviewedAt = typeof frontmatter.reviewed_at === "string" && /^\d{4}-\d{2}-\d{2}$/.test(frontmatter.reviewed_at)
+    ? frontmatter.reviewed_at
+    : null;
+  const lastUpdated = typeof frontmatter.last_updated === "string" && /^\d{4}-\d{2}-\d{2}$/.test(frontmatter.last_updated)
+    ? frontmatter.last_updated
+    : null;
+  const baseline = reviewedAt ?? lastUpdated;
+  if (!baseline) return null;
+
+  const raw = [
+    ...(Array.isArray(frontmatter.source_files) ? frontmatter.source_files : []),
+    ...(Array.isArray(frontmatter.evidence) ? frontmatter.evidence : [])
+  ];
+  const files = [];
+  for (const entry of raw) {
+    if (typeof entry !== "string") continue;
+    const base = entry.split("#")[0].trim();
+    if (!base || isExternalSourceReference(base)) continue;
+    if (!files.includes(base)) files.push(base);
+  }
+
+  return { baseline, files };
+}
+
+// Flags verified documents whose referenced files changed in git after the
+// review baseline. Best-effort: silently skips when git is unavailable.
+async function scanEvidenceDrift(cwd) {
+  const findings = [];
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    const parsed = parseFrontmatter(await readUtf8(file));
+    const targets = driftTargets(parsed.frontmatter);
+    if (!targets) continue;
+
+    for (const base of targets.files) {
+      if (!(await pathExists(path.join(cwd, base)))) continue;
+      let changed = false;
+      try {
+        changed = fileChangedSince(cwd, base, targets.baseline);
+      } catch {
+        changed = false;
+      }
+      if (changed) {
+        findings.push({
+          severity: "warning",
+          rule: "evidence.stale",
+          path: rel,
+          message: `Verified document references ${base}, which changed after ${targets.baseline}; re-review and update it or downgrade to needs_review.`
+        });
+      }
+    }
+  }
+  return findings;
 }
 
 function extractMarkdownSection(markdown, title) {

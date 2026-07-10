@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-10 - evidence drift 감지 추가 (evidence.stale)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/git.js (신규), src/release-notes.js, src/commands.js, tests/verification.test.js
+  - ROADMAP.md
+- summary:
+  - `verified` 문서가 참조하는 `source_files`/`evidence` 로컬 파일이 `reviewed_at`(없으면 `last_updated`) 이후 git에서 변경되면 `evidence.stale` 경고를 낸다. best-effort(git 없으면 스킵), 파일 단위 휴리스틱, warning 레벨. 공용 `src/git.js`(runGit/fileChangedSince)를 신설하고 release-notes가 재사용한다.
+  - ROADMAP에 Post-0.1.7 Candidates 섹션을 추가하고 drift 후보를 구현 상태로 갱신.
+- evidence:
+  - src/git.js
+  - src/commands.js
+- caveats:
+  - 파일 단위라 무관한 변경도 flag될 수 있어 warning으로 유지. 라인/심볼 정밀도·자동 강등은 후속.
+
 ## 2026-07-10 - release-notes --since 옵션 추가
 
 - status: needs_review

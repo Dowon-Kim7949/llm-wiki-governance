@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, doctor, driftTargets, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard } from "../src/report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
@@ -981,6 +981,34 @@ test("audit and validate enforce body Evidence section alignment for frontmatter
   assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_unlisted" && finding.path.includes("unlisted.md")));
   assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_empty" && finding.path.includes("empty-section.md")));
   assert.equal(validateResult.findingSummary.byCategory.evidence, 3);
+});
+
+test("driftTargets selects files and baseline only for verified documents", () => {
+  assert.equal(driftTargets({ status: "needs_review", last_updated: "2026-01-01", source_files: ["a.ts"] }), null);
+  assert.equal(driftTargets({ status: "verified", source_files: ["a.ts"] }), null);
+
+  const withReview = driftTargets({
+    status: "verified",
+    reviewed_at: "2026-06-01",
+    last_updated: "2026-07-01",
+    source_files: ["src/a.ts", "https://example.com/spec"],
+    evidence: ["src/a.ts#L1-L2", "src/b.ts#symbol:foo"]
+  });
+  assert.equal(withReview.baseline, "2026-06-01");
+  assert.deepEqual(withReview.files, ["src/a.ts", "src/b.ts"]);
+
+  const withoutReview = driftTargets({ status: "verified", last_updated: "2026-07-01", source_files: ["src/a.ts"] });
+  assert.equal(withoutReview.baseline, "2026-07-01");
+});
+
+test("evidence drift scan is best-effort and silent without git history", async () => {
+  const cwd = await makeProject("drift-nogit-");
+  await writeJson(path.join(cwd, "package.json"), { name: "drift" });
+  await writeVerifiedWikiDocMissingReview(cwd);
+
+  const result = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.equal(result.findings.some((finding) => finding.rule === "evidence.stale"), false);
 });
 
 test("strict validate promotes evidence contract warnings to errors", async () => {

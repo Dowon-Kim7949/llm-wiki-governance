@@ -185,7 +185,21 @@ Goal: support OKF v0.1 without weakening the existing LLM-WIKI safety model.
 
 These items are not yet committed to a release phase, but they are strong candidates for future roadmap refinement after real project usage.
 
-1. Code-change drift detection and automatic review downgrade: detect when source evidence linked from a document changes in Git, then downgrade affected documents from `verified` to `needs_review`. This would actively reduce stale knowledge by forcing review when referenced code, routes, sections, or line ranges move.
+1. Code-change drift detection and automatic review downgrade: detect when source evidence linked from a document changes in Git, then downgrade affected documents from `verified` to `needs_review`. Status: implemented as a first pass — `evidence.stale` flags `verified` documents whose local `source_files`/`evidence` files changed in git after `reviewed_at` (falling back to `last_updated`); best-effort and file-granularity (skipped silently when git is unavailable). Future refinement: line/symbol-granularity precision and an optional automatic status downgrade.
 2. Static HTML dashboard reports: export `wikiGraph` and audit results as a readable dashboard for maintainers and tech leads. Useful views include documentation progress, unresolved links, orphan documents, review status distribution, and broken evidence references. Prerequisite: the Phase 3 graph-connectivity fix. Status: implemented as `--format html` after the graph-connectivity fix landed, so the dashboard renders a meaningful knowledge graph rather than an all-orphan view.
 3. Cross-repository knowledge links for multi-repo systems: define a conservative reference format for API specs, domain documents, and service contracts that live in separate repositories. This should build on the future `monorepo` profile without assuming all knowledge lives in one physical repo.
 4. AI-agent conflict resolution guidance: document safe merge and recovery policies for teams using multiple agents such as Codex and Claude Code against the same wiki corpus. Consider whether CLI helpers are needed for conflict detection, document status reset, and post-merge validation.
+
+## Post-0.1.7 Candidates
+
+Prioritized next work after the 0.1.7 line (multi-ecosystem detection, Cursor/Copilot adapters, `llm-wiki.config.json`, and `release-notes`). Ordered by leverage and risk.
+
+1. Scoped `--fix` (autofix): apply the safest remediations automatically — refresh `last_updated`, add a missing `## Evidence` section stub, complete missing required frontmatter fields, and create `needs_review` stubs for broken `related`/link targets. Gate first with a GATE_REVIEW-style decision on exactly what it may touch, mirroring the still-blocked `migrate --apply`.
+2. Line/symbol-granularity drift and optional auto-downgrade: extend `evidence.stale` (Additional Work Candidate 1) beyond file granularity, and offer an opt-in that writes `verified` -> `needs_review` for drifted documents.
+3. More adapters: Windsurf (`.windsurf/rules`), JetBrains AI, and confirming the Gemini/Antigravity contract, reusing the `ADAPTER_TARGETS` pattern.
+4. Detector depth: resolve the stdlib-server limitation (inspect a few source files for `net/http`, Flask, etc.) and add more ecosystems such as PHP (`composer.json`), Ruby (`Gemfile`), and .NET (`*.csproj`).
+5. `llm-wiki.config.json` schema growth (gated on real usage): custom document sets, per-project rule toggles, and template overrides once the minimal shape is proven.
+6. First-class GitHub Action and GitHub Release: publish a reusable/composite action so consumers add a single `uses:` step, and create a GitHub Release from the generated release notes on tag push.
+7. Accumulating `CHANGELOG.md`: prepend generated release notes into a shipped root changelog so npm consumers see version history.
+8. Programmatic API: expose the command functions as a documented importable library API for wrappers and CI, complementing the CLI.
+9. Release-quality hygiene: Node LTS matrix, Windows/macOS/Linux smoke tests, and a packed-tarball consumer install test in CI.

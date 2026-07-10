@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { runGit } from "./git.js";
 
 const UNIT_SEPARATOR = "\x1f";
 
@@ -110,8 +110,4 @@ _생성일 ${date}. 게시 전 검토·수정하고, 승인 전까지 status는 
 
 ${body}
 `;
-}
-
-function runGit(cwd, args) {
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
