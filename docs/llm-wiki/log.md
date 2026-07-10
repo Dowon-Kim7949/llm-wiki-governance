@@ -24,6 +24,21 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-10 - detector 다중 생태계 지원 반영 (docs-sync)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/detector.js, src/commands.js, tests/verification.test.js
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+- summary:
+  - detector가 Python/Go/Rust/JVM 매니페스트를 인식하도록 확장하고, 생성 문서의 기본 source_files를 감지된 primaryManifest로 앵커링했다.
+- evidence:
+  - src/detector.js
+- caveats:
+  - Go/Python의 stdlib 기반 서버는 프레임워크 신호가 없으면 library로 분류될 수 있다(향후 개선 후보).
+
 ## 2026-07-10 - core/library 문서 소스 근거로 보강 (dogfooding)
 
 - status: needs_review

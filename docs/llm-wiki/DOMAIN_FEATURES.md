@@ -31,7 +31,7 @@ contains_sensitive_info: false
 
 ## Features
 
-- **프로젝트 자동 감지** — `src/detector.js`가 package.json 신호로 `frontend/backend/fullstack/library` 유형과 신뢰도를 추론한다. `--type`로 명시 override 가능.
+- **프로젝트 자동 감지** — `src/detector.js`가 Node(`package.json`)뿐 아니라 Python(`pyproject.toml`/`requirements.txt` 등)·Go(`go.mod`)·Rust(`Cargo.toml`)·JVM(`pom.xml`/`build.gradle`) 매니페스트 신호로 `frontend/backend/fullstack/library` 유형과 생태계·주 매니페스트(`primaryManifest`)를 추론한다. `--type`로 명시 override 가능.
 - **초기 문서 생성** — `init --write`가 core + profile 문서와 선택 adapter를 생성한다. 기존 파일은 기본 보존, `log.md`는 append-only.
 - **frontmatter 계약 검증** — 필수 필드/status enum/날짜 형식/배열 형태를 검증하고, `verified`는 `--strict`에서 리뷰 메타를 요구한다.
 - **근거 추적** — `source_files`(넓은 근거)와 `evidence`(파일/라인/심볼/섹션/라우트 정밀 근거)를 검증하고 본문 `## Evidence` 정렬을 확인한다.

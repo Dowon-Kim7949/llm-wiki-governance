@@ -593,6 +593,48 @@ test("library detection does not override frontend or backend signals", async ()
   assert.equal(result.detection.projectType, "frontend");
 });
 
+test("detects Python web projects as backend from requirements", async () => {
+  const cwd = await makeProject("python-web-");
+  await writeFile(path.join(cwd, "requirements.txt"), "fastapi==0.110.0\nuvicorn==0.29.0\n", { encoding: "utf8" });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(result.detection.projectType, "backend");
+  assert.deepEqual(result.detection.ecosystems, ["python"]);
+  assert.equal(result.detection.primaryManifest, "requirements.txt");
+});
+
+test("detects Python package and Go/Rust modules as library", async () => {
+  const pyCwd = await makeProject("python-lib-");
+  await writeFile(path.join(pyCwd, "pyproject.toml"), "[project]\nname = \"widget\"\nversion = \"1.0.0\"\n", { encoding: "utf8" });
+  const goCwd = await makeProject("go-mod-");
+  await writeFile(path.join(goCwd, "go.mod"), "module example.com/tool\n\ngo 1.22\n", { encoding: "utf8" });
+  const rustCwd = await makeProject("rust-web-");
+  await writeFile(path.join(rustCwd, "Cargo.toml"), "[package]\nname = \"svc\"\n\n[dependencies]\naxum = \"0.7\"\n", { encoding: "utf8" });
+
+  const py = await initCommand({ cwd: pyCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const go = await initCommand({ cwd: goCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const rust = await initCommand({ cwd: rustCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(py.detection.projectType, "library");
+  assert.equal(go.detection.projectType, "library");
+  assert.equal(rust.detection.projectType, "backend");
+});
+
+test("init write on a Python project anchors source_files to its manifest", async () => {
+  const cwd = await makeProject("python-init-");
+  await writeFile(path.join(cwd, "pyproject.toml"), "[project]\nname = \"svc\"\nversion = \"0.1.0\"\ndependencies = [\"fastapi\"]\n", { encoding: "utf8" });
+
+  await initCommand({ cwd, dryRun: false, write: true, minimal: true, withAdapters: false, type: null, profiles: [], agents: [], existing: "skip" });
+  const index = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), { encoding: "utf8" });
+
+  const auditResult = await audit({ cwd, type: null, profiles: [], agents: [], format: "text", strict: false });
+
+  assert.ok(index.includes("- pyproject.toml"));
+  assert.equal(index.includes("- package.json"), false);
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "source_files.missing"), false);
+});
+
 test("init dry-run detects fullstack projects", async () => {
   const cwd = await makeProject("fullstack-");
   await writeJson(path.join(cwd, "package.json"), {

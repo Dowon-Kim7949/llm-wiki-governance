@@ -1763,7 +1763,7 @@ This guide explains how to convert selected LLM-WIKI documents into OKF v0.1-com
   return {
     title: meta.title,
     docType: meta.docType,
-    sourceFiles: meta.sourceFiles ?? ["package.json"],
+    sourceFiles: meta.sourceFiles ?? [detection.primaryManifest ?? "package.json"],
     related: meta.related ?? commonRelated,
     body: generatedDocBody(rel, map[rel], fallbackTitle).replaceAll(detectionProjectTypePlaceholder, detection.projectType)
   };
