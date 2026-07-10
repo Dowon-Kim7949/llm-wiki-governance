@@ -643,6 +643,49 @@ test("audit reports missing source_files entries without exposing file contents"
   assert.equal(result.findingSummary.byCategory.source_files, 1);
 });
 
+test("audit and validate report missing related documents and accept existing ones", async () => {
+  const cwd = await makeProject("related-missing-");
+  await writeJson(path.join(cwd, "package.json"), { name: "related-missing" });
+  await writeWikiDoc(cwd, "README.md", "LLM-WIKI README", "Existing related target.");
+  await writeWikiDocWithRelated(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.", [
+    "docs/llm-wiki/README.md",
+    "docs/llm-wiki/MISSING_RELATED.md",
+    "https://example.com/spec"
+  ]);
+
+  const auditResult = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const validateResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.ok(auditResult.findings.some((finding) => finding.rule === "related.missing" && finding.message.includes("MISSING_RELATED.md")));
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "related.missing" && finding.message.includes("docs/llm-wiki/README.md")), false);
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "related.missing" && finding.message.includes("https://example.com/spec")), false);
+  assert.ok(validateResult.findings.some((finding) => finding.rule === "related.missing" && finding.message.includes("MISSING_RELATED.md")));
+});
+
+test("init write generates documents whose related entries all resolve", async () => {
+  const cwd = await makeProject("related-generated-");
+  await writeJson(path.join(cwd, "package.json"), {
+    dependencies: { vue: "^3.0.0" },
+    devDependencies: { vite: "^6.0.0" }
+  });
+
+  await initCommand({
+    cwd,
+    dryRun: false,
+    write: true,
+    minimal: false,
+    withAdapters: false,
+    type: "frontend",
+    profiles: [],
+    agents: [],
+    existing: "skip"
+  });
+
+  const auditResult = await audit({ cwd, type: "frontend", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "related.missing"), false);
+});
+
 test("audit accepts existing source_files entries", async () => {
   const cwd = await makeProject("source-present-");
   await writeJson(path.join(cwd, "package.json"), { name: "source-present" });
@@ -1136,6 +1179,18 @@ async function writeWikiDocWithEvidence(cwd, filename, title, body, sourceFiles,
     : "";
   await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(targetPath, frontmatter(title, body, sourceFiles).replace("related:", `${evidenceBlock}related:`), { encoding: "utf8" });
+}
+
+async function writeWikiDocWithRelated(cwd, filename, title, body, related) {
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  const targetPath = path.join(wikiRoot, filename);
+  const relatedBlock = related.map((item) => `  - ${item}`).join("\n");
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await writeFile(
+    targetPath,
+    frontmatter(title, body).replace("related:\n  - docs/llm-wiki/log.md", `related:\n${relatedBlock}`),
+    { encoding: "utf8" }
+  );
 }
 
 async function writeWikiDocWithAliases(cwd, filename, title, body, aliases) {

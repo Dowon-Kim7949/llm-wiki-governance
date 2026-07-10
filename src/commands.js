@@ -54,6 +54,7 @@ const FINDING_EXPLANATIONS = {
   "evidence.section_missing": findingExplanation("evidence", "warning", "A document with frontmatter evidence does not include a body ## Evidence section.", "The body section gives reviewers a readable explanation of the precise evidence references stored in frontmatter.", ["Add a ## Evidence section to the document body.", "Mention each frontmatter evidence entry in a bullet.", "Keep detailed interpretation in prose after the reference."], ["llm-wiki validate", "llm-wiki explain evidence.section_missing"], ["evidence.shape"]),
   "evidence.section_empty": findingExplanation("evidence", "warning", "A body ## Evidence section exists but has no bullet entries.", "Evidence sections should be scan-friendly and consistent across generated and maintained wiki documents.", ["Add one or more bullet entries under ## Evidence.", "Use source references, commands, tests, or reviewed evidence notes.", "Remove the section only if it is not part of the document contract."], ["llm-wiki validate"], ["evidence.section_missing"]),
   "evidence.section_unlisted": findingExplanation("evidence", "warning", "A frontmatter evidence reference is not mentioned in the body ## Evidence section.", "Keeping frontmatter and body evidence aligned lets tools validate references while humans can still review context in the document body.", ["Add the missing reference to a bullet under ## Evidence.", "Remove stale frontmatter evidence if it no longer supports the document.", "Run validate again."], ["llm-wiki validate"], ["evidence.section_missing", "evidence.shape"]),
+  "related.missing": findingExplanation("related", "warning", "A related frontmatter entry points to a local document that does not exist.", "Related links help agents and readers navigate between connected wiki documents, so broken entries weaken the wiki graph and erode trust in generated reports.", ["Fix the path if the related document moved or was renamed.", "Remove stale related entries that no longer apply.", "Create the related document when it should exist.", "Use an explicit external URL only when the reference is outside the repository."], ["llm-wiki audit", "llm-wiki validate"], ["markdown_link.missing", "source_files.missing"]),
   "markdown_link.missing": findingExplanation("markdown_link", "warning", "A local Markdown link target does not exist.", "Broken local links make the wiki harder to navigate and reduce trust in generated reports.", ["Check whether the target path was renamed or moved.", "Update the link or create the missing target document.", "External links, mailto links, and local anchors are intentionally skipped."], ["llm-wiki validate", "llm-wiki status"], ["wiki_link.missing"]),
   "wiki_link.missing": findingExplanation("wiki_link", "warning", "A [[wiki link]] target does not resolve to a file path, basename, title, or alias.", "Unresolved wiki links break concept navigation and weaken OKF-style knowledge graph output.", ["Create a document for the missing concept when it is real.", "Update the link text to match an existing title, basename, file path, or alias.", "Add a reviewed aliases entry to the intended target document when appropriate."], ["llm-wiki validate", "llm-wiki next", "llm-wiki audit --format markdown"], ["markdown_link.missing", "okf.array_shape"]),
   "okf.type_required": findingExplanation("okf", "error", "An OKF v0.1-profiled document is missing the required frontmatter type field.", "OKF requires explicit document type metadata and LLM-WIKI does not infer it from doc_type.", ["Add an explicit type field to the frontmatter.", "Use a reviewed OKF type such as concept, project, person, meeting_note, event, or api_reference.", "Keep doc_type when the document also needs the LLM-WIKI contract."], ["llm-wiki validate --profile okf-v0.1"], ["okf.type_shape", "okf.array_shape"]),
@@ -153,6 +154,7 @@ export async function statusCommand(options) {
   }));
   const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
+  const relatedFindings = await scanRelatedReferences(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
@@ -167,6 +169,7 @@ export async function statusCommand(options) {
     ...documentStatus.findings,
     ...structureFindings,
     ...sourceFileFindings,
+    ...relatedFindings,
     ...evidenceFindings,
     ...evidenceSectionFindings,
     ...okfFindings,
@@ -307,6 +310,7 @@ export async function audit(options) {
   const encodingFindings = await scanEncoding(options.cwd);
   const sensitiveFindings = await scanSensitive(options.cwd);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
+  const relatedFindings = await scanRelatedReferences(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
@@ -324,6 +328,7 @@ export async function audit(options) {
     ...encodingFindings,
     ...sensitiveFindings,
     ...sourceFileFindings,
+    ...relatedFindings,
     ...evidenceFindings,
     ...evidenceSectionFindings,
     ...okfFindings,
@@ -776,6 +781,35 @@ async function scanSourceFiles(cwd) {
           rule: "source_files.missing",
           path: rel,
           message: `source_files entry does not exist: ${source}.`
+        });
+      }
+    }
+  }
+  return findings;
+}
+
+async function scanRelatedReferences(cwd) {
+  const findings = [];
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    const content = await readUtf8(file);
+    const parsed = parseFrontmatter(content);
+    const related = parsed.frontmatter?.related;
+
+    if (!Array.isArray(related)) continue;
+
+    for (const relatedEntry of related) {
+      if (typeof relatedEntry !== "string") continue;
+
+      const target = relatedEntry.trim();
+      if (!target || isExternalSourceReference(target)) continue;
+
+      if (!(await pathExists(path.join(cwd, target)))) {
+        findings.push({
+          severity: "warning",
+          rule: "related.missing",
+          path: rel,
+          message: `related entry does not exist: ${target}.`
         });
       }
     }
@@ -1448,7 +1482,7 @@ function docMetadata(rel, detection, lastUpdated = todayIsoDate()) {
     "docs/llm-wiki/DOMAIN_FEATURES.md": {
       title: "Domain Features",
       docType: "domain_overview",
-      related: ["docs/llm-wiki/index.md", "docs/llm-wiki/API_CONTRACTS.md", "docs/llm-wiki/domains/00_overview.md"],
+      related: ["docs/llm-wiki/index.md", "docs/llm-wiki/domains/00_overview.md"],
       body: `# Domain Features
 
 This document maps user-facing and business-domain features to source evidence.
@@ -1477,7 +1511,7 @@ ${apiServiceInventoryChecklist().join("\n")}
     "docs/llm-wiki/domains/00_overview.md": {
       title: "Domain Overview",
       docType: "domain_overview",
-      related: ["docs/llm-wiki/index.md", "docs/llm-wiki/DOMAIN_FEATURES.md", "docs/llm-wiki/API_CONTRACTS.md"],
+      related: ["docs/llm-wiki/index.md", "docs/llm-wiki/DOMAIN_FEATURES.md"],
       body: `# Domain Overview
 
 This document is the domain map for the project.
