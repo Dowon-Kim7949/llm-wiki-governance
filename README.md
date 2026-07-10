@@ -307,7 +307,7 @@ It also creates `docs/llm-wiki/OKF_CONVERSION_GUIDE.md`, which explains how to r
 - `--type <frontend|backend|fullstack|library|mixed|unknown>`: explicit project type.
 - `--profile <profile>`: additional profile, repeatable.
 - `--agent <codex|claude|antigravity|all>`: selected adapter target, repeatable.
-- `--format <text|json|markdown>`: output format.
+- `--format <text|json|markdown|html>`: output format.
 - `--out <path>`: write a report file.
 - `--strict`: treat warnings as failures.
 - `--minimal`: create only core documents.

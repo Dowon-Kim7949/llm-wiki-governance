@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
-import { writeReport } from "../src/report.js";
+import { writeReport, renderHtmlDashboard } from "../src/report.js";
 
 test("init dry-run works for an empty zero-base project", async () => {
   const cwd = await makeProject("empty-");
@@ -1014,6 +1014,44 @@ test("parseArgs supports report output path", () => {
   assert.deepEqual(parsed.options.profiles, ["frontend", "library"]);
   assert.deepEqual(parsed.errors, []);
   assert.ok(parsed.options.out.endsWith(path.join("docs", "llm-wiki", "audits", "report.md")));
+});
+
+test("parseArgs accepts html format", () => {
+  const parsed = parseArgs(["validate", "--format", "html", "--out", "reports/dashboard.html"]);
+
+  assert.equal(parsed.command, "validate");
+  assert.equal(parsed.options.format, "html");
+  assert.deepEqual(parsed.errors, []);
+});
+
+test("validate renders a self-contained HTML dashboard report", async () => {
+  const cwd = await makeProject("dashboard-");
+  await writeJson(path.join(cwd, "package.json"), { name: "dashboard" });
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.");
+  const out = path.join(cwd, "reports", "dashboard.html");
+
+  const result = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "html" });
+  await writeReport(out, result, { format: "html", out });
+  const html = await readFile(out, { encoding: "utf8" });
+
+  assert.ok(html.startsWith("<!doctype html>"));
+  assert.ok(html.includes("<title>LLM-WIKI validate report</title>"));
+  assert.ok(html.includes('class="tiles"'));
+  assert.ok(html.includes("Wiki Graph"));
+  assert.ok(html.includes("prefers-color-scheme: dark"));
+});
+
+test("renderHtmlDashboard escapes finding content and marks severity", () => {
+  const html = renderHtmlDashboard({
+    command: "audit",
+    result: "warning",
+    findings: [{ severity: "warning", rule: "related.missing", path: "docs/llm-wiki/x.md", message: "related entry does not exist: <script>alert(1)</script>." }],
+    findingSummary: { total: 1, bySeverity: { warning: 1 }, byCategory: { related: 1 } }
+  });
+
+  assert.ok(html.includes("&lt;script&gt;"));
+  assert.equal(html.includes("<script>alert(1)</script>"), false);
+  assert.ok(html.includes("sev-warning"));
 });
 
 test("parseArgs supports repeated agent options", () => {
