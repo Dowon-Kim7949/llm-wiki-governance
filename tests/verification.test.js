@@ -6,6 +6,7 @@ import path from "node:path";
 import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard } from "../src/report.js";
+import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
 
 test("init dry-run works for an empty zero-base project", async () => {
   const cwd = await makeProject("empty-");
@@ -1364,6 +1365,83 @@ test("init write creates okf-v0.1 profile guide and templates with concise writi
   assert.ok(conversionGuide.includes("`doc_type` | `type`"));
   assert.ok(conversionGuide.includes("llm-wiki validate --profile okf-v0.1"));
   assert.ok(conversionGuide.includes("`needs_review`"));
+});
+
+test("loads and validates llm-wiki.config.json", async () => {
+  const cwd = await makeProject("config-load-");
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), JSON.stringify({ type: "backend", profiles: ["okf-v0.1"], agents: ["codex"], strict: true }), { encoding: "utf8" });
+
+  const { found, config, errors } = await loadProjectConfig(cwd);
+
+  assert.equal(found, true);
+  assert.deepEqual(errors, []);
+  assert.equal(config.type, "backend");
+  assert.deepEqual(config.profiles, ["okf-v0.1"]);
+  assert.deepEqual(config.agents, ["codex"]);
+  assert.equal(config.strict, true);
+});
+
+test("missing llm-wiki.config.json is a no-op", async () => {
+  const cwd = await makeProject("config-none-");
+  const { found, config, errors } = await loadProjectConfig(cwd);
+
+  assert.equal(found, false);
+  assert.equal(config, null);
+  assert.deepEqual(errors, []);
+});
+
+test("reports invalid llm-wiki.config.json", async () => {
+  const badJson = await makeProject("config-badjson-");
+  await writeFile(path.join(badJson, "llm-wiki.config.json"), "{ not json", { encoding: "utf8" });
+  const jsonResult = await loadProjectConfig(badJson);
+
+  const badShape = await makeProject("config-badshape-");
+  await writeFile(path.join(badShape, "llm-wiki.config.json"), JSON.stringify({ type: 123, profiles: "frontend" }), { encoding: "utf8" });
+  const shapeResult = await loadProjectConfig(badShape);
+
+  assert.ok(jsonResult.errors.some((error) => error.includes("valid JSON")));
+  assert.ok(shapeResult.errors.some((error) => error.includes("type")));
+  assert.ok(shapeResult.errors.some((error) => error.includes("profiles")));
+});
+
+test("mergeConfigIntoOptions fills unset options but lets CLI flags win", () => {
+  const filled = mergeConfigIntoOptions(
+    { type: null, profiles: [], agents: [], strict: false },
+    { type: "library", profiles: ["okf-v0.1"], agents: ["claude"], strict: true }
+  );
+  assert.equal(filled.type, "library");
+  assert.deepEqual(filled.profiles, ["okf-v0.1"]);
+  assert.deepEqual(filled.agents, ["claude"]);
+  assert.equal(filled.strict, true);
+
+  const overridden = mergeConfigIntoOptions(
+    { type: "backend", profiles: ["frontend"], agents: ["codex"], strict: false },
+    { type: "library", profiles: ["okf-v0.1"], agents: ["claude"] }
+  );
+  assert.equal(overridden.type, "backend");
+  assert.deepEqual(overridden.profiles, ["frontend"]);
+  assert.deepEqual(overridden.agents, ["codex"]);
+});
+
+test("config type flows into detection when no --type is given", async () => {
+  const cwd = await makeProject("config-detect-");
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), JSON.stringify({ type: "backend" }), { encoding: "utf8" });
+
+  const { config } = await loadProjectConfig(cwd);
+  const options = mergeConfigIntoOptions({ cwd, type: null, profiles: [], agents: [], format: "text", strict: false }, config);
+  const result = await audit(options);
+
+  assert.equal(result.detection.projectType, "backend");
+});
+
+test("doctor reports llm-wiki.config.json presence", async () => {
+  const cwd = await makeProject("config-doctor-");
+  const absent = await doctor({ cwd, type: null, profiles: [], format: "text" });
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), JSON.stringify({ type: "library" }), { encoding: "utf8" });
+  const present = await doctor({ cwd, type: null, profiles: [], format: "text" });
+
+  assert.ok(absent.checks.includes("llm_wiki_config: absent"));
+  assert.ok(present.checks.includes("llm_wiki_config: present"));
 });
 
 test("doctor reports package release readiness for package roots", async () => {

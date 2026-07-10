@@ -1,6 +1,7 @@
 import path from "node:path";
 import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
+import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 
 const COMMANDS = new Map([
   ["doctor", doctor],
@@ -55,6 +56,24 @@ export async function main(argv) {
     printHelp();
     process.exitCode = 3;
     return;
+  }
+
+  const { config, errors: configErrors } = await loadProjectConfig(options.cwd);
+  if (configErrors.length > 0) {
+    for (const error of configErrors) console.error(error);
+    process.exitCode = 3;
+    return;
+  }
+  const usedConfigAgents = (!options.agents || options.agents.length === 0) && Array.isArray(config?.agents);
+  mergeConfigIntoOptions(options, config);
+  if (usedConfigAgents) {
+    const agentErrors = [];
+    options.agents = normalizeAgents(options.agents, options.withAdapters, agentErrors);
+    if (agentErrors.length > 0) {
+      for (const error of agentErrors) console.error(error);
+      process.exitCode = 3;
+      return;
+    }
   }
 
   const result = await handler(options);

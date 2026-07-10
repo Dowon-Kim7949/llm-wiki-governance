@@ -143,7 +143,8 @@ Goal: make the package useful beyond a single personal project.
 
 - Add profile presets such as `monorepo`, `mobile`, and `infra` when use cases are proven.
 - Add an `okf-v0.1` profile for teams that want LLM-WIKI documents to double as a knowledge base corpus. Status: implemented for validation and profile guide creation.
-- Consider external rules files such as `llm-wiki.rules.json`.
+- Support `llm-wiki.config.json` for persistent project defaults. Status: implemented — an optional project-root file declares `type`, `profiles`, `agents`, and `strict`; the CLI merges it with precedence CLI flags > config > auto-detection, reports its presence in `doctor`, and rejects malformed config with exit code 3. The schema is intentionally minimal (these four option-mirroring fields) until real usage justifies growing it.
+- Consider external rules files such as `llm-wiki.rules.json`, and consider config-driven custom document sets, rules, and template overrides after the minimal `llm-wiki.config.json` shape is proven in real projects.
 - Provide GitHub Actions examples. Status: implemented with `templates/github-actions/llm-wiki-validate.yml`.
 - Document team review policy examples for `needs_review` and `verified`.
 - Document organization-level policy for internal, restricted, and public knowledge boundaries.

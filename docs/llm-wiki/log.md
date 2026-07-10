@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-10 - llm-wiki.config.json 지원 추가 (docs-sync)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs + config
+- changed:
+  - src/config-file.js (신규), src/cli.js, src/commands.js, tests/verification.test.js
+  - llm-wiki.config.json (저장소 dogfooding: type=library)
+  - docs/llm-wiki/GLOSSARY.md, docs/llm-wiki/PUBLIC_API.md
+- summary:
+  - 프로젝트 루트 `llm-wiki.config.json`으로 `type`/`profiles`/`agents`/`strict` 기본값을 선언하도록 지원. CLI 플래그 > config > 자동감지 우선순위. 잘못된 config는 exit 3.
+  - doctor가 config 존재 여부를 보고. 스키마는 보수적으로 최소 4개 필드만.
+- evidence:
+  - src/config-file.js
+- caveats:
+  - 스키마 확장(커스텀 문서세트/규칙/템플릿 override)은 실사용 피드백 이후 결정한다.
+  - README.md/README.ko.md 반영은 다음 릴리스 시점.
+
 ## 2026-07-10 - Cursor/Copilot adapter 추가 (docs-sync)
 
 - status: needs_review

@@ -93,6 +93,7 @@ export async function doctor(options) {
   const cwd = options.cwd;
   const detection = await detectProject(cwd, options.type, options.profiles);
   const wikiExists = await pathExists(path.join(cwd, "docs", "llm-wiki", "index.md"));
+  const configExists = await pathExists(path.join(cwd, "llm-wiki.config.json"));
   const packageManager = await detectPackageManager(cwd);
   const packageReadiness = await inspectPackageReadiness(cwd);
 
@@ -102,6 +103,7 @@ export async function doctor(options) {
     `cwd: ${cwd}`,
     `package_manager: ${packageManager ?? "not detected"}`,
     `wiki_entry: ${wikiExists ? "present" : "missing"}`,
+    `llm_wiki_config: ${configExists ? "present" : "absent"}`,
     `project_type: ${detection.projectType} (${detection.confidence})`,
     "utf8_policy: explicit read/write helpers enabled",
     "migration_apply: blocked by stable safety policy"

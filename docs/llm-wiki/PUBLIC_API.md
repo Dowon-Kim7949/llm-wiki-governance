@@ -13,11 +13,13 @@ wiki_block_version: v1
 source_files:
   - src/cli.js
   - src/commands.js
+  - src/config-file.js
   - package.json
 evidence:
   - src/cli.js#symbol:COMMANDS
   - src/cli.js#symbol:parseArgs
   - src/commands.js#symbol:migrateCommand
+  - src/config-file.js#symbol:mergeConfigIntoOptions
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -57,16 +59,24 @@ contains_sensitive_info: false
 
 - `0` pass(그리고 `--strict`가 아니면 warning), `1` error(또는 `--strict`에서 warning), `2` blocked, `3` 사용법 오류. 근거: `src/cli.js`의 `exitCodeFor()`.
 
+## Configuration
+
+- 프로젝트 루트의 `llm-wiki.config.json`으로 `type`/`profiles`/`agents`/`strict`의 영속 기본값을 선언할 수 있다.
+- 적용 우선순위: CLI 플래그 > config > 자동감지. 잘못된 config는 exit code `3`으로 거부된다.
+- 배포물에는 포함되지 않는 저장소-로컬 설정이다(`package.json` `files` 미포함).
+
 ## Stability
 
 - 명령 이름·JSON 출력 형태는 CI/래퍼가 의존하므로 보수적으로 유지한다.
 - `migrate --apply`는 자동 변경 범위가 합의될 때까지 의도적으로 차단 상태다.
+- `llm-wiki.config.json` 스키마는 실사용 피드백 전까지 최소(위 4개 필드)로 유지한다.
 
 ## Evidence
 
 - `src/cli.js#symbol:COMMANDS` — 명령 이름 → 핸들러 매핑.
 - `src/cli.js#symbol:parseArgs` — 옵션/사용법 검증과 exit code 근거.
 - `src/commands.js#symbol:migrateCommand` — `--apply` 차단 정책.
+- `src/config-file.js#symbol:mergeConfigIntoOptions` — config 기본값과 CLI 플래그의 병합 우선순위.
 
 ## Review Notes
 
