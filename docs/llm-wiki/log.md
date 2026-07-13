@@ -24,6 +24,21 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-13 - ROADMAP 후보 섹션 0.1.8 기준 재정비
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - ROADMAP.md
+- summary:
+  - "Post-0.1.7 Candidates" → "Post-0.1.8 Candidates"로 재프레이밍하고, 0.1.8에서 출시된 scoped `fix`를 후보 목록에서 제거(후속 정제 항목은 drift/downgrade 항목에 병합)했다.
+  - 실사용 인사이트를 신규 1순위 후보로 추가: 구버전(~0.1.0)에 생성된 기존 `docs/llm-wiki`를 폴더 삭제·재생성 없이 현재 계약으로 올릴 수 있는 업그레이드/마이그레이션 경로(`wiki_block_version` 인지 + `fix` 엔진 재사용, 미리보기 우선).
+- evidence:
+  - ROADMAP.md
+- caveats:
+  - 방향성 문서이며 구현 착수 전이다. 사람 검토 전까지 needs_review로 유지한다.
+
 ## 2026-07-13 - 범위 한정 자동수정 `fix` 명령 추가
 
 - status: needs_review
