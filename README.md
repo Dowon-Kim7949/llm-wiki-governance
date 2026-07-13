@@ -233,6 +233,7 @@ Expected Claude Code work is the same as Codex work: read the adapter and wiki e
 | `llm-wiki validate` | Run structure and safety validation for local checks or CI. |
 | `llm-wiki audit` | Run broader audit reporting. |
 | `llm-wiki migrate --dry-run` | Prepare a reviewable migration plan without writing files. |
+| `llm-wiki fix` | Preview safe autofixes inside `docs/llm-wiki`; add `--write` to apply them. |
 | `llm-wiki release-notes` | Generate a `needs_review` release-notes document from conventional commits since the last `v*` tag. |
 
 Command options are intentionally scoped. For example, `validate --write` and `handoff --existing overwrite` are rejected because those options do not belong to those commands.
@@ -301,6 +302,24 @@ The OKF profile requires explicit frontmatter `type`, accepts optional `aliases`
 
 It also creates `docs/llm-wiki/OKF_CONVERSION_GUIDE.md`, which explains how to review and explicitly map LLM-WIKI metadata into OKF v0.1 fields without automatic conversion.
 
+## Autofix
+
+`llm-wiki fix` applies a narrow, accepted set of safe remediations inside `docs/llm-wiki`. It previews by default and writes only with `--write`:
+
+```bash
+npx llm-wiki fix            # preview the planned fixes, write nothing
+npx llm-wiki fix --write    # apply them
+```
+
+It only:
+
+- inserts missing mechanical required frontmatter fields (`status`, `visibility`, `contains_sensitive_info`, `wiki_block_version`, `last_updated`, `last_edited_by`, and empty `tags`/`source_files`/`related`);
+- adds or completes the body `## Evidence` section from existing frontmatter `evidence` entries;
+- creates `needs_review` stubs for broken `related`/markdown-link targets under `docs/llm-wiki/*.md`;
+- refreshes `last_updated` only on documents it actually changes.
+
+It never edits `verified` documents' content, never invents `title`/`doc_type`/`project`/`author` or `source_files`/`evidence` values, never enriches placeholder content, and never writes outside `docs/llm-wiki`. Mojibake and sensitive-looking results are skipped, and repeated runs are idempotent. The exact scope is recorded in `GATE_REVIEW.md`.
+
 ## Common Options
 
 - `--cwd <path>`: project root to inspect or write.
@@ -310,6 +329,7 @@ It also creates `docs/llm-wiki/OKF_CONVERSION_GUIDE.md`, which explains how to r
 - `--agent <codex|claude|cursor|copilot|antigravity|all>`: selected adapter target, repeatable. `all` expands to codex/claude/antigravity; select cursor/copilot explicitly.
 - `--format <text|json|markdown|html>`: output format. `html` renders a self-contained dashboard for `audit`/`validate`/`status`.
 - `--version <x.y.z>`: target version for `release-notes` (defaults to `package.json`).
+- `--since <git-ref>`: force the `release-notes` commit range base to `<ref>..HEAD` (useful for regenerating a version after its tag exists).
 - `--out <path>`: write a report file.
 - `--strict`: treat warnings as failures.
 - `--minimal`: create only core documents.
@@ -368,6 +388,7 @@ evidence:
 - Local markdown links inside `docs/llm-wiki` should point to existing relative files; URLs, `mailto:` links, and anchor-only links are ignored.
 - `[[wiki links]]` inside `docs/llm-wiki` should resolve to an existing wiki file path, basename, frontmatter `title`, or frontmatter `aliases` entry.
 - In `--strict` mode, `verified` documents must include `reviewed_by` and `reviewed_at`, and evidence contract warnings become errors; standard mode keeps these as warnings.
+- `verified` documents whose `source_files`/`evidence` files changed in git after they were reviewed are flagged with `evidence.stale` so they can be re-checked. This is a best-effort, file-level heuristic and is skipped silently when git history is unavailable.
 - `rules/frontmatter.schema.json` defines required frontmatter fields, valid `status` and `visibility` values, optional `aliases` and `evidence`, and review metadata for `verified` documents.
 - `docs/llm-wiki/log.md` is append-only and is not overwritten.
 - Existing `AGENTS.md`, `CLAUDE.md`, and `ANTIGRAVITY.md` files are not overwritten.
@@ -411,11 +432,17 @@ CI runs verification on pull requests and `main` pushes. Publishing is restricte
 
 Before automated publish, register an npm Trusted Publisher for GitHub Actions with workflow filename `publish.yml`. The publish job uses the GitHub Environment `npm-release`; configure required reviewers or deployment approval rules for that environment in GitHub UI.
 
-To publish version `0.1.7` after verification:
+`release-notes` groups conventional commits into Korean-first bilingual sections and can be regenerated for a specific base with `--since`:
 
 ```bash
-git tag v0.1.7
-git push origin v0.1.7
+npx llm-wiki release-notes --version 0.1.8 --since v0.1.7 --out docs/llm-wiki/releases/v0.1.8.md
+```
+
+To publish version `0.1.8` after verification:
+
+```bash
+git tag v0.1.8
+git push origin v0.1.8
 ```
 
 ## Related Documents

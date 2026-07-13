@@ -224,6 +224,7 @@ npx llm-wiki quickstart --write --type frontend --agent claude
 | `llm-wiki validate` | local check 또는 CI용 구조/안전 검증을 수행합니다. |
 | `llm-wiki audit` | 더 넓은 audit report를 생성합니다. |
 | `llm-wiki migrate --dry-run` | 파일을 쓰지 않고 검토 가능한 migration plan을 만듭니다. |
+| `llm-wiki fix` | `docs/llm-wiki` 내부의 안전한 자동수정을 미리보기합니다. `--write`로 실제 적용합니다. |
 | `llm-wiki release-notes` | 마지막 `v*` 태그 이후 conventional commit으로 `needs_review` 릴리스 노트 문서를 생성합니다. |
 
 명령별 옵션은 의도적으로 제한됩니다. 예를 들어 `validate --write`와 `handoff --existing overwrite`는 해당 명령에 속하지 않는 옵션이므로 거부됩니다.
@@ -291,6 +292,24 @@ OKF profile은 명시적인 frontmatter `type`을 요구하고, optional `aliase
 
 또한 `docs/llm-wiki/OKF_CONVERSION_GUIDE.md`를 생성해 LLM-WIKI metadata를 자동 변환하지 않고 검토 후 명시적으로 OKF v0.1 field에 매핑하는 방법을 설명합니다.
 
+## 자동수정 (Autofix)
+
+`llm-wiki fix`는 `docs/llm-wiki` 내부에 승인된 좁은 범위의 안전한 수정만 적용합니다. 기본은 미리보기이고 `--write`가 있을 때만 씁니다.
+
+```bash
+npx llm-wiki fix            # 계획만 미리보기, 쓰기 없음
+npx llm-wiki fix --write    # 실제 적용
+```
+
+수정 대상은 다음뿐입니다.
+
+- 누락된 기계적 필수 frontmatter 필드 삽입(`status`, `visibility`, `contains_sensitive_info`, `wiki_block_version`, `last_updated`, `last_edited_by`, 그리고 빈 `tags`/`source_files`/`related`);
+- 기존 frontmatter `evidence` 항목을 근거로 본문 `## Evidence` 섹션 추가·보완;
+- `docs/llm-wiki/*.md` 내부의 깨진 `related`/markdown 링크 타깃에 대한 `needs_review` 스텁 생성;
+- 실제로 수정한 문서에 한해 `last_updated` 갱신.
+
+`verified` 문서 내용, `title`/`doc_type`/`project`/`author`나 `source_files`/`evidence` 값, 미보강(placeholder) 내용은 절대 지어내거나 수정하지 않으며 `docs/llm-wiki` 밖에는 쓰지 않습니다. mojibake·민감정보로 보이는 결과는 건너뛰고, 반복 실행해도 결과가 같습니다(멱등). 정확한 범위는 `GATE_REVIEW.md`에 기록되어 있습니다.
+
 ## 공통 옵션
 
 - `--cwd <path>`: 검사하거나 작성할 project root입니다.
@@ -300,6 +319,7 @@ OKF profile은 명시적인 frontmatter `type`을 요구하고, optional `aliase
 - `--agent <codex|claude|cursor|copilot|antigravity|all>`: 선택한 adapter target입니다. 반복 사용할 수 있습니다. `all`은 codex/claude/antigravity로 확장하며 cursor·copilot은 명시 선택합니다.
 - `--format <text|json|markdown|html>`: output format입니다. `html`은 `audit`/`validate`/`status`용 자체완결형 대시보드를 렌더링합니다.
 - `--version <x.y.z>`: `release-notes`의 대상 버전입니다(기본값은 `package.json`).
+- `--since <git-ref>`: `release-notes` commit 범위 base를 `<ref>..HEAD`로 강제합니다(태그 생성 후 특정 버전 노트를 재생성할 때 유용).
 - `--out <path>`: report file을 씁니다.
 - `--strict`: warning을 failure로 처리합니다.
 - `--minimal`: core document만 생성합니다.
@@ -358,6 +378,7 @@ evidence:
 - `docs/llm-wiki` 내부 local markdown link는 존재하는 상대 파일을 가리켜야 합니다.
 - `docs/llm-wiki` 내부 `[[wiki links]]`는 기존 wiki file path, basename, frontmatter `title`, 또는 frontmatter `aliases` 항목으로 해석되어야 합니다.
 - `--strict` 모드에서 `verified` 문서는 `reviewed_by`와 `reviewed_at`을 포함해야 하며 evidence contract warning도 error로 처리됩니다.
+- 검토 이후 `source_files`/`evidence` 파일이 git에서 변경된 `verified` 문서는 `evidence.stale`로 표시해 재검토를 유도합니다. best-effort·파일 단위 휴리스틱이며 git 이력이 없으면 조용히 건너뜁니다.
 - `rules/frontmatter.schema.json`은 required frontmatter fields, valid `status`/`visibility` values, optional `aliases`와 `evidence`, `verified` 문서의 review metadata를 정의합니다.
 - `docs/llm-wiki/log.md`는 append-only이며 덮어쓰지 않습니다.
 - 기존 `AGENTS.md`, `CLAUDE.md`, `ANTIGRAVITY.md` 파일은 덮어쓰지 않습니다.
@@ -401,11 +422,17 @@ CI는 pull request와 `main` push에서 검증을 실행합니다. Publish는 `.
 
 자동 publish 전에 GitHub Actions workflow filename을 `publish.yml`로 지정하여 npm Trusted Publisher를 등록해야 합니다. Publish job은 GitHub Environment `npm-release`를 사용하므로 GitHub UI에서 required reviewer 또는 deployment approval rule을 설정할 수 있습니다.
 
-검증 후 version `0.1.7`를 배포하려면 다음을 실행합니다.
+`release-notes`는 conventional commit을 한국어 우선 이중 언어 섹션으로 묶으며, `--since`로 특정 base부터 재생성할 수 있습니다.
 
 ```bash
-git tag v0.1.7
-git push origin v0.1.7
+npx llm-wiki release-notes --version 0.1.8 --since v0.1.7 --out docs/llm-wiki/releases/v0.1.8.md
+```
+
+검증 후 version `0.1.8`을 배포하려면 다음을 실행합니다.
+
+```bash
+git tag v0.1.8
+git push origin v0.1.8
 ```
 
 ## 관련 문서

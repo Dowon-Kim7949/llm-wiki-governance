@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-standard
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -44,15 +44,16 @@ CI continuously checks quality.
 
 ## Current Release Snapshot
 
-As of 2026-07-10, the source is versioned for `@dowonk-7949/llm-wiki-standard@0.1.7` and uses the automated `v0.1.7` tag release flow.
+As of 2026-07-13, the source is versioned for `@dowonk-7949/llm-wiki-standard@0.1.8` and uses the automated `v0.1.8` tag release flow.
 
 Release state:
 
+- `0.1.8` adds the scoped `fix` command and finishes the release-notes/drift line: `llm-wiki fix` (default preview, `--write` applies) applies only the accepted autofix scope (see `GATE_REVIEW.md` "Autofix (`--fix`) Scope Decision") — insert missing Tier A frontmatter fields, reconcile the body `## Evidence` section from frontmatter evidence, create `needs_review` stubs for broken `related`/markdown-link targets under `docs/llm-wiki/`, and refresh `last_updated` on modified documents, while never touching `verified` content, `source_files`/`evidence` values, Tier B fields, enrichment, or anything outside `docs/llm-wiki/`. This release also carries the accumulated work since `0.1.7`: Korean-first bilingual release notes, `release-notes --since <ref>`, and evidence drift detection (`evidence.stale`).
 - `0.1.7` broadens generality/usability: project detection now recognizes Python/Go/Rust/JVM manifests (not only Node) with `ecosystems`/`primaryManifest`, Cursor (`.cursor/rules/llm-wiki.mdc`) and GitHub Copilot (`.github/copilot-instructions.md`) adapters are supported, an optional `llm-wiki.config.json` declares persistent `type`/`profiles`/`agents`/`strict` defaults, and a new `release-notes` command generates a `needs_review` release-notes document from conventional commits since the last `v*` tag.
 - `0.1.6` acted on the v0.1.5 goal-gap evaluation: real generation date, `related.missing` and `content.not_enriched` validation, generated `project` field derived from `package.json`, wiki-graph orphan detection over `related`/Markdown links, the `--format html` dashboard, and library/CLI detection. The repository dogfoods LLM-WIKI in `docs/llm-wiki/`.
 - Local verification passed before commit: `node --test tests/*.test.js`, `validate-frontmatter`, and `doctor`.
 - `main` push runs CI only. npm publish is reserved for `v*` tag pushes through `.github/workflows/publish.yml`.
-- The release tag must match `package.json`; `v0.1.7` publishes version `0.1.7` through npm Trusted Publishing after workflow verification.
+- The release tag must match `package.json`; `v0.1.8` publishes version `0.1.8` through npm Trusted Publishing after workflow verification.
 
 Next release policy:
 
