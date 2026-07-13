@@ -8,7 +8,7 @@ doc_type: change_log
 project: llm-wiki-standard
 last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: llm-wiki-cli
+last_edited_by: Codex
 wiki_block_version: v1
 source_files:
   - package.json
@@ -23,6 +23,47 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-13 - 사용자용 README frontmatter 제거
+
+- status: needs_review
+- actor: Codex
+- scope: docs
+- changed:
+  - README.md
+  - README.ko.md
+  - docs/llm-wiki/README.md
+- summary:
+  - npm/GitHub에서 바로 노출되는 영어·한국어 README 상단의 내부 LLM-WIKI frontmatter를 제거했다.
+  - 공식 위키 문서는 `docs/llm-wiki/` 아래에서 관리하며, 루트 README는 사용자용 문서로 유지한다는 경계를 위키 README에 명시했다.
+- evidence:
+  - src/commands.js#symbol:listTargetMarkdown
+  - package.json
+- caveats:
+  - 이번 작업에서 수정한 위키 README와 변경 로그는 사람 재검토 전까지 `needs_review`로 유지한다.
+
+## 2026-07-13 - LLM-WIKI 문서 검토 및 verified 승격
+
+- status: verified
+- actor: Codex
+- reviewed_by: WoongHwan-Kim
+- scope: docs
+- changed:
+  - docs/llm-wiki/**/*.md
+  - docs/llm-wiki/VERSIONING.md
+  - docs/llm-wiki/project-profile.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+- summary:
+  - 프로젝트 관리자의 검토 지시에 따라 위키 문서 17개의 frontmatter를 `verified`로 승격하고 `reviewed_by`/`reviewed_at` 메타데이터를 추가했다.
+  - 현재 패키지 버전과 맞지 않던 `VERSIONING.md` 및 `project-profile.md`의 0.1.5 표기를 0.1.8로 수정했다.
+  - 0.1.8의 실제 쓰기 경로에 맞춰 아키텍처 설명에 `quickstart --write`와 `fix --write`를 반영하고, 공개 옵션에 `release-notes --since`를 보완했다.
+- evidence:
+  - package.json
+  - src/cli.js
+  - src/commands.js
+  - git tag v0.1.8
+- caveats:
+  - 이 승격은 현재 저장소 상태를 기준으로 하며, 이후 CLI 또는 에이전트가 문서를 수정하면 해당 문서는 다시 `needs_review`로 전환해야 한다.
 
 ## 2026-07-13 - obsolete v0.2.0 로드맵 구현 프롬프트 삭제
 
@@ -223,4 +264,3 @@ contains_sensitive_info: false
   - package.json
 - caveats:
   - CLI 생성 초안이므로 사람 검토가 필요하다.
-

@@ -2,13 +2,15 @@
 title: LLM-WIKI Index
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: wiki_index
 project: llm-wiki-standard
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: Claude Code
+last_edited_by: Codex
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-13
 wiki_block_version: v1
 source_files:
   - package.json
@@ -31,9 +33,9 @@ contains_sensitive_info: false
 
 ## Status
 
-- 이 문서 집합은 `llm-wiki init --write --type library`로 생성한 뒤 사람/에이전트가 보강 중인 초안입니다.
-- 모든 문서는 `needs_review` 상태이며, 사람 검토 후에만 `verified`로 승격합니다.
-- 아직 보강되지 않은 문서는 `llm-wiki validate`가 `content.not_enriched` 경고로 표시합니다.
+- 이 문서 집합은 `llm-wiki init --write --type library`로 생성한 뒤 실제 소스 근거로 보강되었습니다.
+- 현재 문서 집합은 2026-07-13 사람 검토를 거쳐 `verified`로 승인되었습니다.
+- 이후 CLI 또는 에이전트가 문서를 수정하면 다시 `needs_review`로 전환하고 재검토합니다.
 
 ## Recommended Read Order
 

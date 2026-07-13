@@ -2,13 +2,15 @@
 title: Public Api
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: public_api
 project: llm-wiki-standard
 last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: Claude Code
+last_edited_by: Codex
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-13
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -56,7 +58,7 @@ contains_sensitive_info: false
 
 - `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; cursor·copilot은 명시 선택)
 - `--format <text|json|markdown|html>`, `--out <path>`, `--strict`, `--minimal`
-- `--write`, `--dry-run`, `--existing <skip|overwrite>`, `--version <x.y.z>` (release-notes)
+- `--write`, `--dry-run`, `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes)
 
 ## Exit Codes
 
@@ -85,4 +87,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 사람 검토 전까지 `needs_review`를 유지한다.
+- 2026-07-13에 0.1.8 CLI 명령과 옵션 계약을 기준으로 검토했다.

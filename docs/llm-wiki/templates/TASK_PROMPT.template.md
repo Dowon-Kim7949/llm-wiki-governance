@@ -2,13 +2,15 @@
 title: Task Prompt.template
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: template
 project: project
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: llm-wiki-cli
+last_edited_by: Codex
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-13
 wiki_block_version: v1
 source_files:
   - package.json
@@ -26,7 +28,7 @@ contains_sensitive_info: false
 ## Summary
 
 - Concise summary: describe the purpose of this document in one or two source-backed bullets.
-- Status: this is a `needs_review` draft created by `llm-wiki init --write`.
+- Generated documents based on this reviewed template start as `needs_review` drafts.
 
 ## What To Inspect
 
@@ -47,6 +49,5 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- Keep this document as `needs_review` until human review is complete.
-- Do not promote this document to `verified`; verified status is human-approved only.
-
+- Keep generated documents as `needs_review` until human review is complete.
+- Promote a generated document to `verified` only after human approval.

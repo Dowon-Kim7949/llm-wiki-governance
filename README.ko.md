@@ -1,37 +1,3 @@
----
-title: LLM-WIKI Standard Package Korean README
-tags:
-  - llm-wiki
-  - package
-  - cli
-  - stable
-  - korean
-status: needs_review
-doc_type: package_readme
-project: llm-wiki-standard
-last_updated: 2026-07-10
-author: ai-generated
-last_edited_by: Codex
-wiki_block_version: v1
-source_files:
-  - README.md
-  - package.json
-  - src/cli.js
-  - src/commands.js
-  - src/config.js
-  - src/task-prompts.js
-  - templates/github-actions/llm-wiki-validate.yml
-  - tests/verification.test.js
-related:
-  - README.md
-  - ROADMAP.md
-  - GATE_REVIEW.md
-  - VERIFICATION.md
-  - RELEASE_CHECKLIST.md
-visibility: internal
-contains_sensitive_info: false
----
-
 > Language: [English](./README.md) | [한국어](./README.ko.md)
 
 # LLM-WIKI Standard Package

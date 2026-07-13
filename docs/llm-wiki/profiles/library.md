@@ -2,13 +2,15 @@
 title: Library
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: profile
 project: llm-wiki-standard
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: Claude Code
+last_edited_by: Codex
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-13
 wiki_block_version: v1
 source_files:
   - package.json
@@ -44,4 +46,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 사람 검토 전까지 `needs_review`를 유지한다.
+- 2026-07-13에 패키지 진입점과 배포 형태를 기준으로 검토했다.

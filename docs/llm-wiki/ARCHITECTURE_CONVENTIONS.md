@@ -2,13 +2,15 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: architecture_conventions
 project: llm-wiki-standard
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: Claude Code
+last_edited_by: Codex
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-13
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -34,7 +36,7 @@ contains_sensitive_info: false
 
 - 단일 CLI 진입점(`bin/llm-wiki.js` → `src/cli.js`)이 인자를 파싱하고 명령을 `src/commands.js`의 핸들러로 디스패치한다.
 - 대부분의 명령은 동일한 `scan*` 패밀리(구조/frontmatter/source_files/related/evidence/link/adapter/enrichment 스캔)를 조합해 findings를 만든 뒤, `src/report.js`가 text/json/markdown으로 출력한다.
-- 부수효과(파일 쓰기)는 `init --write`와 `--out` 리포트 저장에만 한정된다. 나머지는 읽기 전용이다.
+- 부수효과(파일 쓰기)는 명시적인 `init --write`·`quickstart --write`·`fix --write`와 `--out` 리포트 저장에만 한정된다. 나머지는 읽기 전용이다.
 
 ## Module Layout
 
@@ -74,4 +76,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 사람 검토 전까지 `needs_review`를 유지한다.
+- 2026-07-13에 0.1.8 명령 표면과 소스 구조를 기준으로 검토했다.

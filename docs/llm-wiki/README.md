@@ -6,9 +6,9 @@ tags:
 status: needs_review
 doc_type: wiki_readme
 project: llm-wiki-standard
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: Claude Code
+last_edited_by: Codex
 wiki_block_version: v1
 source_files:
   - package.json
@@ -30,6 +30,7 @@ contains_sensitive_info: false
 
 - 시작점은 [index.md](index.md)이며 권장 읽기 순서를 안내합니다.
 - 사용자 대상 설치/사용 안내는 저장소 루트 `README.md`를, 릴리스 게이트는 `GATE_REVIEW.md`를, 방향성은 `ROADMAP.md`를 참조하세요.
+- 루트 `README.md`와 `README.ko.md`는 npm/GitHub 사용자용 문서이므로 LLM-WIKI frontmatter를 두지 않습니다.
 
 ## Operating Rules
 

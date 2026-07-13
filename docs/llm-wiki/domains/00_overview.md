@@ -2,13 +2,15 @@
 title: Domain Overview
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: domain_overview
 project: llm-wiki-standard
 last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: Claude Code
+last_edited_by: Codex
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-13
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -54,4 +56,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 사람 검토 전까지 `needs_review`를 유지한다.
+- 2026-07-13에 0.1.8 명령어군과 공통 관심사를 기준으로 검토했다.

@@ -2,13 +2,15 @@
 title: Versioning
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: versioning
 project: llm-wiki-standard
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: Claude Code
+last_edited_by: Codex
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-13
 wiki_block_version: v1
 source_files:
   - package.json
@@ -27,7 +29,7 @@ contains_sensitive_info: false
 
 ## Policy
 
-- 시맨틱 버전을 따르며 현재 라인은 `0.1.x`(안정판 초기). 현재 버전은 `package.json`의 `version` 필드(`0.1.5`)가 단일 진실 소스다.
+- 시맨틱 버전을 따르며 현재 라인은 `0.1.x`(안정판 초기)다. 현재 버전은 `0.1.8`이며, `package.json`의 `version` 필드가 단일 진실 소스다.
 - 릴리스는 `v<version>` 태그 push로 트리거되고, 태그 버전은 반드시 `package.json` 버전과 일치해야 한다.
 - 하위 호환이 깨질 수 있는 변경(명령 이름/JSON 출력 형태 변경, 필수 frontmatter 계약 변경)은 minor 이상으로 올린다. `PUBLIC_API`의 안정성 원칙 참조.
 
@@ -47,4 +49,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 사람 검토 전까지 `needs_review`를 유지한다.
+- 2026-07-13에 `package.json` 버전 `0.1.8`과 Git 태그 `v0.1.8`을 기준으로 검토했다.

@@ -2,13 +2,15 @@
 title: Project Profile
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: project_profile
 project: llm-wiki-standard
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: cli-generated
-last_edited_by: Claude Code
+last_edited_by: Codex
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-13
 wiki_block_version: v1
 source_files:
   - package.json
@@ -32,7 +34,7 @@ contains_sensitive_info: false
 
 - type: `library` (Node ESM CLI 패키지; 공개 계약은 `llm-wiki` 명령어 표면)
 - npm 패키지명: `@dowonk-7949/llm-wiki-standard`
-- 현재 버전: `0.1.5`
+- 현재 버전: `0.1.8`
 
 ## Summary
 
@@ -54,7 +56,7 @@ contains_sensitive_info: false
 
 ## Evidence
 
-- `package.json` — 패키지명, 버전 `0.1.5`, `engines.node >=18.18.0`, `bin.llm-wiki`, ESM 설정.
+- `package.json` — 패키지명, 버전 `0.1.8`, `engines.node >=18.18.0`, `bin.llm-wiki`, ESM 설정.
 - `bin/llm-wiki.js` — CLI 실행 진입점.
 - `src/cli.js#symbol:main` — 인자 파싱과 명령 디스패치.
 
@@ -65,4 +67,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 사람 검토 전까지 `needs_review`를 유지한다.
+- 2026-07-13에 현재 소스와 패키지 메타데이터를 기준으로 검토했다.
