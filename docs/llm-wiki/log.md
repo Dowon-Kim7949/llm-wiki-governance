@@ -24,6 +24,19 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - VERSIONING·project-profile verified 승격
+
+- status: verified
+- actor: Claude Code
+- scope: docs
+- changed:
+  - docs/llm-wiki/VERSIONING.md
+  - docs/llm-wiki/project-profile.md
+- summary:
+  - 1.0.0 갱신 후 needs_review로 내려갔던 VERSIONING.md·project-profile.md를 사람 검토(reviewed_by: WoongHwan-Kim, 2026-07-14) 완료에 따라 verified로 승격하고 reviewed_by/reviewed_at를 기록했다.
+- caveats:
+  - 두 문서가 참조하는 package.json이 같은 날(2026-07-14) 커밋되어 validate의 evidence.stale이 same-day 특성(src/git.js의 --since)으로 경고를 낼 수 있으나 warning이며 비차단이다.
+
 ## 2026-07-14 - 1.0.0 안정성 릴리스 준비
 
 - status: needs_review

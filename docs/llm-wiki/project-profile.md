@@ -2,12 +2,15 @@
 title: Project Profile
 tags:
   - llm-wiki
-status: needs_review
+  - verified
+status: verified
 doc_type: project_profile
 project: llm-wiki-standard
 last_updated: 2026-07-14
 author: cli-generated
 last_edited_by: Claude Code
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - package.json
@@ -64,4 +67,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 2026-07-14에 `1.0.0` 릴리스 준비에 맞춰 버전 메타데이터를 갱신했다. 사람 검토 전 `needs_review` 상태다.
+- 2026-07-14에 `1.0.0` 릴리스 준비에 맞춰 버전 메타데이터를 갱신하고, 사람 검토를 거쳐 `verified`로 승인했다.
