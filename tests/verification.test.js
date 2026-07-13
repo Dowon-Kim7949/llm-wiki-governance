@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, doctor, driftTargets, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, doctor, driftTargets, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard } from "../src/report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
@@ -1619,6 +1619,235 @@ test("writes UTF-8 markdown report with needs_review frontmatter", async () => {
   assert.ok(content.includes("status: needs_review"));
   assert.ok(content.includes("# LLM-WIKI Audit"));
 });
+
+test("parseArgs supports fix and enforces its option scope", () => {
+  const preview = parseArgs(["fix"]);
+  const write = parseArgs(["fix", "--write"]);
+  const explicitDryRun = parseArgs(["fix", "--dry-run"]);
+  const conflict = parseArgs(["fix", "--dry-run", "--write"]);
+  const unsupported = parseArgs(["fix", "--strict"]);
+
+  assert.equal(preview.command, "fix");
+  assert.equal(preview.options.write, false);
+  assert.deepEqual(preview.errors, []);
+  assert.equal(write.options.write, true);
+  assert.deepEqual(write.errors, []);
+  assert.equal(explicitDryRun.options.dryRun, true);
+  assert.deepEqual(explicitDryRun.errors, []);
+  assert.ok(conflict.errors.some((error) => error.includes("--dry-run and --write cannot be used together")));
+  assert.ok(unsupported.errors.some((error) => error.includes("--strict is not supported by fix")));
+});
+
+test("fix reports nothing when the wiki is not initialized", async () => {
+  const cwd = await makeProject("fix-empty-");
+  const result = await fixCommand({ cwd, write: false });
+
+  assert.equal(result.dryRun, true);
+  assert.equal(result.result, "pass");
+  assert.deepEqual(result.planned, []);
+});
+
+test("fix dry-run plans safe autofixes and writes nothing", async () => {
+  const cwd = await makeProject("fix-plan-");
+  await buildFixFixture(cwd);
+
+  const result = await fixCommand({ cwd, write: false });
+
+  assert.equal(result.dryRun, true);
+  assert.ok(result.planned.some((line) => line.includes("missing-fields.md") && line.includes("insert visibility")));
+  assert.ok(result.planned.some((line) => line.includes("evidence-doc.md") && line.includes("## Evidence")));
+  assert.ok(result.planned.some((line) => line.includes("MISSING.md") && line.includes("create needs_review stub")));
+  assert.ok(result.planned.some((line) => line.includes("BROKEN.md") && line.includes("create needs_review stub")));
+  assert.ok(result.skipped.some((line) => line.includes("required field 'author'")));
+
+  // Nothing was written in preview mode.
+  assert.equal(await pathExistsTest(path.join(cwd, "docs", "llm-wiki", "MISSING.md")), false);
+  const missingFields = await readFile(path.join(cwd, "docs", "llm-wiki", "missing-fields.md"), { encoding: "utf8" });
+  assert.ok(!missingFields.includes("visibility: internal"));
+});
+
+test("fix --write applies the accepted scope and is idempotent", async () => {
+  const cwd = await makeProject("fix-write-");
+  await buildFixFixture(cwd);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const result = await fixCommand({ cwd, write: true });
+  assert.equal(result.write, true);
+  assert.equal(result.result, "pass");
+
+  // Tier A fields inserted, Tier B left to a human, last_updated refreshed.
+  const missingFields = await readFile(path.join(cwd, "docs", "llm-wiki", "missing-fields.md"), { encoding: "utf8" });
+  assert.ok(missingFields.includes("visibility: internal"));
+  assert.ok(missingFields.includes("contains_sensitive_info: false"));
+  assert.ok(missingFields.includes(`last_updated: ${today}`));
+  assert.ok(!/^author:/m.test(missingFields));
+
+  // Body ## Evidence section reconciled from frontmatter evidence.
+  const evidenceDoc = await readFile(path.join(cwd, "docs", "llm-wiki", "evidence-doc.md"), { encoding: "utf8" });
+  assert.ok(evidenceDoc.includes("## Evidence"));
+  assert.ok(evidenceDoc.includes("- package.json#L1"));
+  assert.ok(evidenceDoc.indexOf("## Evidence") < evidenceDoc.indexOf("## Open Questions"));
+
+  // Broken related and markdown-link targets became needs_review stubs.
+  const stub = await readFile(path.join(cwd, "docs", "llm-wiki", "MISSING.md"), { encoding: "utf8" });
+  assert.ok(stub.startsWith("---\n"));
+  assert.ok(stub.includes("status: needs_review"));
+  assert.ok(await pathExistsTest(path.join(cwd, "docs", "llm-wiki", "BROKEN.md")));
+
+  // The stub itself parses as valid frontmatter (no required-field errors).
+  const stubValidation = await validateFrontmatterCommand({ cwd: path.join(cwd, "docs", "llm-wiki"), strict: false });
+  assert.ok(!stubValidation.findings.some((finding) => finding.path === "MISSING.md" && finding.rule.startsWith("frontmatter")));
+
+  // Running again changes nothing.
+  const again = await fixCommand({ cwd, write: true });
+  assert.deepEqual(again.applied, []);
+});
+
+test("fix leaves verified docs and out-of-scope values untouched", async () => {
+  const cwd = await makeProject("fix-guard-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), fixtureDoc({
+    title: "Guard Index",
+    extraFrontmatter: "related:\n  - docs/llm-wiki/log.md\n  - README.md",
+    body: "# Guard Index"
+  }), { encoding: "utf8" });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "log.md"), fixtureDoc({ title: "Log", body: "# Log" }), { encoding: "utf8" });
+  const verifiedRaw = `---
+title: Verified Doc
+tags:
+  - llm-wiki
+status: verified
+doc_type: reference
+project: fixture
+last_updated: 2026-07-02
+reviewed_by: human
+reviewed_at: 2026-07-02
+author: test
+last_edited_by: node-test
+wiki_block_version: v1
+source_files:
+  - package.json
+evidence:
+  - package.json#L1
+related:
+  - docs/llm-wiki/index.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# Verified Doc
+
+No Evidence section here on purpose.
+`;
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "verified-doc.md"), verifiedRaw, { encoding: "utf8" });
+
+  const result = await fixCommand({ cwd, write: true });
+
+  // Verified doc content is byte-for-byte unchanged.
+  const verifiedAfter = await readFile(path.join(cwd, "docs", "llm-wiki", "verified-doc.md"), { encoding: "utf8" });
+  assert.equal(verifiedAfter, verifiedRaw);
+  assert.ok(result.skipped.some((line) => line.includes("verified-doc.md") && line.includes("verified document")));
+
+  // A broken related target outside docs/llm-wiki is never created there.
+  assert.equal(await pathExistsTest(path.join(cwd, "README.md")), false);
+  assert.ok(result.skipped.some((line) => line.includes("README.md") && line.includes("outside stub scope")));
+});
+
+async function buildFixFixture(cwd) {
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  await mkdir(wikiRoot, { recursive: true });
+
+  await writeFile(path.join(wikiRoot, "index.md"), fixtureDoc({
+    title: "Fixture Index",
+    extraFrontmatter: "related:\n  - docs/llm-wiki/log.md\n  - docs/llm-wiki/MISSING.md",
+    body: "# Fixture Index\n\nSee [broken](BROKEN.md) and [log](log.md)."
+  }), { encoding: "utf8" });
+
+  await writeFile(path.join(wikiRoot, "log.md"), fixtureDoc({ title: "Log", body: "# Log" }), { encoding: "utf8" });
+
+  // Missing Tier A fields (visibility, contains_sensitive_info) and a Tier B field (author).
+  await writeFile(path.join(wikiRoot, "missing-fields.md"), `---
+title: Missing Fields Doc
+tags:
+  - llm-wiki
+status: needs_review
+doc_type: reference
+project: fixture
+last_updated: 2026-07-02
+last_edited_by: node-test
+wiki_block_version: v1
+source_files:
+  - package.json
+related:
+  - docs/llm-wiki/index.md
+---
+
+# Missing Fields Doc
+`, { encoding: "utf8" });
+
+  // Frontmatter evidence present, but no body ## Evidence section.
+  await writeFile(path.join(wikiRoot, "evidence-doc.md"), `---
+title: Evidence Doc
+tags:
+  - llm-wiki
+status: needs_review
+doc_type: reference
+project: fixture
+last_updated: 2026-07-02
+author: test
+last_edited_by: node-test
+wiki_block_version: v1
+source_files:
+  - package.json
+evidence:
+  - package.json#L1
+  - src/cli.js#symbol:main
+related:
+  - docs/llm-wiki/index.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# Evidence Doc
+
+## Open Questions
+
+- Anything?
+`, { encoding: "utf8" });
+}
+
+function fixtureDoc({ title, body, extraFrontmatter }) {
+  const related = extraFrontmatter ?? "related:\n  - docs/llm-wiki/log.md";
+  return `---
+title: ${title}
+tags:
+  - llm-wiki
+status: needs_review
+doc_type: wiki_index
+project: fixture
+last_updated: 2026-07-02
+author: test
+last_edited_by: node-test
+wiki_block_version: v1
+source_files:
+  - package.json
+${related}
+visibility: internal
+contains_sensitive_info: false
+---
+
+${body}
+`;
+}
+
+async function pathExistsTest(filePath) {
+  try {
+    await readFile(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function makeProject(prefix) {
   return mkdtemp(path.join(os.tmpdir(), `llm-wiki-${prefix}`));

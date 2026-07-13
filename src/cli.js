@@ -1,5 +1,5 @@
 import path from "node:path";
-import { audit, doctor, explainCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, doctor, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 
@@ -16,6 +16,7 @@ const COMMANDS = new Map([
   ["prompt", promptCommand],
   ["init", initCommand],
   ["migrate", migrateCommand],
+  ["fix", fixCommand],
   ["release-notes", releaseNotesCommand]
 ]);
 
@@ -234,6 +235,7 @@ const COMMAND_OPTION_RULES = {
   prompt: new Set(["cwd", "task", "type", "profile", "agent", "format", "out"]),
   init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "dry-run", "write", "format", "out", "with-adapters", "no-adapters"]),
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
+  fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
   "release-notes": new Set(["cwd", "version", "since", "format", "out"])
 };
 
@@ -316,12 +318,14 @@ Usage:
   llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
   llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Safety:
   init writes only when --write is explicit. Existing wiki docs default to --existing skip.
   quickstart writes only when --write is explicit and prints the next Codex/Claude Code handoff prompt.
   Existing adapter files are never overwritten. migrate --apply remains blocked.
+  fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
   Adapter checks and suggestions are opt-in with --agent. ANTIGRAVITY.md remains an info-level candidate.
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
   next is advisory: it reuses audit coverage and recommends follow-up actions without writing files.
@@ -441,6 +445,23 @@ Usage:
 
 Purpose:
   Prepares a reviewable migration plan without writing files. migrate --apply remains intentionally blocked.
+`,
+  fix: `llm-wiki fix
+
+Usage:
+  llm-wiki fix [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki fix --write [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Applies a narrow, accepted set of safe autofixes inside docs/llm-wiki. Without --write it previews the planned fixes and writes nothing; --write applies them.
+
+Scope (see GATE_REVIEW.md "Autofix (--fix) Scope Decision"):
+  - Inserts missing mechanical required frontmatter fields (status, visibility, contains_sensitive_info, wiki_block_version, last_updated, last_edited_by, and empty tags/source_files/related).
+  - Adds or completes the body ## Evidence section from existing frontmatter evidence entries.
+  - Creates needs_review stubs for broken related/markdown-link targets under docs/llm-wiki/*.md.
+  - Refreshes last_updated only on documents it actually modifies.
+
+  It never edits verified documents' content, never invents title/doc_type/project/author or source_files/evidence values, never enriches placeholder content, and never writes outside docs/llm-wiki. Mojibake and sensitive-looking results are skipped.
 `,
   "release-notes": `llm-wiki release-notes
 

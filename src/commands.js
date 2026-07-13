@@ -4,9 +4,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CORE_REQUIRED_DOCS, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
 import { detectProject } from "./detector.js";
-import { findMojibakeIndicators, hasUtf8Bom, readUtf8 } from "./encoding.js";
+import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
 import { parseFrontmatter, validateFrontmatter } from "./frontmatter.js";
+import { schemaRequiredFields } from "./frontmatter-schema.js";
 import { renderTextReport } from "./report.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
@@ -666,6 +667,370 @@ function blockedApply(command, message) {
     result: "blocked",
     findings: [{ severity: "blocked", rule: `${command}.apply_blocked`, path: ".", message }]
   }, `LLM-WIKI ${command} Blocked`, [{ title: "Blocked", body: [message] }]);
+}
+
+// ---- fix command (scoped autofix) --------------------------------------
+// The accepted scope is recorded in GATE_REVIEW.md ("Autofix (--fix) Scope
+// Decision"). fix applies only safe, mechanically decidable remediations under
+// docs/llm-wiki/, never edits verified documents' content, never writes outside
+// docs/llm-wiki/, and never invents meaning-bearing values.
+
+// Tier A required fields: safe to auto-insert with a mechanical default.
+const FIX_TIER_A_SCALAR_DEFAULTS = {
+  status: "needs_review",
+  visibility: "internal",
+  contains_sensitive_info: "false",
+  wiki_block_version: "v1",
+  last_edited_by: "llm-wiki-cli"
+};
+const FIX_TIER_A_ARRAY_FIELDS = ["tags", "source_files", "related"];
+// Tier B required fields carry meaning a tool cannot honestly invent.
+const FIX_TIER_B_FIELDS = new Set(["title", "doc_type", "project", "author"]);
+const EVIDENCE_PLACEHOLDER_BULLET =
+  "- _No evidence recorded yet; add source references such as file, file#L10, or file#symbol:Name._";
+
+export async function fixCommand(options) {
+  const write = options.write === true;
+  const cwd = options.cwd;
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+
+  if (!(await pathExists(wikiRoot))) {
+    return withText({
+      command: "fix",
+      write,
+      dryRun: !write,
+      result: "pass",
+      applied: [],
+      planned: [],
+      skipped: [],
+      findings: []
+    }, "LLM-WIKI Fix", [
+      { title: "Summary", body: [`mode: ${write ? "write" : "dry-run"}`, "wiki: not initialized"] },
+      { title: "Caveats", body: ["docs/llm-wiki is not initialized; run init --write first. Nothing to fix."] }
+    ]);
+  }
+
+  const applied = [];
+  const planned = [];
+  const skipped = [];
+  const blockedFindings = [];
+  const changeList = write ? applied : planned;
+  const stubTargets = new Map(); // relPosix target -> Set of referencing docs
+
+  const files = (await listMarkdownFiles(wikiRoot))
+    .filter((file) => !toPosix(path.relative(cwd, file)).includes("/templates/"));
+
+  for (const file of files) {
+    const rel = toPosix(path.relative(cwd, file));
+    const original = await readUtf8(file);
+
+    if (findMojibakeIndicators(original).length > 0) {
+      skipped.push(`${rel}: possible mojibake; automatic rewrite skipped.`);
+      continue;
+    }
+
+    const parsed = parseFrontmatter(original);
+
+    // Broken related / markdown-link targets become needs_review stubs. Creating
+    // a stub is a new-file write that never edits this document, so it is
+    // collected even for verified documents.
+    await collectBrokenLinkTargets(cwd, file, rel, parsed, original, stubTargets, skipped);
+
+    if (!parsed.frontmatter) {
+      skipped.push(`${rel}: no YAML frontmatter; fix does not synthesize a full frontmatter block.`);
+      continue;
+    }
+
+    if (parsed.frontmatter.status === "verified") {
+      const reasons = [];
+      const missing = schemaRequiredFields().filter((field) => !(field in parsed.frontmatter));
+      if (missing.length > 0) reasons.push(`missing ${missing.join(", ")}`);
+      const verifiedEvidence = Array.isArray(parsed.frontmatter.evidence)
+        ? parsed.frontmatter.evidence.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
+        : [];
+      if (reconcileEvidenceSection(parsed.body, verifiedEvidence, "\n")) reasons.push("## Evidence section could be reconciled");
+      if (reasons.length > 0) {
+        skipped.push(`${rel}: verified document (${reasons.join("; ")}); left untouched (review manually).`);
+      }
+      continue;
+    }
+
+    const split = splitFrontmatter(original);
+    if (!split) {
+      skipped.push(`${rel}: could not locate frontmatter block; skipped.`);
+      continue;
+    }
+
+    const eol = split.eol;
+    const docChanges = [];
+    let inner = split.inner;
+    let body = split.body;
+
+    // 1) Missing Tier A required frontmatter fields.
+    const missingRequired = schemaRequiredFields().filter((field) => !(field in parsed.frontmatter));
+    const tierBMissing = missingRequired.filter((field) => FIX_TIER_B_FIELDS.has(field));
+    const tierAMissing = missingRequired.filter((field) => !FIX_TIER_B_FIELDS.has(field));
+
+    for (const field of tierBMissing) {
+      skipped.push(`${rel}: required field '${field}' needs a human value (Tier B; not auto-filled).`);
+    }
+
+    const insertLines = [];
+    for (const field of tierAMissing) {
+      if (field === "last_updated") {
+        insertLines.push(`last_updated: ${todayIsoDate()}`);
+        docChanges.push("insert last_updated");
+      } else if (FIX_TIER_A_ARRAY_FIELDS.includes(field)) {
+        insertLines.push(`${field}:`);
+        docChanges.push(`insert ${field} (empty list)`);
+      } else if (field in FIX_TIER_A_SCALAR_DEFAULTS) {
+        insertLines.push(`${field}: ${FIX_TIER_A_SCALAR_DEFAULTS[field]}`);
+        docChanges.push(`insert ${field}`);
+      }
+    }
+    if (insertLines.length > 0) {
+      inner = `${inner}${eol}${insertLines.join(eol)}`;
+    }
+
+    // 2) Reconcile the body ## Evidence section with frontmatter evidence.
+    const frontmatterEvidence = Array.isArray(parsed.frontmatter.evidence)
+      ? parsed.frontmatter.evidence.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
+      : [];
+    const evidenceResult = reconcileEvidenceSection(body, frontmatterEvidence, eol);
+    if (evidenceResult) {
+      body = evidenceResult.body;
+      docChanges.push(evidenceResult.change);
+    }
+
+    if (docChanges.length === 0) continue;
+
+    // 3) Refresh last_updated on documents this run actually modifies (unless we
+    // just inserted it as today).
+    if (!tierAMissing.includes("last_updated") && "last_updated" in parsed.frontmatter) {
+      const refreshed = replaceFrontmatterScalar(inner, "last_updated", todayIsoDate());
+      if (refreshed && refreshed !== inner) {
+        inner = refreshed;
+        docChanges.push("refresh last_updated");
+      }
+    }
+
+    const newContent = `${split.bom}${split.open}${inner}${split.close}${body}`;
+    if (newContent === original) continue;
+
+    if (scanSensitiveInfo(newContent).length > 0) {
+      blockedFindings.push({
+        severity: "blocked",
+        rule: "sensitive.redacted",
+        path: rel,
+        message: "Fix skipped: resulting content matched sensitive-info rules."
+      });
+      continue;
+    }
+
+    if (write) {
+      await writeUtf8(file, newContent);
+    }
+    changeList.push(`${rel}: ${docChanges.join("; ")}.`);
+  }
+
+  // Create needs_review stubs for eligible broken link/related targets.
+  for (const [relTarget, refs] of stubTargets) {
+    const abs = path.join(cwd, relTarget);
+    if (await pathExists(abs)) continue;
+    const content = renderStubDocument(relTarget, cwd);
+    if (scanSensitiveInfo(content).length > 0) {
+      blockedFindings.push({
+        severity: "blocked",
+        rule: "sensitive.redacted",
+        path: relTarget,
+        message: "Stub not created: generated content matched sensitive-info rules."
+      });
+      continue;
+    }
+    if (write) {
+      await mkdir(path.dirname(abs), { recursive: true });
+      await writeUtf8(abs, content);
+    }
+    changeList.push(`${relTarget}: create needs_review stub (referenced by ${[...refs].join(", ")}).`);
+  }
+
+  const findings = blockedFindings;
+  const result = findings.some((finding) => finding.severity === "blocked") ? "blocked" : "pass";
+  const summary = [
+    `mode: ${write ? "write" : "dry-run"}`,
+    `${write ? "applied" : "planned"}: ${changeList.length}`,
+    `skipped: ${skipped.length}`,
+    `blocked: ${blockedFindings.length}`
+  ];
+
+  return withText({
+    command: "fix",
+    write,
+    dryRun: !write,
+    result,
+    applied,
+    planned,
+    skipped,
+    findings
+  }, "LLM-WIKI Fix", [
+    { title: "Summary", body: summary },
+    { title: write ? "Applied Fixes" : "Planned Fixes", body: changeList },
+    { title: "Skipped", body: skipped },
+    { title: "Blocked", body: blockedFindings.map(formatFinding) },
+    { title: "Caveats", body: [
+      write
+        ? "Only docs/llm-wiki content was changed. Verified documents, source_files/evidence values, and enrichment were left for human review. All writes stay needs_review."
+        : "Preview only; no files were written. Run fix --write to apply."
+    ] }
+  ]);
+}
+
+function splitFrontmatter(content) {
+  const bom = content.charCodeAt(0) === 0xfeff ? content[0] : "";
+  const rest = content.slice(bom.length);
+  const match = rest.match(/^(---\r?\n)([\s\S]*?)(\r?\n---\r?\n?)/);
+  if (!match) return null;
+  const eol = match[1].endsWith("\r\n") ? "\r\n" : "\n";
+  return {
+    bom,
+    open: match[1],
+    inner: match[2],
+    close: match[3],
+    body: rest.slice(match[0].length),
+    eol
+  };
+}
+
+function replaceFrontmatterScalar(inner, key, value) {
+  const pattern = new RegExp(`^(\\s*${escapeRegex(key)}:)[^\\r\\n]*$`, "m");
+  if (!pattern.test(inner)) return null;
+  return inner.replace(pattern, `$1 ${value}`);
+}
+
+function reconcileEvidenceSection(body, frontmatterEvidence, eol) {
+  const section = extractMarkdownSection(body, "Evidence");
+
+  if (!section) {
+    if (frontmatterEvidence.length === 0) return null;
+    const bullets = frontmatterEvidence.map((item) => `- ${item}`);
+    return {
+      body: appendEvidenceSection(body, bullets, eol),
+      change: `add ## Evidence section (${bullets.length} bullet${bullets.length === 1 ? "" : "s"})`
+    };
+  }
+
+  if (section.bullets.length === 0) {
+    const bullets = frontmatterEvidence.length ? frontmatterEvidence.map((item) => `- ${item}`) : [EVIDENCE_PLACEHOLDER_BULLET];
+    const newBody = addBulletsUnderEvidence(body, bullets, eol);
+    if (!newBody) return null;
+    return { body: newBody, change: `fill empty ## Evidence section (${bullets.length} bullet${bullets.length === 1 ? "" : "s"})` };
+  }
+
+  const missing = frontmatterEvidence.filter((item) => !section.text.includes(item));
+  if (missing.length === 0) return null;
+  const bullets = missing.map((item) => `- ${item}`);
+  const newBody = addBulletsUnderEvidence(body, bullets, eol);
+  if (!newBody) return null;
+  return { body: newBody, change: `add ${bullets.length} missing ## Evidence bullet${bullets.length === 1 ? "" : "s"}` };
+}
+
+function appendEvidenceSection(body, bullets, eol) {
+  const lines = String(body).split(/\r?\n/);
+  const tailPattern = /^##\s+(Open Questions|Review Notes)\s*$/i;
+  const idx = lines.findIndex((line) => tailPattern.test(line.trim()));
+  const sectionBlock = ["## Evidence", "", ...bullets, ""];
+  if (idx === -1) {
+    const trimmed = [...lines];
+    while (trimmed.length > 0 && trimmed[trimmed.length - 1].trim() === "") trimmed.pop();
+    return [...trimmed, "", ...sectionBlock].join(eol);
+  }
+  return [...lines.slice(0, idx), ...sectionBlock, ...lines.slice(idx)].join(eol);
+}
+
+function addBulletsUnderEvidence(body, bullets, eol) {
+  const lines = String(body).split(/\r?\n/);
+  const headingPattern = /^##\s+Evidence\s*$/i;
+  const start = lines.findIndex((line) => headingPattern.test(line.trim()));
+  if (start === -1) return null;
+
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^#{1,2}\s+\S/.test(lines[index].trim())) {
+      end = index;
+      break;
+    }
+  }
+
+  let insertAt = start + 1;
+  for (let index = start + 1; index < end; index += 1) {
+    if (lines[index].trim() !== "") insertAt = index + 1;
+  }
+
+  return [...lines.slice(0, insertAt), ...bullets, ...lines.slice(insertAt)].join(eol);
+}
+
+async function collectBrokenLinkTargets(cwd, file, rel, parsed, original, stubTargets, skipped) {
+  const seen = new Set();
+
+  const addTarget = (abs) => {
+    const relTarget = toPosix(path.relative(cwd, abs));
+    if (
+      relTarget.startsWith("..") ||
+      !relTarget.startsWith("docs/llm-wiki/") ||
+      !relTarget.endsWith(".md") ||
+      isAppendOnlyLog(relTarget)
+    ) {
+      skipped.push(`${rel}: broken reference ${relTarget} is outside stub scope (docs/llm-wiki/*.md); left for human review.`);
+      return;
+    }
+    if (!stubTargets.has(relTarget)) stubTargets.set(relTarget, new Set());
+    stubTargets.get(relTarget).add(rel);
+  };
+
+  const related = parsed.frontmatter?.related;
+  if (Array.isArray(related)) {
+    for (const entry of related) {
+      if (typeof entry !== "string") continue;
+      const target = entry.trim();
+      if (!target || isExternalSourceReference(target)) continue;
+      const abs = path.join(cwd, target);
+      const key = `related:${abs}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!(await pathExists(abs))) addTarget(abs);
+    }
+  }
+
+  for (const target of extractMarkdownLinkTargets(original)) {
+    const link = normalizeMarkdownLinkTarget(target);
+    if (!link || isSkippedMarkdownLink(link)) continue;
+    const abs = resolveMarkdownLinkTarget(cwd, file, link);
+    const key = `link:${abs}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!(await pathExists(abs))) addTarget(abs);
+  }
+}
+
+function renderStubDocument(relTarget, cwd) {
+  const base = relTarget.split("/").pop().replace(/\.md$/i, "");
+  const title = base.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()).trim() || base;
+  const project = path.basename(cwd);
+  const body = [
+    `# ${title}`,
+    "",
+    "> Auto-created `needs_review` stub to resolve a broken reference. Replace this with source-backed content and keep it `needs_review` until human review.",
+    "",
+    "## Open Questions",
+    "",
+    "- What content belongs in this document?",
+    "",
+    "## Review Notes",
+    "",
+    "- Human review required before this document is trusted.",
+    ""
+  ].join("\n");
+  return renderWikiDocumentTemplate({ title, docType: "reference", project, body, sourceFiles: [], evidence: [], related: [] });
 }
 
 async function listTargetMarkdown(cwd) {

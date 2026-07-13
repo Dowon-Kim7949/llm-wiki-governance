@@ -8,9 +8,9 @@ tags:
 status: needs_review
 doc_type: gate_review
 project: llm-wiki-standard
-last_updated: 2026-07-06
+last_updated: 2026-07-13
 author: ai-generated
-last_edited_by: Codex
+last_edited_by: Claude Code
 wiki_block_version: v1
 source_files:
   - package.json
@@ -36,6 +36,7 @@ This document records the default decisions for the `0.1.0` stable release line.
 | Gate 3 CLI and Adapter Approval | `accepted_for_0.1.0` | Keep `doctor`, `validate`, `validate-frontmatter`, `audit`, `init --dry-run`, `init --write`, and `migrate --dry-run`. Adapter checks remain opt-in with `--agent`. |
 | Gate 4 Migration Policy Approval | `accepted_for_0.1.0` | Keep `migrate --apply` blocked for the stable release. Regeneration is available through explicit `init --write --existing overwrite`. |
 | Gate 5 Implementation Approval | `accepted_for_0.1.0` | Ship `@dowonk-7949/llm-wiki-standard@0.1.0` as the first stable npmjs release candidate. |
+| Gate 6 Autofix (`--fix`) Scope Approval | `accepted_for_0.1.8` | Ship a scoped `llm-wiki fix` command (default preview, `--write` applies) limited to the safe remediations in "Autofix (`--fix`) Scope Decision" below. Content-bearing fixes never touch `verified` documents, and nothing outside `docs/llm-wiki/` is written. |
 
 ## Stable Decisions
 
@@ -49,6 +50,7 @@ This document records the default decisions for the `0.1.0` stable release line.
 | Adapter files | Never overwrite existing adapter files. | Teams often keep local tool policy there. |
 | Antigravity | Keep `ANTIGRAVITY.md` as an info-level candidate. | The loading contract is still tool-dependent. |
 | Migration apply | Keep blocked. | Automatic migration writes need a separate accepted scope. |
+| Autofix (`fix`) | Ship as a scoped `fix` command (default preview, `--write` applies) limited to the accepted scope below. | Autofix writes are safe only when the exact set of touched fields, files, and refusals is pre-decided, mirroring the caution used for the still-blocked `migrate --apply`. |
 | CI default | Use `llm-wiki validate`; add `--strict` when teams want warnings to fail. | This lets existing repositories adopt the standard incrementally. |
 
 ## Current Implementation Scope
@@ -74,9 +76,50 @@ Implemented safety behavior:
 - Markdown and reports are written as UTF-8.
 - Sensitive-looking raw values are redacted from findings and blocked before report writes.
 
+## Autofix (`--fix`) Scope Decision
+
+Accepted for the `0.1.8` line. `llm-wiki fix` applies only the safest, mechanically decidable remediations. It follows the same conservative model as the blocked `migrate --apply`: the exact set of touched fields, created files, and refusals is fixed in advance, and anything requiring real project knowledge is reported, never invented.
+
+### Command surface
+
+- `llm-wiki fix` — preview only (dry run). Lists planned fixes and skips; writes nothing.
+- `llm-wiki fix --write` — applies the planned fixes.
+- `--dry-run` is accepted as an explicit alias of the default preview. `--dry-run` and `--write` cannot be combined.
+
+### May change (only under `docs/llm-wiki/`, only on non-`verified` documents)
+
+| Finding | Autofix action |
+| --- | --- |
+| `frontmatter.required` (Tier A fields only) | Insert the missing required field with a safe mechanical default. |
+| `evidence.section_missing` | Append a body `## Evidence` section whose bullets echo the existing frontmatter `evidence` entries. |
+| `evidence.section_empty` | Add bullets to the empty `## Evidence` section (frontmatter `evidence` entries, or one placeholder bullet if none exist). |
+| `evidence.section_unlisted` | Append the missing frontmatter `evidence` entries as bullets to the existing `## Evidence` section. |
+| `related.missing` / `markdown_link.missing` | Create a `needs_review` stub at the broken target (see stub conditions). |
+| `last_updated` freshness | Refresh `last_updated` to the current date, **only on documents this run actually modifies** (never a blanket touch). |
+
+**Tier A required fields (auto-filled with mechanical defaults):** `status`=`needs_review`, `visibility`=`internal`, `contains_sensitive_info`=`false`, `wiki_block_version`=`v1`, `last_updated`=today, `last_edited_by`=`llm-wiki-cli`, and empty lists for `tags`, `source_files`, `related`.
+
+**Broken-link stub conditions:** a stub is created only when the target is inside `docs/llm-wiki/`, ends in `.md`, does not already exist, and is neither `log.md` nor an adapter file. The stub carries valid `needs_review` frontmatter with an empty evidence set and a title derived from the filename. Creating a stub is a new-file write; it never edits the referencing document.
+
+### Must not change (reported only, never auto-fixed)
+
+- **Tier B meaning-bearing required fields** — `title`, `doc_type`, `project`, `author`. These cannot be filled truthfully by a tool, so a missing one is reported for a human.
+- **`source_files` / `evidence` reference values** — `source_files.missing`, `evidence.missing`, `evidence.line_range`, `evidence.shape`. A wrong or missing path is a real problem a human must resolve; the tool never invents or rewrites paths.
+- **`content.not_enriched`** — enrichment requires real source-backed knowledge.
+- **`evidence.stale` and document `status`** — `fix` never promotes to `verified` and never auto-downgrades `verified` → `needs_review`; automatic downgrade is deferred to the separate line/symbol drift work (ROADMAP Post-0.1.7 item 2). `verified` documents are skipped entirely for content edits.
+- **Anything outside `docs/llm-wiki/`**, plus `docs/llm-wiki/log.md` (append-only) and adapter files.
+- **Encoding/sensitive risks** — files with mojibake indicators are never rewritten, and any fix whose resulting content matches sensitive-info rules is blocked, mirroring `init --write`.
+
+### Guarantees
+
+- Idempotent: a second `fix --write` with no intervening changes writes nothing.
+- All created or edited documents remain `needs_review`.
+- UTF-8 read/write throughout; edits are minimal targeted insertions rather than full-document rewrites, since the frontmatter layer parses but does not re-serialize.
+
 ## Release Caveats
 
 - `migrate --apply` remains intentionally blocked.
+- `fix` writes only the accepted scope above; broader autofix (Tier B fields, path repair, enrichment, status downgrade) stays out of scope until separately accepted.
 - `validate` reuses audit coverage rather than separate layered validators.
 - YAML parsing covers the standard frontmatter subset only.
 - Antigravity adapter handling remains suggested/info-only until the tool contract is confirmed.

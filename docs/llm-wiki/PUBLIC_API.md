@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: public_api
 project: llm-wiki-standard
-last_updated: 2026-07-10
+last_updated: 2026-07-13
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -19,6 +19,7 @@ evidence:
   - src/cli.js#symbol:COMMANDS
   - src/cli.js#symbol:parseArgs
   - src/commands.js#symbol:migrateCommand
+  - src/commands.js#symbol:fixCommand
   - src/config-file.js#symbol:mergeConfigIntoOptions
 related:
   - docs/llm-wiki/index.md
@@ -48,6 +49,7 @@ contains_sensitive_info: false
 | `prompt --task <name>` | 반복 작업 프롬프트(feature/fix/refactor/docs-sync/okf-extract) | `--out` 시 |
 | `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성 | `--write` 시 |
 | `migrate --dry-run` | 이관 계획 미리보기(`--apply`는 차단) | 없음 |
+| `fix [--write]` | 승인된 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 섹션 보완, 깨진 related/링크 `needs_review` 스텁, 수정 문서 `last_updated` 갱신). 기본은 미리보기 | `--write` 시 |
 | `release-notes` | 마지막 `v*` 태그 이후 conventional commit으로 릴리스 노트 문서 생성 | `--out` 시 |
 
 ## Key Options
@@ -70,6 +72,7 @@ contains_sensitive_info: false
 
 - 명령 이름·JSON 출력 형태는 CI/래퍼가 의존하므로 보수적으로 유지한다.
 - `migrate --apply`는 자동 변경 범위가 합의될 때까지 의도적으로 차단 상태다.
+- `fix`는 `GATE_REVIEW.md`의 "Autofix (--fix) Scope Decision"에 명시된 좁은 범위만 수정한다: `verified` 문서 내용·`docs/llm-wiki/` 밖 파일·`source_files`/`evidence` 값·Tier B 필드(title/doc_type/project/author)·미보강 내용은 건드리지 않는다.
 - `llm-wiki.config.json` 스키마는 실사용 피드백 전까지 최소(위 4개 필드)로 유지한다.
 
 ## Evidence
@@ -77,6 +80,7 @@ contains_sensitive_info: false
 - `src/cli.js#symbol:COMMANDS` — 명령 이름 → 핸들러 매핑.
 - `src/cli.js#symbol:parseArgs` — 옵션/사용법 검증과 exit code 근거.
 - `src/commands.js#symbol:migrateCommand` — `--apply` 차단 정책.
+- `src/commands.js#symbol:fixCommand` — 범위 한정 자동수정(기본 미리보기, `--write` 적용).
 - `src/config-file.js#symbol:mergeConfigIntoOptions` — config 기본값과 CLI 플래그의 병합 우선순위.
 
 ## Review Notes
