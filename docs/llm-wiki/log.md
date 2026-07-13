@@ -24,6 +24,27 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-13 - 팀 공유용 LLM-WIKI 소개 프레젠테이션 추가
+
+- status: needs_review
+- actor: Codex
+- scope: docs
+- changed:
+  - outputs/llm-wiki-team-introduction-v0.1.8.pptx
+  - docs/assets/presentations/llm-wiki-lego-city.png
+  - docs/llm-wiki/README.md
+- summary:
+  - 초급 개발자도 LLM-WIKI의 목적, 동작 방식, 이점, 안전 원칙과 자동화 범위를 이해할 수 있도록 12장 분량의 팀 공유용 PowerPoint를 작성했다.
+  - 프로젝트를 레고 도시에 비유한 전용 일러스트와 도입 전후 비교, 작업 흐름, 팀 적용 단계 등을 포함했다.
+- evidence:
+  - README.md
+  - README.ko.md
+  - docs/llm-wiki/index.md
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+- caveats:
+  - 발표 전 팀의 용어와 실제 도입 사례에 맞는 발표자 설명을 보완할 수 있다.
+
 ## 2026-07-13 - 사용자용 README frontmatter 제거
 
 - status: needs_review

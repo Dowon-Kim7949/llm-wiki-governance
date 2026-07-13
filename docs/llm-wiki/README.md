@@ -30,6 +30,7 @@ contains_sensitive_info: false
 
 - 시작점은 [index.md](index.md)이며 권장 읽기 순서를 안내합니다.
 - 사용자 대상 설치/사용 안내는 저장소 루트 `README.md`를, 릴리스 게이트는 `GATE_REVIEW.md`를, 방향성은 `ROADMAP.md`를 참조하세요.
+- 초급자와 팀원을 위한 설명 자료는 [LLM-WIKI 팀 공유 프레젠테이션](../../outputs/llm-wiki-team-introduction-v0.1.8.pptx)을 참조하세요.
 - 루트 `README.md`와 `README.ko.md`는 npm/GitHub 사용자용 문서이므로 LLM-WIKI frontmatter를 두지 않습니다.
 
 ## Operating Rules
