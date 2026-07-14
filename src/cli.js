@@ -90,11 +90,12 @@ export async function main(argv) {
   process.exitCode = exitCodeFor(result, options);
 }
 
-export function parseArgs(argv) {
-  const [command, ...rest] = argv;
-  const errors = [];
-  const usedOptions = new Set();
-  const options = {
+// The full option set every command handler reads, with default values. This is
+// the single source of truth for defaults, shared by CLI arg parsing (parseArgs)
+// and the programmatic API (src/index.js normalizeOptions). Returns a fresh
+// object with fresh arrays on each call so callers can safely mutate it.
+export function defaultOptions() {
+  return {
     cwd: process.cwd(),
     task: null,
     findingRule: null,
@@ -115,6 +116,13 @@ export function parseArgs(argv) {
     profiles: [],
     agents: []
   };
+}
+
+export function parseArgs(argv) {
+  const [command, ...rest] = argv;
+  const errors = [];
+  const usedOptions = new Set();
+  const options = defaultOptions();
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];

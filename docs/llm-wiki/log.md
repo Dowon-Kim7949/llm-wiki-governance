@@ -24,6 +24,33 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: 프로그래매틱 API (exports 맵 + schemaVersion) — 1.5 step 1
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, docs
+- changed:
+  - src/index.js (신규: 공개 API 진입점)
+  - src/config.js (JSON_SCHEMA_VERSION 상수)
+  - src/report.js (--format json에 schemaVersion 부가)
+  - src/cli.js (기본 옵션 단일 소스 defaultOptions 추출)
+  - package.json (main + exports 필드)
+  - tests/verification.test.js (회귀 테스트 +7)
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+- summary:
+  - ROADMAP 1.5의 프로그래매틱 API를 구현했다. `package.json` `exports`(`.` → `src/index.js`)로 in-process import를 공식 지원한다. `src/index.js`는 CLI `COMMANDS`와 1:1인 동결된 `commands` 맵, 개별 함수 export, `normalizeOptions`(부분 옵션 → 완전 옵션, `cli.js`의 `defaultOptions`와 단일 소스 공유), `parseArgs`/`run`, `SCHEMA_VERSION`을 공개하고 JSDoc typedef로 반환 형태를 문서화한다.
+  - `--format json` 출력(콘솔 + `--out *.json` 파일) 최상단에 부가적 `schemaVersion` 정수 필드를 넣었다. 단일 소스는 `src/config.js`의 `JSON_SCHEMA_VERSION`(현재 1). 기존 필드는 불변이라 기존 JSON 소비자를 깨지 않는다(회귀 테스트로 `command` 보존·파일 출력의 `text` 제거 유지·비-JSON graph 미부착 확인).
+- evidence:
+  - src/index.js
+  - src/config.js
+  - src/report.js
+- caveats:
+  - node --test 155개(신규 7개) pass, validate-frontmatter --strict pass.
+  - 계약 동결 성격이라 각 명령의 실제 반환 JSON 형태를 편집 전 재확인했다.
+  - 아직 배포 전이다(버전 bump/tag/npm 미실행). 관련 verified 문서 3개(PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES)는 LLM 편집으로 needs_review로 강등됐으며 사람 재검토가 필요하다.
+
 ## 2026-07-14 - docs: DOMAIN_FEATURES·PUBLIC_API verified 재승인 (1.4.0)
 
 - status: verified

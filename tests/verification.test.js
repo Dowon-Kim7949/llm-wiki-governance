@@ -5,7 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
-import { writeReport, renderHtmlDashboard } from "../src/report.js";
+import { writeReport, renderHtmlDashboard, renderOutputFile, printResult } from "../src/report.js";
+import * as api from "../src/index.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
 import { buildReleaseNotes, parseCommit } from "../src/release-notes.js";
 import { fileChangedSince, lineRangeChangedSince } from "../src/git.js";
@@ -2421,6 +2422,92 @@ No Evidence section here on purpose.
   // A broken related target outside docs/llm-wiki is never created there.
   assert.equal(await pathExistsTest(path.join(cwd, "README.md")), false);
   assert.ok(result.skipped.some((line) => line.includes("README.md") && line.includes("outside stub scope")));
+});
+
+test("programmatic API exposes a frozen command map mirroring the CLI surface", () => {
+  const expected = [
+    "doctor", "validate", "validate-frontmatter", "status", "next", "explain",
+    "audit", "quickstart", "handoff", "prompt", "init", "migrate", "fix",
+    "drift", "graph", "stats", "release-notes"
+  ];
+
+  assert.ok(Object.isFrozen(api.commands));
+  assert.deepEqual(Object.keys(api.commands).sort(), [...expected].sort());
+  for (const name of expected) {
+    assert.equal(typeof api.commands[name], "function", `${name} handler is a function`);
+  }
+  // The map mirrors the individually exported functions (same references).
+  assert.equal(api.commands.audit, api.audit);
+  assert.equal(api.commands.doctor, api.doctor);
+  assert.equal(api.commands.fix, api.fixCommand);
+  assert.equal(api.commands["release-notes"], api.releaseNotesCommand);
+  assert.equal(typeof api.parseArgs, "function");
+  assert.equal(typeof api.run, "function");
+});
+
+test("SCHEMA_VERSION is a number matching the JSON schemaVersion field", () => {
+  assert.equal(typeof api.SCHEMA_VERSION, "number");
+  assert.equal(api.SCHEMA_VERSION, 1);
+});
+
+test("normalizeOptions fills every default, resolves cwd, and returns fresh arrays", () => {
+  const options = api.normalizeOptions({ cwd: ".", strict: true });
+  assert.equal(options.format, "text");
+  assert.equal(options.existing, "skip");
+  assert.equal(options.strict, true);
+  assert.equal(options.type, null);
+  assert.ok(Array.isArray(options.profiles) && options.profiles.length === 0);
+  assert.ok(Array.isArray(options.agents) && options.agents.length === 0);
+  assert.ok(path.isAbsolute(options.cwd));
+  // Fresh arrays per call so callers cannot alias shared state.
+  assert.notEqual(api.normalizeOptions().profiles, api.normalizeOptions().profiles);
+});
+
+test("a command runs in-process via the map with normalized options", async () => {
+  const cwd = await makeProject("api-run-");
+  const result = await api.commands.doctor(api.normalizeOptions({ cwd }));
+  assert.equal(result.command, "doctor");
+  assert.ok(typeof result.text === "string");
+});
+
+test("--format json output is stamped with schemaVersion without dropping fields", async () => {
+  const result = { command: "audit", result: "pass", findings: [], text: "rendered" };
+  let captured = "";
+  const original = console.log;
+  console.log = (line) => { captured = line; };
+  try {
+    await printResult(result, { format: "json" });
+  } finally {
+    console.log = original;
+  }
+  const parsed = JSON.parse(captured);
+  assert.equal(parsed.schemaVersion, api.SCHEMA_VERSION);
+  // Additive: existing consumers still find every field, including text on the console path.
+  assert.equal(parsed.command, "audit");
+  assert.equal(parsed.result, "pass");
+  assert.deepEqual(parsed.findings, []);
+  assert.equal(parsed.text, "rendered");
+});
+
+test("JSON report file carries schemaVersion, keeps command, and still strips text", async () => {
+  const cwd = await makeProject("api-json-out-");
+  const out = path.join(cwd, "reports", "audit.json");
+  const result = await audit({ cwd, type: null, format: "json", strict: false });
+
+  await writeReport(out, result, { format: "json", out });
+  const content = JSON.parse(await readFile(out, { encoding: "utf8" }));
+
+  assert.equal(content.schemaVersion, api.SCHEMA_VERSION);
+  assert.equal(content.command, "audit"); // regression: existing JSON consumers unaffected
+  assert.equal(content.text, undefined); // runtime text still redacted from files
+});
+
+test("non-JSON graph exports are not wrapped with schemaVersion", async () => {
+  const cwd = await makeProject("api-graph-mermaid-");
+  const graph = await graphCommand({ cwd, format: "mermaid" });
+  const rendered = renderOutputFile(graph, { format: "mermaid" });
+  assert.ok(rendered.startsWith("```mermaid"));
+  assert.ok(!rendered.includes("schemaVersion"));
 });
 
 async function buildFixFixture(cwd) {

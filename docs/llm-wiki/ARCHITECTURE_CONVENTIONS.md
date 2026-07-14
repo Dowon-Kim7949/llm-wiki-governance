@@ -2,26 +2,25 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - verified
-status: verified
+status: needs_review
 doc_type: architecture_conventions
 project: llm-wiki-standard
 last_updated: 2026-07-14
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - src/cli.js
   - src/commands.js
   - src/frontmatter.js
   - src/report.js
+  - src/index.js
 evidence:
   - src/cli.js#symbol:parseArgs
   - src/commands.js#symbol:audit
   - src/frontmatter.js#symbol:validateFrontmatter
   - src/report.js
+  - src/index.js#symbol:commands
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -40,7 +39,8 @@ contains_sensitive_info: false
 
 ## Module Layout
 
-- `src/cli.js` — 인자 파싱(`parseArgs`), 명령→핸들러 매핑, exit code 계산.
+- `src/cli.js` — 인자 파싱(`parseArgs`), 기본 옵션 단일 소스(`defaultOptions`), 명령→핸들러 매핑, exit code 계산.
+- `src/index.js` — 공개 프로그래매틱 API 진입점(`package.json` `exports`). 동결된 `commands` 맵·개별 함수 export·`normalizeOptions`·`parseArgs`/`run`·`SCHEMA_VERSION`을 re-export하고 JSDoc typedef로 반환 형태를 문서화한다.
 - `src/commands.js` — 모든 명령 핸들러와 `scan*` 검증 함수, 생성 문서 템플릿 본문(`docMetadata`).
 - `src/frontmatter.js` + `src/frontmatter-schema.js` — YAML frontmatter 파서와 JSON Schema 기반 필수 필드/enum 검증.
 - `src/detector.js` — package.json 신호로 project type 추론.
@@ -68,7 +68,8 @@ contains_sensitive_info: false
 - `src/cli.js#symbol:parseArgs` — 옵션 파싱과 명령별 허용 옵션 검증.
 - `src/commands.js#symbol:audit` — scan 함수들을 조합하는 중심 파이프라인.
 - `src/frontmatter.js#symbol:validateFrontmatter` — 필수 필드/상태/날짜 형식 검증.
-- `src/report.js` — text/json/markdown 리포트 렌더링.
+- `src/report.js` — text/json/markdown 리포트 렌더링. `--format json` 출력에 `schemaVersion`(단일 소스 `src/config.js#JSON_SCHEMA_VERSION`)을 부가한다.
+- `src/index.js#symbol:commands` — CLI `COMMANDS`를 1:1로 미러링하는 프로그래매틱 API 표면.
 
 ## Open Questions
 
@@ -77,3 +78,4 @@ contains_sensitive_info: false
 ## Review Notes
 
 - 2026-07-14에 1.3.0 명령 표면과 소스 구조를 기준으로 재검토했다.
+- 2026-07-14에 1.5 프로그래매틱 API 모듈(`src/index.js`)과 `--format json`의 `schemaVersion` 부가를 반영했다. LLM 편집으로 `needs_review`로 강등되었으며 사람 재검토가 필요하다.

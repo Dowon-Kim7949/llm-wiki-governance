@@ -14,6 +14,14 @@ export const REQUIRED_FRONTMATTER_FIELDS = [
   "contains_sensitive_info"
 ];
 
+// Single source of truth for the `--format json` output contract version. It is
+// injected as a top-level `schemaVersion` field into every JSON report (and is
+// re-exported as `SCHEMA_VERSION` from the programmatic API, src/index.js) so
+// wrappers can pin the shape. Bump this integer only on a BREAKING change to the
+// JSON output shape (field removals/renames/type changes); additive fields do
+// not require a bump. This is independent of the package/CLI version.
+export const JSON_SCHEMA_VERSION = 1;
+
 // Single source of truth for the wiki_block_version stamped by the current CLI.
 // Documents generated or migrated by this CLI carry this value; the migration
 // engine compares each document's recorded block version against it to report

@@ -2,6 +2,14 @@ import path from "node:path";
 import { mkdir } from "node:fs/promises";
 import { writeUtf8 } from "./encoding.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
+import { JSON_SCHEMA_VERSION } from "./config.js";
+
+// Stamp the JSON output contract version onto a serialized report. Additive:
+// `schemaVersion` leads the object so wrappers can read it first, then all
+// existing fields follow unchanged. Only applied on the `--format json` path.
+function withSchemaVersion(result) {
+  return { schemaVersion: JSON_SCHEMA_VERSION, ...result };
+}
 
 export function renderTextReport(title, sections) {
   const lines = [`# ${title}`, ""];
@@ -23,7 +31,7 @@ export function renderTextReport(title, sections) {
 
 export async function printResult(result, options) {
   if (options.format === "json") {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(withSchemaVersion(result), null, 2));
   } else if (options.format === "markdown") {
     console.log(renderOutputFile(result, options).trimEnd());
   } else if (options.format === "html") {
@@ -50,7 +58,7 @@ export async function writeReport(outPath, result, options) {
 
 export function renderOutputFile(result, options) {
   if (options.format === "json" || options.out?.endsWith(".json")) {
-    return `${JSON.stringify(redactRuntimeText(result), null, 2)}\n`;
+    return `${JSON.stringify(withSchemaVersion(redactRuntimeText(result)), null, 2)}\n`;
   }
 
   if (result.command === "release-notes" && typeof result.document === "string") {
