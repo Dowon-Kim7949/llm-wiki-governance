@@ -2038,6 +2038,15 @@ async function collectWikiGraph(cwd) {
   const docsByPath = new Map(docs.map((doc) => [doc.path, doc]));
   const findings = [];
   const links = [];
+  const edges = [];
+  const edgeSeen = new Set();
+  const addEdge = (source, target, kind) => {
+    if (!target || source === target) return;
+    const key = `${source} ${target}`;
+    if (edgeSeen.has(key)) return;
+    edgeSeen.add(key);
+    edges.push({ source, target, kind });
+  };
   const connectedPaths = new Set();
   const unresolvedByTarget = new Map();
 
@@ -2062,6 +2071,7 @@ async function collectWikiGraph(cwd) {
       sourceDoc?.links.push(link);
 
       if (targetDoc) {
+        addEdge(rel, targetDoc.path, "wiki");
         const inboundDoc = docsByPath.get(targetDoc.path);
         if (inboundDoc && inboundDoc.path !== rel) {
           inboundDoc.inboundCount += 1;
@@ -2087,13 +2097,19 @@ async function collectWikiGraph(cwd) {
     for (const relatedEntry of relatedEntries) {
       if (typeof relatedEntry !== "string") continue;
       const targetPath = toPosix(relatedEntry.trim().replace(/^\.\//, "").replace(/^\/+/, ""));
-      if (targetPath && targetPath !== rel && docsByPath.has(targetPath)) connectedPaths.add(targetPath);
+      if (targetPath && targetPath !== rel && docsByPath.has(targetPath)) {
+        connectedPaths.add(targetPath);
+        addEdge(rel, targetPath, "related");
+      }
     }
     for (const rawLink of extractMarkdownLinkTargets(content)) {
       const link = normalizeMarkdownLinkTarget(rawLink);
       if (!link || isSkippedMarkdownLink(link)) continue;
       const targetPath = toPosix(path.relative(cwd, resolveMarkdownLinkTarget(cwd, file, link)));
-      if (targetPath && targetPath !== rel && docsByPath.has(targetPath)) connectedPaths.add(targetPath);
+      if (targetPath && targetPath !== rel && docsByPath.has(targetPath)) {
+        connectedPaths.add(targetPath);
+        addEdge(rel, targetPath, "markdown");
+      }
     }
   }
 
@@ -2106,10 +2122,12 @@ async function collectWikiGraph(cwd) {
     .map((doc) => doc.path)
     .sort();
   const unresolvedConcepts = [...unresolvedByTarget.values()].sort((left, right) => left.target.localeCompare(right.target));
+  edges.sort((left, right) => left.source.localeCompare(right.source) || left.target.localeCompare(right.target));
 
   return {
     summary: {
       documents: docs.length,
+      edges: edges.length,
       wikiLinks: links.length,
       resolvedWikiLinks: links.filter((link) => link.resolved).length,
       unresolvedWikiLinks: unresolvedConcepts.length,
@@ -2118,6 +2136,7 @@ async function collectWikiGraph(cwd) {
     },
     documents: docs,
     links,
+    edges,
     unresolvedConcepts,
     aliases: aliasEntries,
     orphanDocuments,
@@ -2251,6 +2270,7 @@ function emptyWikiGraph() {
   return {
     summary: {
       documents: 0,
+      edges: 0,
       wikiLinks: 0,
       resolvedWikiLinks: 0,
       unresolvedWikiLinks: 0,
@@ -2259,11 +2279,91 @@ function emptyWikiGraph() {
     },
     documents: [],
     links: [],
+    edges: [],
     unresolvedConcepts: [],
     aliases: [],
     orphanDocuments: [],
     findings: []
   };
+}
+
+// ---- graph command (knowledge graph as text/json/mermaid/dot) -----------
+// Read-only. Emits the wiki knowledge graph (documents + resolved doc→doc edges
+// from wiki/related/markdown links) built by collectWikiGraph. `--format` for
+// graph accepts text|json|mermaid|dot (mermaid/dot are graph-only tokens).
+export async function graphCommand(options) {
+  const graph = await collectWikiGraph(options.cwd);
+  const format = options.format;
+
+  const summaryLines = [
+    `documents: ${graph.summary.documents}`,
+    `edges: ${graph.summary.edges}`,
+    `orphan_documents: ${graph.summary.orphanDocuments}`,
+    `unresolved_wiki_links: ${graph.summary.unresolvedWikiLinks}`,
+    `aliases: ${graph.summary.aliases}`
+  ];
+  if (graph.summary.documents === 0) summaryLines.push("wiki: not initialized (run init --write first)");
+
+  const structured = {
+    summary: graph.summary,
+    documents: graph.documents.map((doc) => ({ path: doc.path, title: doc.title, aliases: doc.aliases, inboundCount: doc.inboundCount })),
+    edges: graph.edges,
+    orphanDocuments: graph.orphanDocuments,
+    unresolvedConcepts: graph.unresolvedConcepts,
+    aliases: graph.aliases
+  };
+
+  const result = withText({
+    command: "graph",
+    format,
+    graph: structured,
+    findings: []
+  }, "LLM-WIKI Graph", [
+    { title: "Summary", body: summaryLines },
+    { title: "Orphan Documents", body: graph.orphanDocuments },
+    { title: "Unresolved Wiki Links", body: graph.unresolvedConcepts.map((concept) => `${concept.target} ← ${concept.sources.join(", ")}`) }
+  ]);
+
+  if (format === "mermaid") result.text = renderGraphMermaid(graph);
+  else if (format === "dot") result.text = renderGraphDot(graph);
+
+  return result;
+}
+
+function graphNodeLabel(doc) {
+  const label = doc.title || doc.path.split("/").pop();
+  return String(label).replace(/"/g, "'");
+}
+
+// Mermaid `graph TD`, fenced so it pastes straight into GitHub/Obsidian markdown.
+function renderGraphMermaid(graph) {
+  const docs = [...graph.documents].sort((left, right) => left.path.localeCompare(right.path));
+  const ids = new Map(docs.map((doc, index) => [doc.path, `n${index}`]));
+  const lines = ["```mermaid", "graph TD"];
+  for (const doc of docs) {
+    lines.push(`  ${ids.get(doc.path)}["${graphNodeLabel(doc)}"]`);
+  }
+  for (const edge of graph.edges) {
+    if (ids.has(edge.source) && ids.has(edge.target)) {
+      lines.push(`  ${ids.get(edge.source)} --> ${ids.get(edge.target)}`);
+    }
+  }
+  lines.push("```");
+  return lines.join("\n");
+}
+
+// Graphviz DOT digraph.
+function renderGraphDot(graph) {
+  const docs = [...graph.documents].sort((left, right) => left.path.localeCompare(right.path));
+  const lines = ["digraph LLMWiki {", "  rankdir=LR;", "  node [shape=box];"];
+  for (const doc of docs) {
+    lines.push(`  "${doc.path}" [label="${graphNodeLabel(doc)}"];`);
+  }
+  for (const edge of graph.edges) {
+    lines.push(`  "${edge.source}" -> "${edge.target}";`);
+  }
+  lines.push("}");
+  return lines.join("\n");
 }
 
 async function scanAdapters(cwd, agents) {

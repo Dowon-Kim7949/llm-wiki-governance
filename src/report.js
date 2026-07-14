@@ -57,6 +57,10 @@ export function renderOutputFile(result, options) {
     return result.document;
   }
 
+  if (result.command === "graph" && (options.format === "mermaid" || options.format === "dot")) {
+    return result.text.endsWith("\n") ? result.text : `${result.text}\n`;
+  }
+
   if (options.format === "html" || options.out?.endsWith(".html")) {
     return renderHtmlDashboard(result);
   }

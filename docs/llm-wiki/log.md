@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: llm-wiki graph 명령 (1.4 step 1)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - src/cli.js
+  - src/report.js
+  - tests/verification.test.js
+- summary:
+  - 1.4(knowledge you can see) 첫 항목: 읽기전용 `llm-wiki graph` 명령을 추가했다. `collectWikiGraph` 데이터를 graph 전용 `--format`으로 출력한다 — `text`(기본 요약), `json`(구조화 그래프), `mermaid`(GitHub/Obsidian용 fenced `graph TD`), `dot`(Graphviz digraph).
+  - `collectWikiGraph`에 `edges`를 추가했다(additive): wiki `[[links]]`·`related` frontmatter·로컬 markdown 링크가 문서→문서로 해소되는 엣지를 dedup·정렬해 수집(각 `{source,target,kind}`). summary에 `edges` 카운트, `emptyWikiGraph`에도 반영. 기존 필드 불변이라 status/audit 대시보드 영향 없음.
+  - cli.js: `graph` 명령 등록, format 검증을 명령 인지(graph만 mermaid/dot 허용, 전역은 text/json/markdown/html), 옵션 규칙(cwd/format/out)·usage·per-command help 추가. report.js: `graph --out`(mermaid/dot)은 raw 텍스트로 기록.
+  - 테스트 추가(text/json/mermaid/dot 출력·related 엣지 반영·미초기화 0 문서·parseArgs mermaid/dot 수용). 전체 145 pass. 이 저장소에서 graph text(21 docs/54 edges/9 orphans)·mermaid·dot·json 확인, html은 graph에서 거부(exit 3).
+- caveats:
+  - graph는 읽기전용(쓰기 없음, findings 없음 → exit 0). 로드맵 1.4의 첫 항목. 다음: stats → publishing → release: prepare 1.4.0(보류 중인 Gate 10 도메인 탐지 번들).
+  - push/tag/배포는 사용자 지시 시에만. 현재 로컬 main 커밋(미푸시).
+
 ## 2026-07-14 - feat: 파일+디렉터리 통합 도메인 탐지 (Gate 10, 1.4 이전 선행)
 
 - status: needs_review

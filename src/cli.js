@@ -1,5 +1,5 @@
 import path from "node:path";
-import { audit, doctor, driftCommand, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, doctor, driftCommand, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 
@@ -18,10 +18,12 @@ const COMMANDS = new Map([
   ["migrate", migrateCommand],
   ["fix", fixCommand],
   ["drift", driftCommand],
+  ["graph", graphCommand],
   ["release-notes", releaseNotesCommand]
 ]);
 
 const SUPPORTED_FORMATS = new Set(["text", "json", "markdown", "html"]);
+const GRAPH_FORMATS = new Set(["text", "json", "mermaid", "dot"]);
 const SUPPORTED_AGENTS = new Set(["codex", "claude", "cursor", "copilot", "windsurf", "gemini", "jetbrains", "antigravity", "all"]);
 const SUPPORTED_EXISTING_POLICIES = new Set(["skip", "overwrite"]);
 const ALL_AGENTS = ["codex", "claude", "antigravity"];
@@ -46,9 +48,12 @@ export async function main(argv) {
     return;
   }
 
-  if (!SUPPORTED_FORMATS.has(options.format)) {
+  const allowedFormats = command === "graph" ? GRAPH_FORMATS : SUPPORTED_FORMATS;
+  if (!allowedFormats.has(options.format)) {
     console.error(`Unsupported format: ${options.format}`);
-    console.error("Supported formats: text, json, markdown, html");
+    console.error(command === "graph"
+      ? "Supported formats for graph: text, json, mermaid, dot"
+      : "Supported formats: text, json, markdown, html");
     process.exitCode = 3;
     return;
   }
@@ -246,6 +251,7 @@ const COMMAND_OPTION_RULES = {
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
   drift: new Set(["cwd", "dry-run", "downgrade", "format", "out"]),
+  graph: new Set(["cwd", "format", "out"]),
   "release-notes": new Set(["cwd", "version", "since", "format", "out"])
 };
 
@@ -331,6 +337,7 @@ Usage:
   llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki graph [--format text|json|mermaid|dot] [--cwd <path>] [--out <path>]
   llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Safety:
@@ -340,6 +347,7 @@ Safety:
   migrate previews by default and writes only with --apply, reusing the fix scope plus wiki_block_version upgrades; it never edits verified documents' content.
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
   drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated). It never promotes to verified.
+  graph is read-only: it emits the wiki knowledge graph (documents + resolved doc-to-doc links) as text, JSON, Mermaid, or Graphviz DOT.
   Adapter checks and suggestions are opt-in with --agent. ANTIGRAVITY.md remains an info-level candidate.
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
   next is advisory: it reuses audit coverage and recommends follow-up actions without writing files.
@@ -512,6 +520,22 @@ Scope (see GATE_REVIEW.md "Drift Downgrade Scope Decision", Gate 9):
   - Never promotes to verified, never edits body/reviewed_at/source_files/evidence
     or any other field, and never writes outside docs/llm-wiki. Mojibake and
     sensitive-looking results are skipped. Idempotent.
+`,
+  graph: `llm-wiki graph
+
+Usage:
+  llm-wiki graph [--format text|json|mermaid|dot] [--cwd <path>] [--out <path>]
+
+Purpose:
+  Read-only. Emits the wiki knowledge graph — documents plus resolved
+  document-to-document links (wiki [[links]], related frontmatter, and local
+  markdown links) — for visualization and export.
+
+Formats:
+  - text (default): a summary (documents, edges, orphans, unresolved links).
+  - json: the structured graph (documents, edges, orphanDocuments, aliases).
+  - mermaid: a fenced Mermaid graph TD block for GitHub/Obsidian.
+  - dot: a Graphviz digraph for dot/other renderers.
 `,
   "release-notes": `llm-wiki release-notes
 

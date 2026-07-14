@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard } from "../src/report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
@@ -1555,6 +1555,43 @@ test("parseArgs supports drift downgrade and rejects dry-run+downgrade", () => {
 
   const bad = parseArgs(["drift", "--dry-run", "--downgrade"]);
   assert.ok(bad.errors.some((message) => message.includes("cannot be used together")));
+});
+
+test("graph command emits the knowledge graph in text/json/mermaid/dot", async () => {
+  const cwd = await makeProject("graph-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Entry point.");
+  await writeWikiDocWithRelated(cwd, "a.md", "Doc A", "Connected doc.", ["docs/llm-wiki/index.md"]);
+
+  const text = await graphCommand({ cwd, format: "text" });
+  assert.equal(text.command, "graph");
+  assert.ok(text.graph.summary.documents >= 2);
+  assert.ok(text.graph.edges.some((edge) => edge.source === "docs/llm-wiki/a.md" && edge.target === "docs/llm-wiki/index.md"));
+  assert.ok(text.text.includes("documents:"));
+
+  const json = await graphCommand({ cwd, format: "json" });
+  assert.ok(Array.isArray(json.graph.documents) && Array.isArray(json.graph.edges));
+
+  const mermaid = await graphCommand({ cwd, format: "mermaid" });
+  assert.ok(mermaid.text.startsWith("```mermaid"));
+  assert.ok(mermaid.text.includes("graph TD") && mermaid.text.includes("-->"));
+
+  const dot = await graphCommand({ cwd, format: "dot" });
+  assert.ok(dot.text.startsWith("digraph LLMWiki") && dot.text.includes("->"));
+});
+
+test("graph command on an uninitialized wiki reports zero documents", async () => {
+  const cwd = await makeProject("graph-empty-");
+  const result = await graphCommand({ cwd, format: "text" });
+  assert.equal(result.graph.summary.documents, 0);
+  assert.ok(result.text.includes("not initialized"));
+});
+
+test("parseArgs accepts graph mermaid/dot formats", () => {
+  const mermaid = parseArgs(["graph", "--format", "mermaid"]);
+  assert.equal(mermaid.command, "graph");
+  assert.equal(mermaid.options.format, "mermaid");
+  assert.deepEqual(mermaid.errors, []);
+  assert.deepEqual(parseArgs(["graph", "--format", "dot"]).errors, []);
 });
 
 test("validate --changed reports findings only for changed documents", async (t) => {
