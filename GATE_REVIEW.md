@@ -41,6 +41,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 6 Autofix (`--fix`) Scope Approval | `accepted_for_0.1.8` | Ship a scoped `llm-wiki fix` command (default preview, `--write` applies) limited to the safe remediations in "Autofix (`--fix`) Scope Decision" below. Content-bearing fixes never touch `verified` documents, and nothing outside `docs/llm-wiki/` is written. |
 | Gate 7 1.0.0 Stability Approval | `accepted_for_1.0.0` | Promote the `0.1.8` contract to a stable `1.0.0` with no functional command changes. Declare the CLI command/option surface, `--format json` output shape, and required frontmatter contract stable; breaking changes to these now require a major version bump. See "1.0.0 Stability Milestone" below. |
 | Gate 8 Migration Apply Scope Approval | `accepted_for_1.2.0` | Unblock `migrate --apply` for the `1.2.0` line under a pre-decided, preview-first, `verified`-preserving scope that reuses the accepted `fix` engine (Gate 6) plus `wiki_block_version` stamping. Revisits Gate 4's block for the `1.x` line. Accepted by WoongHwan-Kim on 2026-07-14; the rename map ships empty (`v1` is the only block version). See "Migration Apply Scope Decision" below. |
+| Gate 9 Drift Downgrade Scope Approval | `accepted_for_1.2.0` | Add an opt-in `llm-wiki drift` command: report-only by default, `--downgrade` flips drifted `verified` documents to `needs_review` and refreshes `last_updated`, nothing else. It never promotes to `verified` and never edits other content. Accepted by WoongHwan-Kim on 2026-07-14. See "Drift Downgrade Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -191,6 +192,50 @@ Identical to the `fix` refusals:
   matches the current contract without review.
 - UTF-8 throughout; edits are minimal targeted insertions that reuse the `fix` engine's
   split/insert helpers (no frontmatter re-serialization).
+
+## Drift Downgrade Scope Decision (accepted for 1.2.0)
+
+Accepted for the `1.2.0` line (WoongHwan-Kim, 2026-07-14). `fix` (Gate 6) and
+`migrate` (Gate 8) both refuse to change document `status`, so the opt-in
+`verified → needs_review` auto-downgrade on drift gets its own isolated command.
+Downgrading is safe in a way promotion is not: it moves a document toward
+`needs_review` (more review, never less), so it never asserts verification a
+human did not give. Promotion to `verified` stays human-only in every command.
+
+### Command surface
+
+- `llm-wiki drift` / `drift --dry-run` — report only. Lists the `evidence.stale`
+  drift for `verified` documents (line/symbol aware) and what `--downgrade` would
+  change. Writes nothing.
+- `llm-wiki drift --downgrade` — opt-in write. For each `verified` document that
+  has drifted, sets `status: verified` → `needs_review` and refreshes
+  `last_updated`. Preview-first: `--dry-run` and `--downgrade` cannot be combined.
+
+### May change (only under `docs/llm-wiki/`, only on drifted `verified` documents)
+
+| Finding | Drift action |
+| --- | --- |
+| `evidence.stale` on a `verified` document | Set `status` to `needs_review` and refresh `last_updated` to today. |
+
+### Must not change (reported only, never auto-applied)
+
+- Documents without an `evidence.stale` finding — untouched.
+- Non-`verified` documents — nothing to downgrade.
+- Any content beyond the `status` line and `last_updated`: body, `reviewed_at`,
+  `reviewed_by`, `source_files`, `evidence`, and every other field are left as-is.
+- Promotion to `verified` — never, in any command.
+- Anything outside `docs/llm-wiki/`, plus `log.md` and adapter files.
+- Files with mojibake indicators, and any result matching sensitive-info rules
+  (blocked), mirroring `fix`.
+
+### Guarantees
+
+- Idempotent: a second `drift --downgrade` finds nothing to downgrade, because the
+  first run already moved the drifted documents to `needs_review`.
+- Downgraded documents become `needs_review`, consistent with the rule that CLI- or
+  agent-authored edits stay `needs_review` until a human re-verifies.
+- UTF-8 throughout; edits are minimal targeted scalar replacements that reuse the
+  `fix` engine's split/replace helpers (no frontmatter re-serialization).
 
 ## Release Caveats
 

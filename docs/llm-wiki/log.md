@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: drift 명령 + opt-in 강등 (1.2 step 3b, Gate 9)
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 표면 승인)
+- scope: code, test, docs, gate
+- changed:
+  - GATE_REVIEW.md
+  - src/commands.js
+  - src/cli.js
+  - tests/verification.test.js
+- summary:
+  - Gate 9(Drift Downgrade Scope)를 `accepted_for_1.2.0`으로 작성하고, 새 `llm-wiki drift` 명령을 구현했다. 사용자가 "새 drift 명령" 표면을 선택했다(fix·migrate가 status를 못 만지므로 강등은 격리된 전용 표면이 필요).
+  - `drift`(기본/`--dry-run`)는 verified 문서의 `evidence.stale` 드리프트를 리포트만 한다(라인/심볼 인지, 3a 재사용). `drift --downgrade`는 드리프트된 verified 문서만 `status: verified → needs_review`로 바꾸고 `last_updated`를 갱신한다 — 그 외 필드/본문/reviewed_at은 불변, verified 승격은 절대 안 함. preview-first(`--dry-run`↔`--downgrade` 배타), 멱등, mojibake/민감정보 스킵.
+  - CLI에 `drift` 명령·`--downgrade` 옵션·옵션 규칙·배타쌍·usage/help/per-command help를 추가했다. `fix` 엔진의 splitFrontmatter/replaceFrontmatterScalar 헬퍼를 재사용한다.
+  - 테스트 추가: 리포트 미기록·downgrade 강등·멱등·미초기화 pass·parseArgs(--downgrade, dry-run+downgrade 거부). 전체 122 pass. CLI 스모크(help·배타 exit 3·레포 read-only 리포트 13건)와 temp end-to-end로 확인.
+- caveats:
+  - drift는 advisory다: `findings`에는 sensitive 블록만 담고 evidence.stale은 `driftFindings`로 분리해 exit code에 영향 주지 않는다. CI 게이트가 필요하면 기존대로 `validate --strict`(evidence.stale를 warning으로)를 쓴다.
+  - 로드맵 1.2 item 3의 강등 절반이다(granularity는 3a). 이로써 1.2의 3개 헤드라인 항목이 모두 구현됐다: 업그레이드 리포트 · migrate --apply · (드리프트 granularity + opt-in 강등).
+  - 버전 bump·CHANGELOG·README·ROADMAP 반영은 1.2 릴리스 준비 시점에 한다.
+
 ## 2026-07-14 - feat: evidence.stale 라인 단위 granularity (1.2 step 3a, 읽기전용)
 
 - status: needs_review

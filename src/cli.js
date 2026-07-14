@@ -1,5 +1,5 @@
 import path from "node:path";
-import { audit, doctor, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, doctor, driftCommand, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 
@@ -17,6 +17,7 @@ const COMMANDS = new Map([
   ["init", initCommand],
   ["migrate", migrateCommand],
   ["fix", fixCommand],
+  ["drift", driftCommand],
   ["release-notes", releaseNotesCommand]
 ]);
 
@@ -99,6 +100,7 @@ export function parseArgs(argv) {
     dryRun: false,
     write: false,
     apply: false,
+    downgrade: false,
     strict: false,
     minimal: false,
     withAdapters: false,
@@ -189,6 +191,9 @@ export function parseArgs(argv) {
     } else if (arg === "--apply") {
       usedOptions.add("apply");
       options.apply = true;
+    } else if (arg === "--downgrade") {
+      usedOptions.add("downgrade");
+      options.downgrade = true;
     } else if (arg === "--strict") {
       usedOptions.add("strict");
       options.strict = true;
@@ -240,6 +245,7 @@ const COMMAND_OPTION_RULES = {
   init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "dry-run", "write", "format", "out", "with-adapters", "no-adapters"]),
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
+  drift: new Set(["cwd", "dry-run", "downgrade", "format", "out"]),
   "release-notes": new Set(["cwd", "version", "since", "format", "out"])
 };
 
@@ -255,7 +261,7 @@ function validateCommandOptions(command, usedOptions, errors) {
     }
   }
 
-  for (const [left, right] of [["dry-run", "write"], ["dry-run", "apply"], ["write", "apply"]]) {
+  for (const [left, right] of [["dry-run", "write"], ["dry-run", "apply"], ["write", "apply"], ["dry-run", "downgrade"]]) {
     if (usedOptions.has(left) && usedOptions.has(right)) {
       errors.push(`Options --${left} and --${right} cannot be used together.`);
     }
@@ -324,6 +330,7 @@ Usage:
   llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Safety:
@@ -332,6 +339,7 @@ Safety:
   Existing adapter files are never overwritten.
   migrate previews by default and writes only with --apply, reusing the fix scope plus wiki_block_version upgrades; it never edits verified documents' content.
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
+  drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated). It never promotes to verified.
   Adapter checks and suggestions are opt-in with --agent. ANTIGRAVITY.md remains an info-level candidate.
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
   next is advisory: it reuses audit coverage and recommends follow-up actions without writing files.
@@ -486,6 +494,24 @@ Scope (see GATE_REVIEW.md "Autofix (--fix) Scope Decision"):
   - Refreshes last_updated only on documents it actually modifies.
 
   It never edits verified documents' content, never invents title/doc_type/project/author or source_files/evidence values, never enriches placeholder content, and never writes outside docs/llm-wiki. Mojibake and sensitive-looking results are skipped.
+`,
+  drift: `llm-wiki drift
+
+Usage:
+  llm-wiki drift [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki drift --downgrade [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Reports evidence.stale drift on verified documents (line/symbol aware). Without
+  --downgrade it only reports; --downgrade flips drifted verified documents to
+  needs_review.
+
+Scope (see GATE_REVIEW.md "Drift Downgrade Scope Decision", Gate 9):
+  - Changes only status (verified -> needs_review) and last_updated, only on
+    verified documents that have drifted.
+  - Never promotes to verified, never edits body/reviewed_at/source_files/evidence
+    or any other field, and never writes outside docs/llm-wiki. Mojibake and
+    sensitive-looking results are skipped. Idempotent.
 `,
   "release-notes": `llm-wiki release-notes
 

@@ -1108,6 +1108,123 @@ export async function fixCommand(options) {
   ]);
 }
 
+// ---- drift command (opt-in verified -> needs_review downgrade) ---------
+// The accepted scope is recorded in GATE_REVIEW.md ("Drift Downgrade Scope
+// Decision", Gate 9). drift reports evidence.stale drift on verified documents
+// and, with --downgrade, flips only those documents to needs_review (status +
+// last_updated). It never promotes to verified and never edits other content.
+export async function driftCommand(options) {
+  const downgrade = options.downgrade === true;
+  const cwd = options.cwd;
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+
+  if (!(await pathExists(wikiRoot))) {
+    return withText({
+      command: "drift",
+      downgrade,
+      dryRun: !downgrade,
+      result: "pass",
+      driftFindings: [],
+      applied: [],
+      planned: [],
+      skipped: [],
+      findings: []
+    }, "LLM-WIKI Drift", [
+      { title: "Summary", body: [`mode: ${downgrade ? "downgrade" : "report"}`, "wiki: not initialized"] },
+      { title: "Caveats", body: ["docs/llm-wiki is not initialized; run init --write first. Nothing to check."] }
+    ]);
+  }
+
+  const driftFindings = await scanEvidenceDrift(cwd);
+  const driftedDocs = [];
+  const seen = new Set();
+  for (const finding of driftFindings) {
+    if (finding.rule !== "evidence.stale" || seen.has(finding.path)) continue;
+    seen.add(finding.path);
+    driftedDocs.push(finding.path);
+  }
+
+  const applied = [];
+  const planned = [];
+  const skipped = [];
+  const blockedFindings = [];
+  const changeList = downgrade ? applied : planned;
+
+  for (const rel of driftedDocs) {
+    const abs = path.join(cwd, rel);
+    const original = await readUtf8(abs);
+
+    if (findMojibakeIndicators(original).length > 0) {
+      skipped.push(`${rel}: possible mojibake; downgrade skipped.`);
+      continue;
+    }
+
+    const split = splitFrontmatter(original);
+    if (!split) {
+      skipped.push(`${rel}: could not locate frontmatter block; skipped.`);
+      continue;
+    }
+
+    let inner = replaceFrontmatterScalar(split.inner, "status", "needs_review");
+    if (!inner || inner === split.inner) {
+      skipped.push(`${rel}: could not rewrite status to needs_review; skipped.`);
+      continue;
+    }
+    const refreshed = replaceFrontmatterScalar(inner, "last_updated", todayIsoDate());
+    if (refreshed) inner = refreshed;
+
+    const newContent = `${split.bom}${split.open}${inner}${split.close}${split.body}`;
+    if (newContent === original) continue;
+
+    if (scanSensitiveInfo(newContent).length > 0) {
+      blockedFindings.push({
+        severity: "blocked",
+        rule: "sensitive.redacted",
+        path: rel,
+        message: "Downgrade skipped: resulting content matched sensitive-info rules."
+      });
+      continue;
+    }
+
+    if (downgrade) {
+      await writeUtf8(abs, newContent);
+    }
+    changeList.push(`${rel}: downgrade verified → needs_review; refresh last_updated.`);
+  }
+
+  const result = blockedFindings.some((finding) => finding.severity === "blocked") ? "blocked" : "pass";
+  const summary = [
+    `mode: ${downgrade ? "downgrade" : "report"}`,
+    `drifted_verified_docs: ${driftedDocs.length}`,
+    `${downgrade ? "downgraded" : "would_downgrade"}: ${changeList.length}`,
+    `skipped: ${skipped.length}`,
+    `blocked: ${blockedFindings.length}`
+  ];
+
+  return withText({
+    command: "drift",
+    downgrade,
+    dryRun: !downgrade,
+    result,
+    driftFindings,
+    applied,
+    planned,
+    skipped,
+    findings: blockedFindings
+  }, "LLM-WIKI Drift", [
+    { title: "Summary", body: summary },
+    { title: "Drift (evidence.stale)", body: driftFindings.map(formatFinding) },
+    { title: downgrade ? "Downgraded" : "Would Downgrade", body: changeList },
+    { title: "Skipped", body: skipped },
+    { title: "Blocked", body: blockedFindings.map(formatFinding) },
+    { title: "Caveats", body: [
+      downgrade
+        ? "Downgraded drifted verified documents to needs_review (status + last_updated only). Re-review and re-verify after updating; nothing else was changed."
+        : "Report only; no files were written. Run drift --downgrade to flip drifted verified documents to needs_review."
+    ] }
+  ]);
+}
+
 function splitFrontmatter(content) {
   const bom = content.charCodeAt(0) === 0xfeff ? content[0] : "";
   const rest = content.slice(bom.length);

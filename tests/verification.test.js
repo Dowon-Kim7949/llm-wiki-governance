@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, doctor, driftTargets, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, doctor, driftCommand, driftTargets, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard } from "../src/report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
@@ -1222,6 +1222,67 @@ test("evidence drift narrows to cited lines for line-only evidence", async (t) =
   assert.ok(!stale.some((finding) => finding.path.includes("cites-line4.md")));
 });
 
+test("drift --downgrade flips drifted verified docs to needs_review", async (t) => {
+  let hasGit = true;
+  try {
+    execFileSync("git", ["--version"], { stdio: "ignore" });
+  } catch {
+    hasGit = false;
+  }
+  if (!hasGit) {
+    t.skip("git not available");
+    return;
+  }
+
+  const cwd = await makeProject("drift-cmd-");
+  gitAtDate(cwd, "2026-07-10T10:00:00")(["init"]);
+  await writeFile(path.join(cwd, "a.ts"), "one\ntwo\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "drift" }, null, 2)}\n`, { encoding: "utf8" });
+  gitAtDate(cwd, "2026-07-10T10:00:00")(["add", "."]);
+  gitAtDate(cwd, "2026-07-10T10:00:00")(["-c", "commit.gpgsign=false", "commit", "-m", "init"]);
+  await writeFile(path.join(cwd, "a.ts"), "one\ntwo-changed\n", { encoding: "utf8" });
+  gitAtDate(cwd, "2026-07-12T10:00:00")(["add", "a.ts"]);
+  gitAtDate(cwd, "2026-07-12T10:00:00")(["-c", "commit.gpgsign=false", "commit", "-m", "edit"]);
+
+  await writeVerifiedSourceDoc(cwd, "api.md", "a.ts", "2026-07-11");
+
+  // Report mode: finds drift, writes nothing.
+  const report = await driftCommand({ cwd, downgrade: false, format: "text" });
+  assert.equal(report.dryRun, true);
+  assert.ok(report.driftFindings.some((finding) => finding.path.includes("api.md")));
+  assert.ok(report.planned.some((line) => line.includes("api.md")));
+  const before = await readFile(path.join(cwd, "docs", "llm-wiki", "api.md"), "utf8");
+  assert.ok(before.includes("status: verified"));
+
+  // Downgrade mode: flips status to needs_review.
+  const down = await driftCommand({ cwd, downgrade: true, format: "text" });
+  assert.ok(down.applied.some((line) => line.includes("api.md")));
+  const after = await readFile(path.join(cwd, "docs", "llm-wiki", "api.md"), "utf8");
+  assert.ok(after.includes("status: needs_review"));
+  assert.ok(!after.includes("status: verified"));
+
+  // Idempotent: nothing left to downgrade.
+  const again = await driftCommand({ cwd, downgrade: true, format: "text" });
+  assert.equal(again.applied.length, 0);
+});
+
+test("drift on an uninitialized wiki passes with nothing to do", async () => {
+  const cwd = await makeProject("drift-empty-");
+  const result = await driftCommand({ cwd, downgrade: false, format: "text" });
+  assert.equal(result.result, "pass");
+  assert.equal(result.driftFindings.length, 0);
+});
+
+test("parseArgs supports drift downgrade and rejects dry-run+downgrade", () => {
+  const ok = parseArgs(["drift", "--downgrade"]);
+  assert.equal(ok.command, "drift");
+  assert.equal(ok.options.downgrade, true);
+  assert.deepEqual(ok.errors, []);
+
+  const bad = parseArgs(["drift", "--dry-run", "--downgrade"]);
+  assert.ok(bad.errors.some((message) => message.includes("cannot be used together")));
+});
+
 test("validate --changed reports findings only for changed documents", async (t) => {
   let hasGit = true;
   try {
@@ -2177,6 +2238,40 @@ async function writeOkfWikiDoc(cwd, filename, title, okfType, body, aliases) {
     frontmatter(title, body).replace("doc_type: wiki_index", `doc_type: wiki_index\ntype: ${okfType}`).replace("visibility: internal", `${aliasesBlock}visibility: internal`),
     { encoding: "utf8" }
   );
+}
+
+async function writeVerifiedSourceDoc(cwd, filename, sourceFile, reviewedAt) {
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  const targetPath = path.join(wikiRoot, filename);
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await writeFile(targetPath, `---
+title: Verified Source Doc
+tags:
+  - llm-wiki
+status: verified
+doc_type: wiki_index
+project: fixture
+last_updated: ${reviewedAt}
+reviewed_at: ${reviewedAt}
+author: test
+last_edited_by: node-test
+wiki_block_version: v1
+source_files:
+  - ${sourceFile}
+related:
+  - docs/llm-wiki/log.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# Verified Source Doc
+
+Backed by ${sourceFile}.
+
+## Evidence
+
+- ${sourceFile}
+`, { encoding: "utf8" });
 }
 
 async function writeVerifiedLineEvidenceDoc(cwd, filename, evidenceRef, reviewedAt) {
