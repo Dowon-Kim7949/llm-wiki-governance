@@ -1,5 +1,5 @@
 import path from "node:path";
-import { audit, doctor, driftCommand, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, doctor, driftCommand, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 
@@ -19,6 +19,7 @@ const COMMANDS = new Map([
   ["fix", fixCommand],
   ["drift", driftCommand],
   ["graph", graphCommand],
+  ["stats", statsCommand],
   ["release-notes", releaseNotesCommand]
 ]);
 
@@ -252,6 +253,7 @@ const COMMAND_OPTION_RULES = {
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
   drift: new Set(["cwd", "dry-run", "downgrade", "format", "out"]),
   graph: new Set(["cwd", "format", "out"]),
+  stats: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
   "release-notes": new Set(["cwd", "version", "since", "format", "out"])
 };
 
@@ -338,6 +340,7 @@ Usage:
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki graph [--format text|json|mermaid|dot] [--cwd <path>] [--out <path>]
+  llm-wiki stats [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Safety:
@@ -348,6 +351,7 @@ Safety:
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
   drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated). It never promotes to verified.
   graph is read-only: it emits the wiki knowledge graph (documents + resolved doc-to-doc links) as text, JSON, Mermaid, or Graphviz DOT.
+  stats is read-only: it reports a wiki health snapshot (verified %, enrichment %, evidence coverage, staleness, orphans).
   Adapter checks and suggestions are opt-in with --agent. ANTIGRAVITY.md remains an info-level candidate.
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
   next is advisory: it reuses audit coverage and recommends follow-up actions without writing files.
@@ -536,6 +540,16 @@ Formats:
   - json: the structured graph (documents, edges, orphanDocuments, aliases).
   - mermaid: a fenced Mermaid graph TD block for GitHub/Obsidian.
   - dot: a Graphviz digraph for dot/other renderers.
+`,
+  stats: `llm-wiki stats
+
+Usage:
+  llm-wiki stats [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--strict] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Read-only wiki health snapshot: total documents, a health score (the mean of
+  verified %, enrichment %, and evidence coverage %), the document status mix,
+  and stale-verified / orphan document counts. Reuses audit coverage.
 `,
   "release-notes": `llm-wiki release-notes
 

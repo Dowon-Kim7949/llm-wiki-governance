@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard } from "../src/report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
@@ -1592,6 +1592,31 @@ test("parseArgs accepts graph mermaid/dot formats", () => {
   assert.equal(mermaid.options.format, "mermaid");
   assert.deepEqual(mermaid.errors, []);
   assert.deepEqual(parseArgs(["graph", "--format", "dot"]).errors, []);
+});
+
+test("stats command reports a wiki health snapshot", async () => {
+  const cwd = await makeProject("stats-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Real content.");
+  await writeWikiDocAt(cwd, "a.md", "Doc A", "Verified content.", (text) => text.replace("status: needs_review", "status: verified"));
+
+  const result = await statsCommand({ cwd, type: null, profiles: [], agents: [], format: "text", strict: false });
+
+  assert.equal(result.command, "stats");
+  assert.equal(result.stats.documents, 2);
+  assert.equal(result.stats.status.verified, 1);
+  assert.equal(result.stats.status.needs_review, 1);
+  assert.equal(result.stats.verifiedPct, 50);
+  assert.equal(result.stats.evidenceBacked, 2);
+  assert.ok(result.stats.healthScore >= 0 && result.stats.healthScore <= 100);
+  assert.ok(result.text.includes("health_score:"));
+});
+
+test("stats on an uninitialized wiki reports zero documents", async () => {
+  const cwd = await makeProject("stats-empty-");
+  const result = await statsCommand({ cwd, type: null, profiles: [], agents: [], format: "text", strict: false });
+  assert.equal(result.stats.documents, 0);
+  assert.equal(result.stats.healthScore, 0);
+  assert.ok(result.text.includes("not initialized"));
 });
 
 test("validate --changed reports findings only for changed documents", async (t) => {

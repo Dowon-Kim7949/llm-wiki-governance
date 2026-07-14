@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: llm-wiki stats 명령 (1.4 step 2)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - src/cli.js
+  - tests/verification.test.js
+- summary:
+  - 1.4 두 번째 항목: 읽기전용 `llm-wiki stats`(wiki 헬스 스냅샷)를 추가했다. 문서 1회 순회로 status 분포·evidence coverage(source_files/evidence 인용 문서 수)를 집계하고, `audit`를 재사용해 not_enriched(→ enriched%)·evidence.stale(stale_verified)·orphan(wikiGraph)을 얻는다.
+  - 헬스 스코어 = verified%·enriched%·evidence_coverage%의 평균(0–100). text/json/markdown/html 지원. cli.js에 명령·옵션 규칙(cwd/type/profile/agent/strict/format/out)·usage·help 추가.
+  - 테스트 추가(status 집계·verified% 50·evidence 집계·headScore 범위·미초기화 0). 전체 147 pass. 이 저장소 stats: 21 docs, health 92/100(verified 76%, enriched 100%, evidence 100%, stale 8, orphan 9).
+- caveats:
+  - 읽기전용(findings 없음 → exit 0). listTargetMarkdown 기준이라 templates 포함(validate-frontmatter와 동일 범위). stale 8은 2026-07-13 검토 문서가 2026-07-14 소스 변경을 참조하는 기존 드리프트(비회귀).
+  - 로드맵 1.4 두 번째 항목. 다음: step 3 bounded publishing → release: prepare 1.4.0. push/배포는 지시 시. 로컬 커밋(미푸시).
+
 ## 2026-07-14 - feat: llm-wiki graph 명령 (1.4 step 1)
 
 - status: needs_review

@@ -2366,6 +2366,78 @@ function renderGraphDot(graph) {
   return lines.join("\n");
 }
 
+// ---- stats command (wiki health score) ---------------------------------
+// Read-only. Aggregates a health snapshot: document status mix, verified %,
+// enrichment %, evidence coverage %, staleness, and orphans. Reuses the audit
+// findings (content.not_enriched, evidence.stale) and the wiki graph.
+export async function statsCommand(options) {
+  const cwd = options.cwd;
+  const files = await listTargetMarkdown(cwd);
+  const total = files.length;
+
+  const statusCounts = {};
+  let evidenceBacked = 0;
+  for (const file of files) {
+    const parsed = parseFrontmatter(await readUtf8(file));
+    const status = typeof parsed.frontmatter?.status === "string" ? parsed.frontmatter.status : "unknown";
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    const evidence = Array.isArray(parsed.frontmatter?.evidence) ? parsed.frontmatter.evidence.filter((item) => typeof item === "string" && item.trim()) : [];
+    const sourceFiles = Array.isArray(parsed.frontmatter?.source_files) ? parsed.frontmatter.source_files.filter((item) => typeof item === "string" && item.trim()) : [];
+    if (evidence.length > 0 || sourceFiles.length > 0) evidenceBacked += 1;
+  }
+
+  const auditResult = await audit(options);
+  const findings = auditResult.findings ?? [];
+  const uniquePathsFor = (rule) => new Set(findings.filter((finding) => finding.rule === rule).map((finding) => finding.path)).size;
+  const notEnriched = uniquePathsFor("content.not_enriched");
+  const staleVerified = uniquePathsFor("evidence.stale");
+  const orphanDocuments = auditResult.wikiGraph?.summary?.orphanDocuments ?? 0;
+
+  const verified = statusCounts.verified ?? 0;
+  const enriched = Math.max(0, total - notEnriched);
+  const pct = (value) => (total === 0 ? 0 : Math.round((value / total) * 100));
+  const verifiedPct = pct(verified);
+  const enrichedPct = pct(enriched);
+  const evidencePct = pct(evidenceBacked);
+  const healthScore = total === 0 ? 0 : Math.round((verifiedPct + enrichedPct + evidencePct) / 3);
+
+  const summaryLines = [
+    `documents: ${total}`,
+    `health_score: ${healthScore}/100`,
+    `verified: ${verified} (${verifiedPct}%)`,
+    `enriched: ${enriched} (${enrichedPct}%)`,
+    `evidence_coverage: ${evidenceBacked} (${evidencePct}%)`,
+    `stale_verified: ${staleVerified}`,
+    `orphan_documents: ${orphanDocuments}`
+  ];
+  if (total === 0) summaryLines.push("wiki: not initialized (run init --write first)");
+  const statusLines = Object.keys(statusCounts).sort().map((status) => `${status}: ${statusCounts[status]}`);
+
+  return withText({
+    command: "stats",
+    result: "pass",
+    stats: {
+      documents: total,
+      healthScore,
+      status: statusCounts,
+      verified,
+      verifiedPct,
+      enriched,
+      enrichedPct,
+      notEnriched,
+      evidenceBacked,
+      evidencePct,
+      staleVerified,
+      orphanDocuments
+    },
+    findings: []
+  }, "LLM-WIKI Stats", [
+    { title: "Summary", body: summaryLines },
+    { title: "Document Status", body: statusLines.length ? statusLines : ["none"] },
+    { title: "Caveats", body: ["Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%."] }
+  ]);
+}
+
 async function scanAdapters(cwd, agents) {
   const findings = [];
   for (const agent of agents) {
