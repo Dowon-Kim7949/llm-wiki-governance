@@ -111,6 +111,86 @@ test("detectDomainDirectories skips common technical directories", async () => {
   assert.ok(!names.includes("utils"));
 });
 
+test("detectDomainDirectories finds file-based route/resource modules", async () => {
+  const cwd = await makeProject("domain-files-");
+  await mkdir(path.join(cwd, "app", "api", "api_v2", "endpoints"), { recursive: true });
+  for (const name of ["__init__", "hazard", "job", "transfer", "customers", "deps", "router"]) {
+    await writeFile(path.join(cwd, "app", "api", "api_v2", "endpoints", `${name}.py`), "# module\n", { encoding: "utf8" });
+  }
+  // __pycache__ artifacts must never be scanned.
+  await mkdir(path.join(cwd, "app", "api", "api_v2", "endpoints", "__pycache__"), { recursive: true });
+  await writeFile(path.join(cwd, "app", "api", "api_v2", "endpoints", "__pycache__", "hazard.cpython-311.pyc"), "x", { encoding: "utf8" });
+
+  const found = await detectDomainDirectories(cwd);
+  const names = found.map((item) => item.rawName).sort();
+  // __init__ (dunder), deps + router (aggregator/infra) excluded.
+  assert.deepEqual(names, ["customers", "hazard", "job", "transfer"]);
+  const hazard = found.find((item) => item.rawName === "hazard");
+  assert.equal(hazard.kind, "file");
+  assert.equal(hazard.sourceFile, "app/api/api_v2/endpoints/hazard.py");
+});
+
+test("detectDomainDirectories skips vendored, virtualenv, and test trees", async () => {
+  const cwd = await makeProject("domain-skip-trees-");
+  await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
+  await mkdir(path.join(cwd, "node_modules", "pkg", "src", "modules", "evil"), { recursive: true });
+  await mkdir(path.join(cwd, ".venv", "lib", "routes"), { recursive: true });
+  await writeFile(path.join(cwd, ".venv", "lib", "routes", "ghost.py"), "# x\n", { encoding: "utf8" });
+  await mkdir(path.join(cwd, "tests", "routes"), { recursive: true });
+  await writeFile(path.join(cwd, "tests", "routes", "phantom.py"), "# x\n", { encoding: "utf8" });
+
+  const names = (await detectDomainDirectories(cwd)).map((item) => item.rawName).sort();
+  assert.deepEqual(names, ["user"]);
+});
+
+test("detectDomainDirectories merges a folder and a file domain of the same name", async () => {
+  const cwd = await makeProject("domain-merge-kinds-");
+  await mkdir(path.join(cwd, "src", "modules", "customer"), { recursive: true });
+  await mkdir(path.join(cwd, "app", "routes"), { recursive: true });
+  await writeFile(path.join(cwd, "app", "routes", "customer.py"), "# x\n", { encoding: "utf8" });
+
+  const plans = planDomainDocs(await detectDomainDirectories(cwd));
+  const customer = plans.find((plan) => plan.slug === "customer");
+  assert.ok(customer);
+  assert.deepEqual(customer.sourceFiles, ["app/routes/customer.py", "src/modules/customer"]);
+});
+
+test("detectDomainDirectories prunes nested parents under a domain folder", async () => {
+  const cwd = await makeProject("domain-prune-");
+  await mkdir(path.join(cwd, "src", "modules", "user", "routes"), { recursive: true });
+  await writeFile(path.join(cwd, "src", "modules", "user", "routes", "profile.py"), "# x\n", { encoding: "utf8" });
+
+  const names = (await detectDomainDirectories(cwd)).map((item) => item.rawName).sort();
+  assert.deepEqual(names, ["user"]); // 'profile' not split — modules/ subtree is pruned
+});
+
+test("backend with routes only in a single file yields no per-domain docs", async () => {
+  const cwd = await makeProject("domain-single-file-");
+  await mkdir(path.join(cwd, "app"), { recursive: true });
+  await writeFile(path.join(cwd, "app", "main.py"), "# all routes defined here\n", { encoding: "utf8" });
+
+  assert.equal((await detectDomainDirectories(cwd)).length, 0);
+});
+
+test("init --write on a FastAPI endpoints layout creates a doc per route module", async () => {
+  const cwd = await makeProject("domain-fastapi-");
+  await mkdir(path.join(cwd, "app", "api", "endpoints"), { recursive: true });
+  for (const name of ["__init__", "hazard", "job", "transfer", "user"]) {
+    await writeFile(path.join(cwd, "app", "api", "endpoints", `${name}.py`), "# module\n", { encoding: "utf8" });
+  }
+
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+
+  const domainsDir = path.join(cwd, "docs", "llm-wiki", "domains");
+  assert.ok(await fileExists(path.join(domainsDir, "01_hazard.md")));
+  assert.ok(await fileExists(path.join(domainsDir, "02_job.md")));
+  assert.ok(await fileExists(path.join(domainsDir, "03_transfer.md")));
+  assert.ok(await fileExists(path.join(domainsDir, "04_user.md")));
+  const hazard = await readFile(path.join(domainsDir, "01_hazard.md"), "utf8");
+  assert.ok(hazard.includes("doc_type: domain"));
+  assert.ok(hazard.includes("- app/api/endpoints/hazard.py"));
+});
+
 test("init --dry-run --type backend plans individual domain docs", async () => {
   const cwd = await makeProject("domain-dry-");
   await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });

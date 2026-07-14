@@ -42,6 +42,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 7 1.0.0 Stability Approval | `accepted_for_1.0.0` | Promote the `0.1.8` contract to a stable `1.0.0` with no functional command changes. Declare the CLI command/option surface, `--format json` output shape, and required frontmatter contract stable; breaking changes to these now require a major version bump. See "1.0.0 Stability Milestone" below. |
 | Gate 8 Migration Apply Scope Approval | `accepted_for_1.2.0` | Unblock `migrate --apply` for the `1.2.0` line under a pre-decided, preview-first, `verified`-preserving scope that reuses the accepted `fix` engine (Gate 6) plus `wiki_block_version` stamping. Revisits Gate 4's block for the `1.x` line. Accepted by WoongHwan-Kim on 2026-07-14; the rename map ships empty (`v1` is the only block version). See "Migration Apply Scope Decision" below. |
 | Gate 9 Drift Downgrade Scope Approval | `accepted_for_1.2.0` | Add an opt-in `llm-wiki drift` command: report-only by default, `--downgrade` flips drifted `verified` documents to `needs_review` and refreshes `last_updated`, nothing else. It never promotes to `verified` and never edits other content. Accepted by WoongHwan-Kim on 2026-07-14. See "Drift Downgrade Scope Decision" below. |
+| Gate 10 Domain Detection Scope Approval | `accepted` | Expand backend/fullstack `init` domain detection to cover BOTH directory-per-domain (`domains/domain/modules/features`) and file-per-domain route/resource modules (`endpoints/routers/routes/resources/controllers/handlers`), via a bounded, exclusion-guarded project scan tuned for near-zero false positives. Accepted by WoongHwan-Kim on 2026-07-14. See "Domain Detection Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -236,6 +237,59 @@ human did not give. Promotion to `verified` stays human-only in every command.
   agent-authored edits stay `needs_review` until a human re-verifies.
 - UTF-8 throughout; edits are minimal targeted scalar replacements that reuse the
   `fix` engine's split/replace helpers (no frontmatter re-serialization).
+
+## Domain Detection Scope Decision (accepted)
+
+Accepted (WoongHwan-Kim, 2026-07-14). The `1.3` domain split created a per-domain
+document only from directory-per-domain layouts. Real usage surfaced backends
+(e.g. FastAPI `app/api/api_v2/endpoints/hazard.py`) whose domains are **module
+files**, not folders — those produced only `00_overview`. This decision expands
+detection to cover both, boundary-based only (no route parsing, no class/name
+inference, no LLM, no invented business meaning), tuned so false positives stay
+near zero even if the scan takes longer.
+
+### What counts as a domain
+
+- **Directory domain** — an immediate subdirectory of a directory whose basename
+  is `domains`, `domain`, `modules`, or `features`.
+- **File domain** — an immediate source file of a directory whose basename is
+  `endpoints`, `routers`, `routes`, `resources`, `controllers`, or `handlers`.
+  Source extensions: `.py .js .ts .jsx .tsx .rb .go .java .kt .php .cs`.
+
+The two are merged by normalized slug (a `customer/` folder and a `customer.py`
+file collapse to one doc listing both paths in `source_files`), sorted
+deterministically, and ordinal-numbered (`NN_<slug>.md`).
+
+### Near-zero false-positive safeguards
+
+- Bounded DFS from the project root (max depth 8); a matched domain parent is
+  collected and then PRUNED (its subtree is not re-scanned).
+- Never descends into `node_modules`, `dist`, `build`, `out`, `target`, `bin`,
+  `obj`, `venv`, `env`, `vendor`, `coverage`, `migrations`, `spec`, `docs`,
+  `doc`, `examples`, `scripts`, the technical-name set (`common/shared/core/
+  config/util/middleware/infrastructure/test/fixture`), or any hidden (`.`) /
+  dunder (`__`) directory.
+- File domains exclude aggregator/infra basenames (`index`, `main`, `app`,
+  `server`, `base`, `router`, `route`, `routes`, `urls`, `deps`, `dependencies`,
+  `schemas`, `models`, `types`, `helpers`, `constants`, `settings`, …), the
+  technical-name set, `__init__`/dunder/hidden files, and `*.d.ts` / `*.test.*` /
+  `*.spec.*`.
+
+### Honest limits (reported only — fall back to `00_overview`, human/agent authors)
+
+- Django per-app layouts, Java/Kotlin package trees, and domains defined only
+  inside a single router file are not auto-detected.
+- Only immediate children of a domain parent are taken (route modules nested
+  deeper, e.g. `endpoints/hazard/routes.py`, are not split).
+- For `fullstack`, a frontend `routes/` folder could be picked up as file
+  domains; this is left to human review rather than adding route-framework
+  heuristics.
+
+### Unchanged guarantees
+
+- Only for `backend`/`fullstack`, non-`--minimal` init. Preview under `--dry-run`,
+  writes only under `--write`, `--existing skip` preserves existing docs, all
+  generated docs stay `needs_review`, and `verified` is never auto-assigned.
 
 ## Release Caveats
 

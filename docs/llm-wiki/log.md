@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: 파일+디렉터리 통합 도메인 탐지 (Gate 10, 1.4 이전 선행)
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 설계·범위 승인)
+- scope: code, test, docs, gate
+- changed:
+  - GATE_REVIEW.md
+  - src/commands.js
+  - tests/verification.test.js
+- summary:
+  - 실사용 갭 대응: 1.3 도메인 분리는 "폴더=도메인" 레이아웃만 잡아, FastAPI처럼 도메인이 **모듈 파일**(`app/api/api_v2/endpoints/hazard.py`)인 백엔드에서는 `00_overview`만 나왔다. 사용자 승인(Gate 10)에 따라 파일·디렉터리 **양쪽**을 잡도록 탐지를 확장했다.
+  - `detectDomainDirectories`를 bounded DFS(최대 깊이 8)로 재작성했다. 디렉터리-도메인 부모(`domains/domain/modules/features`)의 하위 폴더 + 파일-도메인 부모(`endpoints/routers/routes/resources/controllers/handlers`)의 소스 파일을 도메인으로 수집한다. 부모를 만나면 수집 후 prune(하위 재탐색 안 함). 파일+폴더는 slug로 병합.
+  - 오탐 0에 가깝게: node_modules/dist/build/target/bin/obj/venv/vendor/coverage/migrations/spec/docs/examples/scripts·기술명 세트·숨김/dunder 디렉터리는 traverse 제외. 파일은 소스 확장자(.py/.js/.ts/.rb/.go/... )만, 집계자/인프라 파일명(index/main/app/base/router/routes/urls/deps/schemas/models/... )·`__init__`·dunder·`*.d.ts`·`*.test/spec.*` 제외.
+  - 범위는 GATE_REVIEW "Domain Detection Scope Decision"(Gate 10)에 명문화했다(정직한 한계 포함: Django 앱/자바 패키지/단일 라우터 파일/더 깊은 중첩은 미탐지 → `00_overview` 폴백).
+  - 테스트 6개 추가(파일 도메인·집계자/`__init__` 제외·node_modules/.venv/tests skip·파일↔폴더 병합·중첩 prune·단일파일 미탐지·FastAPI e2e). 전체 142 pass. temp FastAPI 레이아웃(endpoints/*.py 11개)에서 01_customers~10_user 10개 문서 + overview 링크 확인.
+- caveats:
+  - DOMAIN_FEATURES.md 본문(파일 기반 탐지 반영)과 버전 bump·CHANGELOG/README·PUBLIC_API 반영은 **이 기능의 릴리스 준비 시점**에 함께 한다(선례대로). 버전은 릴리스 시 결정(도메인 분리 완성 관점의 1.3.1 vs 부가 minor 1.4.0 — 사용자 확인).
+  - push/tag/배포는 사용자 지시 시에만. 현재 로컬 main 커밋(미푸시).
+
 ## 2026-07-14 - docs: 1.3 wiki 문서 verified 재승인 + stale 0.1.8 리뷰 baseline 정리
 
 - status: verified
