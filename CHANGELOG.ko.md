@@ -5,6 +5,25 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.4.0 — 2026-07-14
+
+보이는 지식(knowledge you can see). wiki의 지식을 탐색·측정 가능하게 하고 도메인
+감지를 넓혔다. 하위호환 — 읽기전용 명령·부가 감지만 추가.
+
+### 추가 (Added)
+
+- `llm-wiki graph` — 지식 그래프(문서 + wiki `[[links]]`·`related`·markdown 링크로
+  해소된 문서→문서 엣지)를 text/JSON/Mermaid(fenced `graph TD`)/Graphviz DOT로
+  출력. `graph`의 `--format`은 `text|json|mermaid|dot`.
+- `llm-wiki stats` — 읽기전용 헬스 스냅샷: 헬스 스코어(verified %·enrichment %·
+  evidence coverage %의 평균) + status 분포·stale·orphan 카운트.
+- `--format html` 대시보드에 탐색용 **Document Index**(문서별 인바운드 수·orphan
+  표시) 추가, README에 "사람 독자용 공개" 가이드(GitHub/GitLab, Obsidian, MkDocs).
+- `init` 파일 기반 도메인 감지: FastAPI/Flask/Express/Rails/Go처럼 도메인이 라우트/
+  리소스 모듈 **파일**(`endpoints/routers/routes/resources/controllers/handlers/
+  *.ext`)인 경우도 디렉터리-도메인과 함께 감지한다. bounded·제외 가드로 오탐을 0에
+  가깝게(`GATE_REVIEW.md`, Gate 10).
+
 ## 1.3.0 — 2026-07-14
 
 디텍터 & 어댑터 확장. 더 많은 프로젝트·도구를 기본 지원한다. 하위호환 — 새 감지·

@@ -47,9 +47,16 @@ Humans review and approve verified status.
 CI continuously checks quality.
 ```
 
-## Shipped Through 1.3.0
+## Shipped Through 1.4.0
 
-`1.3.0` (this release) is the detect & adapt breadth line: backend/fullstack
+`1.4.0` (this release) is the knowledge-you-can-see line: `llm-wiki graph`
+(knowledge graph as text/JSON/Mermaid/DOT), `llm-wiki stats` (a health score),
+a navigable Document Index in the `--format html` dashboard plus a
+publish-for-human-readers guide, and file-based domain detection so route/
+resource module files (FastAPI/Flask/Express/Rails/Go endpoints/routers/…) are
+detected by `init` alongside directory-per-domain layouts (GATE_REVIEW Gate 10).
+
+`1.3.0` is the detect & adapt breadth line: backend/fullstack
 `init` now detects business-domain directories and creates a per-domain document
 (`domains/NN_<name>.md`, `doc_type: domain`) linked from the overview; ecosystem
 detection for PHP/Ruby/.NET; Windsurf and Gemini CLI writable adapters (JetBrains
@@ -94,23 +101,7 @@ not re-list shipped work.
 - **Breaking changes are out of scope for `1.x`** and are parked under "Beyond
   the 1.x Horizon" below.
 
-## Release Plan (1.4 → 1.7)
-
-### 1.4 — Knowledge you can see
-
-Goal: close the "easy knowledge transfer" gap without becoming a site generator.
-
-- **`llm-wiki graph`** — a first-class command that emits the knowledge graph as
-  Mermaid, DOT, and JSON.
-- **`llm-wiki stats`** — a health score: enrichment %, verified %, evidence
-  coverage, and staleness.
-- **Bounded reader-friendly publishing** — a short "publish for human readers"
-  guide (GitHub rendering; Obsidian, which reads the corpus's `[[links]]` +
-  `aliases` natively; MkDocs), and at most a navigable document index added to the
-  existing zero-dependency dashboard. Not a static-site generator (see Declined).
-
-Why here: builds on the stable graph/report data; serves non-developer readers and
-tech leads.
+## Release Plan (1.5 → 1.7)
 
 ### 1.5 — Programmatic API
 

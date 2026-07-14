@@ -5,6 +5,30 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.4.0 — 2026-07-14
+
+Knowledge you can see. Make the wiki's knowledge navigable and measurable, and
+broaden domain detection. Backward-compatible — new read-only commands and
+additive detection only.
+
+### Added
+
+- `llm-wiki graph` — emit the knowledge graph (documents + doc→doc links resolved
+  from wiki `[[links]]`, `related`, and markdown links) as text, JSON, Mermaid
+  (fenced `graph TD`), or Graphviz DOT. `--format` for `graph` accepts
+  `text|json|mermaid|dot`.
+- `llm-wiki stats` — a read-only health snapshot: a health score (mean of
+  verified %, enrichment %, and evidence coverage %) plus document status mix,
+  stale-verified, and orphan counts.
+- The `--format html` dashboard gains a navigable **Document Index** (every
+  document with inbound-link count and orphan flags), and a "Publishing for
+  Human Readers" guide (GitHub/GitLab, Obsidian, MkDocs) in the README.
+- File-based domain detection for `init`: backend/fullstack domains defined as
+  route/resource module files (FastAPI/Flask/Express/Rails/Go —
+  `endpoints/routers/routes/resources/controllers/handlers/*.ext`) are now
+  detected alongside directory-per-domain layouts, via a bounded, exclusion-
+  guarded scan tuned for near-zero false positives (`GATE_REVIEW.md`, Gate 10).
+
 ## 1.3.0 — 2026-07-14
 
 Detect & adapt breadth. Fit more projects and more tools out of the box.

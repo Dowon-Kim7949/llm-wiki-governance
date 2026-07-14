@@ -2,15 +2,13 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: public_api
 project: llm-wiki-standard
 last_updated: 2026-07-14
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -53,12 +51,14 @@ contains_sensitive_info: false
 | `migrate [--apply]` | `wiki_block_version` 업그레이드 리포트 + 계획. `--apply`로 `fix` 범위 재사용해 문서를 현재 계약으로 올림(preview-first, `verified` 보존; GATE_REVIEW Gate 8) | `--apply` 시 |
 | `fix [--write]` | 승인된 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 섹션 보완, 깨진 related/링크 `needs_review` 스텁, 수정 문서 `last_updated` 갱신). 기본은 미리보기 | `--write` 시 |
 | `drift [--downgrade]` | `verified` 문서의 `evidence.stale` 드리프트 리포트. `--downgrade`로 드리프트 문서를 `needs_review`로 강등(GATE_REVIEW Gate 9) | `--downgrade` 시 |
+| `graph` | 지식 그래프(문서 + 해소된 문서→문서 링크)를 출력. `--format text\|json\|mermaid\|dot`(graph 전용 토큰) | 없음 |
+| `stats` | wiki 헬스 스냅샷(verified%/enrichment%/evidence coverage/staleness/orphan) + 헬스 스코어 | 없음 |
 | `release-notes` | 마지막 `v*` 태그 이후 conventional commit으로 릴리스 노트 문서 생성 | `--out` 시 |
 
 ## Key Options
 
 - `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; 나머지는 명시 선택. writable: codex/claude/cursor/copilot/windsurf/gemini, candidate: jetbrains/antigravity)
-- `--format <text|json|markdown|html>`, `--out <path>`, `--strict`, `--minimal`
+- `--format <text|json|markdown|html>`(대부분 명령), `graph`는 `--format <text|json|mermaid|dot>`(mermaid/dot는 graph 전용). `--out <path>`, `--strict`, `--minimal`
 - `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate), `--changed` (validate)
 
 ## Exit Codes
@@ -74,7 +74,7 @@ contains_sensitive_info: false
 ## Stability
 
 - 명령 이름·JSON 출력 형태는 CI/래퍼가 의존하므로 보수적으로 유지한다.
-- `migrate --apply`는 자동 변경 범위가 합의될 때까지 의도적으로 차단 상태다.
+- `migrate --apply`는 GATE_REVIEW Gate 8 범위로 활성화돼 있다(preview-first, `fix` 범위 + `wiki_block_version` 업그레이드, `verified` 내용·status 불변). `graph`/`stats`는 읽기전용이다.
 - `fix`는 `GATE_REVIEW.md`의 "Autofix (--fix) Scope Decision"에 명시된 좁은 범위만 수정한다: `verified` 문서 내용·`docs/llm-wiki/` 밖 파일·`source_files`/`evidence` 값·Tier B 필드(title/doc_type/project/author)·미보강 내용은 건드리지 않는다.
 - `llm-wiki.config.json` 스키마는 실사용 피드백 전까지 최소(위 4개 필드)로 유지한다.
 
@@ -89,3 +89,4 @@ contains_sensitive_info: false
 ## Review Notes
 
 - 2026-07-14에 1.3.0 CLI 명령·옵션 계약(migrate --apply, drift, 신규 --agent, OKF type alias 포함)을 기준으로 재검토하고 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-14에 1.4.0의 새 명령(`graph`, `stats`)과 graph 전용 `--format mermaid|dot`을 반영하고, stale했던 "migrate --apply 차단" 서술을 정정했다. 내용이 바뀌었으므로 `verified` → `needs_review`로 강등했고 사람 재검토가 필요하다.

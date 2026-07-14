@@ -24,6 +24,28 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - release: 1.4.0 준비 (보이는 지식 + Gate 10 번들)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - ROADMAP.md
+  - ROADMAP.ko.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/releases/v1.4.0.md
+- summary:
+  - 1.4(보이는 지식) 라인을 1.4.0으로 릴리스 준비했다. package.json·버전 assertion을 1.3.0 → 1.4.0으로 올렸다. 이 릴리스는 `graph`·`stats`·publishing(step 1–3)과 **이전에 보류했던 Gate 10 파일/디렉터리 도메인 탐지**(`16825e9`)를 함께 번들한다. → 앞서 미룬 버전 결정을 1.4.0으로 확정.
+  - CHANGELOG(EN·KO)에 1.4.0 항목 작성. ROADMAP(EN·KO)의 1.4를 shipped로 옮기고 Release Plan을 1.5→1.7로 조정. doc-sync: DOMAIN_FEATURES(파일 기반 감지 + graph/stats)와 PUBLIC_API(graph/stats 명령·graph format 토큰·stale "migrate --apply 차단" 정정)를 갱신 → 두 문서 `verified` → `needs_review` 강등. v1.4.0 릴리스 노트 작성.
+- caveats:
+  - push/tag(v1.4.0)·npm 배포는 사용자의 명시적 "배포" 지시 후에만.
+  - needs_review 재검토 대기: DOMAIN_FEATURES, PUBLIC_API(이번 doc-sync로 강등). 사람 검토 후 verified 재승인 필요.
+
 ## 2026-07-14 - feat: bounded reader-friendly publishing (1.4 step 3)
 
 - status: needs_review
