@@ -321,14 +321,16 @@ Usage:
   llm-wiki prompt --task <feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
   llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki migrate --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Safety:
   init writes only when --write is explicit. Existing wiki docs default to --existing skip.
   quickstart writes only when --write is explicit and prints the next Codex/Claude Code handoff prompt.
-  Existing adapter files are never overwritten. migrate --apply remains blocked.
+  Existing adapter files are never overwritten.
+  migrate previews by default and writes only with --apply, reusing the fix scope plus wiki_block_version upgrades; it never edits verified documents' content.
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
   Adapter checks and suggestions are opt-in with --agent. ANTIGRAVITY.md remains an info-level candidate.
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
@@ -447,10 +449,26 @@ Purpose:
   migrate: `llm-wiki migrate
 
 Usage:
-  llm-wiki migrate --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
-  Prepares a reviewable migration plan without writing files. migrate --apply remains intentionally blocked.
+  Reports the wiki_block_version contract gap between existing documents and the
+  installed CLI, and upgrades them to the current contract. Without --apply it
+  previews the upgrade report and planned changes and writes nothing; --apply
+  applies them.
+
+Scope (see GATE_REVIEW.md "Migration Apply Scope Decision", Gate 8):
+  - Reuses the accepted fix scope: fills missing Tier A frontmatter fields,
+    reconciles the body ## Evidence section, creates needs_review stubs for
+    broken links, and refreshes last_updated on modified documents.
+  - Additionally upgrades an existing behind wiki_block_version to the current
+    value, but only once the document otherwise conforms (no Tier B field left
+    for a human).
+  - Never edits verified documents' content, source_files/evidence values,
+    Tier B fields (title/doc_type/project/author), or document status. Documents
+    a newer CLI stamped (ahead) are reported, never downgraded. All writes stay
+    needs_review; sensitive-matching results are blocked.
 `,
   fix: `llm-wiki fix
 

@@ -791,13 +791,72 @@ test("migrate dry-run reports safe additions without writing files", async () =>
   assert.equal(result.text.includes("No files were written"), true);
 });
 
-test("migrate apply is blocked by stable safety policy", async () => {
-  const cwd = await makeProject("apply-blocked-");
+test("migrate --apply upgrades a behind wiki_block_version to current", async () => {
+  const cwd = await makeProject("migrate-apply-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Current wiki entry.");
+  await writeWikiDocAt(cwd, "old.md", "Old Doc", "Conforming doc at an older block version.", (text) =>
+    text.replace("wiki_block_version: v1", "wiki_block_version: v0"));
+
   const result = await migrateCommand({ cwd, type: null, format: "text", strict: false, apply: true });
 
-  assert.equal(result.result, "blocked");
-  assert.equal(result.findings[0].severity, "blocked");
-  assert.ok(result.text.includes("migrate --dry-run"));
+  assert.equal(result.apply, true);
+  assert.equal(result.result, "pass");
+  assert.ok(result.applied.some((line) => line.includes("old.md") && line.includes("upgrade wiki_block_version v0")));
+  const upgraded = await readFile(path.join(cwd, "docs", "llm-wiki", "old.md"), "utf8");
+  assert.ok(upgraded.includes("wiki_block_version: v1"));
+  assert.ok(!upgraded.includes("wiki_block_version: v0"));
+});
+
+test("migrate --dry-run previews block-version upgrades without writing", async () => {
+  const cwd = await makeProject("migrate-preview-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Current wiki entry.");
+  await writeWikiDocAt(cwd, "old.md", "Old Doc", "Behind doc.", (text) =>
+    text.replace("wiki_block_version: v1", "wiki_block_version: v0"));
+
+  const result = await migrateCommand({ cwd, type: null, format: "text", strict: false });
+
+  assert.equal(result.dryRun, true);
+  assert.ok(result.planned.some((line) => line.includes("old.md")));
+  const untouched = await readFile(path.join(cwd, "docs", "llm-wiki", "old.md"), "utf8");
+  assert.ok(untouched.includes("wiki_block_version: v0")); // preview did not write
+});
+
+test("migrate --apply never stamps or edits verified documents", async () => {
+  const cwd = await makeProject("migrate-verified-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Current wiki entry.");
+  await writeWikiDocAt(cwd, "verified.md", "Verified Doc", "Behind but verified.", (text) =>
+    text.replace("status: needs_review", "status: verified").replace("wiki_block_version: v1", "wiki_block_version: v0"));
+
+  const result = await migrateCommand({ cwd, type: null, format: "text", strict: false, apply: true });
+
+  const verified = await readFile(path.join(cwd, "docs", "llm-wiki", "verified.md"), "utf8");
+  assert.ok(verified.includes("wiki_block_version: v0")); // verified doc never stamped
+  assert.ok(result.skipped.some((line) => line.includes("verified.md") && line.includes("behind wiki_block_version v0")));
+});
+
+test("migrate --apply keeps a behind doc that still needs a Tier B field", async () => {
+  const cwd = await makeProject("migrate-tierb-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Current wiki entry.");
+  await writeWikiDocAt(cwd, "old.md", "Old Doc", "Behind and missing a human field.", (text) =>
+    text.replace("wiki_block_version: v1", "wiki_block_version: v0").replace(/^title:[^\n]*\n/m, ""));
+
+  const result = await migrateCommand({ cwd, type: null, format: "text", strict: false, apply: true });
+
+  const kept = await readFile(path.join(cwd, "docs", "llm-wiki", "old.md"), "utf8");
+  assert.ok(kept.includes("wiki_block_version: v0")); // not upgraded while Tier B missing
+  assert.ok(result.skipped.some((line) => line.includes("old.md") && line.includes("kept behind") && line.includes("title")));
+});
+
+test("migrate --apply is idempotent", async () => {
+  const cwd = await makeProject("migrate-idem-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Current wiki entry.");
+  await writeWikiDocAt(cwd, "old.md", "Old Doc", "Behind doc.", (text) =>
+    text.replace("wiki_block_version: v1", "wiki_block_version: v0"));
+
+  const first = await migrateCommand({ cwd, type: null, format: "text", strict: false, apply: true });
+  assert.ok(first.applied.length > 0);
+  const second = await migrateCommand({ cwd, type: null, format: "text", strict: false, apply: true });
+  assert.equal(second.applied.length, 0);
 });
 
 test("migrate dry-run reports the wiki_block_version upgrade gap", async () => {

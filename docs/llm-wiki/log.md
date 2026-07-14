@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: migrate --apply 해금 (1.2 step 2, fix 엔진 재사용)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - src/cli.js
+  - tests/verification.test.js
+- summary:
+  - 0.1.0부터 차단돼 있던 `migrate --apply`를 GATE_REVIEW Gate 8 범위로 해금했다. fix 엔진의 문서별 처리 루프+스텁 생성을 공용 함수 `runMechanicalRemediation(cwd, { write, upgradeBlockVersion })`로 추출하고, `fixCommand`는 이를 `upgradeBlockVersion:false`로 호출하도록 리팩터했다(동작 바이트 동일, 113 pass 확인).
+  - migrate는 fix의 "버전 인식 형제"로 동작한다: `upgradeBlockVersion:true`일 때 기존 "behind" `wiki_block_version`을 현재로 업그레이드하되, 문서가 그 외 계약에 부합할 때만(미충족 Tier B 필드가 없을 때만) stamp한다. 누락 필드는 fix와 동일하게 Tier A 삽입으로 backfill된다. verified 문서는 내용/stamp 모두 건드리지 않고 갭만 skipped로 보고하며, ahead(현재보다 최신) 문서는 절대 다운스탬프하지 않는다.
+  - `migrate`는 preview-first다: 기본/`--dry-run`은 업그레이드 리포트+계획을 보여주고 쓰지 않으며, `--apply`만 적용한다(`--dry-run`↔`--apply`는 파서에서 이미 배타). doctor의 `migration_apply` 라인과 CLI usage/help(migrate --apply 사용법·Gate 8 범위)를 갱신했다.
+  - 테스트 추가: behind→current 업그레이드(쓰기), dry-run 미기록, verified 미변경/미stamp, Tier B 미충족 시 behind 유지, 멱등. 전체 117 pass. temp 프로젝트 end-to-end(dry-run→apply→재apply 0건)와 레포 dry-run(gap 0/17)·validate-frontmatter(0 findings)로 확인했다.
+- caveats:
+  - apply 모드의 "Upgrade Report" 섹션 카운트는 엔진 실행 전(pre-migration) 상태를 보여준다(감지된 갭). 실제 적용 결과는 Summary의 `applied:`와 "Applied Changes"에 나온다.
+  - `BLOCK_VERSION_FIELD_RENAMES`는 여전히 비어 있어 renamed-field 경로는 no-op이다(v1 단일 계약). v2 도입 시 채운다.
+  - 로드맵 1.2의 두 번째(헤드라인) 항목이다. 버전 bump·CHANGELOG·README·ROADMAP 반영은 1.2 릴리스 시점에 한다.
+
 ## 2026-07-14 - feat: wiki_block_version 인식 업그레이드 리포트 (1.2 step 1, 읽기전용)
 
 - status: needs_review

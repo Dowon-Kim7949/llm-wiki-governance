@@ -115,7 +115,7 @@ export async function doctor(options) {
     `llm_wiki_config: ${configExists ? "present" : "absent"}`,
     `project_type: ${detection.projectType} (${detection.confidence})`,
     "utf8_policy: explicit read/write helpers enabled",
-    "migration_apply: blocked by stable safety policy"
+    "migration_apply: enabled (GATE_REVIEW Gate 8; preview-first, verified-preserving)"
   ];
 
   const sections = [{ title: "Checks", body: checks }];
@@ -666,12 +666,42 @@ async function initDryRun(options, detection, agents, candidates) {
 }
 
 export async function migrateCommand(options) {
-  if (options.apply) {
-    return blockedApply("migrate", "migrate --apply is not yet enabled in this build. Its scope is accepted (GATE_REVIEW Gate 8); use migrate --dry-run to preview the wiki_block_version upgrade report and planned changes.");
+  // --apply writes; the default (and --dry-run) previews. Unblocked for the 1.2
+  // line under GATE_REVIEW Gate 8: reuses the fix engine plus wiki_block_version
+  // stamping, preview-first and verified-preserving.
+  const write = options.apply === true;
+  const cwd = options.cwd;
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  const emptyReport = {
+    current: CURRENT_WIKI_BLOCK_VERSION,
+    counts: { current: 0, behind: 0, ahead: 0, unrecorded: 0, unknown: 0 },
+    gapDocuments: [],
+    aheadDocuments: []
+  };
+
+  if (!(await pathExists(wikiRoot))) {
+    return withText({
+      command: "migrate",
+      apply: write,
+      dryRun: !write,
+      result: "pass",
+      upgradeReport: emptyReport,
+      safeAdds: [],
+      reviewItems: [],
+      blockedItems: [],
+      applied: [],
+      planned: [],
+      skipped: [],
+      findings: []
+    }, write ? "LLM-WIKI Migration Apply" : "LLM-WIKI Migration Dry Run", [
+      { title: "Summary", body: [`mode: ${write ? "apply" : "dry-run"}`, "wiki: not initialized"] },
+      { title: "Caveats", body: ["docs/llm-wiki is not initialized; run init --write first. Nothing to migrate."] }
+    ]);
   }
 
-  const analysis = await analyzeBlockVersions(options.cwd);
+  const analysis = await analyzeBlockVersions(cwd);
   const upgrade = buildUpgradeReport(analysis);
+  const engine = await runMechanicalRemediation(cwd, { write, upgradeBlockVersion: true });
 
   const auditResult = await audit({ ...options, dryRun: true });
   const safeAdds = auditResult.findings
@@ -684,9 +714,20 @@ export async function migrateCommand(options) {
     .filter((finding) => finding.severity === "warning" || finding.severity === "error")
     .map(formatFinding);
 
+  const result = engine.blockedFindings.some((finding) => finding.severity === "blocked") ? "blocked" : "pass";
+  const summary = [
+    `mode: ${write ? "apply" : "dry-run"}`,
+    `cli_block_version: ${analysis.current}`,
+    `${write ? "applied" : "planned"}: ${engine.changeList.length}`,
+    `skipped: ${engine.skipped.length}`,
+    `blocked: ${engine.blockedFindings.length}`
+  ];
+
   return withText({
     command: "migrate",
-    dryRun: true,
+    apply: write,
+    dryRun: !write,
+    result,
     upgradeReport: {
       current: analysis.current,
       counts: upgrade.counts,
@@ -700,14 +741,25 @@ export async function migrateCommand(options) {
     },
     safeAdds,
     reviewItems,
-    blockedItems
-  }, "LLM-WIKI Migration Dry Run", [
+    blockedItems,
+    applied: engine.applied,
+    planned: engine.planned,
+    skipped: engine.skipped,
+    findings: engine.blockedFindings
+  }, write ? "LLM-WIKI Migration Apply" : "LLM-WIKI Migration Dry Run", [
+    { title: "Summary", body: summary },
     { title: "Upgrade Report (wiki_block_version)", body: upgrade.lines },
     { title: "Documents to Upgrade", body: upgrade.detail },
-    { title: "Safe Automatic Changes", body: safeAdds },
+    { title: write ? "Applied Changes" : "Planned Changes", body: engine.changeList },
+    { title: "Skipped", body: engine.skipped },
+    { title: "Blocked", body: [...engine.blockedFindings.map(formatFinding), ...blockedItems] },
+    { title: "Missing Documents (scaffold with init --write)", body: safeAdds },
     { title: "Human Review Required", body: reviewItems },
-    { title: "Blocked Items", body: blockedItems },
-    { title: "Caveats", body: ["No files were written. Existing verified documents are not modified. Raw sensitive values are omitted."] }
+    { title: "Caveats", body: [
+      write
+        ? "Applied under GATE_REVIEW Gate 8 scope: only docs/llm-wiki content, never verified documents, source_files/evidence values, Tier B fields, or document status. All writes remain needs_review."
+        : "No files were written. Verified documents are not modified. Raw sensitive values are omitted. Run migrate --apply to apply the planned changes."
+    ] }
   ]);
 }
 
@@ -821,33 +873,23 @@ const FIX_TIER_B_FIELDS = new Set(["title", "doc_type", "project", "author"]);
 const EVIDENCE_PLACEHOLDER_BULLET =
   "- _No evidence recorded yet; add source references such as file, file#L10, or file#symbol:Name._";
 
-export async function fixCommand(options) {
-  const write = options.write === true;
-  const cwd = options.cwd;
-  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
-
-  if (!(await pathExists(wikiRoot))) {
-    return withText({
-      command: "fix",
-      write,
-      dryRun: !write,
-      result: "pass",
-      applied: [],
-      planned: [],
-      skipped: [],
-      findings: []
-    }, "LLM-WIKI Fix", [
-      { title: "Summary", body: [`mode: ${write ? "write" : "dry-run"}`, "wiki: not initialized"] },
-      { title: "Caveats", body: ["docs/llm-wiki is not initialized; run init --write first. Nothing to fix."] }
-    ]);
-  }
-
+// Shared mechanical remediation engine used by `fix` (GATE_REVIEW Gate 6) and
+// `migrate --apply` (GATE_REVIEW Gate 8). It applies only the accepted safe
+// remediations under docs/llm-wiki/, never edits verified documents' content,
+// never writes outside docs/llm-wiki/, and never invents meaning-bearing values.
+// With upgradeBlockVersion, it additionally upgrades an existing behind
+// wiki_block_version to current — but only once the document otherwise conforms
+// (no Tier B required field left for a human). A missing wiki_block_version is
+// backfilled to current by the Tier A insertion, matching fix.
+async function runMechanicalRemediation(cwd, { write, upgradeBlockVersion = false }) {
   const applied = [];
   const planned = [];
   const skipped = [];
   const blockedFindings = [];
   const changeList = write ? applied : planned;
   const stubTargets = new Map(); // relPosix target -> Set of referencing docs
+  const label = upgradeBlockVersion ? "migrate" : "fix";
+  const currentNumber = parseBlockVersion(CURRENT_WIKI_BLOCK_VERSION);
 
   const files = await listWikiContentDocs(cwd);
 
@@ -868,7 +910,7 @@ export async function fixCommand(options) {
     await collectBrokenLinkTargets(cwd, file, rel, parsed, original, stubTargets, skipped);
 
     if (!parsed.frontmatter) {
-      skipped.push(`${rel}: no YAML frontmatter; fix does not synthesize a full frontmatter block.`);
+      skipped.push(`${rel}: no YAML frontmatter; ${label} does not synthesize a full frontmatter block.`);
       continue;
     }
 
@@ -880,6 +922,12 @@ export async function fixCommand(options) {
         ? parsed.frontmatter.evidence.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
         : [];
       if (reconcileEvidenceSection(parsed.body, verifiedEvidence, "\n")) reasons.push("## Evidence section could be reconciled");
+      if (upgradeBlockVersion) {
+        const recorded = parseBlockVersion(parsed.frontmatter.wiki_block_version);
+        if (recorded !== null && recorded < currentNumber) {
+          reasons.push(`behind wiki_block_version ${parsed.frontmatter.wiki_block_version}`);
+        }
+      }
       if (reasons.length > 0) {
         skipped.push(`${rel}: verified document (${reasons.join("; ")}); left untouched (review manually).`);
       }
@@ -933,9 +981,26 @@ export async function fixCommand(options) {
       docChanges.push(evidenceResult.change);
     }
 
+    // 3) (migrate only) Upgrade an existing behind wiki_block_version to current,
+    // only once the document conforms (no Tier B field left for a human).
+    if (upgradeBlockVersion && "wiki_block_version" in parsed.frontmatter) {
+      const recorded = parseBlockVersion(parsed.frontmatter.wiki_block_version);
+      if (recorded !== null && recorded < currentNumber) {
+        if (tierBMissing.length === 0) {
+          const stamped = replaceFrontmatterScalar(inner, "wiki_block_version", CURRENT_WIKI_BLOCK_VERSION);
+          if (stamped && stamped !== inner) {
+            inner = stamped;
+            docChanges.push(`upgrade wiki_block_version ${parsed.frontmatter.wiki_block_version} → ${CURRENT_WIKI_BLOCK_VERSION}`);
+          }
+        } else {
+          skipped.push(`${rel}: wiki_block_version ${parsed.frontmatter.wiki_block_version} kept behind ${CURRENT_WIKI_BLOCK_VERSION}; resolve Tier B field(s) ${tierBMissing.join(", ")} first.`);
+        }
+      }
+    }
+
     if (docChanges.length === 0) continue;
 
-    // 3) Refresh last_updated on documents this run actually modifies (unless we
+    // 4) Refresh last_updated on documents this run actually modifies (unless we
     // just inserted it as today).
     if (!tierAMissing.includes("last_updated") && "last_updated" in parsed.frontmatter) {
       const refreshed = replaceFrontmatterScalar(inner, "last_updated", todayIsoDate());
@@ -953,7 +1018,7 @@ export async function fixCommand(options) {
         severity: "blocked",
         rule: "sensitive.redacted",
         path: rel,
-        message: "Fix skipped: resulting content matched sensitive-info rules."
+        message: `${upgradeBlockVersion ? "Migration" : "Fix"} skipped: resulting content matched sensitive-info rules.`
       });
       continue;
     }
@@ -984,6 +1049,33 @@ export async function fixCommand(options) {
     }
     changeList.push(`${relTarget}: create needs_review stub (referenced by ${[...refs].join(", ")}).`);
   }
+
+  return { applied, planned, skipped, blockedFindings, changeList };
+}
+
+export async function fixCommand(options) {
+  const write = options.write === true;
+  const cwd = options.cwd;
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+
+  if (!(await pathExists(wikiRoot))) {
+    return withText({
+      command: "fix",
+      write,
+      dryRun: !write,
+      result: "pass",
+      applied: [],
+      planned: [],
+      skipped: [],
+      findings: []
+    }, "LLM-WIKI Fix", [
+      { title: "Summary", body: [`mode: ${write ? "write" : "dry-run"}`, "wiki: not initialized"] },
+      { title: "Caveats", body: ["docs/llm-wiki is not initialized; run init --write first. Nothing to fix."] }
+    ]);
+  }
+
+  const { applied, planned, skipped, blockedFindings, changeList } =
+    await runMechanicalRemediation(cwd, { write, upgradeBlockVersion: false });
 
   const findings = blockedFindings;
   const result = findings.some((finding) => finding.severity === "blocked") ? "blocked" : "pass";
