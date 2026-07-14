@@ -37,6 +37,38 @@ test("init dry-run detects frontend projects", async () => {
   assert.ok(result.planned.some((line) => line.includes("ANTIGRAVITY.md remains an info-level adapter candidate")));
 });
 
+test("init write creates Windsurf and Gemini adapters but keeps JetBrains a candidate", async () => {
+  const cwd = await makeProject("adapter-breadth-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Existing wiki entry.");
+
+  const result = await initCommand({
+    cwd, write: true, minimal: false, withAdapters: false, type: "library",
+    profiles: [], agents: ["windsurf", "gemini", "jetbrains"], existing: "skip"
+  });
+
+  assert.equal(result.result, "pass");
+  assert.ok(result.created.some((line) => line.includes(".windsurf/rules/llm-wiki.md created")));
+  assert.ok(result.created.some((line) => line.includes("GEMINI.md created")));
+  // JetBrains is an info-only candidate: no file is written.
+  assert.ok(result.skipped.some((line) => line.includes(".junie/guidelines.md") && line.includes("candidate")));
+  assert.equal(await fileExists(path.join(cwd, ".junie", "guidelines.md")), false);
+
+  // Written adapters point to the wiki entrypoint (no adapter.entrypoint finding).
+  const windsurf = await readFile(path.join(cwd, ".windsurf", "rules", "llm-wiki.md"), "utf8");
+  const gemini = await readFile(path.join(cwd, "GEMINI.md"), "utf8");
+  assert.ok(windsurf.includes("docs/llm-wiki/index.md"));
+  assert.ok(gemini.includes("docs/llm-wiki/index.md"));
+});
+
+test("parseArgs accepts new adapters and --agent all stays backward-compatible", () => {
+  const parsed = parseArgs(["init", "--write", "--agent", "windsurf", "--agent", "gemini", "--agent", "jetbrains"]);
+  assert.deepEqual(parsed.options.agents, ["windsurf", "gemini", "jetbrains"]);
+  assert.deepEqual(parsed.errors, []);
+
+  const all = parseArgs(["init", "--write", "--agent", "all"]);
+  assert.deepEqual(all.options.agents, ["codex", "claude", "antigravity"]);
+});
+
 // ---- backend domain detection -----------------------------------------
 
 test("normalizeDomainSlug handles camel/Pascal/kebab/snake/space/Hangul", () => {

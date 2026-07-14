@@ -50,6 +50,29 @@ const ADAPTER_TARGETS = {
     missingSeverity: "warning",
     missingMessage: "GitHub Copilot adapter file is missing; init --dry-run can suggest .github/copilot-instructions.md and init --write can create it when absent."
   },
+  windsurf: {
+    path: ".windsurf/rules/llm-wiki.md",
+    template: path.join(TEMPLATE_ROOT, "adapters", "windsurf", "llm-wiki.md"),
+    writable: true,
+    handoffLabel: "Windsurf",
+    missingSeverity: "warning",
+    missingMessage: "Windsurf adapter file is missing; init --dry-run can suggest .windsurf/rules/llm-wiki.md and init --write can create it when absent."
+  },
+  gemini: {
+    path: "GEMINI.md",
+    template: path.join(TEMPLATE_ROOT, "adapters", "gemini", "GEMINI.md"),
+    writable: true,
+    handoffLabel: "Gemini CLI",
+    missingSeverity: "warning",
+    missingMessage: "Gemini adapter file is missing; init --dry-run can suggest GEMINI.md and init --write can create it when absent."
+  },
+  jetbrains: {
+    path: ".junie/guidelines.md",
+    template: path.join(TEMPLATE_ROOT, "adapters", "jetbrains", "guidelines.md"),
+    writable: false,
+    missingSeverity: "info",
+    missingMessage: "JetBrains AI adapter path is unconfirmed; keep .junie/guidelines.md as an info-level candidate only."
+  },
   antigravity: {
     path: "ANTIGRAVITY.md",
     template: path.join(TEMPLATE_ROOT, "adapters", "antigravity", "ANTIGRAVITY.md"),
@@ -2277,8 +2300,8 @@ async function planAdapterSuggestions(cwd, agents) {
       continue;
     }
 
-    if (agent === "antigravity") {
-      planned.push(`${target.path} remains an info-level adapter candidate; no file would be created until the tool contract is confirmed.`);
+    if (!target.writable) {
+      planned.push(`${target.path} remains an info-level adapter candidate for ${agent}; no file would be created until the tool contract is confirmed.`);
       continue;
     }
 

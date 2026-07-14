@@ -22,7 +22,7 @@ const COMMANDS = new Map([
 ]);
 
 const SUPPORTED_FORMATS = new Set(["text", "json", "markdown", "html"]);
-const SUPPORTED_AGENTS = new Set(["codex", "claude", "cursor", "copilot", "antigravity", "all"]);
+const SUPPORTED_AGENTS = new Set(["codex", "claude", "cursor", "copilot", "windsurf", "gemini", "jetbrains", "antigravity", "all"]);
 const SUPPORTED_EXISTING_POLICIES = new Set(["skip", "overwrite"]);
 const ALL_AGENTS = ["codex", "claude", "antigravity"];
 
@@ -315,20 +315,20 @@ function printHelp() {
 
 Usage:
   llm-wiki doctor [--cwd <path>] [--format text|json|markdown|html]
-  llm-wiki status [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki next [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki status [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki next [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki explain <finding> [--format text|json|markdown|html] [--out <path>]
-  llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--changed] [--since <git-ref>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--changed] [--since <git-ref>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki validate-frontmatter [--cwd <path>] [--strict]
-  llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki prompt --task <feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prompt --task <feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
@@ -373,7 +373,7 @@ Purpose:
   status: `llm-wiki status
 
 Usage:
-  llm-wiki status [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki status [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Shows whether LLM-WIKI is initialized, counts document statuses, reports missing recommended docs, markdown links, source file references, and selected adapter state.
@@ -381,7 +381,7 @@ Purpose:
   next: `llm-wiki next
 
 Usage:
-  llm-wiki next [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki next [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Reuses audit coverage and wikiGraph data to recommend the next review, repair, or setup actions. This command is advisory and does not write files.
@@ -397,8 +397,8 @@ Purpose:
   quickstart: `llm-wiki quickstart
 
 Usage:
-  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Runs doctor, init, optional frontmatter validation, and prints the Codex/Claude Code handoff prompt.
@@ -406,7 +406,7 @@ Purpose:
   handoff: `llm-wiki handoff
 
 Usage:
-  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Prints the next prompt to run in Codex or Claude Code after CLI setup, with project-type-specific source evidence guidance. Antigravity handoff remains blocked until the adapter contract is confirmed.
@@ -414,7 +414,7 @@ Purpose:
   prompt: `llm-wiki prompt
 
 Usage:
-  llm-wiki prompt --task <feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prompt --task <feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Prints a repeatable post-wiki agent workflow prompt. Use feature, fix, or refactor for code-and-doc tasks, docs-sync for stale wiki updates without unrelated code edits, and okf-extract for prompt-assisted OKF v0.1 extraction.
@@ -422,8 +422,8 @@ Purpose:
   init: `llm-wiki init
 
 Usage:
-  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Previews or creates missing LLM-WIKI documents and selected adapter files. Existing adapter files are never overwritten.
@@ -431,7 +431,7 @@ Purpose:
   validate: `llm-wiki validate
 
 Usage:
-  llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--changed] [--since <git-ref>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--changed] [--since <git-ref>] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Runs audit-backed structure and safety validation for local checks or CI.
@@ -449,7 +449,7 @@ Purpose:
   audit: `llm-wiki audit
 
 Usage:
-  llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Reports detection, structure, frontmatter, encoding, sensitive-info, and selected adapter findings.
@@ -457,8 +457,8 @@ Purpose:
   migrate: `llm-wiki migrate
 
 Usage:
-  llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Reports the wiki_block_version contract gap between existing documents and the

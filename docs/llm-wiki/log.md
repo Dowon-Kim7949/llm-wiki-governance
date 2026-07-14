@@ -24,6 +24,28 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: 어댑터 확장 Windsurf/Gemini/JetBrains (1.3 B)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - src/cli.js
+  - templates/adapters/windsurf/llm-wiki.md (신규)
+  - templates/adapters/gemini/GEMINI.md (신규)
+  - templates/adapters/jetbrains/guidelines.md (신규)
+  - tests/verification.test.js
+- summary:
+  - `ADAPTER_TARGETS`에 어댑터 3종을 추가했다. 사용자 정책(미확인 계약은 candidate)에 따라 **확인된 계약만 writable**로: Windsurf(`.windsurf/rules/llm-wiki.md`)·Gemini(`GEMINI.md`)는 writable(+handoffLabel → handoff 지원), JetBrains AI(`.junie/guidelines.md`)는 계약 미확인이라 info-level candidate(파일 미생성, antigravity와 동일 취급).
+  - `planAdapterSuggestions`의 antigravity 하드코딩을 `!target.writable`로 일반화해 모든 candidate가 동일한 미리보기 문구를 받도록 했다. `writeAdapterFiles`는 이미 `writable` 플래그를 존중하므로 그대로 동작.
+  - 각 어댑터 템플릿은 `docs/llm-wiki/index.md` 엔트리포인트와 운영 규칙을 담아 `adapter.entrypoint` 검증을 통과한다. templates/는 package `files`에 포함돼 함께 배포된다.
+  - cli.js `SUPPORTED_AGENTS`에 windsurf/gemini/jetbrains 추가, help/usage의 에이전트 목록 갱신. **`--agent all`은 하위호환으로 codex/claude/antigravity 3개 유지**(cursor/copilot처럼 신규 어댑터도 명시 선택).
+  - 테스트 추가: windsurf/gemini 생성 + jetbrains candidate 미생성 + 엔트리포인트 포함, parseArgs 신규 에이전트 수용·`--agent all` 3개 유지. 전체 135 pass.
+- caveats:
+  - JetBrains 경로(`.junie/guidelines.md`)는 미확인 후보다. 계약이 확인되면 `writable: true`로 승격(1줄 변경)한다. Windsurf/Gemini 경로가 실제와 다르면 사용자가 지적 시 조정한다.
+  - 로드맵 1.3의 두 번째 항목. 버전 bump·README/CHANGELOG 반영은 릴리스 준비 시점.
+
 ## 2026-07-14 - feat: PHP/Ruby/.NET 생태계 감지 (1.3 A2)
 
 - status: needs_review
