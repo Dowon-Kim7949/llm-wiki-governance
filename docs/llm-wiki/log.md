@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - docs: wiki README verified 재승인 (1.5.1)
+
+- status: verified
+- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/README.md
+- summary:
+  - 1.5.1 발표자료 링크 갱신으로 needs_review로 내려갔던 wiki README를 사람 검토·승인(레이아웃 직접 확인 포함)에 따라 `verified`로 재승인하고 `reviewed_by: WoongHwan-Kim`/`reviewed_at: 2026-07-14`를 기록했다.
+- caveats:
+  - validate-frontmatter --strict pass. 재검토 부채 없음.
+
 ## 2026-07-14 - docs: 팀 공유 프레젠테이션 1.5.1로 갱신
 
 - status: needs_review
