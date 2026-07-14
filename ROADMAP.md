@@ -47,14 +47,22 @@ Humans review and approve verified status.
 CI continuously checks quality.
 ```
 
-## Shipped Through 1.1.0
+## Shipped Through 1.2.0
 
-`1.1.0` (this release) adds the inner-loop cleanup line: it fixes the
-`evidence.stale` same-day drift boundary, adds `validate --changed` to scope
-findings to changed documents, and ships a `pre-commit` hook template plus a CI
-Quick Start check against the packed tarball. It also folds in the docs work
-staged earlier as `1.0.1` — the dateless roadmap replan and the EN–KO doc pairs
-for `README`, `CHANGELOG`, and `ROADMAP`.
+`1.2.0` (this release) is the safe upgrades & migration line: a
+`wiki_block_version`-aware upgrade report in `migrate`/`doctor`; `migrate --apply`
+unblocked under an accepted, preview-first, `verified`-preserving scope
+(GATE_REVIEW Gate 8) that reuses the `fix` engine plus block-version stamping; a
+new `llm-wiki drift` command whose `--downgrade` moves drifted `verified` docs to
+`needs_review` (GATE_REVIEW Gate 9); line-level `evidence.stale` granularity; and
+version-agnostic `VERSIONING`/`project-profile` docs.
+
+`1.1.0` added the inner-loop cleanup line: it fixed the `evidence.stale` same-day
+drift boundary, added `validate --changed` to scope findings to changed documents,
+and shipped a `pre-commit` hook template plus a CI Quick Start check against the
+packed tarball. It also folded in the docs work staged earlier as `1.0.1` — the
+dateless roadmap replan and the EN–KO doc pairs for `README`, `CHANGELOG`, and
+`ROADMAP`.
 
 `1.0.0` declared the CLI command/option surface, `--format json`
 output shape, and required frontmatter contract stable. Already in place: the
@@ -79,24 +87,7 @@ not re-list shipped work.
 - **Breaking changes are out of scope for `1.x`** and are parked under "Beyond
   the 1.x Horizon" below.
 
-## Release Plan (1.2 → 1.7)
-
-### 1.2 — Safe upgrades & migration — headline
-
-Goal: make version upgrades safe so adopters never delete-and-regenerate.
-
-- **`wiki_block_version`-aware upgrade report** — show the contract gap between a
-  wiki's generation version and the installed CLI.
-- **Unblock `migrate --apply` under an accepted scope** — it has been blocked since
-  0.1.0 (GATE_REVIEW Gate 4). Give it a pre-decided, preview-first,
-  `verified`-preserving scope that reuses the `fix` engine to backfill mechanical
-  gaps (missing/renamed required fields, `## Evidence` sections, stale metadata).
-- **Opt-in `verified → needs_review` auto-downgrade on drift**, plus line/symbol
-  drift granularity (extends `evidence.stale`).
-
-Prerequisite: a new GATE_REVIEW gate decision for the `migrate --apply` scope
-before implementation. Why here: this is the top real-usage pain — a maintainer
-deleted `docs/llm-wiki` rather than upgrade an early wiki.
+## Release Plan (1.3 → 1.7)
 
 ### 1.3 — Detect & adapt breadth
 

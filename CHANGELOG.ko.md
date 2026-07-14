@@ -5,6 +5,32 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.2.0 — 2026-07-14
+
+안전 업그레이드 & 마이그레이션. 기존 wiki를 삭제·재생성하지 않고 CLI 계약에 맞춰
+유지한다. 하위호환 — 새 opt-in 동작만 추가.
+
+### 추가 (Added)
+
+- `wiki_block_version` 인식 업그레이드 리포트: `migrate`(와 `doctor`)가 각 문서의
+  기록된 블록버전과 설치된 CLI 사이의 계약 갭을 보여준다. stamp되는 값의 단일
+  소스는 이제 `CURRENT_WIKI_BLOCK_VERSION`이다.
+- `migrate --apply`를 승인된 preview-first 범위(`GATE_REVIEW.md`, Gate 8)로
+  해금했다. `fix` 엔진 + `wiki_block_version` 업그레이드를 재사용해, 문서를 현재
+  계약으로 올리고 부합해지면 블록버전을 stamp한다. `verified` 문서 내용이나
+  `status`는 건드리지 않으며, 더 최신 CLI가 stamp한 문서는 다운그레이드하지 않는다.
+- `llm-wiki drift`: `verified` 문서의 `evidence.stale` 드리프트를 보고하고,
+  `--downgrade`가 있을 때만 드리프트된 문서를 `needs_review`로 내린다(`status`·
+  `last_updated`만, `verified` 승격은 절대 없음; `GATE_REVIEW.md`, Gate 9).
+
+### 변경 (Changed)
+
+- `evidence.stale`에 라인 단위 정밀도를 추가했다: 소스가 정확한 `#Lx-Ly` evidence로만
+  인용된 경우 파일 전체가 아니라 해당 라인 범위로 드리프트를 검사해, 무관한 편집은
+  더는 잡지 않는다. broad 참조가 있으면 기존 file-level 검사를 유지한다.
+- `VERSIONING.md`·`project-profile.md`를 version-agnostic으로 바꿨다 — 버전 숫자를
+  고정하지 않고 `package.json`을 단일 소스로 참조한다.
+
 ## 1.1.0 — 2026-07-14
 
 "inner-loop cleanup" 라인: 일상 검증을 더 빠르고 조용하게. 하위호환 — 파괴적 변경

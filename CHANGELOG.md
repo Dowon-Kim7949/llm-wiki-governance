@@ -5,6 +5,36 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.2.0 — 2026-07-14
+
+Safe upgrades & migration. Keep an existing wiki in step with the CLI's contract
+instead of deleting and regenerating it. Backward-compatible — new opt-in
+behavior only.
+
+### Added
+
+- `wiki_block_version`-aware upgrade report: `migrate` (and `doctor`) show the
+  contract gap between each document's recorded block version and the installed
+  CLI. `CURRENT_WIKI_BLOCK_VERSION` is now the single source for the stamped value.
+- `migrate --apply` is unblocked under an accepted, preview-first scope
+  (`GATE_REVIEW.md`, Gate 8). It reuses the `fix` engine plus a
+  `wiki_block_version` upgrade: it brings a document to the current contract and
+  stamps its block version once it conforms. It never edits `verified` documents'
+  content or changes `status`, and never downgrades documents stamped by a newer
+  CLI.
+- `llm-wiki drift`: reports `evidence.stale` drift on `verified` documents, and
+  with `--downgrade` moves drifted documents to `needs_review` (`status` +
+  `last_updated` only, never a promotion to `verified`; `GATE_REVIEW.md`, Gate 9).
+
+### Changed
+
+- `evidence.stale` gains line-level granularity: when a source is cited only by
+  exact `#Lx-Ly` evidence, drift is checked against those lines instead of the
+  whole file, so unrelated edits no longer flag it. Any broad reference keeps the
+  file-level check.
+- `VERSIONING.md` and `project-profile.md` are now version-agnostic — they point
+  at `package.json` as the single version source instead of hardcoding a number.
+
 ## 1.1.0 — 2026-07-14
 
 The "inner-loop cleanup" line: faster, quieter day-to-day validation.

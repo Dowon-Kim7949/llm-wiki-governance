@@ -182,7 +182,7 @@ Expected Claude Code work is the same as Codex work: read the adapter and wiki e
 - It does not promote documents to `verified`.
 - It does not overwrite existing adapter files.
 - It does not overwrite `docs/llm-wiki/log.md`.
-- It does not enable `migrate --apply`; that remains blocked.
+- It does not edit `verified` documents' content during `fix --write` or `migrate --apply`, and only the opt-in `drift --downgrade` ever changes a document's `status` (moving drifted `verified` docs to `needs_review`).
 
 ## Commands
 
@@ -201,8 +201,9 @@ Expected Claude Code work is the same as Codex work: read the adapter and wiki e
 | `llm-wiki validate-frontmatter` | Check frontmatter only. |
 | `llm-wiki validate` | Run structure and safety validation for local checks or CI. Add `--changed` to scope findings to changed documents (fast pre-commit/CI). |
 | `llm-wiki audit` | Run broader audit reporting. |
-| `llm-wiki migrate --dry-run` | Prepare a reviewable migration plan without writing files. |
+| `llm-wiki migrate` | Report the `wiki_block_version` upgrade gap and preview the changes; add `--apply` to upgrade documents to the current contract (reuses the `fix` scope, preserves `verified`). |
 | `llm-wiki fix` | Preview safe autofixes inside `docs/llm-wiki`; add `--write` to apply them. |
+| `llm-wiki drift` | Report `evidence.stale` drift on `verified` documents; add `--downgrade` to move drifted docs to `needs_review`. |
 | `llm-wiki release-notes` | Generate a `needs_review` release-notes document from conventional commits since the last `v*` tag. |
 
 Command options are intentionally scoped. For example, `validate --write` and `handoff --existing overwrite` are rejected because those options do not belong to those commands.
@@ -289,6 +290,24 @@ It only:
 
 It never edits `verified` documents' content, never invents `title`/`doc_type`/`project`/`author` or `source_files`/`evidence` values, never enriches placeholder content, and never writes outside `docs/llm-wiki`. Mojibake and sensitive-looking results are skipped, and repeated runs are idempotent. The exact scope is recorded in `GATE_REVIEW.md`.
 
+## Upgrades & Drift
+
+`llm-wiki migrate` keeps an existing wiki in step with the CLI's contract instead of deleting and regenerating it. It reports the `wiki_block_version` gap between each document and the installed CLI, previews by default, and applies with `--apply`:
+
+```bash
+npx llm-wiki migrate            # upgrade report + planned changes, write nothing
+npx llm-wiki migrate --apply    # bring documents to the current contract
+```
+
+It reuses the `fix` scope and additionally upgrades a document's `wiki_block_version` to current once that document conforms. It never edits `verified` documents' content, never changes `status`, and reports documents stamped by a newer CLI without downgrading them (`GATE_REVIEW.md`, Gate 8).
+
+`llm-wiki drift` reports `evidence.stale` drift on `verified` documents — with line-range precision when a source is cited only by exact `#Lx-Ly` evidence — and, only with `--downgrade`, moves drifted documents to `needs_review` (`status` + `last_updated` only, never a promotion to `verified`; Gate 9):
+
+```bash
+npx llm-wiki drift              # report drifted verified documents
+npx llm-wiki drift --downgrade  # flip drifted verified docs to needs_review
+```
+
 ## Common Options
 
 - `--cwd <path>`: project root to inspect or write.
@@ -357,11 +376,11 @@ evidence:
 - Local markdown links inside `docs/llm-wiki` should point to existing relative files; URLs, `mailto:` links, and anchor-only links are ignored.
 - `[[wiki links]]` inside `docs/llm-wiki` should resolve to an existing wiki file path, basename, frontmatter `title`, or frontmatter `aliases` entry.
 - In `--strict` mode, `verified` documents must include `reviewed_by` and `reviewed_at`, and evidence contract warnings become errors; standard mode keeps these as warnings.
-- `verified` documents whose `source_files`/`evidence` files changed in git after they were reviewed are flagged with `evidence.stale` so they can be re-checked. This is a best-effort, file-level heuristic and is skipped silently when git history is unavailable.
+- `verified` documents whose `source_files`/`evidence` files changed in git after they were reviewed are flagged with `evidence.stale` so they can be re-checked. When a source is cited only by exact `#Lx-Ly` evidence, the check narrows to those lines; otherwise it is a file-level heuristic. It is best-effort and skipped silently when git history is unavailable. `llm-wiki drift --downgrade` can move flagged docs to `needs_review`.
 - `rules/frontmatter.schema.json` defines required frontmatter fields, valid `status` and `visibility` values, optional `aliases` and `evidence`, and review metadata for `verified` documents.
 - `docs/llm-wiki/log.md` is append-only and is not overwritten.
 - Existing `AGENTS.md`, `CLAUDE.md`, and `ANTIGRAVITY.md` files are not overwritten.
-- `migrate --apply` remains blocked until automatic migration scope is intentionally accepted.
+- `migrate --apply` is enabled under an accepted, preview-first scope (`GATE_REVIEW.md`, Gate 8): it reuses the `fix` scope plus `wiki_block_version` upgrades and never edits `verified` documents' content or changes `status`.
 - CLI-created or agent-edited wiki/report documents remain `needs_review` until human review.
 
 ## Regenerating Existing Wiki Docs

@@ -24,6 +24,30 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - release: 1.2.0 준비 (안전 업그레이드 & 마이그레이션)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - README.md
+  - README.ko.md
+  - ROADMAP.md
+  - ROADMAP.ko.md
+  - docs/llm-wiki/releases/v1.2.0.md
+- summary:
+  - 1.2(안전 업그레이드 & 마이그레이션) 헤드라인을 1.2.0으로 릴리스 준비했다. package.json 버전과 버전 assertion 테스트를 1.1.0 → 1.2.0으로 올렸다.
+  - CHANGELOG(EN·KO)에 1.2.0 항목 작성(Added: 업그레이드 리포트·migrate --apply·drift 명령 / Changed: evidence.stale 라인 granularity·version-agnostic 문서). README(EN·KO)에 migrate 해금·drift 명령·evidence.stale granularity를 반영하고 "Upgrades & Drift" 절을 추가했다. ROADMAP(EN·KO)의 1.2를 shipped로 옮기고 Release Plan을 1.3→1.7로 조정했다.
+  - v1.2.0 릴리스 노트를 작성했다. 전체를 한 "release: prepare 1.2.0" 커밋으로 묶는다.
+- caveats:
+  - push/tag(v1.2.0)·npm 배포는 사용자의 명시적 "배포" 지시 후에만 진행한다(태그가 publish.yml로 npm Trusted Publishing을 트리거).
+  - 이 릴리스에 포함된 게이트 결정: Gate 8(migrate --apply 범위), Gate 9(drift 강등 범위). 둘 다 accepted_for_1.2.0.
+  - VERSIONING·project-profile은 version-agnostic 전환으로 needs_review로 내려가 있어, 사람 재검토 후 verified 재승인이 필요하다.
+
 ## 2026-07-14 - docs: VERSIONING·project-profile version-agnostic 전환
 
 - status: needs_review

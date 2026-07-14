@@ -170,7 +170,7 @@ npx llm-wiki quickstart --write --type frontend --agent claude
 - 문서를 `verified`로 승격하지 않습니다.
 - 기존 adapter 파일을 덮어쓰지 않습니다.
 - `docs/llm-wiki/log.md`를 덮어쓰지 않습니다.
-- `migrate --apply`는 아직 활성화하지 않습니다.
+- `fix --write`·`migrate --apply` 중에도 `verified` 문서 내용을 편집하지 않으며, 문서의 `status`를 바꾸는 것은 opt-in `drift --downgrade`(드리프트된 `verified` 문서를 `needs_review`로) 뿐입니다.
 
 ## 명령어
 
@@ -189,8 +189,9 @@ npx llm-wiki quickstart --write --type frontend --agent claude
 | `llm-wiki validate-frontmatter` | frontmatter만 검사합니다. |
 | `llm-wiki validate` | local check 또는 CI용 구조/안전 검증을 수행합니다. `--changed`로 변경된 문서만 대상으로 좁힐 수 있습니다(빠른 pre-commit/CI). |
 | `llm-wiki audit` | 더 넓은 audit report를 생성합니다. |
-| `llm-wiki migrate --dry-run` | 파일을 쓰지 않고 검토 가능한 migration plan을 만듭니다. |
+| `llm-wiki migrate` | `wiki_block_version` 업그레이드 갭을 보고하고 변경을 미리봅니다. `--apply`로 문서를 현재 계약으로 업그레이드합니다(`fix` 범위 재사용, `verified` 보존). |
 | `llm-wiki fix` | `docs/llm-wiki` 내부의 안전한 자동수정을 미리보기합니다. `--write`로 실제 적용합니다. |
+| `llm-wiki drift` | `verified` 문서의 `evidence.stale` 드리프트를 보고합니다. `--downgrade`로 드리프트된 문서를 `needs_review`로 내립니다. |
 | `llm-wiki release-notes` | 마지막 `v*` 태그 이후 conventional commit으로 `needs_review` 릴리스 노트 문서를 생성합니다. |
 
 명령별 옵션은 의도적으로 제한됩니다. 예를 들어 `validate --write`와 `handoff --existing overwrite`는 해당 명령에 속하지 않는 옵션이므로 거부됩니다.
@@ -276,6 +277,24 @@ npx llm-wiki fix --write    # 실제 적용
 
 `verified` 문서 내용, `title`/`doc_type`/`project`/`author`나 `source_files`/`evidence` 값, 미보강(placeholder) 내용은 절대 지어내거나 수정하지 않으며 `docs/llm-wiki` 밖에는 쓰지 않습니다. mojibake·민감정보로 보이는 결과는 건너뛰고, 반복 실행해도 결과가 같습니다(멱등). 정확한 범위는 `GATE_REVIEW.md`에 기록되어 있습니다.
 
+## 업그레이드 & 드리프트 (Upgrades & Drift)
+
+`llm-wiki migrate`는 기존 wiki를 삭제·재생성하지 않고 CLI 계약에 맞춰 올려줍니다. 각 문서와 설치된 CLI 사이의 `wiki_block_version` 갭을 보고하며, 기본은 미리보기이고 `--apply`로 적용합니다.
+
+```bash
+npx llm-wiki migrate            # 업그레이드 리포트 + 계획, 쓰기 없음
+npx llm-wiki migrate --apply    # 문서를 현재 계약으로 업그레이드
+```
+
+`fix` 범위를 재사용하고, 문서가 계약에 부합해지면 그 문서의 `wiki_block_version`을 현재로 올려 stamp합니다. `verified` 문서 내용은 편집하지 않고, `status`는 바꾸지 않으며, 더 최신 CLI가 stamp한 문서(ahead)는 다운그레이드 없이 보고만 합니다(`GATE_REVIEW.md`, Gate 8).
+
+`llm-wiki drift`는 `verified` 문서의 `evidence.stale` 드리프트를 보고하며(소스가 정확한 `#Lx-Ly` evidence로만 인용된 경우 해당 라인 범위로 정밀 검사), `--downgrade`가 있을 때만 드리프트된 문서를 `needs_review`로 내립니다(`status`·`last_updated`만, `verified` 승격은 절대 없음; Gate 9).
+
+```bash
+npx llm-wiki drift              # 드리프트된 verified 문서 보고
+npx llm-wiki drift --downgrade  # 드리프트된 verified 문서를 needs_review로
+```
+
 ## 공통 옵션
 
 - `--cwd <path>`: 검사하거나 작성할 project root입니다.
@@ -344,11 +363,11 @@ evidence:
 - `docs/llm-wiki` 내부 local markdown link는 존재하는 상대 파일을 가리켜야 합니다.
 - `docs/llm-wiki` 내부 `[[wiki links]]`는 기존 wiki file path, basename, frontmatter `title`, 또는 frontmatter `aliases` 항목으로 해석되어야 합니다.
 - `--strict` 모드에서 `verified` 문서는 `reviewed_by`와 `reviewed_at`을 포함해야 하며 evidence contract warning도 error로 처리됩니다.
-- 검토 이후 `source_files`/`evidence` 파일이 git에서 변경된 `verified` 문서는 `evidence.stale`로 표시해 재검토를 유도합니다. best-effort·파일 단위 휴리스틱이며 git 이력이 없으면 조용히 건너뜁니다.
+- 검토 이후 `source_files`/`evidence` 파일이 git에서 변경된 `verified` 문서는 `evidence.stale`로 표시해 재검토를 유도합니다. 소스가 정확한 `#Lx-Ly` evidence로만 인용된 경우 해당 라인 범위로 좁혀 검사하고, 그 외에는 파일 단위 휴리스틱입니다. best-effort이며 git 이력이 없으면 조용히 건너뜁니다. `llm-wiki drift --downgrade`로 표시된 문서를 `needs_review`로 내릴 수 있습니다.
 - `rules/frontmatter.schema.json`은 required frontmatter fields, valid `status`/`visibility` values, optional `aliases`와 `evidence`, `verified` 문서의 review metadata를 정의합니다.
 - `docs/llm-wiki/log.md`는 append-only이며 덮어쓰지 않습니다.
 - 기존 `AGENTS.md`, `CLAUDE.md`, `ANTIGRAVITY.md` 파일은 덮어쓰지 않습니다.
-- `migrate --apply`는 자동 migration 범위를 명시적으로 승인하기 전까지 차단됩니다.
+- `migrate --apply`는 승인된 preview-first 범위(`GATE_REVIEW.md`, Gate 8)로 활성화되어 있습니다: `fix` 범위 + `wiki_block_version` 업그레이드를 재사용하며 `verified` 문서 내용이나 `status`는 건드리지 않습니다.
 - CLI가 생성하거나 agent가 수정한 wiki/report 문서는 사람 검토 전까지 `needs_review` 상태입니다.
 
 ## 기존 Wiki 문서 재생성
