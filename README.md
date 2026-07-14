@@ -478,6 +478,14 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
+## Community
+
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — how to propose changes, the conservative-write and `needs_review` conventions, and the local verify steps.
+- [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) — expected behavior for participants.
+- [`SECURITY.md`](./SECURITY.md) — how to report a vulnerability privately.
+
+Each has a Korean pair (`*.ko.md`). Issue and pull-request templates live under `.github/`.
+
 ## Related Documents
 
 - `ROADMAP.md`: product direction, implemented phases, near-term priorities, and future work candidates.

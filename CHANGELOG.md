@@ -5,6 +5,24 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.5.2 — 2026-07-14
+
+Community standards. Repository-facing docs so the project meets GitHub's
+recommended community standards. No CLI/API changes.
+
+### Added
+
+- Community health files at the repository root, bilingual (EN/KO):
+  `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md` (each with a `.ko.md`
+  pair), listed in `package.json` `files` so they ship with the package.
+- GitHub templates: `.github/ISSUE_TEMPLATE/` (bug report, feature request,
+  config) and `.github/pull_request_template.md`.
+
+### Notes
+
+- Repository/GitHub-facing only; the CLI command surface, JSON output, and
+  programmatic API are unchanged. `.github/` templates are not shipped to npm.
+
 ## 1.5.1 — 2026-07-14
 
 Programmatic API and output fixes found while smoke-testing the new 1.5 API from

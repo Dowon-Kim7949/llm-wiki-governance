@@ -1,6 +1,6 @@
 {
   "name": "@dowonk-7949/llm-wiki-standard",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": false,
   "type": "module",
   "description": "Stable CLI for the cross-platform LLM-WIKI common standard.",
@@ -24,6 +24,12 @@
     "GATE_REVIEW.md",
     "VERIFICATION.md",
     "RELEASE_CHECKLIST.md",
+    "CODE_OF_CONDUCT.md",
+    "CODE_OF_CONDUCT.ko.md",
+    "CONTRIBUTING.md",
+    "CONTRIBUTING.ko.md",
+    "SECURITY.md",
+    "SECURITY.ko.md",
     "LICENSE"
   ],
   "bin": {

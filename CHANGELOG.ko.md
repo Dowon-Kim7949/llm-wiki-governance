@@ -5,6 +5,23 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.5.2 — 2026-07-14
+
+커뮤니티 표준(Community standards). GitHub 권장 커뮤니티 표준을 충족하도록 저장소용
+문서를 추가한다. CLI/API 변경 없음.
+
+### 추가 (Added)
+
+- 저장소 루트에 커뮤니티 헬스 문서(EN/KO 쌍): `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`,
+  `SECURITY.md`(각각 `.ko.md` 짝). `package.json` `files`에 등록해 패키지에 포함한다.
+- GitHub 템플릿: `.github/ISSUE_TEMPLATE/`(버그 리포트·기능 요청·config)와
+  `.github/pull_request_template.md`.
+
+### 참고 (Notes)
+
+- 저장소/GitHub 대상 변경일 뿐, CLI 명령 표면·JSON 출력·프로그래매틱 API는 그대로다.
+  `.github/` 템플릿은 npm에 실리지 않는다.
+
 ## 1.5.1 — 2026-07-14
 
 1.5 신규 API를 소비 프로젝트에서 스모크 테스트하다 발견한 API/출력 결함 수정.

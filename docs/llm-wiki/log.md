@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - release: 1.5.2 준비 (커뮤니티 표준)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - CODE_OF_CONDUCT.md / .ko.md, CONTRIBUTING.md / .ko.md, SECURITY.md / .ko.md (신규, 루트)
+  - .github/ISSUE_TEMPLATE/(bug_report·feature_request·config), .github/pull_request_template.md (신규)
+  - package.json (version 1.5.1 → 1.5.2 + files에 커뮤니티 문서 6개)
+  - tests/verification.test.js (버전 어서션 → 1.5.2)
+  - CHANGELOG.md / CHANGELOG.ko.md (1.5.2 항목)
+  - README.md / README.ko.md (커뮤니티 섹션)
+  - docs/llm-wiki/releases/v1.5.2.md (신규)
+- summary:
+  - GitHub Community Standards(기본 브랜치=main 기준)를 충족하도록, 병렬 워크트리(`check-llm-model`) 브랜치에 보존해 둔 커뮤니티 헬스 문서(CODE_OF_CONDUCT·CONTRIBUTING·SECURITY EN/KO)와 GitHub 이슈/PR 템플릿을 main으로 가져와 1.5.2로 정식화했다. package.json `files`에 문서 6개를 등록하고 버전·어서션·CHANGELOG·README를 갱신했다.
+  - 저장소/GitHub 대상 변경이라 CLI 명령 표면·JSON 출력·프로그래매틱 API 계약은 불변. `.github/` 템플릿은 npm 미포함.
+- caveats:
+  - node --test·validate-frontmatter --strict 통과 확인 예정. GitHub Community Standards는 이 커밋이 main에 push되면 Code of conduct/Contributing/Security/Issue templates/PR template가 충족으로 바뀐다.
+
 ## 2026-07-14 - docs: 팀 발표자료에 실제 화면 예시 슬라이드 2장 추가
 
 - status: needs_review

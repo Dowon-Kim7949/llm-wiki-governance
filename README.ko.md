@@ -465,6 +465,14 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
+## 커뮤니티
+
+- [`CONTRIBUTING.ko.md`](./CONTRIBUTING.ko.md) — 변경 제안 방법, 보수적 쓰기·`needs_review` 관례, 로컬 검증 절차.
+- [`CODE_OF_CONDUCT.ko.md`](./CODE_OF_CONDUCT.ko.md) — 참여자 행동 규범.
+- [`SECURITY.ko.md`](./SECURITY.ko.md) — 취약점을 비공개로 신고하는 방법.
+
+각 문서는 영문 짝(`*.md`)이 있습니다. 이슈·PR 템플릿은 `.github/` 아래에 있습니다.
+
 ## 관련 문서
 
 - `README.md`: 영어 README.
