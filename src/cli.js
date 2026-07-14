@@ -119,6 +119,7 @@ export function defaultOptions() {
     findingRule: null,
     version: null,
     since: null,
+    bodyOnly: false,
     changed: false,
     type: null,
     format: "text",
@@ -232,6 +233,9 @@ export function parseArgs(argv) {
     } else if (arg === "--changed") {
       usedOptions.add("changed");
       options.changed = true;
+    } else if (arg === "--body-only") {
+      usedOptions.add("body-only");
+      options.bodyOnly = true;
     } else if (arg === "--minimal") {
       usedOptions.add("minimal");
       options.minimal = true;
@@ -280,7 +284,7 @@ const COMMAND_OPTION_RULES = {
   drift: new Set(["cwd", "dry-run", "downgrade", "format", "out"]),
   graph: new Set(["cwd", "format", "out"]),
   stats: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
-  "release-notes": new Set(["cwd", "version", "since", "format", "out"]),
+  "release-notes": new Set(["cwd", "version", "since", "body-only", "format", "out"]),
   mcp: new Set(["cwd"])
 };
 
@@ -368,7 +372,7 @@ Usage:
   llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki graph [--format text|json|mermaid|dot] [--cwd <path>] [--out <path>]
   llm-wiki stats [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--strict] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--body-only] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki mcp [--cwd <path>]
 
 Safety:
@@ -583,12 +587,14 @@ Purpose:
   "release-notes": `llm-wiki release-notes
 
 Usage:
-  llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--body-only] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Generates a needs_review release-notes document for a version. It groups conventional commits (feat/fix/perf/refactor/docs) into Korean-first bilingual sections (추가/변경/수정/문서/기타), and falls back to a fillable scaffold when git history is unavailable. Defaults the version to package.json; use --out to write the document.
 
   By default the range is "since the last v* tag". Pass --since <git-ref> (for example the previous release tag) to force the base range as <git-ref>..HEAD, which is useful for regenerating a version's notes after its tag already exists.
+
+  --body-only emits ONLY the change-section body — no frontmatter, no H1 title, and no "review before publishing" scaffold line — for use as a GitHub Release body. Because commit subjects flow into the body, it is scanned for sensitive-looking values and the command is BLOCKED (exit 2, body withheld) if any are found; rewrite the offending commit subject and retry.
 `,
   mcp: `llm-wiki mcp
 

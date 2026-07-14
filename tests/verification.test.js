@@ -8,7 +8,7 @@ import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard, renderOutputFile, printResult } from "../src/report.js";
 import * as api from "../src/index.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
-import { buildReleaseNotes, parseCommit } from "../src/release-notes.js";
+import { buildReleaseNotes, buildReleaseNotesBody, parseCommit } from "../src/release-notes.js";
 import { fileChangedSince, lineRangeChangedSince } from "../src/git.js";
 import { execFileSync } from "node:child_process";
 
@@ -1053,6 +1053,97 @@ test("release-notes threads --since and stays usable without git history", async
   assert.equal(result.since, "v2.0.0");
   assert.equal(result.gitAvailable, false);
   assert.ok(result.document.includes("릴리스 노트 v3.0.0 · Release Notes v3.0.0"));
+});
+
+test("buildReleaseNotesBody emits only grouped sections (no frontmatter/title/scaffold)", () => {
+  const body = buildReleaseNotesBody({
+    gitAvailable: true,
+    commits: [
+      { type: "feat", description: "add x", hash: "a1" },
+      { type: "docs", description: "update y", hash: "b2" },
+      { type: "chore", description: "bump dep", hash: "c3" }
+    ]
+  });
+
+  assert.ok(body.startsWith("## 추가 · Added"));
+  assert.ok(body.includes("- add x (a1)"));
+  assert.ok(body.includes("## 문서 · Documentation"));
+  assert.ok(!body.includes("---"));
+  assert.ok(!body.includes("릴리스 노트"));
+  assert.ok(!body.includes("status:"));
+  assert.ok(!body.includes("bump dep")); // chore is excluded
+});
+
+test("parseArgs accepts --body-only for release-notes and rejects it elsewhere", () => {
+  const ok = parseArgs(["release-notes", "--body-only"]);
+  const rejected = parseArgs(["validate", "--body-only"]);
+
+  assert.equal(ok.command, "release-notes");
+  assert.equal(ok.options.bodyOnly, true);
+  assert.deepEqual(ok.errors, []);
+  assert.deepEqual(rejected.errors, ["Option --body-only is not supported by validate."]);
+});
+
+test("release-notes --body-only emits only the change body", async (t) => {
+  let hasGit = true;
+  try {
+    execFileSync("git", ["--version"], { stdio: "ignore" });
+  } catch {
+    hasGit = false;
+  }
+  if (!hasGit) {
+    t.skip("git not available");
+    return;
+  }
+
+  const cwd = await makeProject("relnotes-body-");
+  await writeJson(path.join(cwd, "package.json"), { name: "relnotes", version: "1.0.0" });
+  const git = gitAtDate(cwd, "2026-07-15T12:00:00");
+  git(["init"]);
+  await writeFile(path.join(cwd, "f.txt"), "one\n", { encoding: "utf8" });
+  git(["add", "."]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "feat: add a thing"]);
+
+  const result = await releaseNotesCommand({ cwd, version: "1.0.0", bodyOnly: true, format: "text" });
+
+  assert.equal(result.result, "pass");
+  assert.equal(result.bodyOnly, true);
+  assert.equal(result.text, result.document);
+  assert.ok(result.document.includes("## 추가 · Added"));
+  assert.ok(result.document.includes("add a thing"));
+  assert.ok(!result.document.includes("---"));
+  assert.ok(!result.document.includes("릴리스 노트"));
+  assert.ok(!result.document.includes("status: needs_review"));
+  assert.ok(!result.document.includes("게시 전 검토"));
+});
+
+test("release-notes --body-only blocks on a sensitive-looking commit subject", async (t) => {
+  let hasGit = true;
+  try {
+    execFileSync("git", ["--version"], { stdio: "ignore" });
+  } catch {
+    hasGit = false;
+  }
+  if (!hasGit) {
+    t.skip("git not available");
+    return;
+  }
+
+  const cwd = await makeProject("relnotes-secret-");
+  await writeJson(path.join(cwd, "package.json"), { name: "relnotes", version: "1.0.0" });
+  const git = gitAtDate(cwd, "2026-07-15T12:00:00");
+  git(["init"]);
+  await writeFile(path.join(cwd, "f.txt"), "one\n", { encoding: "utf8" });
+  git(["add", "."]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "fix: rotate api_key=SUPERSECRETVALUE123"]);
+
+  const result = await releaseNotesCommand({ cwd, version: "1.0.0", bodyOnly: true, format: "text" });
+
+  assert.equal(result.result, "blocked");
+  assert.equal(result.document, null);
+  assert.ok(result.findings.some((finding) => finding.rule === "sensitive.release_body" && finding.severity === "blocked"));
+  // The sensitive value is never echoed in the withheld message.
+  assert.ok(!result.text.includes("SUPERSECRETVALUE123"));
 });
 
 test("migrate dry-run reports safe additions without writing files", async () => {

@@ -63,9 +63,10 @@ export function collectCommits(cwd, { since = null } = {}) {
   }
 }
 
-// Pure renderer: given a version, date, and parsed commits, produce a
-// needs_review release-notes document with LLM-WIKI frontmatter.
-export function buildReleaseNotes({ version, date, project = "project", commits = [], gitAvailable = true }) {
+// Pure renderer: given parsed commits, produce ONLY the grouped change-section
+// body (no frontmatter, no H1 title, no review scaffold line). This is what a
+// GitHub Release body wants; buildReleaseNotes wraps it into a full wiki doc.
+export function buildReleaseNotesBody({ commits = [], gitAvailable = true }) {
   const grouped = new Map(SECTION_ORDER.map((section) => [section, []]));
   for (const commit of commits) {
     if (commit.type === "release" || commit.type === "chore") continue;
@@ -77,11 +78,17 @@ export function buildReleaseNotes({ version, date, project = "project", commits 
     .filter((section) => grouped.get(section).length > 0)
     .map((section) => `## ${SECTION_LABELS[section]}\n\n${grouped.get(section).map((commit) => `- ${commit.description} (${commit.hash})`).join("\n")}`);
 
-  const body = bodySections.length > 0
+  return bodySections.length > 0
     ? bodySections.join("\n\n")
     : `## 변경 사항 · Changes\n\n- ${gitAvailable
         ? "마지막 릴리스 태그 이후 기록된 주요 변경이 없습니다. · No notable changes were recorded since the last release tag."
         : "git 이력을 사용할 수 없어 변경 사항을 수동으로 작성해야 합니다. · Git history was not available; fill in the changes manually."}`;
+}
+
+// Pure renderer: given a version, date, and parsed commits, produce a
+// needs_review release-notes document with LLM-WIKI frontmatter.
+export function buildReleaseNotes({ version, date, project = "project", commits = [], gitAvailable = true }) {
+  const body = buildReleaseNotesBody({ commits, gitAvailable });
 
   return `---
 title: 릴리스 노트 v${version} · Release Notes v${version}

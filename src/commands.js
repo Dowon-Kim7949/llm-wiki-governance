@@ -12,7 +12,7 @@ import { renderTextReport } from "./report.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { apiServiceInventoryChecklist, buildTaskPrompt } from "./task-prompts.js";
-import { buildReleaseNotes, collectCommits } from "./release-notes.js";
+import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
 import { fileChangedSince, lineRangeChangedSince, changedFiles } from "./git.js";
 
 const TEMPLATE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates");
@@ -620,6 +620,41 @@ export async function releaseNotesCommand(options) {
   const project = String(packageJson.name ?? path.basename(options.cwd) ?? "project").replace(/^@[^/]+\//, "");
   const date = todayIsoDate();
   const { commits, gitAvailable } = collectCommits(options.cwd, { since: options.since });
+
+  // --body-only emits just the change-section body (no frontmatter/title/scaffold),
+  // for use as a GitHub Release body. Because commit subjects flow verbatim into the
+  // body, scan it for sensitive-looking values and BLOCK rather than leak one into a
+  // public release (Gate 12). On stdout the blocked result never prints the body.
+  if (options.bodyOnly) {
+    const body = buildReleaseNotesBody({ commits, gitAvailable });
+    const sensitive = scanSensitiveInfo(body);
+    const base = {
+      schemaVersion: JSON_SCHEMA_VERSION,
+      command: "release-notes",
+      version,
+      project,
+      since: options.since ?? null,
+      commitCount: commits.length,
+      gitAvailable,
+      bodyOnly: true
+    };
+    if (sensitive.length > 0) {
+      return {
+        ...base,
+        result: "blocked",
+        document: null,
+        text: `Refusing to emit release body: ${sensitive.length} sensitive-looking value(s) detected in the generated notes. Rewrite the offending commit subject(s) and retry.`,
+        findings: sensitive.map((finding) => ({
+          severity: "blocked",
+          rule: "sensitive.release_body",
+          path: `release-body:${finding.line}`,
+          message: finding.message
+        }))
+      };
+    }
+    return { ...base, result: "pass", document: body, text: body, findings: [] };
+  }
+
   const document = buildReleaseNotes({ version, date, project, commits, gitAvailable });
 
   return {
