@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: 1.6.0 배포 전 validate 경고 전부 해소
+
+- status: verified
+- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/EXAMPLES.md, GLOSSARY.md, index.md, profiles/library.md (reviewed_at/last_updated → 2026-07-15)
+  - docs/llm-wiki/releases/v0.1.7.md, v0.1.8.md (동일 재검증)
+  - docs/llm-wiki/templates/DECISION_LOG.template.md, TASK_PROMPT.template.md (동일 재검증)
+  - docs/llm-wiki/log.md (아래 wiki-link 오탐 표현 정정)
+- summary:
+  - 1.6.0 배포 전 `validate`의 경고 15건을 전부 해소했다. (1) `evidence.stale` 13건: 위 8개 `verified` 문서의 검토 기준일이 2026-07-13이었고 1.6 작업으로 소스(cli.js·commands.js·config.js·package.json·README.md)가 2026-07-14에 바뀌어 드리프트로 떴다. 사람 검토(WoongHwan-Kim)로 내용이 현행과 일치함을 확인하고 `reviewed_at`/`last_updated`를 2026-07-15로 갱신해 기준선을 이동, 드리프트를 해소했다(도구가 안내하는 "re-review and update" 경로; 내용 변경 없음). (2) `wiki_link.missing` 2건: 과거 로그 항목의 이중 대괄호 리터럴 토큰이 "위키 링크 문법"을 지칭하는 서술이었으나 스캐너가 실제 문서 링크로 오탐한 것 — 사실은 그대로 두고 "위키 링크"로 표현만 정정했다.
+  - 결과: `validate` findings 0.
+- caveats:
+  - 역사적 릴리스 노트(v0.1.7·v0.1.8)가 `package.json`을 source_files로 인용해 릴리스마다 반복 드리프트하는 구조적 스멜은 향후 별도 정리 후보다(현재는 재검증으로 유지).
+  - 배포 전이다(태그/npm 미실행).
+
 ## 2026-07-14 - feat: 에이전트 네이티브 MCP 서버 + 1.6.0 준비
 
 - status: needs_review
@@ -254,7 +271,7 @@ contains_sensitive_info: false
   - tests/verification.test.js
 - summary:
   - 1.4 세 번째(마지막) 항목: 사람 독자용 공개를 SSG 없이 지원한다. `renderHtmlDashboard`에 탐색용 **Document Index** 섹션 추가(wikiGraph.documents를 정렬해 제목·경로 링크·인바운드 수·orphan 배지로 나열).
-  - README(EN·KO)에 "Publishing for Human Readers" 절 추가: GitHub/GitLab 네이티브 렌더, Obsidian([[links]]+aliases), MkDocs 안내 + `graph --format mermaid|dot`·`stats`·`audit --format html`(Document Index) 활용법. "SSG 아님" 명시. Commands 표에 graph·stats 행 추가.
+  - README(EN·KO)에 "Publishing for Human Readers" 절 추가: GitHub/GitLab 네이티브 렌더, Obsidian(위키 링크+aliases), MkDocs 안내 + `graph --format mermaid|dot`·`stats`·`audit --format html`(Document Index) 활용법. "SSG 아님" 명시. Commands 표에 graph·stats 행 추가.
   - 테스트 추가(대시보드 Document Index에 문서 경로·제목 포함). 전체 148 pass.
 - caveats:
   - 로드맵 1.4 3개 항목(graph·stats·publishing)이 모두 구현됐다. 다음: release: prepare 1.4.0 — 이 셋 + 보류 중인 Gate 10 파일/디렉터리 도메인 탐지를 함께 번들.
@@ -289,7 +306,7 @@ contains_sensitive_info: false
   - tests/verification.test.js
 - summary:
   - 1.4(knowledge you can see) 첫 항목: 읽기전용 `llm-wiki graph` 명령을 추가했다. `collectWikiGraph` 데이터를 graph 전용 `--format`으로 출력한다 — `text`(기본 요약), `json`(구조화 그래프), `mermaid`(GitHub/Obsidian용 fenced `graph TD`), `dot`(Graphviz digraph).
-  - `collectWikiGraph`에 `edges`를 추가했다(additive): wiki `[[links]]`·`related` frontmatter·로컬 markdown 링크가 문서→문서로 해소되는 엣지를 dedup·정렬해 수집(각 `{source,target,kind}`). summary에 `edges` 카운트, `emptyWikiGraph`에도 반영. 기존 필드 불변이라 status/audit 대시보드 영향 없음.
+  - `collectWikiGraph`에 `edges`를 추가했다(additive): wiki 링크·`related` frontmatter·로컬 markdown 링크가 문서→문서로 해소되는 엣지를 dedup·정렬해 수집(각 `{source,target,kind}`). summary에 `edges` 카운트, `emptyWikiGraph`에도 반영. 기존 필드 불변이라 status/audit 대시보드 영향 없음.
   - cli.js: `graph` 명령 등록, format 검증을 명령 인지(graph만 mermaid/dot 허용, 전역은 text/json/markdown/html), 옵션 규칙(cwd/format/out)·usage·per-command help 추가. report.js: `graph --out`(mermaid/dot)은 raw 텍스트로 기록.
   - 테스트 추가(text/json/mermaid/dot 출력·related 엣지 반영·미초기화 0 문서·parseArgs mermaid/dot 수용). 전체 145 pass. 이 저장소에서 graph text(21 docs/54 edges/9 orphans)·mermaid·dot·json 확인, html은 graph에서 거부(exit 3).
 - caveats:
