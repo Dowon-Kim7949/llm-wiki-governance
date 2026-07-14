@@ -2,13 +2,15 @@
 title: Public Api
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: public_api
 project: llm-wiki-standard
 last_updated: 2026-07-14
 author: cli-generated
 last_edited_by: Claude Code
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -80,10 +82,10 @@ contains_sensitive_info: false
 
 - `src/cli.js#symbol:COMMANDS` — 명령 이름 → 핸들러 매핑.
 - `src/cli.js#symbol:parseArgs` — 옵션/사용법 검증과 exit code 근거.
-- `src/commands.js#symbol:migrateCommand` — `--apply` 차단 정책.
+- `src/commands.js#symbol:migrateCommand` — `wiki_block_version` 업그레이드 리포트 + `--apply`(Gate 8 범위).
 - `src/commands.js#symbol:fixCommand` — 범위 한정 자동수정(기본 미리보기, `--write` 적용).
 - `src/config-file.js#symbol:mergeConfigIntoOptions` — config 기본값과 CLI 플래그의 병합 우선순위.
 
 ## Review Notes
 
-- 2026-07-13에 0.1.8 CLI 명령과 옵션 계약을 기준으로 검토했다.
+- 2026-07-14에 1.3.0 CLI 명령·옵션 계약(migrate --apply, drift, 신규 --agent, OKF type alias 포함)을 기준으로 재검토하고 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.

@@ -2,13 +2,15 @@
 title: Project Profile
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: project_profile
 project: llm-wiki-standard
 last_updated: 2026-07-14
 author: cli-generated
 last_edited_by: Claude Code
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - package.json
@@ -65,4 +67,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 2026-07-14에 버전 표기를 version-agnostic으로 전환했다: 고정 버전 숫자(`1.0.0`)를 걷어내고 `package.json`을 단일 소스로 참조하게 했으며, 1.2에서 해금된 `migrate --apply`를 반영해 쓰기 정책 서술을 갱신했다. 내용이 바뀌었으므로 규칙에 따라 `verified` → `needs_review`로 강등했고, 사람 재검토 후 재승인이 필요하다.
+- 2026-07-14에 버전 표기를 version-agnostic으로 전환하고(고정 버전 숫자 제거 → `package.json` 참조) 1.2에서 해금된 `migrate --apply`를 반영한 뒤, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.

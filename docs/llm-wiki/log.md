@@ -24,6 +24,28 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - docs: 1.3 wiki 문서 verified 재승인 + stale 0.1.8 리뷰 baseline 정리
+
+- status: verified
+- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/VERSIONING.md
+  - docs/llm-wiki/project-profile.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+  - docs/llm-wiki/domains/00_overview.md
+  - docs/llm-wiki/RELEASE_FLOW.md
+  - docs/llm-wiki/README.md
+- summary:
+  - 사용자 검토·승인에 따라 콘텐츠/레퍼런스 문서 8개를 `verified`로 (재)승인하고 `reviewed_by: WoongHwan-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 1.2/1.3에서 needs_review로 내려갔던 4개(VERSIONING·project-profile·DOMAIN_FEATURES·PUBLIC_API)와 docs/llm-wiki/README.md를 승격하고, 이미 verified였던 3개(ARCHITECTURE_CONVENTIONS·domains/00_overview·RELEASE_FLOW)를 리프레시했다.
+  - stale한 "2026-07-13에 0.1.8 …기준으로 검토했다" 리뷰 baseline을 1.3.0 기준 재검토 문구로 갱신했다(위 5개 문서). PUBLIC_API의 stale evidence 서술(`migrateCommand — --apply 차단`)을 `wiki_block_version 업그레이드 + --apply(Gate 8)`로 정정했다.
+  - 역사적 0.1.8 기록은 보존했다: 이 log.md의 과거 항목(append-only), `releases/v0.1.8.md`, `releases/v1.0.0.md`의 "0.1.8→1.0.0" 서술, README의 팀 소개 pptx 파일명 링크(`...v0.1.8.pptx`, 실제 자산).
+- caveats:
+  - needs_review로 남는 문서: `log.md`(append-only 러닝 로그, 본질상 verified 안 함), `releases/v1.0.0–v1.3.0.md`(생성된 릴리스 노트, 역사적 산출물). v1.3.0 노트는 배포 완료 후에도 생성물이라 needs_review 유지.
+  - validate-frontmatter --strict pass, 전체 136 tests pass. 이 커밋은 docs만 변경(코드·npm 패키지 내용 불변; docs/는 package files 미포함).
+
 ## 2026-07-14 - release: 1.3.0 준비 (디텍터 & 어댑터 확장)
 
 - status: needs_review

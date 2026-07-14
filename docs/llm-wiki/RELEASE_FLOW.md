@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: release_flow
 project: llm-wiki-standard
-last_updated: 2026-07-13
+last_updated: 2026-07-14
 author: cli-generated
-last_edited_by: Codex
+last_edited_by: Claude Code
 reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-13
+reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - package.json
@@ -52,4 +52,4 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-- 2026-07-13에 0.1.8 릴리스 설정과 체크리스트를 기준으로 검토했다.
+- 2026-07-14에 1.3.0 릴리스 설정과 체크리스트를 기준으로 재검토했다.
