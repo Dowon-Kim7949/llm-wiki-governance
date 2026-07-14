@@ -24,6 +24,19 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - docs: 팀 발표자료에 실제 화면 예시 슬라이드 2장 추가
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - outputs/llm-wiki-team-introduction-v1.5.1.pptx (12→14 슬라이드)
+- summary:
+  - 발표자료에 "실제 화면" 예시 슬라이드 2장을 추가했다(슬라이드 10 뒤). 슬라이드 11: `audit --format html` 대시보드 히어로를 헤드리스 Chrome으로 실제 스크린샷(결과·발견·문서·고아·링크 + 프로젝트 감지). 슬라이드 12: `graph --format json`의 실제 데이터(문서 24·링크 57)를 networkx로 렌더한 지식 그래프(index 진입 허브·코어 클러스터·log 허브의 릴리스 노트 부채꼴). 기존 슬라이드 번호는 재정렬(팀은 네 단계 →13, 닫는 슬라이드 →14).
+  - 두 이미지 모두 AI 생성 삽화가 아니라 도구의 실제 출력(대시보드는 실 스크린샷, 그래프는 실 데이터의 시각화)이라 발표 신뢰도에 부합한다. 그래프 팔레트는 dataviz 검증 스크립트로 색맹 안전성 확인. 사람이 PowerPoint로 두 슬라이드 레이아웃을 육안 확인했다.
+- caveats:
+  - LibreOffice 부재로 pptx 자동 렌더 검증은 불가 → 사람이 직접 확인함. python-pptx 왕복 로드로 파일 유효성 확인.
+
 ## 2026-07-14 - docs: wiki README verified 재승인 (1.5.1)
 
 - status: verified
