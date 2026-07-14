@@ -2,12 +2,15 @@
 title: Public Api
 tags:
   - llm-wiki
-status: needs_review
+  - verified
+status: verified
 doc_type: public_api
 project: llm-wiki-standard
 last_updated: 2026-07-14
 author: cli-generated
 last_edited_by: Claude Code
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -153,4 +156,4 @@ const code = await run(["audit", "--cwd", process.cwd()]);       // 0 pass / 1 e
 - 2026-07-14에 1.3.0 CLI 명령·옵션 계약(migrate --apply, drift, 신규 --agent, OKF type alias 포함)을 기준으로 재검토하고 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.4.0의 새 명령(`graph`, `stats`)과 graph 전용 `--format mermaid|dot`을 반영하고, stale했던 "migrate --apply 차단" 서술을 정정한 뒤, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.5 프로그래매틱 API(`package.json` `exports` → `src/index.js`, 동결된 `commands` 맵·개별 함수 export·`normalizeOptions`·`parseArgs`/`run`·`SCHEMA_VERSION`)와 `--format json`의 부가적 `schemaVersion` 필드를 반영하고, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
-- 2026-07-14에 1.5.1 API/출력 결함 수정을 반영했다(소비 프로젝트 스모크 테스트 발견): 결과 객체가 `schemaVersion`을 항상 담고 `.text`는 항상 텍스트임을 명시, `normalizeOptions`가 `parseArgs` 결과를 수용, `run(argv)`가 exit code 반환, HTML 대시보드 링크를 `--out` 기준 상대경로로. 모두 additive/refinement라 안정 계약을 깨지 않는다. LLM 편집으로 `needs_review`로 강등되었으며 사람 재검토가 필요하다.
+- 2026-07-14에 1.5.1 API/출력 결함 수정을 반영했다(소비 프로젝트 스모크 테스트 발견): 결과 객체가 `schemaVersion`을 항상 담고 `.text`는 항상 텍스트임을 명시, `normalizeOptions`가 `parseArgs` 결과를 수용, `run(argv)`가 exit code 반환, HTML 대시보드 링크를 `--out` 기준 상대경로로. 모두 additive/refinement라 안정 계약을 깨지 않는다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
