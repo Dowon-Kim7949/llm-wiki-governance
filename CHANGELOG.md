@@ -5,17 +5,34 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
-## 1.0.1 — 2026-07-14
+## 1.1.0 — 2026-07-14
 
-Docs-only patch. No functional, API, or command-surface changes.
+The "inner-loop cleanup" line: faster, quieter day-to-day validation.
+Backward-compatible — no breaking changes.
+
+### Added
+
+- `validate --changed` scopes reported findings to the wiki documents changed vs
+  the working tree (or a `--since <ref>` base), for fast pre-commit and PR CI.
+  Cross-document checks still run over the whole wiki.
+- A `pre-commit` hook template (`templates/git-hooks/pre-commit`) that runs
+  `validate --changed`, with install notes in `templates/git-hooks/README.md`.
+- The CI consumer-install job now runs Quick Start commands (`doctor`,
+  `init --dry-run`, `validate-frontmatter`) against the packed tarball.
+
+### Fixed
+
+- `evidence.stale` no longer flags a verified document reviewed on the same day
+  its source files were committed. The drift baseline is anchored to end-of-day,
+  so only later-day commits count.
 
 ### Changed
 
 - Replanned `ROADMAP.md` as a forward-looking, dateless `1.x` line (implementation
-  history moved to this changelog and `docs/llm-wiki/log.md`).
-- Added Korean pairs for the externally-visible root docs — `CHANGELOG.ko.md` and
+  history now lives in this changelog and `docs/llm-wiki/log.md`).
+- Added EN–KO pairs for the externally-visible root docs — `CHANGELOG.ko.md` and
   `ROADMAP.ko.md` — cross-linked with their English canonicals and shipped in the
-  package. Established the EN–KO pair convention (`docs/llm-wiki/README.md`).
+  package; established the EN–KO pair convention (`docs/llm-wiki/README.md`).
 
 ## 1.0.0 — 2026-07-14
 

@@ -199,7 +199,7 @@ Expected Claude Code work is the same as Codex work: read the adapter and wiki e
 | `llm-wiki init --dry-run` | Preview files that would be created. |
 | `llm-wiki init --write` | Create missing wiki files and selected adapter files. |
 | `llm-wiki validate-frontmatter` | Check frontmatter only. |
-| `llm-wiki validate` | Run structure and safety validation for local checks or CI. |
+| `llm-wiki validate` | Run structure and safety validation for local checks or CI. Add `--changed` to scope findings to changed documents (fast pre-commit/CI). |
 | `llm-wiki audit` | Run broader audit reporting. |
 | `llm-wiki migrate --dry-run` | Prepare a reviewable migration plan without writing files. |
 | `llm-wiki fix` | Preview safe autofixes inside `docs/llm-wiki`; add `--write` to apply them. |

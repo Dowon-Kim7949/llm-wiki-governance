@@ -24,6 +24,29 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - release: 1.1.0 준비 (1.0.1 흡수)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - README.md
+  - README.ko.md
+  - ROADMAP.md
+  - ROADMAP.ko.md
+  - docs/llm-wiki/releases/v1.1.0.md
+  - docs/llm-wiki/releases/v1.0.1.md (삭제)
+- summary:
+  - 1.1(inner-loop) 항목을 1.1.0으로 릴리스 준비했다. package.json·버전 assertion 테스트를 1.0.1 → 1.1.0으로 올리고, 배포된 적 없는 1.0.1을 1.1.0에 흡수했다(CHANGELOG의 1.0.1 항목을 1.1.0으로 병합, releases/v1.0.1.md 삭제).
+  - CHANGELOG(EN·KO)에 1.1.0 항목 작성(Added: validate --changed·pre-commit 훅·CI Quick Start / Fixed: evidence.stale 경계 / Changed: 로드맵 재작성·EN-KO 쌍). README(EN·KO) validate 행에 --changed 반영. ROADMAP(EN·KO)의 1.1을 shipped로 이동하고 Release Plan을 1.2→1.7로 조정.
+  - v1.1.0 릴리스 노트를 작성했다. 전체를 한 커밋으로 묶어 배포한다.
+- caveats:
+  - VERSIONING.md·project-profile.md는 여전히 "현재 버전 1.0.0" 표기라 2 버전 뒤처진다. 다만 npm 패키지 미포함이라 배포 영향은 없다. 버전 숫자를 빼고 package.json을 단일 소스로 참조하는 version-agnostic 전환을 다음 작업으로 권장한다(사람 재검토 필요).
+
 ## 2026-07-14 - feat: pre-commit 훅 템플릿 + CI Quick Start 점검 (1.1)
 
 - status: needs_review

@@ -47,7 +47,14 @@ Humans review and approve verified status.
 CI continuously checks quality.
 ```
 
-## Shipped Through 1.0.0
+## Shipped Through 1.1.0
+
+`1.1.0` (this release) adds the inner-loop cleanup line: it fixes the
+`evidence.stale` same-day drift boundary, adds `validate --changed` to scope
+findings to changed documents, and ships a `pre-commit` hook template plus a CI
+Quick Start check against the packed tarball. It also folds in the docs work
+staged earlier as `1.0.1` — the dateless roadmap replan and the EN–KO doc pairs
+for `README`, `CHANGELOG`, and `ROADMAP`.
 
 `1.0.0` declared the CLI command/option surface, `--format json`
 output shape, and required frontmatter contract stable. Already in place: the
@@ -72,24 +79,7 @@ not re-list shipped work.
 - **Breaking changes are out of scope for `1.x`** and are parked under "Beyond
   the 1.x Horizon" below.
 
-## Release Plan (1.1 → 1.7)
-
-### 1.1 — Inner-loop cleanup
-
-Goal: make day-to-day use and CI faster and quieter, and clear one known wart.
-
-- **Fix the `evidence.stale` same-day boundary.** `fileChangedSince` uses
-  `git log --since=<date>` (`src/git.js`), which counts commits made on the review
-  date, so a doc reviewed the same day its sources were committed shows immediate
-  `evidence.stale` warnings (21 observed during 1.0.0 prep). Compare by commit
-  timestamp instead of date-inclusive `--since`.
-- **`validate --changed`** — a diff-scoped run that validates only documents (and
-  their evidence) touched since a git ref, for fast pre-commit and CI.
-- **Pre-commit hook template** and a Quick Start command check against the packed
-  artifact (the one remaining Phase 7 checklist item).
-
-Why first: small, low-risk, high-frequency payoff; removes a confusing warning
-before anyone builds on top of the drift logic.
+## Release Plan (1.2 → 1.7)
 
 ### 1.2 — Safe upgrades & migration — headline
 

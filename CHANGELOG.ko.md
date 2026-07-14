@@ -5,9 +5,25 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
-## 1.0.1 — 2026-07-14
+## 1.1.0 — 2026-07-14
 
-문서 전용 패치. 기능·API·명령 표면 변경 없음.
+"inner-loop cleanup" 라인: 일상 검증을 더 빠르고 조용하게. 하위호환 — 파괴적 변경
+없음.
+
+### 추가 (Added)
+
+- `validate --changed` — 리포트되는 findings를 작업트리(또는 `--since <ref>` 기준)
+  대비 변경된 wiki 문서로 한정한다. pre-commit·PR CI를 빠르게 한다. 교차 문서
+  검사는 여전히 전체 wiki에 대해 실행된다.
+- `pre-commit` 훅 템플릿(`templates/git-hooks/pre-commit`) — `validate --changed`를
+  실행한다. 설치법은 `templates/git-hooks/README.md`.
+- CI consumer-install 잡이 packed tarball에 대해 Quick Start 명령(`doctor`,
+  `init --dry-run`, `validate-frontmatter`)을 실행한다.
+
+### 수정 (Fixed)
+
+- `evidence.stale`이 소스 커밋일과 같은 날 검토된 verified 문서를 더는 오탐하지
+  않는다. 드리프트 기준일을 그날의 끝으로 앵커링해, 다음 날 이후 커밋만 집계한다.
 
 ### 변경 (Changed)
 

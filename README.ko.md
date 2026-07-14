@@ -187,7 +187,7 @@ npx llm-wiki quickstart --write --type frontend --agent claude
 | `llm-wiki init --dry-run` | 생성 예정 파일을 미리 봅니다. |
 | `llm-wiki init --write` | 누락된 wiki 파일과 선택한 adapter 파일을 생성합니다. |
 | `llm-wiki validate-frontmatter` | frontmatter만 검사합니다. |
-| `llm-wiki validate` | local check 또는 CI용 구조/안전 검증을 수행합니다. |
+| `llm-wiki validate` | local check 또는 CI용 구조/안전 검증을 수행합니다. `--changed`로 변경된 문서만 대상으로 좁힐 수 있습니다(빠른 pre-commit/CI). |
 | `llm-wiki audit` | 더 넓은 audit report를 생성합니다. |
 | `llm-wiki migrate --dry-run` | 파일을 쓰지 않고 검토 가능한 migration plan을 만듭니다. |
 | `llm-wiki fix` | `docs/llm-wiki` 내부의 안전한 자동수정을 미리보기합니다. `--write`로 실제 적용합니다. |
