@@ -24,6 +24,21 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs(gate): Gate 12 초안 — 1.7 CI/CD 도입(GitHub Action + Release) 범위 (proposed_for_1.7.0)
+
+- status: needs_review
+- actor: Claude Code (사용자 명시적 수락 대기 — proposed; Gate 8 선례대로 초안→수락 분리)
+- scope: docs, gate
+- changed:
+  - GATE_REVIEW.md
+- summary:
+  - 분할된 1.7(CI/CD 도입, 리드)의 범위를 과거 게이트 서식(표 행 + Decisions / May change / Must not change / Guarantees / Honest limits / Unchanged guarantees)으로 사전 결정한 Gate 12를 작성했다. 실코드 확인으로 근거를 잡았다: `publish.yml`은 워크플로 레벨 `id-token: write` + `tag===version` 가드(line 34)라 floating `v1` 태그가 실제로 실패함(deconfliction 필요 확정); `release-notes.js#buildReleaseNotes`는 frontmatter + H1 + "게시 전 검토" 스캐폴드 라인을 붙이고 커밋 제목을 본문에 넣는데 민감정보 스캔을 거치지 않음(누출 갭 확정).
+  - 결정: (1) composite action은 `.github/actions/validate/action.yml`에서 읽기전용 `validate`를 `npx`로 래핑(쓰기 명령 미노출, `package.json` files 미포함). (2) 태그 push 시 GitHub Release는 `publish.yml`에 **격리된 `contents: write` 잡**을 추가해 러너 내장 `gh` CLI로 생성(서드파티 액션 금지 — 무의존성 보호). (3) 릴리스 본문은 새 부가 모드 `release-notes --body-only`(frontmatter·H1·스캐폴드 라인 제거, 섹션만)로 결정적 생성; 큐레이트된 `releases/vX.Y.Z.md`는 사람용 산출물로 남기고 자동 본문 소스로 쓰지 않음. (4) 본문은 publish 전 `scanSensitiveInfo`를 거쳐 매치 시 릴리스 차단. (5) v1에서는 action을 정확한 `vX.Y.Z` 태그/SHA로만 참조(floating `@v1` 미생성).
+  - 보류(후속 전용 게이트): Marketplace 게시 + floating major 태그 버저닝(먼저 `v*` 네임스페이스·버전 가드 deconfliction 필요). 불변: 기존 npm-publish 잡·Trusted Publishing·권한, 코어 스캐너·`validate` 시맨틱·JSON 형태·frontmatter 계약. `--body-only` 미사용 시 `release-notes` 출력 byte 동일.
+  - frontmatter: last_updated 2026-07-15, source_files에 src/release-notes.js·.github/workflows/publish.yml 추가(존재 확인). status needs_review 유지.
+- caveats:
+  - **proposed 상태다** — 사용자의 명시적 "Gate 12 수락"이 있어야 `accepted_for_1.7.0`으로 확정하고 구현(태스크 3)에 착수한다(구현은 이 게이트에 blocked). GATE_REVIEW.md는 docs/llm-wiki 밖 루트 문서라 validate 스캔 대상이 아님(frontmatter 수동 검증: 중복 키 없음).
+
 ## 2026-07-15 - docs: ROADMAP 1.7 단일 라인 → 1.7~1.11 순차 분할 재작성 (1.7 계획 1단계)
 
 - status: needs_review

@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: gate_review
 project: llm-wiki-standard
-last_updated: 2026-07-14
+last_updated: 2026-07-15
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -17,6 +17,8 @@ source_files:
   - src/cli.js
   - src/commands.js
   - src/frontmatter-schema.js
+  - src/release-notes.js
+  - .github/workflows/publish.yml
   - tests/verification.test.js
 related:
   - README.md
@@ -44,6 +46,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 9 Drift Downgrade Scope Approval | `accepted_for_1.2.0` | Add an opt-in `llm-wiki drift` command: report-only by default, `--downgrade` flips drifted `verified` documents to `needs_review` and refreshes `last_updated`, nothing else. It never promotes to `verified` and never edits other content. Accepted by WoongHwan-Kim on 2026-07-14. See "Drift Downgrade Scope Decision" below. |
 | Gate 10 Domain Detection Scope Approval | `accepted` | Expand backend/fullstack `init` domain detection to cover BOTH directory-per-domain (`domains/domain/modules/features`) and file-per-domain route/resource modules (`endpoints/routers/routes/resources/controllers/handlers`), via a bounded, exclusion-guarded project scan tuned for near-zero false positives. Accepted by WoongHwan-Kim on 2026-07-14. See "Domain Detection Scope Decision" below. |
 | Gate 11 MCP Tool Surface Scope Approval | `accepted_for_1.6.0` | Add a `llm-wiki mcp` command that runs a Model Context Protocol server over stdio, exposing only the READ-ONLY commands as MCP tools. Hand-rolled JSON-RPC 2.0 on Node built-ins (no third-party SDK), preserving the zero-runtime-dependency invariant. No write/mutating command is exposed; results reuse the 1.5 result shape (`schemaVersion`) as `structuredContent`. See "MCP Tool Surface Scope Decision" below. |
+| Gate 12 CI/CD Adoption (GitHub Action + Release) Scope Approval | `proposed_for_1.7.0` | Add a composite GitHub Action (`.github/actions/validate/action.yml`) that wraps the read-only `validate` via `npx`, and a GitHub Release generated on `v*` tag push by an isolated `contents: write` job using the runner's built-in `gh` CLI (no third-party action). The release body comes from a new additive `release-notes --body-only` mode and is run through the sensitive-info scan before publish. Marketplace listing and floating-tag (`@v1`) versioning are DEFERRED behind a later gate that first deconflicts the `v*` npm-publish tag namespace and the `publish.yml` version-match guard. See "CI/CD Adoption Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -339,6 +342,107 @@ as the CLI.
 - stdout is the protocol channel (JSON-RPC only); logs go to stderr. The server
   runs until stdin closes. No MCP tool writes files, and sensitive-info redaction
   in the result path is unchanged.
+
+## CI/CD Adoption Scope Decision (proposed for 1.7.0)
+
+Proposed for the `1.7.0` line as the lead of the split "Team & org scale" plan
+(see `ROADMAP.md`, "Release Plan (1.7–1.11)"). `1.7` makes the CLI cheap to adopt
+in CI/CD: a one-`uses:`-step GitHub Action wrapping the read-only `validate`, and a
+GitHub Release generated on tag push. It is the only feature from the original 1.7
+bundle with no dependency on the other four and no change to the invariant-bearing
+core scanner — it wraps existing commands and extends packaging/CI only.
+
+This gate is drafted for human acceptance before any code, mirroring Gates 6/8/9/10.
+Flip to `accepted_for_1.7.0` on explicit approval.
+
+### Decisions
+
+- **Composite action wraps read-only `validate`.** A new
+  `.github/actions/validate/action.yml` with `runs.using: composite` maps inputs to
+  a `npx @dowonk-7949/llm-wiki-standard@<version> validate` invocation using flags
+  that already exist (`--strict`, `--profile`, `--changed`, `--cwd`, `--format`,
+  `--out`). The action can only READ the repo; it exposes no write command and
+  changes no `src/` behavior. `action.yml` is a repo artifact, NOT added to
+  `package.json` `files` (it is not shipped on npm).
+- **GitHub Release on `v*` tag push, `gh`-CLI-based, permission-isolated.** Extend
+  `.github/workflows/publish.yml` with a SEPARATE job that declares job-level
+  `permissions: { contents: write }` only (so it does not inherit the publish job's
+  `id-token: write`). It creates the release with the runner's preinstalled `gh`
+  CLI (`gh release create "$GITHUB_REF_NAME" …`). **No third-party release action**
+  (e.g. `softprops/action-gh-release`) — the built-in `gh` CLI protects the
+  zero-dependency ethos even for CI deps.
+- **Release body source = new additive `release-notes --body-only`.** The body is
+  generated deterministically from git commits + `package.json` version by a new
+  additive mode on `release-notes` that emits ONLY the grouped change sections —
+  stripping the LLM-WIKI frontmatter block, the H1 title, and the "review before
+  publishing" scaffold line that `buildReleaseNotes` normally adds. The curated
+  `docs/llm-wiki/releases/vX.Y.Z.md` docs stay human-facing wiki artifacts and are
+  NOT the automated body (so the release never fails on a missing curated doc);
+  maintainers may still edit the created release afterward.
+- **Sensitive-info scan on the release body.** The commit-subject → release-body
+  path runs `scanSensitiveInfo` (`src/sensitive-info.js`) before publish, mirroring
+  the report-write path; a match blocks the release rather than leaking a secret in
+  a commit subject to a public release. This closes a gap: `buildReleaseNotes` /
+  `collectCommits` do not scan today.
+- **Tag-namespace safety (v1).** The composite action is referenced by an exact
+  `vX.Y.Z` tag or commit SHA in v1. No floating `@v1` major tag is created, because
+  pushing a `v1` tag would fire `publish.yml`'s `on: push tags v*` and then FAIL its
+  `tag === version` / `version !== p.version` guard (`publish.yml` line 34).
+
+### May change (added — all additive)
+
+| Area | Change |
+| --- | --- |
+| `.github/actions/validate/action.yml` | New composite action wrapping `npx … validate`. |
+| `.github/workflows/publish.yml` | New isolated `contents: write` Release job (`gh release create`), gated on the same `v*` tag push, running after the existing publish job. |
+| `src/release-notes.js` + `src/commands.js#releaseNotesCommand` | New additive `--body-only` (a.k.a. `--no-frontmatter`) mode emitting only the change sections. Default output is byte-identical. |
+| `src/cli.js` | Register `--body-only` in `ALLOWED_OPTIONS["release-notes"]`, usage, and per-command help; add per-command `--format json` examples to `COMMAND_HELP`. |
+| `README.md` / `README.ko.md` | A `uses:` snippet documenting the action. |
+| `tests/*.test.js` | Cover `--body-only` (no frontmatter/scaffold, sections only) and the sensitive-info block on a planted secret. |
+
+### Must not change (out of scope — deferred behind a later gate)
+
+- **Marketplace listing and floating-tag (`@v1`) versioning.** Deferred; requires a
+  dedicated gate that first deconflicts the `v*` npm-publish tag namespace and the
+  `publish.yml` version-match guard, and decides the moving-major-tag convention.
+- **The existing npm-publish job.** Its Trusted Publishing / OIDC path, its
+  `id-token: write` + `contents: read` permissions, and its steps are unchanged; the
+  Release job is additive and isolated.
+- **The core scanner and command contracts.** `validate` semantics, the
+  `--format json` shape, and the required frontmatter contract are untouched — the
+  action only wraps existing `validate`; `--body-only` is additive.
+- **No write command in the action.** The action runs read-only `validate` only;
+  `init`/`fix`/`migrate`/`drift`/`quickstart` are never invoked by it.
+
+### Guarantees
+
+- The composite action can only READ (it wraps read-only `validate`); it cannot
+  mutate the repository.
+- The Release job holds `contents: write` only and cannot publish to npm; the
+  npm-publish job holds `id-token: write` only and cannot create releases.
+- The release body always passes the sensitive-info scan before publish; a match
+  blocks the release (mirrors the report-write redaction guarantee).
+- Zero runtime third-party dependencies preserved: `gh` is a runner built-in (not a
+  package dep), and `release-notes --body-only` uses Node built-ins only.
+- Additive/backward-compatible: `action.yml` + a new isolated job + one new
+  `release-notes` option. Without `--body-only`, `release-notes` output is identical;
+  the `1.0.0` command/option/JSON/frontmatter contract is unchanged.
+
+### Honest limits (v1)
+
+- The composite action pins the package via `npx …@<version>`; consumers pin the
+  action by exact `vX.Y.Z` tag or SHA (no `@v1` convenience tag until the deferred
+  Marketplace gate).
+- `release-notes --body-only` is only as good as commit-subject hygiene (Conventional
+  Commits grouping); curated release docs remain the place for hand-written prose.
+- `action.yml` has no unit-test surface in `tests/*.test.js`; its verification is a
+  self-invoking workflow run and/or an `actionlint` step (to be decided at build).
+
+### Unchanged guarantees
+
+- Preview-first, `--write`/`--apply`-gated writes; `log.md` and adapter files never
+  overwritten; UTF-8 throughout; AI/CLI-authored docs stay `needs_review`. None of
+  these are touched by an Action that only wraps read-only `validate`.
 
 ## Release Caveats
 
