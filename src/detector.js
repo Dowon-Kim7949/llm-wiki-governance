@@ -1,4 +1,5 @@
 import path from "node:path";
+import { readdir } from "node:fs/promises";
 import { pathExists } from "./files.js";
 import { readUtf8 } from "./encoding.js";
 
@@ -111,7 +112,65 @@ async function detectNonNodeEcosystems(cwd) {
     found.push({ ecosystem: "jvm", path: jvm.name, reason: `JVM build file detected (${jvm.name})`, role });
   }
 
+  const php = await readFirstManifest(cwd, ["composer.json"]);
+  if (php) {
+    const role = /(laravel\/framework|laravel\/lumen|symfony\/(?:framework-bundle|http-foundation|http-kernel)|slim\/slim|laminas\/|cakephp\/|yiisoft\/|codeigniter4\/)/i.test(php.content) ? "backend" : "library";
+    found.push({ ecosystem: "php", path: "composer.json", reason: "PHP manifest detected (composer.json)", role });
+  }
+
+  const ruby = await readFirstManifest(cwd, ["Gemfile", "gems.rb"]);
+  if (ruby) {
+    const role = /\bgem\s+["'](rails|sinatra|rack|hanami|roda|grape|padrino)["']/i.test(ruby.content) ? "backend" : "library";
+    found.push({ ecosystem: "ruby", path: ruby.name, reason: `Ruby manifest detected (${ruby.name})`, role });
+  }
+
+  const dotnet = await findProjectByExtension(cwd, [".csproj", ".fsproj"]);
+  if (dotnet) {
+    const role = /(Sdk\s*=\s*"Microsoft\.NET\.Sdk\.Web"|Microsoft\.AspNetCore)/i.test(dotnet.content) ? "backend" : "library";
+    found.push({ ecosystem: "dotnet", path: dotnet.name, reason: `.NET project detected (${dotnet.name})`, role });
+  }
+
   return found;
+}
+
+// Find the first *.csproj / *.fsproj since .NET project files carry arbitrary
+// names and commonly sit under src/<Name>/. Bounded, deterministic (files
+// before subdirs, each sorted), depth-limited DFS skipping heavy dirs.
+// Best-effort: unreadable directories are skipped.
+const DOTNET_SKIP_DIRS = new Set(["node_modules", ".git", "dist", "bin", "obj", "packages", ".vs"]);
+
+async function findProjectByExtension(cwd, extensions, maxDepth = 3) {
+  const search = async (dir, depth) => {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+    const sorted = [...entries].sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of sorted) {
+      if (entry.isFile() && extensions.some((ext) => entry.name.toLowerCase().endsWith(ext))) {
+        return path.join(dir, entry.name);
+      }
+    }
+    if (depth >= maxDepth) return null;
+    for (const entry of sorted) {
+      if (entry.isDirectory() && !entry.name.startsWith(".") && !DOTNET_SKIP_DIRS.has(entry.name)) {
+        const hit = await search(path.join(dir, entry.name), depth + 1);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  };
+
+  const absHit = await search(cwd, 0);
+  if (!absHit) return null;
+  const relName = path.relative(cwd, absHit).split(path.sep).join("/");
+  try {
+    return { name: relName, content: await readUtf8(absHit) };
+  } catch {
+    return { name: relName, content: "" };
+  }
 }
 
 async function readFirstManifest(cwd, names) {

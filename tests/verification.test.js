@@ -751,6 +751,42 @@ test("detects Python package and Go/Rust modules as library", async () => {
   assert.equal(rust.detection.projectType, "backend");
 });
 
+test("detects PHP/Ruby/.NET web frameworks as backend", async () => {
+  const phpCwd = await makeProject("php-web-");
+  await writeJson(path.join(phpCwd, "composer.json"), { require: { "laravel/framework": "^11.0" } });
+  const rubyCwd = await makeProject("ruby-web-");
+  await writeFile(path.join(rubyCwd, "Gemfile"), "source 'https://rubygems.org'\ngem 'rails', '~> 7.1'\n", { encoding: "utf8" });
+  const netCwd = await makeProject("dotnet-web-");
+  await mkdir(path.join(netCwd, "src", "Api"), { recursive: true });
+  await writeFile(path.join(netCwd, "src", "Api", "Api.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n</Project>\n", { encoding: "utf8" });
+
+  const php = await initCommand({ cwd: phpCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const ruby = await initCommand({ cwd: rubyCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const net = await initCommand({ cwd: netCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(php.detection.projectType, "backend");
+  assert.deepEqual(php.detection.ecosystems, ["php"]);
+  assert.equal(php.detection.primaryManifest, "composer.json");
+  assert.equal(ruby.detection.projectType, "backend");
+  assert.deepEqual(ruby.detection.ecosystems, ["ruby"]);
+  assert.equal(net.detection.projectType, "backend");
+  assert.deepEqual(net.detection.ecosystems, ["dotnet"]);
+  assert.equal(net.detection.primaryManifest, "src/Api/Api.csproj");
+});
+
+test("detects PHP/Ruby packages without web frameworks as library", async () => {
+  const phpCwd = await makeProject("php-lib-");
+  await writeJson(path.join(phpCwd, "composer.json"), { require: { "psr/log": "^3.0" } });
+  const rubyCwd = await makeProject("ruby-lib-");
+  await writeFile(path.join(rubyCwd, "Gemfile"), "source 'https://rubygems.org'\ngem 'rake'\n", { encoding: "utf8" });
+
+  const php = await initCommand({ cwd: phpCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const ruby = await initCommand({ cwd: rubyCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(php.detection.projectType, "library");
+  assert.equal(ruby.detection.projectType, "library");
+});
+
 test("init write on a Python project anchors source_files to its manifest", async () => {
   const cwd = await makeProject("python-init-");
   await writeFile(path.join(cwd, "pyproject.toml"), "[project]\nname = \"svc\"\nversion = \"0.1.0\"\ndependencies = [\"fastapi\"]\n", { encoding: "utf8" });

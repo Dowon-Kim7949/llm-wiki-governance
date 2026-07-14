@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: PHP/Ruby/.NET 생태계 감지 (1.3 A2)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/detector.js
+  - tests/verification.test.js
+- summary:
+  - `detectNonNodeEcosystems`에 PHP(`composer.json`)·Ruby(`Gemfile`/`gems.rb`)·.NET(`*.csproj`/`*.fsproj`)를 추가했다. 매니페스트의 웹 프레임워크 신호로 backend/library role을 판정한다: PHP=laravel/symfony/slim/laminas/cakephp/yii/codeigniter, Ruby=rails/sinatra/rack/hanami/roda/grape/padrino, .NET=`Microsoft.NET.Sdk.Web`/`Microsoft.AspNetCore`.
+  - .NET 프로젝트 파일은 이름이 임의라 `findProjectByExtension`(깊이 3 제한, files-before-dirs·정렬 결정적 DFS, node_modules/bin/obj/.git 등 스킵)로 탐색한다. `src/<Name>/<Name>.csproj` 같은 일반 배치를 찾는다.
+  - 감지된 role은 기존 배선(backend→backendSignals, library→librarySignals)을 그대로 타서 projectType/ecosystems/primaryManifest에 반영된다. 순수 additive.
+  - 테스트 추가: PHP/Ruby/.NET 웹 프레임워크→backend(ecosystems·primaryManifest 포함), 프레임워크 없는 PHP/Ruby→library. 전체 133 pass.
+- caveats:
+  - stdlib-only 서버(Go net/http, Python http.server 등) 감지(로드맵 A1)는 매니페스트만으론 불가·오탐 위험이 커 이번 1.3에서 제외(백로그).
+  - 로드맵 1.3(detect & adapt breadth)의 첫 항목. 버전 bump·CHANGELOG/README 반영은 1.3 릴리스 준비 시점.
+
 ## 2026-07-14 - feat: backend/fullstack 개별 domain 문서 분리 생성
 
 - status: needs_review
