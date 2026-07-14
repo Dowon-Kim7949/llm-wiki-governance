@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "📖 Documentation & usage / 문서·사용법"
+    url: https://github.com/Dowon-Kim7949/llm-wiki-standard#readme
+    about: "Read the README and docs/llm-wiki/ before filing an issue. / 이슈 전에 README와 docs/llm-wiki/를 확인해 주세요."
+  - name: "🔒 Report a security vulnerability / 보안 취약점 신고"
+    url: https://github.com/Dowon-Kim7949/llm-wiki-standard/security/policy
+    about: "Do not open a public issue for security reports. Use the security policy. / 보안 신고는 공개 이슈로 열지 말고 보안 정책을 따라 주세요."

@@ -24,6 +24,12 @@
     "GATE_REVIEW.md",
     "VERIFICATION.md",
     "RELEASE_CHECKLIST.md",
+    "CODE_OF_CONDUCT.md",
+    "CODE_OF_CONDUCT.ko.md",
+    "CONTRIBUTING.md",
+    "CONTRIBUTING.ko.md",
+    "SECURITY.md",
+    "SECURITY.ko.md",
     "LICENSE"
   ],
   "bin": {
