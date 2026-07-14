@@ -14,3 +14,19 @@ export function fileChangedSince(cwd, file, sinceDate) {
   const out = runGit(cwd, ["log", `--since=${sinceDate} 23:59:59`, "--pretty=format:%h", "--", file]).trim();
   return out.length > 0;
 }
+
+// Repo-relative paths (posix, relative to the git root) that differ from the
+// baseline. With <sinceRef>, every change from that ref to the working tree;
+// without it, uncommitted tracked changes plus untracked files (the pre-commit
+// view). Paths align with finding paths when the CLI runs from the repo root.
+// Best-effort: throws only if git itself fails; callers treat that as "unknown".
+export function changedFiles(cwd, sinceRef) {
+  const toLines = (out) => out.split("\n").map((line) => line.trim()).filter(Boolean);
+  const changed = sinceRef
+    ? toLines(runGit(cwd, ["diff", "--name-only", sinceRef]))
+    : [
+        ...toLines(runGit(cwd, ["diff", "--name-only", "HEAD"])),
+        ...toLines(runGit(cwd, ["ls-files", "--others", "--exclude-standard"]))
+      ];
+  return [...new Set(changed)];
+}

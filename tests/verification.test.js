@@ -752,15 +752,21 @@ test("release-notes command honors an explicit --version and writes via --out", 
   assert.ok(content.includes("릴리스 노트 v2.0.0 · Release Notes v2.0.0"));
 });
 
-test("parseArgs accepts --since for release-notes and rejects it elsewhere", () => {
+test("parseArgs accepts --since for release-notes and validate, and rejects it elsewhere", () => {
   const ok = parseArgs(["release-notes", "--version", "1.2.0", "--since", "v1.1.0"]);
-  const rejected = parseArgs(["validate", "--since", "v1.1.0"]);
+  const okValidate = parseArgs(["validate", "--changed", "--since", "v1.1.0"]);
+  const rejected = parseArgs(["status", "--since", "v1.1.0"]);
 
   assert.equal(ok.command, "release-notes");
   assert.equal(ok.options.version, "1.2.0");
   assert.equal(ok.options.since, "v1.1.0");
   assert.deepEqual(ok.errors, []);
-  assert.deepEqual(rejected.errors, ["Option --since is not supported by validate."]);
+
+  assert.equal(okValidate.options.changed, true);
+  assert.equal(okValidate.options.since, "v1.1.0");
+  assert.deepEqual(okValidate.errors, []);
+
+  assert.deepEqual(rejected.errors, ["Option --since is not supported by status."]);
 });
 
 test("release-notes threads --since and stays usable without git history", async () => {
@@ -1049,6 +1055,55 @@ test("fileChangedSince anchors the baseline to end-of-day so same-day commits ar
   assert.equal(fileChangedSince(cwd, "a.ts", "2026-07-13"), false);
   // Reviewed the day before → the commit is genuinely after the review → drift.
   assert.equal(fileChangedSince(cwd, "a.ts", "2026-07-12"), true);
+});
+
+test("validate --changed reports findings only for changed documents", async (t) => {
+  let hasGit = true;
+  try {
+    execFileSync("git", ["--version"], { stdio: "ignore" });
+  } catch {
+    hasGit = false;
+  }
+  if (!hasGit) {
+    t.skip("git not available");
+    return;
+  }
+
+  const cwd = await makeProject("validate-changed-");
+  const git = (args) => execFileSync("git", args, {
+    cwd,
+    stdio: ["ignore", "ignore", "ignore"],
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: "Test",
+      GIT_AUTHOR_EMAIL: "test@example.com",
+      GIT_COMMITTER_NAME: "Test",
+      GIT_COMMITTER_EMAIL: "test@example.com"
+    }
+  });
+  await writeJson(path.join(cwd, "package.json"), { name: "vc" });
+  await writeWikiDoc(cwd, "index.md", "Index", "Body.");
+  await writeWikiDoc(cwd, "log.md", "Log", "Body.");
+  await writeWikiDocWithRelated(cwd, "A.md", "Doc A", "Body.", ["docs/llm-wiki/missing.md"]);
+  git(["init"]);
+  git(["add", "-A"]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "init"]);
+
+  const base = { cwd, type: "unknown", profiles: [], agents: [], strict: false, format: "text" };
+  const brokenOnA = (finding) => finding.rule === "related.missing" && finding.path === "docs/llm-wiki/A.md";
+
+  const full = await validateCommand({ ...base });
+  assert.ok(full.findings.some(brokenOnA), "full validate reports the broken related on A.md");
+
+  // Change only index.md → A.md's finding is out of the changed scope.
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "extra\n", { encoding: "utf8", flag: "a" });
+  const changedIndex = await validateCommand({ ...base, changed: true });
+  assert.equal(changedIndex.findings.some(brokenOnA), false, "A.md finding is filtered out when only index.md changed");
+
+  // Change A.md → its finding is back in scope.
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "A.md"), "extra\n", { encoding: "utf8", flag: "a" });
+  const changedA = await validateCommand({ ...base, changed: true });
+  assert.ok(changedA.findings.some(brokenOnA), "A.md finding is reported when A.md changed");
 });
 
 test("strict validate promotes evidence contract warnings to errors", async () => {

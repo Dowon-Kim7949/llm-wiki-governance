@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: validate --changed (변경 문서 한정 검증, 1.1)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/cli.js
+  - src/commands.js
+  - src/git.js
+  - tests/verification.test.js
+- summary:
+  - `validate --changed`를 추가했다: git diff 기준(기본은 작업트리 vs HEAD, `--since <ref>` 지정 시 해당 ref 이후)으로 변경된 문서의 findings만 리포트한다. 그래프/related 같은 교차 문서 검사는 전역 실행하되 결과만 변경 문서로 한정한다. pre-commit·CI 가속용이다.
+  - `src/git.js`에 `changedFiles` 헬퍼 추가, `src/cli.js`에 `--changed` 플래그와 validate의 `--since` 허용, `changed.unavailable` 설명 등록, help/usage 갱신.
+  - 테스트 추가: 변경 문서만 리포트(git 기반 시나리오)와 `--since` 파싱 계약 갱신. 전체 112 pass.
+- caveats:
+  - 저장소 루트에서 실행을 가정한다(git 경로 정렬). git을 못 쓰면 `changed.unavailable`(error)로 보고한다.
+  - 로드맵 1.1의 두 번째 항목이다. 버전 bump·CHANGELOG·README 반영은 1.1 릴리스 시점에 한다.
+
 ## 2026-07-14 - fix: evidence.stale 같은날 경계 수정 (1.1 착수)
 
 - status: needs_review

@@ -13,7 +13,7 @@ import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { apiServiceInventoryChecklist, buildTaskPrompt } from "./task-prompts.js";
 import { buildReleaseNotes, collectCommits } from "./release-notes.js";
-import { fileChangedSince } from "./git.js";
+import { fileChangedSince, changedFiles } from "./git.js";
 
 const TEMPLATE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates");
 
@@ -76,6 +76,7 @@ const FINDING_EXPLANATIONS = {
   "evidence.section_empty": findingExplanation("evidence", "warning", "A body ## Evidence section exists but has no bullet entries.", "Evidence sections should be scan-friendly and consistent across generated and maintained wiki documents.", ["Add one or more bullet entries under ## Evidence.", "Use source references, commands, tests, or reviewed evidence notes.", "Remove the section only if it is not part of the document contract."], ["llm-wiki validate"], ["evidence.section_missing"]),
   "evidence.stale": findingExplanation("evidence", "warning", "A verified document references source files that changed in git after it was reviewed.", "Verified documents assert reviewed, source-backed knowledge; when the referenced code moves afterward, the document may no longer match the source and should be re-checked.", ["Re-read the changed source and update the document.", "If the claims no longer hold, downgrade the document to needs_review.", "Refresh reviewed_by/reviewed_at after a new human review.", "This is a file-level heuristic based on git history; ignore it when the change did not affect the documented claims."], ["llm-wiki next", "llm-wiki audit"], ["evidence.missing", "frontmatter.verified_review"]),
   "evidence.section_unlisted": findingExplanation("evidence", "warning", "A frontmatter evidence reference is not mentioned in the body ## Evidence section.", "Keeping frontmatter and body evidence aligned lets tools validate references while humans can still review context in the document body.", ["Add the missing reference to a bullet under ## Evidence.", "Remove stale frontmatter evidence if it no longer supports the document.", "Run validate again."], ["llm-wiki validate"], ["evidence.section_missing", "evidence.shape"]),
+  "changed.unavailable": findingExplanation("changed", "error", "The --changed scope could not read git history.", "validate --changed needs a git repository to diff against; without it the changed-file set is unknown.", ["Run inside a git repository from the repo root.", "Drop --changed to validate the whole wiki.", "For CI, ensure the checkout includes history and a base ref."], ["llm-wiki validate", "llm-wiki validate --changed --since <ref>"], []),
   "related.missing": findingExplanation("related", "warning", "A related frontmatter entry points to a local document that does not exist.", "Related links help agents and readers navigate between connected wiki documents, so broken entries weaken the wiki graph and erode trust in generated reports.", ["Fix the path if the related document moved or was renamed.", "Remove stale related entries that no longer apply.", "Create the related document when it should exist.", "Use an explicit external URL only when the reference is outside the repository."], ["llm-wiki audit", "llm-wiki validate"], ["markdown_link.missing", "source_files.missing"]),
   "markdown_link.missing": findingExplanation("markdown_link", "warning", "A local Markdown link target does not exist.", "Broken local links make the wiki harder to navigate and reduce trust in generated reports.", ["Check whether the target path was renamed or moved.", "Update the link or create the missing target document.", "External links, mailto links, and local anchors are intentionally skipped."], ["llm-wiki validate", "llm-wiki status"], ["wiki_link.missing"]),
   "wiki_link.missing": findingExplanation("wiki_link", "warning", "A [[wiki link]] target does not resolve to a file path, basename, title, or alias.", "Unresolved wiki links break concept navigation and weaken OKF-style knowledge graph output.", ["Create a document for the missing concept when it is real.", "Update the link text to match an existing title, basename, file path, or alias.", "Add a reviewed aliases entry to the intended target document when appropriate."], ["llm-wiki validate", "llm-wiki next", "llm-wiki audit --format markdown"], ["markdown_link.missing", "okf.array_shape"]),
@@ -405,7 +406,31 @@ export async function audit(options) {
 
 export async function validateCommand(options) {
   const auditResult = await audit(options);
-  const findings = auditResult.findings ?? [];
+  let findings = auditResult.findings ?? [];
+  let changedScope = null;
+
+  if (options.changed) {
+    let changed = null;
+    try {
+      changed = changedFiles(options.cwd, options.since);
+    } catch {
+      changed = null;
+    }
+    if (!changed) {
+      findings = [{
+        severity: "error",
+        rule: "changed.unavailable",
+        path: ".",
+        message: "--changed requires a git repository; could not determine changed files."
+      }];
+      changedScope = "unavailable";
+    } else {
+      const changedSet = new Set(changed);
+      findings = findings.filter((finding) => changedSet.has(finding.path));
+      changedScope = `${changed.length} changed file(s)`;
+    }
+  }
+
   const result = findings.some((finding) => finding.severity === "blocked")
     ? "blocked"
     : findings.some((finding) => finding.severity === "error")
@@ -416,6 +441,7 @@ export async function validateCommand(options) {
   const summary = [
     `result: ${result}`,
     `mode: ${options.strict ? "strict" : "standard"}`,
+    ...(options.changed ? [`scope: changed${options.since ? ` since ${options.since}` : ""} (${changedScope})`] : []),
     `project_type: ${auditResult.detection.projectType}`,
     `confidence: ${auditResult.detection.confidence}`,
     `active_profiles: ${auditResult.detection.activeProfiles.join(", ")}`,
@@ -427,6 +453,7 @@ export async function validateCommand(options) {
   return withText({
     command: "validate",
     result,
+    scopedToChanged: options.changed ? true : undefined,
     detection: auditResult.detection,
     wikiGraph: auditResult.wikiGraph,
     findingSummary,
@@ -436,7 +463,10 @@ export async function validateCommand(options) {
     { title: "Wiki Graph", body: formatWikiGraphSummary(auditResult.wikiGraph) },
     { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) },
-    { title: "Caveats", body: ["Validation reuses audit coverage for core, profile, selected-agent adapter, encoding, and sensitive-information checks."] }
+    { title: "Caveats", body: [
+      "Validation reuses audit coverage for core, profile, selected-agent adapter, encoding, and sensitive-information checks.",
+      ...(options.changed ? ["--changed reports only findings on files changed vs the baseline; cross-document checks still run over the whole wiki. Run it from the repo root."] : [])
+    ] }
   ]);
 }
 

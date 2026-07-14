@@ -93,6 +93,7 @@ export function parseArgs(argv) {
     findingRule: null,
     version: null,
     since: null,
+    changed: false,
     type: null,
     format: "text",
     dryRun: false,
@@ -191,6 +192,9 @@ export function parseArgs(argv) {
     } else if (arg === "--strict") {
       usedOptions.add("strict");
       options.strict = true;
+    } else if (arg === "--changed") {
+      usedOptions.add("changed");
+      options.changed = true;
     } else if (arg === "--minimal") {
       usedOptions.add("minimal");
       options.minimal = true;
@@ -224,7 +228,7 @@ export function parseArgs(argv) {
 
 const COMMAND_OPTION_RULES = {
   doctor: new Set(["cwd", "format", "out"]),
-  validate: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
+  validate: new Set(["cwd", "type", "profile", "agent", "strict", "changed", "since", "format", "out"]),
   "validate-frontmatter": new Set(["cwd", "strict", "format", "out"]),
   status: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
   next: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
@@ -308,7 +312,7 @@ Usage:
   llm-wiki status [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki next [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki explain <finding> [--format text|json|markdown|html] [--out <path>]
-  llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--changed] [--since <git-ref>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki validate-frontmatter [--cwd <path>] [--strict]
   llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
@@ -417,10 +421,12 @@ Purpose:
   validate: `llm-wiki validate
 
 Usage:
-  llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|antigravity|all>...] [--strict] [--changed] [--since <git-ref>] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Runs audit-backed structure and safety validation for local checks or CI.
+  --changed reports only findings on files changed vs the working tree (or since
+  --since <ref>); cross-document checks still run. Run it from the repo root.
 `,
   "validate-frontmatter": `llm-wiki validate-frontmatter
 
