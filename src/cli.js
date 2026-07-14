@@ -414,6 +414,9 @@ Usage:
 
 Purpose:
   Checks local runtime, package readiness, project detection, and stable safety policy signals.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, checks[], detection, packageReadiness. schemaVersion pins the output contract.
 `,
   status: `llm-wiki status
 
@@ -422,6 +425,9 @@ Usage:
 
 Purpose:
   Shows whether LLM-WIKI is initialized, counts document statuses, reports missing recommended docs, markdown links, source file references, and selected adapter state.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, initialized, detection, documentStatus, adapterStatus, wikiGraph, findingSummary, findings[]. findings[] items are { severity, rule, path, message }.
 `,
   next: `llm-wiki next
 
@@ -430,6 +436,9 @@ Usage:
 
 Purpose:
   Reuses audit coverage and wikiGraph data to recommend the next review, repair, or setup actions. This command is advisory and does not write files.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, detection, wikiGraph, auditFindingSummary, auditFindings[], actions[], findings[]. actions[] carries the recommended next steps.
 `,
   explain: `llm-wiki explain
 
@@ -438,6 +447,9 @@ Usage:
 
 Purpose:
   Explains a finding rule such as wiki_link.missing, frontmatter.required, okf.type_required, or source_files.missing, then suggests safe remediation steps.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, findingRule, explanation, findings[]. explanation carries category, defaultSeverity, meaning, whyItMatters, remediation, commands, relatedRules.
 `,
   quickstart: `llm-wiki quickstart
 
@@ -482,6 +494,9 @@ Purpose:
   Runs audit-backed structure and safety validation for local checks or CI.
   --changed reports only findings on files changed vs the working tree (or since
   --since <ref>); cross-document checks still run. Run it from the repo root.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, scopedToChanged, detection, wikiGraph, findingSummary, findings[]. findings[] items are { severity, rule, path, message }; gate CI on result/findingSummary.
 `,
   "validate-frontmatter": `llm-wiki validate-frontmatter
 
@@ -490,6 +505,9 @@ Usage:
 
 Purpose:
   Checks only required YAML frontmatter fields and values.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, summary, findingSummary, findings[]. findings[] items are { severity, rule, path, message }.
 `,
   audit: `llm-wiki audit
 
@@ -498,6 +516,9 @@ Usage:
 
 Purpose:
   Reports detection, structure, frontmatter, encoding, sensitive-info, and selected adapter findings.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, detection, wikiGraph, findingSummary, findings[]. findings[] items are { severity, rule, path, message }.
 `,
   migrate: `llm-wiki migrate
 
@@ -573,6 +594,9 @@ Formats:
   - json: the structured graph (documents, edges, orphanDocuments, aliases).
   - mermaid: a fenced Mermaid graph TD block for GitHub/Obsidian.
   - dot: a Graphviz digraph for dot/other renderers.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, format, graph, findings[]. graph carries documents[], edges[] ({ source, target, kind }), orphanDocuments[], aliases[].
 `,
   stats: `llm-wiki stats
 
@@ -583,6 +607,9 @@ Purpose:
   Read-only wiki health snapshot: total documents, a health score (the mean of
   verified %, enrichment %, and evidence coverage %), the document status mix,
   and stale-verified / orphan document counts. Reuses audit coverage.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, stats, findings[]. stats carries documents, healthScore, status, verified/verifiedPct, enriched/enrichedPct, evidenceBacked/evidencePct, staleVerified, orphanDocuments.
 `,
   "release-notes": `llm-wiki release-notes
 
@@ -595,6 +622,9 @@ Purpose:
   By default the range is "since the last v* tag". Pass --since <git-ref> (for example the previous release tag) to force the base range as <git-ref>..HEAD, which is useful for regenerating a version's notes after its tag already exists.
 
   --body-only emits ONLY the change-section body — no frontmatter, no H1 title, and no "review before publishing" scaffold line — for use as a GitHub Release body. Because commit subjects flow into the body, it is scanned for sensitive-looking values and the command is BLOCKED (exit 2, body withheld) if any are found; rewrite the offending commit subject and retry.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, version, project, since, commitCount, gitAvailable, document, findings[]. With --body-only, document is the body (or null when blocked; findings[] then carries a sensitive.release_body entry).
 `,
   mcp: `llm-wiki mcp
 

@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - feat: 1.7 CI/CD 도입 구현 (composite Action + GitHub Release + release-notes --body-only + JSON help)
+
+- status: needs_review
+- actor: Claude Code (Gate 12 accepted_for_1.7.0 범위)
+- scope: code, ci, test
+- changed:
+  - src/release-notes.js (buildReleaseNotesBody 추출), src/commands.js (releaseNotesCommand --body-only + 민감정보 차단), src/cli.js (--body-only 배선 + 리포트 명령 10종 JSON help 예시), tests/verification.test.js (+4)
+  - .github/actions/validate/action.yml (신규 composite action), .github/workflows/publish.yml (격리된 Release 잡)
+- summary:
+  - Gate 12(accepted_for_1.7.0) 범위대로 1.7 CI/CD 도입을 세 커밋으로 구현했다.
+  - (A, 071e524) `release-notes --body-only` 부가 모드: `buildReleaseNotesBody`를 추출해 섹션 본문만(frontmatter·H1·"게시 전 검토" 스캐폴드 라인 제거) 낸다. 본문은 커밋 제목이 그대로 들어가므로 `scanSensitiveInfo`로 스캔하고, 매치 시 result "blocked"(exit 2)로 본문을 withhold한다(누출 차단). 기본 출력은 byte 동일. 테스트 4개 추가.
+  - (B, 8a5d2a8) composite `.github/actions/validate/action.yml`: 읽기전용 `validate`를 `npx`로 래핑, 다른 액션을 전혀 끌어오지 않아 무의존성 유지. `publish.yml`에 격리된 `release` 잡 추가: `needs: publish`(publish 성공 후에만), 잡 레벨 `permissions: contents: write`가 워크플로 레벨 `id-token: write`를 대체(격리), 이전 v* 태그 계산 후 `release-notes --body-only --since <prev>`로 본문 생성, 러너 내장 `gh` CLI로 릴리스 생성(서드파티 액션 없음).
+  - (C, 이 커밋) 리포트 명령 10종(doctor/validate/validate-frontmatter/audit/status/next/stats/graph/explain/release-notes) help에 실제 최상위 JSON 키를 근거로 한 `JSON (--format json)` 예시 블록 추가(Action/래퍼/MCP 작성자용). 키는 각 명령을 실제 실행해 추출·검증했다(stats 내부 키는 orphanDocuments 등 실제 값으로 정정).
+- caveats:
+  - node --test 177 pass(신규 4). 순수 additive — 기존 `release-notes` 출력·CLI/JSON/frontmatter 계약 불변. YAML 2개 파싱 확인, 잡 그래프(publish→release·권한 격리) 검증.
+  - validate: warning 1건 — `project-profile.md`(verified)가 `src/cli.js`를 evidence로 인용하는데 오늘 그 파일을 수정해 `evidence.stale`이 떴다(심볼 locator라 file-level 판정). `main()`의 역할(인자 파싱·디스패치) 서술은 여전히 정확하며, 이 드리프트와 신규 기능 doc-sync(ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·PUBLIC_API)는 저장소 관례대로 **1.7.0 릴리스 준비 시점의 사람 재검토·verified 재승인**에서 함께 해소한다(CLI/에이전트는 verified 자가 승격 불가).
+  - **README/CHANGELOG/버전 bump은 저장소 관례대로 1.7.0 릴리스 준비 시점에 반영**(이번 커밋들엔 미포함). Marketplace·floating `@v1` 태그는 Gate 12에서 후속 게이트로 보류.
+  - publish.yml(배포 CI) 수정 포함 → push/tag/배포는 사용자의 명시적 지시 후에만. 현재 로컬 main 커밋(미푸시).
+
 ## 2026-07-15 - docs(gate): Gate 12 수락 (accepted_for_1.7.0)
 
 - status: needs_review
