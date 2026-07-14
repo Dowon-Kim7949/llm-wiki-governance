@@ -5,6 +5,29 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.5.0 — 2026-07-14
+
+프로그래매틱 API. CLI 바이너리를 spawn하지 않고 CI 래퍼·에디터·테스트가
+LLM-WIKI를 in-process로 쓸 수 있게 한다. 하위호환 — 새 import 표면과 부가적 JSON
+필드 하나만 추가.
+
+### 추가 (Added)
+
+- `package.json` `exports`(`.` → `src/index.js`)로 import 가능한 프로그래매틱 API.
+  CLI 명령 이름을 키로 하는 동결(frozen) `commands` 맵, 개별 명령 함수, `parseArgs`,
+  `run`, `normalizeOptions`(부분 옵션 → 완전 옵션 객체), `SCHEMA_VERSION`을 공개한다.
+  반환 형태는 JSDoc typedef와 `docs/llm-wiki/PUBLIC_API.md`로 문서화한다.
+- `--format json` 출력에 부가적 최상단 `schemaVersion` 정수(export된 `SCHEMA_VERSION`과
+  동일)가 붙어 래퍼가 출력 계약을 pin할 수 있다. 단일 소스는 `src/config.js`의
+  `JSON_SCHEMA_VERSION`.
+
+### 참고 (Notes)
+
+- 부가적·하위호환: 기존 JSON 필드는 불변이라 현재 `--format json` 소비자는 그대로
+  동작하고, 비-JSON 출력(text/markdown/html·graph mermaid/dot)은 영향받지 않는다.
+  내부 모듈의 심층 외부 import는 `exports` 맵으로 캡슐화됐으며 `llm-wiki` 바이너리는
+  영향받지 않는다.
+
 ## 1.4.0 — 2026-07-14
 
 보이는 지식(knowledge you can see). wiki의 지식을 탐색·측정 가능하게 하고 도메인

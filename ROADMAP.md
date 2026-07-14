@@ -47,9 +47,17 @@ Humans review and approve verified status.
 CI continuously checks quality.
 ```
 
-## Shipped Through 1.4.0
+## Shipped Through 1.5.0
 
-`1.4.0` (this release) is the knowledge-you-can-see line: `llm-wiki graph`
+`1.5.0` (this release) is the programmatic-API line: the package is now
+importable in-process via `package.json` `exports` (`src/index.js`), exposing a
+frozen `commands` map over the command functions, `normalizeOptions`,
+`parseArgs`/`run`, and `SCHEMA_VERSION`, with return shapes documented via JSDoc
+typedefs and `PUBLIC_API.md`. `--format json` output gains an additive top-level
+`schemaVersion` field so CI wrappers and editors can pin the output contract.
+Backward-compatible — a new import surface and one additive JSON field only.
+
+`1.4.0` is the knowledge-you-can-see line: `llm-wiki graph`
 (knowledge graph as text/JSON/Mermaid/DOT), `llm-wiki stats` (a health score),
 a navigable Document Index in the `--format html` dashboard plus a
 publish-for-human-readers guide, and file-based domain detection so route/
@@ -101,19 +109,7 @@ not re-list shipped work.
 - **Breaking changes are out of scope for `1.x`** and are parked under "Beyond
   the 1.x Horizon" below.
 
-## Release Plan (1.5 → 1.7)
-
-### 1.5 — Programmatic API
-
-Goal: let CI wrappers, editors, and tests use LLM-WIKI without spawning a process.
-
-- **Documented importable API** — an `exports` map over the command functions with
-  stable, typed return shapes.
-- **`schemaVersion` in `--format json`** (additive) so wrappers can pin the output
-  contract.
-
-Why here: foundation the ecosystem work (1.6) depends on; forces us to freeze the
-return-shape contract deliberately.
+## Release Plan (1.6 → 1.7)
 
 ### 1.6 — Agent-native (MCP)
 

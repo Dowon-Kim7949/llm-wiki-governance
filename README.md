@@ -360,6 +360,23 @@ An optional `llm-wiki.config.json` at the project root sets persistent defaults 
 
 Precedence is CLI flags > config > auto-detection. Malformed config is rejected with exit code `3`, and `doctor` reports whether a config file is present. The schema is intentionally minimal today.
 
+## Programmatic API
+
+Besides the CLI, the package can be imported and run in-process — useful for CI wrappers, editor integrations, and tests that would otherwise shell out:
+
+```js
+import { commands, normalizeOptions, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
+
+const result = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
+console.log(result.command, result.result, result.findings.length);
+```
+
+- `commands` is a frozen map keyed by CLI command name (`audit`, `validate`, `graph`, …); each handler takes a normalized options object and resolves to a result object (`{ command, result, findings, … }`).
+- `normalizeOptions(overrides)` fills every default and resolves `cwd` — use it (or `parseArgs(argv)`) to build the options object. Individual functions (`audit`, `doctor`, …), `parseArgs`, and `run(argv)` are also exported.
+- `--format json` output carries an additive top-level `schemaVersion` field (equal to the exported `SCHEMA_VERSION`) so wrappers can pin the output contract; a breaking change to the JSON shape bumps it.
+
+The command surface, `SCHEMA_VERSION`, and the shared result fields are the stable contract — see `docs/llm-wiki/PUBLIC_API.md`.
+
 ## Evidence Contract
 
 Use three evidence layers together:

@@ -347,6 +347,23 @@ npx llm-wiki audit --format html --out wiki-dashboard.html   # 탐색용 Documen
 
 적용 우선순위는 CLI 플래그 > config > 자동감지입니다. 잘못된 config는 exit code `3`으로 거부되고, `doctor`가 config 존재 여부를 보고합니다. 스키마는 현재 의도적으로 최소한만 지원합니다.
 
+## 프로그래매틱 API (Programmatic API)
+
+CLI 외에, 패키지를 import해 in-process로 실행할 수 있습니다. CLI를 spawn하던 CI 래퍼·에디터 통합·테스트에 유용합니다.
+
+```js
+import { commands, normalizeOptions, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
+
+const result = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
+console.log(result.command, result.result, result.findings.length);
+```
+
+- `commands`는 CLI 명령 이름(`audit`, `validate`, `graph`, …)을 키로 하는 동결(frozen) 맵입니다. 각 핸들러는 정규화된 옵션 객체를 받아 결과 객체(`{ command, result, findings, … }`)로 resolve합니다.
+- `normalizeOptions(overrides)`가 모든 기본값을 채우고 `cwd`를 절대경로로 해석합니다. 이것(또는 `parseArgs(argv)`)으로 옵션 객체를 만드세요. 개별 함수(`audit`, `doctor`, …)·`parseArgs`·`run(argv)`도 export됩니다.
+- `--format json` 출력에는 부가적(additive) 최상단 `schemaVersion` 필드(export된 `SCHEMA_VERSION`과 동일)가 붙어 래퍼가 출력 계약을 pin할 수 있습니다. JSON 형태의 파괴적 변경 시에만 이 값을 올립니다.
+
+명령 표면·`SCHEMA_VERSION`·공통 결과 필드가 안정 계약입니다 — `docs/llm-wiki/PUBLIC_API.md` 참조.
+
 ## Evidence 계약
 
 다음 세 가지 근거 계층을 함께 사용합니다.

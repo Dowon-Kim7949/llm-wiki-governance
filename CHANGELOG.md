@@ -5,6 +5,31 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.5.0 — 2026-07-14
+
+Programmatic API. Let CI wrappers, editors, and tests use LLM-WIKI in-process
+instead of spawning the binary. Backward-compatible — a new import surface and
+one additive JSON field only.
+
+### Added
+
+- Importable programmatic API via `package.json` `exports` (`.` → `src/index.js`).
+  It exposes a frozen `commands` map keyed by CLI command name, the individual
+  command functions, `parseArgs`, `run`, `normalizeOptions` (builds a complete
+  options object from a partial override), and `SCHEMA_VERSION`. Return shapes
+  are documented with JSDoc typedefs and in `docs/llm-wiki/PUBLIC_API.md`.
+- `--format json` output now carries an additive top-level `schemaVersion`
+  integer (equal to the exported `SCHEMA_VERSION`), so wrappers can pin the
+  output contract. Single source: `src/config.js` `JSON_SCHEMA_VERSION`.
+
+### Notes
+
+- Additive and backward-compatible: existing JSON fields are unchanged, so
+  current `--format json` consumers keep working; non-JSON output (text,
+  markdown, html, and graph mermaid/dot) is unaffected. Deep external imports of
+  internal modules are now encapsulated by the `exports` map; the `llm-wiki`
+  binary is unaffected.
+
 ## 1.4.0 — 2026-07-14
 
 Knowledge you can see. Make the wiki's knowledge navigable and measurable, and

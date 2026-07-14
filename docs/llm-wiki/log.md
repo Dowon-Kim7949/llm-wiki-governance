@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - release: 1.5.0 준비 (프로그래매틱 API)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json (version 1.4.0 → 1.5.0)
+  - tests/verification.test.js (버전 어서션 → 1.5.0)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.5.0 항목)
+  - README.md, README.ko.md (Programmatic API 섹션)
+  - ROADMAP.md, ROADMAP.ko.md (Shipped Through 1.5.0, Release Plan에서 1.5 제거)
+  - docs/llm-wiki/releases/v1.5.0.md (신규)
+- summary:
+  - 1.5.0 릴리스를 준비했다. 버전 bump + 버전 어서션 갱신, CHANGELOG/README/ROADMAP EN·KO 갱신(프로그래매틱 API + `--format json`의 `schemaVersion` 부가), v1.5.0 릴리스 노트 생성.
+- caveats:
+  - node --test 155 pass, validate-frontmatter --strict pass(재검토 부채 없음), npm pack --dry-run 확인.
+  - 배포는 v1.5.0 태그 push 시 publish.yml(Trusted Publishing)로 진행된다.
+
 ## 2026-07-14 - docs: PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES verified 재승인 (1.5)
 
 - status: verified
