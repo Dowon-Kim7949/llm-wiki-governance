@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: backend/fullstack 개별 domain 문서 분리 생성
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - tests/verification.test.js
+- summary:
+  - Backend/Fullstack `init`이 `00_overview.md`만 만들던 문제를 고쳤다. 원인은 쓰기 단계가 아니라 계획 단계였다: `plannedDocs()`가 소스 스캔 없이 정적 문서 목록(CORE + PROFILE)만 반환해 개별 domain 문서가 애초에 후보에 없었다.
+  - 디렉터리 경계 기반 domain 탐지를 추가했다. `src|app/{domains,domain,modules,features}`·`internal/{domain,domains,modules}`의 직속 하위 디렉터리를 domain 후보로 보고, `common/shared/core/config(s)/util(s)/middleware(s)/infrastructure/test(s)/fixture(s)`와 숨김 디렉터리는 제외한다. 클래스/파일명 추론이나 LLM 호출은 하지 않는다.
+  - 순수 함수로 분리해 export했다: `normalizeDomainSlug`(camel/Pascal/kebab/snake/공백/한글 정규화), `domainDisplayName`, `detectDomainDirectories`(best-effort I/O, 후보별 try/catch), `planDomainDocs`(slug 기준 결정적 정렬 + 중복 병합 + `NN_slug` 순번). init 파이프라인에는 선택지 A(문자열 배열 유지 + `domainContext` 스레딩)로 최소 변경 적용.
+  - 개별 domain 문서는 `doc_type: domain`, `source_files`=탐지된 디렉터리(중복 시 모든 경로 병합, 존재하는 경로만), `related`=[00_overview, DOMAIN_FEATURES, (+API_CONTRACTS/DATA_MODEL은 이번 생성 후보에 있을 때만)]. `00_overview.md`는 탐지된 domain을 상대링크로 나열(미탐지 시 검토 안내). `docTypeFromPath`가 `/domains/`에서 00_overview만 domain_overview, 나머지는 domain으로 구분.
+  - 기존 계약 보존: `--minimal`은 개별 domain 미생성, `--dry-run`은 미기록, `--existing skip`은 기존 domain 문서 보존, 생성 문서는 needs_review, verified 승격 없음. frontend/library/unknown/mixed는 빈 컨텍스트로 기존 결과 불변.
+  - 테스트 9개 추가(유닛 3 + 통합 6). node --test 131 pass, validate-frontmatter --strict clean. temp backend 프로젝트 e2e(dry-run/write/validate)로 확인.
+- caveats:
+  - 버전 bump·CHANGELOG/README·DOMAIN_FEATURES(verified) 반영은 다음 릴리스 준비 시점에 한다(현재 서술이 틀리진 않고 미포함일 뿐이라 이번엔 미변경).
+  - 지정 부모 디렉터리 목록 밖 구조나 파일명 규약 기반 도메인은 의도적으로 미탐지. 기존 overview가 skip될 경우 새 domain 문서는 인바운드 링크가 없어 wiki graph 고아 경고(warning) 가능.
+  - 로드맵 배치(예: 1.3 detect breadth 편입)와 사용자용 문서 반영 여부는 사용자 확인 후 결정한다.
+
 ## 2026-07-14 - release: 1.2.0 준비 (안전 업그레이드 & 마이그레이션)
 
 - status: needs_review

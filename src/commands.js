@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -616,14 +616,17 @@ export async function releaseNotesCommand(options) {
 export async function initCommand(options) {
   const detection = await detectProject(options.cwd, options.type, options.profiles);
   const agents = selectedAgents(options);
-  const candidates = plannedDocs(detection.projectType, options.minimal, options.profiles);
+  const baseDocs = plannedDocs(detection.projectType, options.minimal, options.profiles);
+  const candidateSet = new Set(baseDocs);
+  const domainContext = await buildDomainContext(options.cwd, detection.projectType, options.minimal, candidateSet);
+  const candidates = [...baseDocs, ...domainContext.plans.map((plan) => plan.rel)];
 
   if (options.dryRun) {
     return initDryRun(options, detection, agents, candidates);
   }
 
   if (options.write) {
-    return initWrite(options, detection, agents, candidates);
+    return initWrite(options, detection, agents, candidates, domainContext);
   }
 
   return blockedApply("init", "Use init --dry-run to preview changes or init --write to create missing LLM-WIKI files. Existing wiki docs default to --existing skip.");
@@ -1408,7 +1411,7 @@ async function findMissingDocs(cwd, projectType, profiles = []) {
   return findings;
 }
 
-async function initWrite(options, detection, agents, candidates) {
+async function initWrite(options, detection, agents, candidates, domainContext = emptyDomainContext()) {
   const created = [];
   const overwritten = [];
   const skipped = [];
@@ -1427,7 +1430,7 @@ async function initWrite(options, detection, agents, candidates) {
       continue;
     }
 
-    const content = renderGeneratedWikiDoc(rel, detection, lastUpdated);
+    const content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext);
     const sensitiveFindings = scanSensitiveInfo(content);
     if (sensitiveFindings.length > 0) {
       blocked.push(`${rel} was not written because generated content matched sensitive-info rules.`);
@@ -2320,8 +2323,8 @@ async function writeAdapterFiles(cwd, agents) {
   return { created, skipped, blocked };
 }
 
-function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate()) {
-  const meta = docMetadata(rel, detection, lastUpdated);
+function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext()) {
+  const meta = docMetadata(rel, detection, lastUpdated, domainContext);
   const project = detection.projectName ?? "project";
 
   return renderWikiDocumentTemplate({
@@ -2353,9 +2356,29 @@ async function summarizeAdapterStatus(cwd, agents) {
   return statuses;
 }
 
-function docMetadata(rel, detection, lastUpdated = todayIsoDate()) {
+function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext()) {
   const fallbackTitle = titleFromPath(rel);
   const commonRelated = ["docs/llm-wiki/index.md", "docs/llm-wiki/log.md"].filter((item) => item !== rel);
+
+  // A detected individual domain document: doc_type `domain`, source_files from
+  // the detected directories, linked back to the overview and DOMAIN_FEATURES.
+  const domainPlan = domainContext.plans.find((plan) => plan.rel === rel);
+  if (domainPlan) {
+    return {
+      title: domainPlan.domainName,
+      docType: "domain",
+      sourceFiles: domainPlan.sourceFiles,
+      related: ["docs/llm-wiki/domains/00_overview.md", "docs/llm-wiki/DOMAIN_FEATURES.md", ...domainContext.relatedExtras],
+      body: domainDocBody(domainPlan)
+    };
+  }
+
+  // Dynamic Domains section for the overview: markdown links to each detected
+  // domain doc (which also makes those docs non-orphan), or a review prompt.
+  const domainsSection = domainContext.plans.length > 0
+    ? domainContext.plans.map((plan) => `- [${plan.domainName}](./${plan.rel.split("/").pop()})`).join("\n")
+    : "- 자동 탐지된 domain이 없습니다. 프로젝트의 실제 업무 경계를 검토해 수동으로 추가하십시오.";
+
   const map = {
     "docs/llm-wiki/index.md": {
       title: "LLM-WIKI Index",
@@ -2456,7 +2479,7 @@ This document is the domain map for the project.
 
 ## Domains
 
-- List each domain, owner area, core workflow, and source evidence.
+${domainsSection}
 
 ## API Services
 
@@ -2787,6 +2810,40 @@ ${apiServiceInventoryChecklist().join("\n")}
 `;
 }
 
+// Body for a detected individual domain document. Directory-boundary detected;
+// the actual responsibilities are left for human/source-backed enrichment — no
+// invented business meaning.
+function domainDocBody(plan) {
+  const sources = plan.sourceFiles.map((sourceFile) => `- \`${sourceFile}\``).join("\n");
+  return `# ${plan.domainName}
+
+이 문서는 \`llm-wiki init --write\`가 디렉터리 경계로 탐지한 도메인 \`${plan.domainName}\`의 초안입니다. 실제 책임과 로직은 아래 source를 확인한 뒤 사람이 보강합니다.
+
+## Responsibility
+
+- 이 도메인이 담당하는 업무 경계와 핵심 워크플로를 source를 확인한 뒤 정리합니다.
+- 추측하지 말고 실제 코드/테스트/라우트 근거로 기술합니다.
+
+## Source Directories
+
+${sources}
+${domainApiServicesSection(plan.rel)}
+## Evidence
+
+- 위 source 디렉터리의 엔트리포인트, 서비스, 라우트, 모델, 테스트를 확인해 근거를 채웁니다.
+- frontmatter \`evidence\`에 \`파일#L10\`, \`파일#symbol:Name\`, \`파일#route:/path\` 같은 정밀 참조를 추가할 수 있습니다.
+
+## Open Questions
+
+- 불확실한 소유·경계·의존성은 사람 검토 전까지 여기에 남깁니다.
+
+## Review Notes
+
+- 사람 검토 전까지 \`needs_review\` 상태를 유지합니다.
+- 이 문서를 \`verified\`로 승격하지 않습니다. verified는 사람 승인 전용입니다.
+`;
+}
+
 function isDomainOrientedDoc(rel) {
   const normalized = toPosix(rel);
   return normalized.includes("/domains/") || normalized.endsWith("/DOMAIN_FEATURES.md");
@@ -2803,7 +2860,10 @@ function titleFromPath(rel) {
 
 function docTypeFromPath(rel) {
   if (rel.includes("/profiles/")) return "profile";
-  if (rel.includes("/domains/")) return "domain_overview";
+  if (rel.includes("/domains/")) {
+    // Only the overview map is a domain_overview; individual domain docs are `domain`.
+    return path.basename(rel, ".md") === "00_overview" ? "domain_overview" : "domain";
+  }
   if (rel.includes("/templates/")) return "template";
   return path.basename(rel, ".md").toLowerCase().replace(/[^a-z0-9]+/g, "_");
 }
@@ -2822,6 +2882,118 @@ function plannedDocs(projectType, minimal, profiles = []) {
   if (minimal) return CORE_REQUIRED_DOCS;
   const profileDocs = profiles.flatMap((profile) => PROFILE_DOCS[profile] ?? []);
   return [...new Set([...CORE_REQUIRED_DOCS, ...(PROFILE_DOCS[projectType] ?? PROFILE_DOCS.unknown), ...profileDocs])];
+}
+
+// ---- backend/fullstack domain detection --------------------------------
+// Detect business-domain (module/feature) directories so init can create a
+// per-domain doc next to the domain overview. Directory-boundary based only —
+// no class/file-name inference, no LLM, no invented business meaning. Detection
+// I/O is best-effort; planning is pure and exported for unit tests.
+
+// Parent directories whose immediate subdirectories are treated as domains.
+const DOMAIN_PARENT_DIRS = [
+  "src/domains", "src/domain", "src/modules", "src/features",
+  "app/domains", "app/domain", "app/modules", "app/features",
+  "internal/domain", "internal/domains", "internal/modules"
+];
+
+// Technical directories that are not business domains (compared lowercase).
+const DOMAIN_EXCLUDE_NAMES = new Set([
+  "common", "shared", "core", "config", "configs",
+  "util", "utils", "middleware", "middlewares",
+  "infrastructure", "test", "tests", "fixture", "fixtures"
+]);
+
+function emptyDomainContext() {
+  return { plans: [], relatedExtras: [] };
+}
+
+// Split camelCase/PascalCase/snake/kebab/space into tokens; keep non-latin
+// letters (e.g. Hangul) intact. Pure.
+function domainNameTokens(name) {
+  return String(name)
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .split(/[\s._-]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+// Deterministic filename slug for a domain directory name. Pure.
+export function normalizeDomainSlug(name) {
+  const slug = domainNameTokens(name)
+    .map((token) => token.toLowerCase())
+    .join("_")
+    .replace(/[^\p{L}\p{N}_]+/gu, "");
+  return slug || "domain";
+}
+
+// Human-facing display name derived from a slug (Title Case for latin words;
+// non-latin tokens kept as-is). Pure.
+export function domainDisplayName(slug) {
+  const tokens = domainNameTokens(slug);
+  if (tokens.length === 0) return "Domain";
+  return tokens
+    .map((token) => (/[a-z]/i.test(token) ? token.charAt(0).toUpperCase() + token.slice(1).toLowerCase() : token))
+    .join(" ");
+}
+
+// Best-effort: read the immediate subdirectories of each known parent as domain
+// candidates. A missing/unreadable parent is skipped, never fatal. Returns
+// { rawName, sourceFile } with posix sourceFile paths.
+export async function detectDomainDirectories(cwd) {
+  const found = [];
+  for (const parent of DOMAIN_PARENT_DIRS) {
+    const absParent = path.join(cwd, ...parent.split("/"));
+    let entries;
+    try {
+      entries = await readdir(absParent, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const name = entry.name;
+      if (name.startsWith(".") || name.startsWith("__")) continue;
+      if (DOMAIN_EXCLUDE_NAMES.has(name.toLowerCase())) continue;
+      found.push({ rawName: name, sourceFile: `${parent}/${name}` });
+    }
+  }
+  return found;
+}
+
+// Merge detected directories by normalized slug, sort deterministically by slug,
+// and assign ordinal-numbered doc paths (01_, 02_, ...). Same domain found in
+// several locations collapses to one doc whose source_files lists every path.
+// Pure.
+export function planDomainDocs(detected) {
+  const bySlug = new Map();
+  for (const item of detected) {
+    const slug = normalizeDomainSlug(item.rawName);
+    if (!bySlug.has(slug)) bySlug.set(slug, new Set());
+    bySlug.get(slug).add(toPosix(item.sourceFile));
+  }
+  return [...bySlug.keys()]
+    .sort((left, right) => left.localeCompare(right))
+    .map((slug, index) => ({
+      rel: `docs/llm-wiki/domains/${String(index + 1).padStart(2, "0")}_${slug}.md`,
+      slug,
+      domainName: domainDisplayName(slug),
+      sourceFiles: [...bySlug.get(slug)].sort()
+    }));
+}
+
+// Domain docs are generated only for backend/fullstack, non-minimal init.
+// relatedExtras links the backend contract docs only when they are themselves
+// part of this init's candidate set, so no broken links are introduced.
+async function buildDomainContext(cwd, projectType, minimal, candidateSet) {
+  if (minimal || (projectType !== "backend" && projectType !== "fullstack")) {
+    return emptyDomainContext();
+  }
+  const plans = planDomainDocs(await detectDomainDirectories(cwd));
+  const relatedExtras = ["docs/llm-wiki/API_CONTRACTS.md", "docs/llm-wiki/DATA_MODEL.md"]
+    .filter((doc) => candidateSet.has(doc));
+  return { plans, relatedExtras };
 }
 
 async function detectPackageManager(cwd) {

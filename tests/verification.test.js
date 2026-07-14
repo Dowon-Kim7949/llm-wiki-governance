@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, doctor, driftCommand, driftTargets, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, handoffCommand, initCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard } from "../src/report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
@@ -35,6 +35,132 @@ test("init dry-run detects frontend projects", async () => {
   assert.ok(result.planned.some((line) => line.includes("AGENTS.md adapter would be suggested")));
   assert.ok(result.planned.some((line) => line.includes("CLAUDE.md adapter would be suggested")));
   assert.ok(result.planned.some((line) => line.includes("ANTIGRAVITY.md remains an info-level adapter candidate")));
+});
+
+// ---- backend domain detection -----------------------------------------
+
+test("normalizeDomainSlug handles camel/Pascal/kebab/snake/space/Hangul", () => {
+  assert.equal(normalizeDomainSlug("auth"), "auth");
+  assert.equal(normalizeDomainSlug("userProfile"), "user_profile");
+  assert.equal(normalizeDomainSlug("UserProfile"), "user_profile");
+  assert.equal(normalizeDomainSlug("user-profile"), "user_profile");
+  assert.equal(normalizeDomainSlug("user profile"), "user_profile");
+  assert.equal(normalizeDomainSlug("주문"), "주문");
+  assert.equal(domainDisplayName("user_profile"), "User Profile");
+});
+
+test("planDomainDocs is deterministic and merges duplicate domains", () => {
+  // Intentionally unsorted input, with `user` found in two locations.
+  const plans = planDomainDocs([
+    { rawName: "user", sourceFile: "src/modules/user" },
+    { rawName: "Order", sourceFile: "src/modules/order" },
+    { rawName: "user", sourceFile: "app/domains/user" }
+  ]);
+
+  assert.deepEqual(plans.map((plan) => plan.rel), [
+    "docs/llm-wiki/domains/01_order.md",
+    "docs/llm-wiki/domains/02_user.md"
+  ]);
+  const user = plans.find((plan) => plan.slug === "user");
+  assert.deepEqual(user.sourceFiles, ["app/domains/user", "src/modules/user"]);
+  assert.equal(user.domainName, "User");
+});
+
+test("detectDomainDirectories skips common technical directories", async () => {
+  const cwd = await makeProject("domain-detect-");
+  for (const dir of ["src/modules/user", "src/modules/common", "src/modules/shared", "src/modules/utils"]) {
+    await mkdir(path.join(cwd, ...dir.split("/")), { recursive: true });
+  }
+  const detected = await detectDomainDirectories(cwd);
+  const names = detected.map((item) => item.rawName);
+  assert.ok(names.includes("user"));
+  assert.ok(!names.includes("common"));
+  assert.ok(!names.includes("shared"));
+  assert.ok(!names.includes("utils"));
+});
+
+test("init --dry-run --type backend plans individual domain docs", async () => {
+  const cwd = await makeProject("domain-dry-");
+  await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
+  await mkdir(path.join(cwd, "src", "modules", "order"), { recursive: true });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: "backend" });
+
+  assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/domains/01_order.md")));
+  assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/domains/02_user.md")));
+});
+
+test("init --write --type backend creates overview plus per-domain docs", async () => {
+  const cwd = await makeProject("domain-write-");
+  await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
+  await mkdir(path.join(cwd, "src", "modules", "order"), { recursive: true });
+
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+
+  const domainsDir = path.join(cwd, "docs", "llm-wiki", "domains");
+  assert.ok(await fileExists(path.join(domainsDir, "00_overview.md")));
+  assert.ok(await fileExists(path.join(domainsDir, "01_order.md")));
+  assert.ok(await fileExists(path.join(domainsDir, "02_user.md")));
+
+  // doc_type + source_files on an individual domain doc.
+  const orderDoc = await readFile(path.join(domainsDir, "01_order.md"), "utf8");
+  assert.ok(orderDoc.includes("status: needs_review"));
+  assert.ok(orderDoc.includes("doc_type: domain"));
+  assert.ok(orderDoc.includes("source_files:"));
+  assert.ok(orderDoc.includes("- src/modules/order"));
+
+  // Overview links each domain doc with a relative path (keeps them non-orphan).
+  const overview = await readFile(path.join(domainsDir, "00_overview.md"), "utf8");
+  assert.ok(overview.includes("[Order](./01_order.md)"));
+  assert.ok(overview.includes("[User](./02_user.md)"));
+});
+
+test("init --write merges a duplicate domain across locations into one doc", async () => {
+  const cwd = await makeProject("domain-merge-");
+  await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
+  await mkdir(path.join(cwd, "app", "domains", "user"), { recursive: true });
+
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+
+  const domainsDir = path.join(cwd, "docs", "llm-wiki", "domains");
+  assert.ok(await fileExists(path.join(domainsDir, "01_user.md")));
+  assert.ok(!(await fileExists(path.join(domainsDir, "02_user.md"))));
+  const userDoc = await readFile(path.join(domainsDir, "01_user.md"), "utf8");
+  assert.ok(userDoc.includes("- app/domains/user"));
+  assert.ok(userDoc.includes("- src/modules/user"));
+});
+
+test("init --type backend with no domain dirs creates only the overview with a review note", async () => {
+  const cwd = await makeProject("domain-none-");
+  const result = await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+
+  const domainsDir = path.join(cwd, "docs", "llm-wiki", "domains");
+  assert.ok(await fileExists(path.join(domainsDir, "00_overview.md")));
+  assert.ok(!(await fileExists(path.join(domainsDir, "01_user.md"))));
+  assert.equal(result.result, "pass");
+  const overview = await readFile(path.join(domainsDir, "00_overview.md"), "utf8");
+  assert.ok(overview.includes("자동 탐지된 domain이 없습니다"));
+});
+
+test("init --minimal does not create individual domain docs", async () => {
+  const cwd = await makeProject("domain-minimal-");
+  await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: true, withAdapters: false, type: "backend" });
+
+  assert.ok(!result.planned.some((line) => line.includes("domains/01_")));
+});
+
+test("init --existing skip preserves an existing individual domain doc", async () => {
+  const cwd = await makeProject("domain-skip-");
+  await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
+  const domainDoc = path.join(cwd, "docs", "llm-wiki", "domains", "01_user.md");
+  await mkdir(path.dirname(domainDoc), { recursive: true });
+  await writeFile(domainDoc, "PRESERVE ME", { encoding: "utf8" });
+
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+
+  assert.equal(await readFile(domainDoc, "utf8"), "PRESERVE ME");
 });
 
 test("parseArgs supports init write and existing policy", () => {
@@ -2172,6 +2298,15 @@ async function pathExistsTest(filePath) {
 
 async function makeProject(prefix) {
   return mkdtemp(path.join(os.tmpdir(), `llm-wiki-${prefix}`));
+}
+
+async function fileExists(filePath) {
+  try {
+    await readFile(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function writeJson(filePath, value) {
