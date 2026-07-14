@@ -2,30 +2,30 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+status: needs_review
 doc_type: public_api
 project: llm-wiki-standard
 last_updated: 2026-07-14
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - src/cli.js
   - src/commands.js
   - src/config-file.js
   - src/index.js
+  - src/report.js
   - package.json
 evidence:
   - src/cli.js#symbol:COMMANDS
   - src/cli.js#symbol:parseArgs
+  - src/cli.js#symbol:main
   - src/commands.js#symbol:migrateCommand
   - src/commands.js#symbol:fixCommand
   - src/config-file.js#symbol:mergeConfigIntoOptions
   - src/index.js#symbol:commands
   - src/index.js#symbol:normalizeOptions
+  - src/report.js#symbol:dashboardDocHref
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -81,17 +81,26 @@ contains_sensitive_info: false
 CLI 표면과 별개로, 패키지를 in-process로 import해 쓸 수 있는 프로그래매틱 API를 `package.json` `exports`(`.` → `src/index.js`)로 공개한다. CI 래퍼·에디터·테스트가 `llm-wiki` 바이너리를 spawn하지 않고 명령을 실행할 때 쓴다.
 
 ```js
-import { commands, normalizeOptions, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
+import { commands, normalizeOptions, parseArgs, run, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
 
+// 1) 부분 옵션으로 직접 호출
 const result = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
-// result.command === "audit", result.findings: Finding[], result.result: "pass" | ...
+// result.command === "audit", result.result: "pass" | ..., result.findings: Finding[]
+// result.schemaVersion === SCHEMA_VERSION
+
+// 2) argv를 파싱해 실행 (parseArgs 결과를 그대로 넘겨도 됨)
+const parsed = parseArgs(["audit", "--cwd", process.cwd(), "--strict"]);
+const audited = await commands.audit(normalizeOptions(parsed));  // parseArgs 결과 직접 수용
+
+// 3) CLI 전체를 in-process로 실행하고 exit code로 성패 분기
+const code = await run(["audit", "--cwd", process.cwd()]);       // 0 pass / 1 error / 2 blocked / 3 usage
 ```
 
 - **`commands`** — CLI 명령 이름 → 핸들러 함수의 **동결(frozen) 맵**. 키 집합은 `src/cli.js`의 `COMMANDS`와 1:1이며 안정 계약이다. 각 핸들러는 정규화된 옵션 객체를 받아 결과 객체로 resolve한다.
 - **개별 함수 export** — `audit`, `doctor`, `validateCommand`, `fixCommand`, `graphCommand` 등 소스 이름으로도 직접 import할 수 있으며 `commands` 맵의 값과 동일 참조다.
-- **`normalizeOptions(overrides?)`** — 부분 옵션을 받아 모든 기본값을 채우고 `cwd`를 절대경로로 해석한 완전한 옵션 객체를 돌려준다(배열은 매 호출마다 새로 만든다). 핸들러 호출 전 이걸로 옵션을 만들어야 한다. argv 파싱은 `parseArgs(argv)`를 쓴다.
-- **`parseArgs(argv)`** — argv 배열을 `{ command, options, errors }`로 파싱한다(CLI와 동일). **`run(argv)`** — argv를 받아 출력·exit code까지 처리하는 전체 CLI 진입점(`bin/llm-wiki.js`와 동일).
-- **`SCHEMA_VERSION`** — 아래 JSON 출력의 `schemaVersion` 필드와 같은 정수. shell-out이든 import든 동일 계약을 pin할 수 있다.
+- **`normalizeOptions(overrides?)`** — 부분 옵션을 받아 모든 기본값을 채우고 `cwd`를 절대경로로 해석한 완전한 옵션 객체를 돌려준다(배열은 매 호출마다 새로 만든다). 편의상 `parseArgs` 결과(`{ command, options, errors }`)를 그대로 넘겨도 되며, 이 경우 중첩된 `.options`를 override로 쓴다 → `normalizeOptions(parseArgs(argv))`와 `normalizeOptions(parseArgs(argv).options)`가 동일 결과를 낸다(전체 객체가 조용히 기본값으로 폴백되지 않는다).
+- **`parseArgs(argv)`** — argv 배열을 `{ command, options, errors }`로 파싱한다(CLI와 동일). **`run(argv)`** — argv를 받아 출력까지 처리하고 **숫자 exit code를 반환**한다(0 pass / 1 error·strict-warning / 2 blocked / 3 usage). `process.exitCode`도 같은 값으로 설정하므로 `bin/llm-wiki.js`는 그대로 동작한다.
+- **`SCHEMA_VERSION`** — JSON 출력의 `schemaVersion` 필드 및 결과 객체의 `schemaVersion`과 같은 정수. shell-out이든 import든 동일 계약을 pin할 수 있다.
 
 ### Result Shape
 
@@ -99,17 +108,23 @@ const result = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
+| `schemaVersion` | `number` | 출력 계약 버전(= `SCHEMA_VERSION`). 결과 객체에 **항상** 담기며, `--format json` 출력 최상단에도 그대로 나타난다. |
 | `command` | `string` | 명령 이름(판별자). |
 | `result` | `string?` | 종합 등급(`pass`/`warning`/`fail`/`blocked` 등). `doctor`/`graph` 등 일부는 없음. |
 | `findings` | `Finding[]` | 발견 항목(비어 있을 수 있음). |
-| `text` | `string?` | 렌더된 텍스트 리포트. `--format json` **파일** 출력에서는 제거된다. |
-| `schemaVersion` | `number?` | `--format json` 출력에만 붙는다(= `SCHEMA_VERSION`). |
+| `text` | `string?` | **항상 사람용 텍스트 리포트**. `format`은 CLI/`run()` stdout과 `--out` 파일 렌더링에만 영향을 주고, 반환 객체의 `.text` 내용은 바꾸지 않는다. `--format json` **파일** 출력에서만 제거된다. |
 
 `Finding`은 `{ severity: "blocked"|"error"|"warning"|"info", rule: string, path: string, message: string }`. 명령별 payload(예: `detection`, `wikiGraph`, `findingSummary`, `documentStatus`, `stats`, `graph`, `upgradeReport`, `applied`/`planned`/`skipped`)는 `src/index.js`의 JSDoc typedef와 각 핸들러를 근거로 한다.
 
-### `schemaVersion` (`--format json`)
+프로그래매틱 소비자가 JSON을 원하면 결과 객체 자체가 데이터이므로 `JSON.stringify(result)`를 쓰거나 `run([..., "--format", "json"])`의 stdout을 파싱한다. `.text`를 JSON으로 기대하지 말 것.
 
-`--format json` 출력(그리고 `--out *.json` 파일)의 최상단에 `schemaVersion` 정수 필드가 붙는다. 래퍼는 이 값으로 출력 계약을 pin한다. 단일 소스는 `src/config.js`의 `JSON_SCHEMA_VERSION`이다. **부가(additive)** 필드이므로 기존 필드(`command` 등)는 그대로이고 기존 소비자를 깨지 않는다. JSON 형태에 **파괴적** 변경(필드 제거/개명/타입 변경)이 있을 때만 이 정수를 올린다. mermaid/dot 등 비-JSON 출력에는 붙지 않는다.
+### `schemaVersion`
+
+단일 소스는 `src/config.js`의 `JSON_SCHEMA_VERSION`이다. **부가(additive)** 필드이므로 기존 필드(`command` 등)는 그대로이고 기존 소비자를 깨지 않는다. 두 곳에서 동일하게 나타난다: (1) 모든 명령의 **반환 객체**(1.5.1부터 — 결과 객체가 스스로 계약을 밝힌다), (2) `--format json` 출력과 `--out *.json` 파일 최상단. mermaid/dot 등 비-JSON 출력에는 붙지 않는다. JSON 형태에 **파괴적** 변경(필드 제거/개명/타입 변경)이 있을 때만 이 정수를 올린다.
+
+### HTML 대시보드 링크
+
+`audit`/`validate`/`status`의 `--format html` 대시보드에는 Document Index가 있고, 각 문서 링크(`<a href>`)는 **`--out` 파일의 위치 기준 상대경로**로 계산된다(1.5.1부터). 예를 들어 `--out docs/reports/dash.html`로 쓰면 링크가 그 파일에서 위키 문서로 가는 상대경로가 되어, 하위 폴더에서 열어도 링크가 깨지지 않는다. `--out` 없이 stdout으로 출력할 때는 repo-root 기준 상대경로를 그대로 쓴다.
 
 ## Stability
 
@@ -127,11 +142,15 @@ const result = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
 - `src/commands.js#symbol:fixCommand` — 범위 한정 자동수정(기본 미리보기, `--write` 적용).
 - `src/config-file.js#symbol:mergeConfigIntoOptions` — config 기본값과 CLI 플래그의 병합 우선순위.
 - `src/index.js#symbol:commands` — 프로그래매틱 API의 동결된 명령 맵과 개별 함수 export.
-- `src/index.js#symbol:normalizeOptions` — 부분 옵션 → 완전 옵션 정규화(`src/cli.js#symbol:defaultOptions` 공유).
-- `src/config.js#symbol:JSON_SCHEMA_VERSION` — `--format json`의 `schemaVersion` 단일 소스.
+- `src/index.js#symbol:normalizeOptions` — 부분 옵션 또는 `parseArgs` 결과(`.options`)를 완전 옵션으로 정규화(`src/cli.js#symbol:defaultOptions` 공유).
+- `src/cli.js#symbol:main` — `run(argv)`의 실체. 숫자 exit code를 반환하고 `process.exitCode`도 설정한다.
+- `src/commands.js#symbol:withText` — 모든 명령 결과 객체에 `schemaVersion`을 부여한다.
+- `src/config.js#symbol:JSON_SCHEMA_VERSION` — 결과 객체·`--format json`의 `schemaVersion` 단일 소스.
+- `src/report.js#symbol:dashboardDocHref` — HTML 대시보드 Document Index 링크를 `--out` 위치 기준 상대경로로 계산.
 
 ## Review Notes
 
 - 2026-07-14에 1.3.0 CLI 명령·옵션 계약(migrate --apply, drift, 신규 --agent, OKF type alias 포함)을 기준으로 재검토하고 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.4.0의 새 명령(`graph`, `stats`)과 graph 전용 `--format mermaid|dot`을 반영하고, stale했던 "migrate --apply 차단" 서술을 정정한 뒤, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.5 프로그래매틱 API(`package.json` `exports` → `src/index.js`, 동결된 `commands` 맵·개별 함수 export·`normalizeOptions`·`parseArgs`/`run`·`SCHEMA_VERSION`)와 `--format json`의 부가적 `schemaVersion` 필드를 반영하고, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-14에 1.5.1 API/출력 결함 수정을 반영했다(소비 프로젝트 스모크 테스트 발견): 결과 객체가 `schemaVersion`을 항상 담고 `.text`는 항상 텍스트임을 명시, `normalizeOptions`가 `parseArgs` 결과를 수용, `run(argv)`가 exit code 반환, HTML 대시보드 링크를 `--out` 기준 상대경로로. 모두 additive/refinement라 안정 계약을 깨지 않는다. LLM 편집으로 `needs_review`로 강등되었으며 사람 재검토가 필요하다.

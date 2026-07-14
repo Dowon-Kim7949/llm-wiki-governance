@@ -2255,7 +2255,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "@dowonk-7949/llm-wiki-standard");
-  assert.equal(packageJson.version, "1.5.0");
+  assert.equal(packageJson.version, "1.5.1");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
@@ -2509,6 +2509,84 @@ test("non-JSON graph exports are not wrapped with schemaVersion", async () => {
   assert.ok(rendered.startsWith("```mermaid"));
   assert.ok(!rendered.includes("schemaVersion"));
 });
+
+test("command results carry schemaVersion, and .text stays text regardless of format", async () => {
+  const cwd = await makeProject("api-schemaversion-");
+  const jsonResult = await audit(api.normalizeOptions({ cwd, format: "json" }));
+  const textResult = await audit(api.normalizeOptions({ cwd, format: "text" }));
+
+  assert.equal(jsonResult.schemaVersion, api.SCHEMA_VERSION);
+  assert.equal(textResult.schemaVersion, api.SCHEMA_VERSION);
+  // .text is always the rendered human text report; format only affects CLI/run() rendering.
+  assert.ok(jsonResult.text.startsWith("# LLM-WIKI"));
+  assert.equal(jsonResult.text, textResult.text);
+
+  // Manual (non-withText) returns carry it too.
+  const notes = await releaseNotesCommand(api.normalizeOptions({ cwd }));
+  assert.equal(notes.schemaVersion, api.SCHEMA_VERSION);
+});
+
+test("normalizeOptions accepts a parseArgs result and its .options identically", () => {
+  const parsed = api.parseArgs(["audit", "--cwd", "/proj", "--format", "json", "--strict"]);
+  const fromWhole = api.normalizeOptions(parsed);
+  const fromOptions = api.normalizeOptions(parsed.options);
+
+  assert.equal(fromWhole.cwd, fromOptions.cwd);
+  assert.equal(fromWhole.cwd, path.resolve("/proj"));
+  assert.equal(fromWhole.format, "json");
+  assert.equal(fromWhole.strict, true);
+  // A plain partial (no nested .options) still works as before.
+  assert.equal(api.normalizeOptions({ format: "markdown" }).format, "markdown");
+});
+
+test("run returns the numeric exit code for each outcome", async () => {
+  const clean = await makeProject("api-run-pass-");
+  const empty = await makeProject("api-run-warn-");
+
+  assert.equal(await runCliSilently(["doctor", "--cwd", clean]), 0);       // pass
+  assert.equal(await runCliSilently(["validate", "--strict", "--cwd", empty]), 1); // strict warning -> error
+  assert.equal(await runCliSilently(["explain", "no.such.rule"]), 2);      // blocked finding
+  assert.equal(await runCliSilently(["audit", "--not-an-option"]), 3);     // usage error
+});
+
+test("HTML dashboard links resolve from the --out directory, not the repo root", () => {
+  const result = {
+    command: "audit",
+    result: "pass",
+    findings: [],
+    wikiGraph: {
+      summary: { documents: 1, edges: 0, orphanDocuments: 0, unresolvedWikiLinks: 0, aliases: 0 },
+      documents: [{ path: "docs/llm-wiki/x.md", title: "X", aliases: [], inboundCount: 0 }],
+      orphanDocuments: [],
+      unresolvedConcepts: [],
+      aliases: []
+    }
+  };
+  const base = path.join(os.tmpdir(), "dash-base");
+  const out = path.join(base, "docs", "reports", "dash.html");
+
+  const rebased = renderHtmlDashboard(result, { cwd: base, out });
+  const expected = path.relative(path.dirname(out), path.join(base, "docs", "llm-wiki", "x.md")).split(path.sep).join("/");
+  assert.match(rebased, new RegExp(`<a href="${expected.replace(/[.]/g, "\\.")}"`));
+
+  // With no --out (stdout dashboard) the repo-root-relative path is unchanged.
+  const plain = renderHtmlDashboard(result, {});
+  assert.match(plain, /<a href="docs\/llm-wiki\/x\.md"/);
+});
+
+async function runCliSilently(argv) {
+  const realLog = console.log;
+  const realErr = console.error;
+  console.log = () => {};
+  console.error = () => {};
+  try {
+    return await api.run(argv);
+  } finally {
+    console.log = realLog;
+    console.error = realErr;
+    process.exitCode = 0;
+  }
+}
 
 async function buildFixFixture(cwd) {
   const wikiRoot = path.join(cwd, "docs", "llm-wiki");

@@ -4,11 +4,24 @@ import { writeUtf8 } from "./encoding.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
 import { JSON_SCHEMA_VERSION } from "./config.js";
 
-// Stamp the JSON output contract version onto a serialized report. Additive:
-// `schemaVersion` leads the object so wrappers can read it first, then all
+// Guarantee a top-level `schemaVersion` on the JSON output. Command results
+// built via withText already carry it, so this is an idempotent safety net for
+// any result assembled another way. Additive: `schemaVersion` leads the object,
 // existing fields follow unchanged. Only applied on the `--format json` path.
 function withSchemaVersion(result) {
   return { schemaVersion: JSON_SCHEMA_VERSION, ...result };
+}
+
+// Compute the href for a wiki document in the HTML dashboard. Document paths are
+// repo-root-relative (e.g. "docs/llm-wiki/x.md"). When the dashboard is written
+// with --out, links must resolve from the OUTPUT file's directory, not the repo
+// root, or opening the file from a subfolder 404s every link. When there is no
+// output path (stdout dashboard) the repo-root-relative path is kept unchanged.
+function dashboardDocHref(docPath, options) {
+  if (!options || !options.out || !options.cwd) return docPath;
+  const target = path.resolve(options.cwd, docPath);
+  const rel = path.relative(path.dirname(options.out), target);
+  return rel.split(path.sep).join("/");
 }
 
 export function renderTextReport(title, sections) {
@@ -35,7 +48,7 @@ export async function printResult(result, options) {
   } else if (options.format === "markdown") {
     console.log(renderOutputFile(result, options).trimEnd());
   } else if (options.format === "html") {
-    console.log(renderHtmlDashboard(result));
+    console.log(renderHtmlDashboard(result, options));
   } else {
     console.log(result.text);
   }
@@ -70,7 +83,7 @@ export function renderOutputFile(result, options) {
   }
 
   if (options.format === "html" || options.out?.endsWith(".html")) {
-    return renderHtmlDashboard(result);
+    return renderHtmlDashboard(result, options);
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -111,7 +124,7 @@ function redactRuntimeText(result) {
   return clone;
 }
 
-export function renderHtmlDashboard(result) {
+export function renderHtmlDashboard(result, options = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const command = result.command ?? "cli";
   const title = outputTitle(command);
@@ -194,7 +207,8 @@ export function renderHtmlDashboard(result) {
       .map((doc) => {
         const label = escapeHtml(doc.title || doc.path.split("/").pop());
         const orphanBadge = orphanSet.has(doc.path) ? ` <span class="badge sev-warning">orphan</span>` : "";
-        return `<tr><td><a href="${escapeHtml(doc.path)}">${label}</a>${orphanBadge}</td><td><code>${escapeHtml(doc.path)}</code></td><td class="num">${escapeHtml(doc.inboundCount ?? 0)}</td></tr>`;
+        const href = escapeHtml(dashboardDocHref(doc.path, options));
+        return `<tr><td><a href="${href}">${label}</a>${orphanBadge}</td><td><code>${escapeHtml(doc.path)}</code></td><td class="num">${escapeHtml(doc.inboundCount ?? 0)}</td></tr>`;
       })
       .join("\n");
     sections.push(htmlSection("Document Index", `<table><thead><tr><th>Document</th><th>Path</th><th class="num">Inbound</th></tr></thead><tbody>${rows}</tbody></table>`));

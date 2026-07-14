@@ -24,6 +24,33 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - fix: 1.5 API/출력 결함 4건 수정 + 1.5.1 준비
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, docs, release
+- changed:
+  - src/commands.js (withText·release-notes에 schemaVersion 부여)
+  - src/index.js (normalizeOptions가 parseArgs 결과 수용)
+  - src/cli.js (main/run이 exit code 반환)
+  - src/report.js (HTML 대시보드 링크를 --out 기준 상대경로로)
+  - tests/verification.test.js (회귀 테스트 +4, 버전 어서션 → 1.5.1)
+  - package.json (1.5.0 → 1.5.1)
+  - docs/llm-wiki/PUBLIC_API.md
+  - README.md, README.ko.md, CHANGELOG.md, CHANGELOG.ko.md
+  - docs/llm-wiki/releases/v1.5.1.md (신규)
+- summary:
+  - 소비 프로젝트(road-monitor) in-process 스모크 테스트에서 발견된 1.5 API/출력 결함 4건을 재현·확정 후 수정했다. (FIX-1) 결과 객체가 `schemaVersion`을 항상 담도록 `withText`에서 부여하고 `.text`는 항상 텍스트임을 문서화. (FIX-2) `normalizeOptions`가 `parseArgs` 결과(`.options`)를 수용해 조용한 기본값 폴백 제거. (FIX-3) `run(argv)`가 숫자 exit code 반환. (FIX-4) HTML 대시보드 Document Index 링크를 `--out` 위치 기준 상대경로로 계산.
+  - 모두 additive/refinement라 안정 계약(CLI/JSON/frontmatter)을 깨지 않아 patch(1.5.1)로 처리. graph DOT 등 보고서에서 "정상"으로 표시된 항목은 손대지 않았다.
+- evidence:
+  - src/commands.js#symbol:withText
+  - src/index.js#symbol:normalizeOptions
+  - src/cli.js#symbol:main
+  - src/report.js#symbol:dashboardDocHref
+- caveats:
+  - node --test 159 pass(신규 4개), validate-frontmatter --strict pass, JSON에 schemaVersion 정확히 1회.
+  - 아직 배포 전이다(태그/npm 미실행). PUBLIC_API.md는 LLM 편집으로 needs_review로 강등 → 사람 재검토 필요.
+
 ## 2026-07-14 - release: 1.5.0 준비 (프로그래매틱 API)
 
 - status: needs_review

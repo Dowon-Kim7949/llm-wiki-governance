@@ -314,7 +314,7 @@ npx llm-wiki stats                     # 헬스 스냅샷(verified %, enrichment
 npx llm-wiki audit --format html --out wiki-dashboard.html   # 탐색용 Document Index가 포함된 대시보드
 ```
 
-`--format html` 대시보드에는 이제 모든 wiki 문서를 나열하는 **Document Index**(인바운드 링크 수·고아 표시 포함)가 들어가, 독자가 코퍼스를 한눈에 탐색할 수 있습니다.
+`--format html` 대시보드에는 이제 모든 wiki 문서를 나열하는 **Document Index**(인바운드 링크 수·고아 표시 포함)가 들어가, 독자가 코퍼스를 한눈에 탐색할 수 있습니다. Document Index 링크는 `--out` 파일 위치 기준 상대경로로 계산되므로, 하위 폴더에 쓴 대시보드(예: `--out docs/reports/dashboard.html`)에서도 wiki 문서로 정상 연결됩니다.
 
 ## 공통 옵션
 
@@ -352,14 +352,21 @@ npx llm-wiki audit --format html --out wiki-dashboard.html   # 탐색용 Documen
 CLI 외에, 패키지를 import해 in-process로 실행할 수 있습니다. CLI를 spawn하던 CI 래퍼·에디터 통합·테스트에 유용합니다.
 
 ```js
-import { commands, normalizeOptions, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
+import { commands, normalizeOptions, parseArgs, run, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
 
+// 부분 옵션으로 직접 호출:
 const result = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
-console.log(result.command, result.result, result.findings.length);
+console.log(result.command, result.result, result.findings.length, result.schemaVersion);
+
+// 또는 argv를 파싱해 in-process 실행하고 exit code로 분기:
+const parsed = parseArgs(["audit", "--cwd", process.cwd(), "--strict"]);
+await commands.audit(normalizeOptions(parsed));   // parseArgs 결과 직접 수용
+const code = await run(["audit", "--cwd", process.cwd()]);  // 0 pass / 1 error / 2 blocked / 3 usage
 ```
 
-- `commands`는 CLI 명령 이름(`audit`, `validate`, `graph`, …)을 키로 하는 동결(frozen) 맵입니다. 각 핸들러는 정규화된 옵션 객체를 받아 결과 객체(`{ command, result, findings, … }`)로 resolve합니다.
-- `normalizeOptions(overrides)`가 모든 기본값을 채우고 `cwd`를 절대경로로 해석합니다. 이것(또는 `parseArgs(argv)`)으로 옵션 객체를 만드세요. 개별 함수(`audit`, `doctor`, …)·`parseArgs`·`run(argv)`도 export됩니다.
+- `commands`는 CLI 명령 이름(`audit`, `validate`, `graph`, …)을 키로 하는 동결(frozen) 맵입니다. 각 핸들러는 정규화된 옵션 객체를 받아 결과 객체(`{ schemaVersion, command, result, findings, … }`)로 resolve합니다. 모든 결과는 `schemaVersion`(= `SCHEMA_VERSION`)을 담고, `.text`는 항상 렌더된 텍스트 리포트입니다 — `format`은 CLI/`run()` stdout·`--out` 파일에만 영향을 주고 반환 객체는 바꾸지 않습니다.
+- `normalizeOptions(overrides)`가 모든 기본값을 채우고 `cwd`를 절대경로로 해석합니다. 부분 옵션 객체는 물론 `parseArgs(argv)` 결과도 그대로 받아(`.options`를 읽음), `normalizeOptions(parseArgs(argv))`와 `normalizeOptions(parseArgs(argv).options)`가 동일하게 동작합니다. 개별 함수(`audit`, `doctor`, …)·`parseArgs`도 export됩니다.
+- `run(argv)`는 전체 CLI(파싱 → 렌더)를 실행하고 숫자 exit code(`0` pass, `1` error/strict-warning, `2` blocked, `3` usage)를 **반환**합니다. `process.exitCode`도 같은 값으로 설정합니다.
 - `--format json` 출력에는 부가적(additive) 최상단 `schemaVersion` 필드(export된 `SCHEMA_VERSION`과 동일)가 붙어 래퍼가 출력 계약을 pin할 수 있습니다. JSON 형태의 파괴적 변경 시에만 이 값을 올립니다.
 
 명령 표면·`SCHEMA_VERSION`·공통 결과 필드가 안정 계약입니다 — `docs/llm-wiki/PUBLIC_API.md` 참조.

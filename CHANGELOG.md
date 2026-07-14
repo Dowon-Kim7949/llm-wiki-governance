@@ -5,6 +5,28 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.5.1 — 2026-07-14
+
+Programmatic API and output fixes found while smoke-testing the new 1.5 API from
+a consuming project. All additive/refinements — the stable CLI, JSON, and
+frontmatter contracts are unchanged.
+
+### Fixed
+
+- Command result objects now carry a top-level `schemaVersion` (equal to the
+  exported `SCHEMA_VERSION`), so a programmatic result self-describes its output
+  contract without importing the constant separately. `.text` remains the
+  rendered text report in every case — `--format` affects only CLI/`run()`
+  stdout and `--out` files, not the returned object; this is now documented.
+- `normalizeOptions` accepts a `parseArgs(argv)` result directly (it reads the
+  nested `.options`), so `normalizeOptions(parseArgs(argv))` no longer silently
+  falls back to defaults. Passing a plain partial still works unchanged.
+- `run(argv)` now returns the numeric exit code (`0`/`1`/`2`/`3`) in addition to
+  setting `process.exitCode`, so in-process callers can branch on success.
+- The `--format html` dashboard's Document Index links are now computed relative
+  to the `--out` file's directory, so a dashboard written to a subfolder no
+  longer produces broken (404) document links.
+
 ## 1.5.0 — 2026-07-14
 
 Programmatic API. Let CI wrappers, editors, and tests use LLM-WIKI in-process

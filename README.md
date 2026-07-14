@@ -327,7 +327,7 @@ npx llm-wiki stats                     # a health snapshot (verified %, enrichme
 npx llm-wiki audit --format html --out wiki-dashboard.html   # dashboard with a navigable Document Index
 ```
 
-The `--format html` dashboard now includes a **Document Index** listing every wiki document (with inbound-link counts and orphan flags) so readers can navigate the corpus at a glance.
+The `--format html` dashboard now includes a **Document Index** listing every wiki document (with inbound-link counts and orphan flags) so readers can navigate the corpus at a glance. Document Index links are computed relative to the `--out` file's location, so a dashboard written to a subfolder (for example `--out docs/reports/dashboard.html`) still links to the wiki documents correctly.
 
 ## Common Options
 
@@ -365,15 +365,22 @@ Precedence is CLI flags > config > auto-detection. Malformed config is rejected 
 Besides the CLI, the package can be imported and run in-process — useful for CI wrappers, editor integrations, and tests that would otherwise shell out:
 
 ```js
-import { commands, normalizeOptions, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
+import { commands, normalizeOptions, parseArgs, run, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
 
+// Call a command directly with a partial options object:
 const result = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
-console.log(result.command, result.result, result.findings.length);
+console.log(result.command, result.result, result.findings.length, result.schemaVersion);
+
+// Or parse argv and run the full CLI in-process, branching on the exit code:
+const parsed = parseArgs(["audit", "--cwd", process.cwd(), "--strict"]);
+await commands.audit(normalizeOptions(parsed));   // parseArgs result is accepted directly
+const code = await run(["audit", "--cwd", process.cwd()]);  // 0 pass / 1 error / 2 blocked / 3 usage
 ```
 
-- `commands` is a frozen map keyed by CLI command name (`audit`, `validate`, `graph`, …); each handler takes a normalized options object and resolves to a result object (`{ command, result, findings, … }`).
-- `normalizeOptions(overrides)` fills every default and resolves `cwd` — use it (or `parseArgs(argv)`) to build the options object. Individual functions (`audit`, `doctor`, …), `parseArgs`, and `run(argv)` are also exported.
-- `--format json` output carries an additive top-level `schemaVersion` field (equal to the exported `SCHEMA_VERSION`) so wrappers can pin the output contract; a breaking change to the JSON shape bumps it.
+- `commands` is a frozen map keyed by CLI command name (`audit`, `validate`, `graph`, …); each handler takes a normalized options object and resolves to a result object (`{ schemaVersion, command, result, findings, … }`). Every result carries `schemaVersion` (equal to `SCHEMA_VERSION`), and `.text` is always the rendered text report — `format` only affects CLI/`run()` stdout and `--out` files, not the returned object.
+- `normalizeOptions(overrides)` fills every default and resolves `cwd`. It accepts either a partial options object or a `parseArgs(argv)` result directly (it reads the nested `.options`), so `normalizeOptions(parseArgs(argv))` and `normalizeOptions(parseArgs(argv).options)` behave the same. Individual functions (`audit`, `doctor`, …) and `parseArgs` are also exported.
+- `run(argv)` runs the full CLI (parse → render) and returns the numeric exit code (`0` pass, `1` error/strict-warning, `2` blocked, `3` usage). It also sets `process.exitCode` to the same value.
+- `--format json` output carries an additive top-level `schemaVersion` field (equal to `SCHEMA_VERSION`) so wrappers can pin the output contract; a breaking change to the JSON shape bumps it.
 
 The command surface, `SCHEMA_VERSION`, and the shared result fields are the stable contract — see `docs/llm-wiki/PUBLIC_API.md`.
 

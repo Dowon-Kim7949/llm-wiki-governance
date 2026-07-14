@@ -121,11 +121,21 @@ export const commands = Object.freeze({
  * Build a complete {@link Options} object from a partial override. Fills every
  * default so a command can be called directly, and resolves `cwd` to an absolute
  * path. Does not parse CLI flags — use {@link parseArgs} for argv.
- * @param {Partial<Options>} [overrides]
+ *
+ * As a convenience it also accepts a {@link parseArgs} result directly: if the
+ * argument carries an `options` object (the `{ command, options, errors }`
+ * shape), that nested `options` is used as the override source. This makes both
+ * `normalizeOptions(parseArgs(argv))` and `normalizeOptions(parseArgs(argv).options)`
+ * produce the same result, instead of the whole parse result silently falling
+ * back to defaults.
+ * @param {Partial<Options> | { options: Partial<Options> }} [overrides]
  * @returns {Options}
  */
 export function normalizeOptions(overrides = {}) {
-  const options = { ...defaultOptions(), ...overrides };
+  const source = overrides && typeof overrides.options === "object" && overrides.options !== null
+    ? overrides.options
+    : overrides;
+  const options = { ...defaultOptions(), ...source };
   if (typeof options.cwd === "string") options.cwd = path.resolve(options.cwd);
   return options;
 }

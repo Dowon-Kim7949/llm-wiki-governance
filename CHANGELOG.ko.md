@@ -5,6 +5,25 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.5.1 — 2026-07-14
+
+1.5 신규 API를 소비 프로젝트에서 스모크 테스트하다 발견한 API/출력 결함 수정.
+모두 additive/refinement라 안정 계약(CLI·JSON·frontmatter)은 그대로다.
+
+### 수정 (Fixed)
+
+- 명령 결과 객체가 최상단 `schemaVersion`(export된 `SCHEMA_VERSION`과 동일)을 항상
+  담는다. 프로그래매틱 결과가 상수를 따로 import하지 않고도 출력 계약을 스스로 밝힌다.
+  `.text`는 어떤 경우에도 렌더된 텍스트 리포트다 — `--format`은 CLI/`run()` stdout과
+  `--out` 파일에만 영향을 주고 반환 객체는 바꾸지 않음(문서에 명시).
+- `normalizeOptions`가 `parseArgs(argv)` 결과를 그대로 받는다(중첩 `.options`를 읽음).
+  이제 `normalizeOptions(parseArgs(argv))`가 조용히 기본값으로 폴백되지 않는다. 일반 부분
+  옵션을 넘기는 기존 방식도 그대로 동작한다.
+- `run(argv)`가 `process.exitCode` 설정에 더해 숫자 exit code(`0`/`1`/`2`/`3`)를 **반환**해,
+  in-process 호출자가 성패로 분기할 수 있다.
+- `--format html` 대시보드의 Document Index 링크를 `--out` 파일 디렉터리 기준 상대경로로
+  계산한다. 하위 폴더에 쓴 대시보드에서 문서 링크가 깨지던(404) 문제 해결.
+
 ## 1.5.0 — 2026-07-14
 
 프로그래매틱 API. CLI 바이너리를 spawn하지 않고 CI 래퍼·에디터·테스트가

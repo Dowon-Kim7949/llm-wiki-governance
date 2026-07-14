@@ -2,7 +2,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
+import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
 import { detectProject } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
@@ -623,6 +623,7 @@ export async function releaseNotesCommand(options) {
   const document = buildReleaseNotes({ version, date, project, commits, gitAvailable });
 
   return {
+    schemaVersion: JSON_SCHEMA_VERSION,
     command: "release-notes",
     result: "pass",
     version,
@@ -3760,7 +3761,14 @@ function handoffEntrypoints(agents) {
 }
 
 function withText(payload, title, sections) {
+  // Every command result self-describes the JSON output contract with a
+  // top-level `schemaVersion` (= config.js JSON_SCHEMA_VERSION), so programmatic
+  // consumers can read it straight off the returned object without importing the
+  // SCHEMA_VERSION constant. `text` is always the rendered human-readable text
+  // report; the `--format` option only affects CLI/`run()` stdout and `--out`
+  // files, never the shape of the returned object.
   return {
+    schemaVersion: JSON_SCHEMA_VERSION,
     ...payload,
     text: renderTextReport(title, sections)
   };

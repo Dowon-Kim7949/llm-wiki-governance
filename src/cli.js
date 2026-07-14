@@ -29,15 +29,21 @@ const SUPPORTED_AGENTS = new Set(["codex", "claude", "cursor", "copilot", "winds
 const SUPPORTED_EXISTING_POLICIES = new Set(["skip", "overwrite"]);
 const ALL_AGENTS = ["codex", "claude", "antigravity"];
 
+// Runs a full CLI invocation (parse -> dispatch -> render) and RETURNS the
+// numeric exit code (0 pass, 1 error/strict-warning, 2 blocked, 3 usage error),
+// so programmatic callers can branch on it. It also sets process.exitCode to the
+// same value, so bin/llm-wiki.js keeps working without reading the return value.
 export async function main(argv) {
   if (!argv[0] || argv[0] === "--help" || argv[0] === "-h") {
     printHelp();
-    return;
+    process.exitCode = 0;
+    return 0;
   }
 
   if (argv[0] === "help") {
-    printCommandHelp(argv[1]);
-    return;
+    const code = printCommandHelp(argv[1]);
+    process.exitCode = code;
+    return code;
   }
 
   const { command, options, errors } = parseArgs(argv);
@@ -46,7 +52,7 @@ export async function main(argv) {
     for (const error of errors) console.error(error);
     printHelp();
     process.exitCode = 3;
-    return;
+    return 3;
   }
 
   const allowedFormats = command === "graph" ? GRAPH_FORMATS : SUPPORTED_FORMATS;
@@ -56,7 +62,7 @@ export async function main(argv) {
       ? "Supported formats for graph: text, json, mermaid, dot"
       : "Supported formats: text, json, markdown, html");
     process.exitCode = 3;
-    return;
+    return 3;
   }
 
   const handler = COMMANDS.get(command);
@@ -64,14 +70,14 @@ export async function main(argv) {
     console.error(`Unknown command: ${command}`);
     printHelp();
     process.exitCode = 3;
-    return;
+    return 3;
   }
 
   const { config, errors: configErrors } = await loadProjectConfig(options.cwd);
   if (configErrors.length > 0) {
     for (const error of configErrors) console.error(error);
     process.exitCode = 3;
-    return;
+    return 3;
   }
   const usedConfigAgents = (!options.agents || options.agents.length === 0) && Array.isArray(config?.agents);
   mergeConfigIntoOptions(options, config);
@@ -81,13 +87,15 @@ export async function main(argv) {
     if (agentErrors.length > 0) {
       for (const error of agentErrors) console.error(error);
       process.exitCode = 3;
-      return;
+      return 3;
     }
   }
 
   const result = await handler(options);
   await printResult(result, options);
-  process.exitCode = exitCodeFor(result, options);
+  const code = exitCodeFor(result, options);
+  process.exitCode = code;
+  return code;
 }
 
 // The full option set every command handler reads, with default values. This is
@@ -374,11 +382,11 @@ function printCommandHelp(command) {
   if (!text) {
     console.error(command ? `Unknown help topic: ${command}` : "Missing help topic.");
     printHelp();
-    process.exitCode = command ? 3 : 0;
-    return;
+    return command ? 3 : 0;
   }
 
   console.log(text);
+  return 0;
 }
 
 const COMMAND_HELP = {
