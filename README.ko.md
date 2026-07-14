@@ -192,6 +192,8 @@ npx llm-wiki quickstart --write --type frontend --agent claude
 | `llm-wiki migrate` | `wiki_block_version` 업그레이드 갭을 보고하고 변경을 미리봅니다. `--apply`로 문서를 현재 계약으로 업그레이드합니다(`fix` 범위 재사용, `verified` 보존). |
 | `llm-wiki fix` | `docs/llm-wiki` 내부의 안전한 자동수정을 미리보기합니다. `--write`로 실제 적용합니다. |
 | `llm-wiki drift` | `verified` 문서의 `evidence.stale` 드리프트를 보고합니다. `--downgrade`로 드리프트된 문서를 `needs_review`로 내립니다. |
+| `llm-wiki graph` | 지식 그래프(문서 + 해소된 링크)를 text/JSON/Mermaid/Graphviz DOT로 출력합니다. |
+| `llm-wiki stats` | wiki 헬스 스냅샷(verified %, enrichment %, evidence coverage, staleness, orphan)을 보고합니다. |
 | `llm-wiki release-notes` | 마지막 `v*` 태그 이후 conventional commit으로 `needs_review` 릴리스 노트 문서를 생성합니다. |
 
 명령별 옵션은 의도적으로 제한됩니다. 예를 들어 `validate --write`와 `handoff --existing overwrite`는 해당 명령에 속하지 않는 옵션이므로 거부됩니다.
@@ -294,6 +296,25 @@ npx llm-wiki migrate --apply    # 문서를 현재 계약으로 업그레이드
 npx llm-wiki drift              # 드리프트된 verified 문서 보고
 npx llm-wiki drift --downgrade  # 드리프트된 verified 문서를 needs_review로
 ```
+
+## 사람 독자를 위한 공개 (Publishing for Human Readers)
+
+LLM-WIKI는 Markdown-in-git 코퍼스로 남습니다 — **정적 사이트 생성기가 아닙니다.** 비개발자도 읽기 쉽게 하려면 이미 Markdown을 잘 렌더링하는 도구를 활용하세요:
+
+- **GitHub / GitLab** — `docs/llm-wiki/`를 웹 UI에서 그대로 렌더링합니다. 폴더를 탐색하면 됩니다.
+- **Obsidian** — 저장소를 vault로 엽니다. 코퍼스의 `[[wiki links]]`와 `aliases`를 그대로 읽어 그래프 탐색을 제공합니다.
+- **MkDocs**(또는 유사 도구) — 호스팅 정적 사이트가 필요하면 `docs/llm-wiki/`를 가리키게 합니다.
+
+렌더러를 직접 소유하지 않고도 지식을 보고·공유할 수 있게 CLI가 돕습니다:
+
+```bash
+npx llm-wiki graph --format mermaid   # GitHub/Obsidian Markdown 페이지에 붙여넣기
+npx llm-wiki graph --format dot        # Graphviz로 렌더링
+npx llm-wiki stats                     # 헬스 스냅샷(verified %, enrichment %, staleness)
+npx llm-wiki audit --format html --out wiki-dashboard.html   # 탐색용 Document Index가 포함된 대시보드
+```
+
+`--format html` 대시보드에는 이제 모든 wiki 문서를 나열하는 **Document Index**(인바운드 링크 수·고아 표시 포함)가 들어가, 독자가 코퍼스를 한눈에 탐색할 수 있습니다.
 
 ## 공통 옵션
 

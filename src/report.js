@@ -179,6 +179,19 @@ export function renderHtmlDashboard(result) {
       ${orphans ? `<h3>Orphan documents</h3><ul>${orphans}</ul>` : ""}`));
   }
 
+  if (result.wikiGraph?.documents?.length) {
+    const orphanSet = new Set(result.wikiGraph.orphanDocuments ?? []);
+    const rows = [...result.wikiGraph.documents]
+      .sort((left, right) => left.path.localeCompare(right.path))
+      .map((doc) => {
+        const label = escapeHtml(doc.title || doc.path.split("/").pop());
+        const orphanBadge = orphanSet.has(doc.path) ? ` <span class="badge sev-warning">orphan</span>` : "";
+        return `<tr><td><a href="${escapeHtml(doc.path)}">${label}</a>${orphanBadge}</td><td><code>${escapeHtml(doc.path)}</code></td><td class="num">${escapeHtml(doc.inboundCount ?? 0)}</td></tr>`;
+      })
+      .join("\n");
+    sections.push(htmlSection("Document Index", `<table><thead><tr><th>Document</th><th>Path</th><th class="num">Inbound</th></tr></thead><tbody>${rows}</tbody></table>`));
+  }
+
   return `<!doctype html>
 <html lang="en">
 <head>

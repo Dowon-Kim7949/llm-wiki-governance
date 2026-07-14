@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-14 - feat: bounded reader-friendly publishing (1.4 step 3)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, docs, test
+- changed:
+  - src/report.js
+  - README.md
+  - README.ko.md
+  - tests/verification.test.js
+- summary:
+  - 1.4 세 번째(마지막) 항목: 사람 독자용 공개를 SSG 없이 지원한다. `renderHtmlDashboard`에 탐색용 **Document Index** 섹션 추가(wikiGraph.documents를 정렬해 제목·경로 링크·인바운드 수·orphan 배지로 나열).
+  - README(EN·KO)에 "Publishing for Human Readers" 절 추가: GitHub/GitLab 네이티브 렌더, Obsidian([[links]]+aliases), MkDocs 안내 + `graph --format mermaid|dot`·`stats`·`audit --format html`(Document Index) 활용법. "SSG 아님" 명시. Commands 표에 graph·stats 행 추가.
+  - 테스트 추가(대시보드 Document Index에 문서 경로·제목 포함). 전체 148 pass.
+- caveats:
+  - 로드맵 1.4 3개 항목(graph·stats·publishing)이 모두 구현됐다. 다음: release: prepare 1.4.0 — 이 셋 + 보류 중인 Gate 10 파일/디렉터리 도메인 탐지를 함께 번들.
+  - Document Index의 문서 링크는 대시보드 html이 저장소 루트 기준으로 서빙될 때 해석된다(상대경로). push/배포는 지시 시.
+
 ## 2026-07-14 - feat: llm-wiki stats 명령 (1.4 step 2)
 
 - status: needs_review

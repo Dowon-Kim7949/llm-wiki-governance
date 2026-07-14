@@ -1619,6 +1619,19 @@ test("stats on an uninitialized wiki reports zero documents", async () => {
   assert.ok(result.text.includes("not initialized"));
 });
 
+test("html dashboard includes a navigable Document Index", async () => {
+  const cwd = await makeProject("dash-index-");
+  await writeWikiDoc(cwd, "index.md", "LLM-WIKI Index", "Entry point.");
+  await writeWikiDocWithRelated(cwd, "a.md", "Doc A", "Connected doc.", ["docs/llm-wiki/index.md"]);
+
+  const result = await audit({ cwd, type: null, profiles: [], agents: [], format: "html", strict: false });
+  const html = renderHtmlDashboard(result);
+
+  assert.ok(html.includes("Document Index"));
+  assert.ok(html.includes("docs/llm-wiki/a.md"));
+  assert.ok(html.includes(">Doc A<") || html.includes("Doc A"));
+});
+
 test("validate --changed reports findings only for changed documents", async (t) => {
   let hasGit = true;
   try {

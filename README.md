@@ -204,6 +204,8 @@ Expected Claude Code work is the same as Codex work: read the adapter and wiki e
 | `llm-wiki migrate` | Report the `wiki_block_version` upgrade gap and preview the changes; add `--apply` to upgrade documents to the current contract (reuses the `fix` scope, preserves `verified`). |
 | `llm-wiki fix` | Preview safe autofixes inside `docs/llm-wiki`; add `--write` to apply them. |
 | `llm-wiki drift` | Report `evidence.stale` drift on `verified` documents; add `--downgrade` to move drifted docs to `needs_review`. |
+| `llm-wiki graph` | Emit the knowledge graph (documents + resolved links) as text, JSON, Mermaid, or Graphviz DOT. |
+| `llm-wiki stats` | Report a wiki health snapshot: verified %, enrichment %, evidence coverage, staleness, and orphans. |
 | `llm-wiki release-notes` | Generate a `needs_review` release-notes document from conventional commits since the last `v*` tag. |
 
 Command options are intentionally scoped. For example, `validate --write` and `handoff --existing overwrite` are rejected because those options do not belong to those commands.
@@ -307,6 +309,25 @@ It reuses the `fix` scope and additionally upgrades a document's `wiki_block_ver
 npx llm-wiki drift              # report drifted verified documents
 npx llm-wiki drift --downgrade  # flip drifted verified docs to needs_review
 ```
+
+## Publishing for Human Readers
+
+LLM-WIKI stays a Markdown-in-git corpus — it is **not** a static-site generator. To make it readable for non-developers, lean on tools that already render Markdown well:
+
+- **GitHub / GitLab** render `docs/llm-wiki/` natively; just browse the folder in the web UI.
+- **Obsidian** — open the repository as a vault. It reads the corpus's `[[wiki links]]` and `aliases` natively for graph-style navigation.
+- **MkDocs** (or similar) — point it at `docs/llm-wiki/` if you want a hosted static site.
+
+The CLI helps you see and share the knowledge without owning a renderer:
+
+```bash
+npx llm-wiki graph --format mermaid   # paste into a GitHub/Obsidian Markdown page
+npx llm-wiki graph --format dot        # render with Graphviz
+npx llm-wiki stats                     # a health snapshot (verified %, enrichment %, staleness)
+npx llm-wiki audit --format html --out wiki-dashboard.html   # dashboard with a navigable Document Index
+```
+
+The `--format html` dashboard now includes a **Document Index** listing every wiki document (with inbound-link counts and orphan flags) so readers can navigate the corpus at a glance.
 
 ## Common Options
 
