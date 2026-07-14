@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: README(EN/KO) 프론트도어형으로 슬림 재구성
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 방향 결정)
+- scope: docs
+- changed:
+  - README.md, README.ko.md (약 510/500줄 → 각 101줄)
+- summary:
+  - 사용자 피드백("README가 너무 방대하다")에 따라 두 README를 매뉴얼형에서 프론트도어형으로 재구성했다. 남긴 섹션: 한 줄 소개+Why, 지원 환경(표, 신규), 빠른 시작, 권장 에이전트/모델(신규 — 보강은 상위 추론 모델·CLI는 모델 불필요·MCP 서버는 결정적), 핵심 명령(compact 표), 잘 쓰는 법(신규), MCP(등록 스니펫), 코드에서 사용(짧게), 안전 요약, 더 알아보기(링크). 상세(전 옵션·evidence 계약·안전정책 전문·autofix/migrate/drift 심화·OKF·프로그래매틱 API 심화·publishing·릴리스 자동화·GitHub Actions 예시)는 삭제가 아니라 `llm-wiki help <cmd>`(오프라인)와 PUBLIC_API.md·GATE_REVIEW.md·EXAMPLES.md·템플릿으로 링크 이관(콘텐츠 손실 없음). docs/ 링크는 npm에서도 닿도록 GitHub 절대 URL 사용, 루트 배포 문서는 상대 링크.
+- caveats:
+  - README는 docs/llm-wiki 밖이라 validate 대상이 아니며, 링크 대상 12개 파일 존재 확인. node --test 173 통과, validate 0 findings 유지. 1.6.0 배포에 함께 포함 예정.
+
 ## 2026-07-15 - docs: 1.6.0 배포 전 validate 경고 전부 해소
 
 - status: verified
