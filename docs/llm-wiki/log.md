@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: Gate 15 accepted_for_1.10.0 (monorepo profile)
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 검토·수락)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 15 `proposed_for_1.10.0` → `accepted_for_1.10.0`)
+- summary:
+  - 1.10 monorepo profile의 Gate 15를 사람 검토로 `accepted_for_1.10.0`으로 승격했다. 스코프: npm/yarn workspaces 감지(pnpm/YAML defer) + opt-in 패키지별 파이프라인 실행 + additive packages[] JSON(단일 레포 byte-identical) + tests/fixtures monorepo 픽스처 + 패키지별 config. read-only·zero-dep 유지. 이로써 1.10 피처 코드 착수 가능.
+- caveats:
+  - validate 0, validate-frontmatter --strict clean.
+
 ## 2026-07-15 - docs: 1.10 준비 — Gate 15 (monorepo profile) proposed 초안
 
 - status: needs_review
