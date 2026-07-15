@@ -200,6 +200,10 @@ config 토글·실 CI 피드백·enrichment 신호를 손에 쥐고 만든다. `
 
 ### 1.11 — 크로스레포 지식 링크
 
+**1.11.0 출시 — 1.7–1.11 라인 완성.** 예약 `repo:<name>/<path>` 참조 스킴(+ http(s))을
+wiki 링크·frontmatter 참조에서 external로 인식해 cross-repo 참조가 missing-target 규칙에
+걸리지 않게 한다(GATE_REVIEW Gate 16). 인식만 함 — fetch/verify 안 함.
+
 보수적·**비-fetch** 참조 포맷(예약 스킴)으로, 별도 저장소의 API 스펙·도메인
 문서·서비스 계약에 대한 크로스레포 참조가 missing-target 규칙에 걸리지 않고 해소되게
 한다 — 인식하되 절대 검증하지 않는다(검증은 네트워크/git이 필요해 무의존성 불변식을

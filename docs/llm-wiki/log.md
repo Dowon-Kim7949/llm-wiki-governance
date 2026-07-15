@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - release: 1.11.0 준비 (cross-repo links) — 1.7–1.11 라인 완성
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: release, docs
+- changed:
+  - package.json (1.10.0 → 1.11.0), tests/verification.test.js (버전 assertion → 1.11.0)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.11.0 항목)
+  - docs/llm-wiki/releases/v1.11.0.md (신규 릴리스 노트)
+  - docs/llm-wiki/DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (cross-repo doc-sync; verified → needs_review)
+  - ROADMAP.md, ROADMAP.ko.md (1.11 섹션에 1.11.0 출시 + 1.7–1.11 라인 완성 표기)
+- summary:
+  - Gate 16 1.11.0(cross-repository knowledge links): 예약 cross-repo 참조 스킴(`repo:<name>/<path>`+http(s)) 인식(recognize-don't-verify)을 릴리스 준비했다. MINOR bump. 지식 문서 2개 doc-sync → needs_review(PUBLIC_API는 명령/JSON/옵션 표면 변경 없어 verified 유지). **이로써 분할된 1.7–1.11 로드맵 라인이 완성된다.**
+- caveats:
+  - 배포 전 검증: node --test 203 pass, validate 0, validate-frontmatter --strict 0, npm pack v1.11.0 확인 예정.
+  - RE-VERIFY 부채: DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS (배포 후 사람 검토로 verified 재승인 필요).
+  - 태그·push는 사용자 "배포" 승인 후.
+
 ## 2026-07-15 - feat: cross-repo knowledge links (recognize-don't-verify) — 1.11.0, Gate 16
 
 - status: needs_review

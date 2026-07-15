@@ -2,15 +2,13 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -38,6 +36,7 @@ evidence:
   - src/commands.js#symbol:scanVisibilityConsistency
   - src/commands.js#symbol:monorepoCommand
   - src/detector.js#symbol:detectWorkspaces
+  - src/commands.js#symbol:isCrossRepoReference
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -70,6 +69,7 @@ contains_sensitive_info: false
 - **커스텀 문서셋·템플릿 오버라이드(1.8)** — config `requiredDocs`로 프로젝트 자체 필수 문서를 core/profile 목록에 추가하고(같은 `structure.required_doc` 검사; 검증 전용), `templates`로 생성 문서를 프로젝트-로컬 템플릿에서 만든다. 템플릿 오버라이드는 **body만** 쓰고 frontmatter는 항상 CLI 생성이라 `status: verified`를 절대 만들 수 없다(구조적 가드레일). 이로써 Gate 13 config 3피처(rule 토글·커스텀 문서셋·템플릿 오버라이드)가 완성된다. 근거: `src/commands.js#symbol:renderOverriddenDoc`.
 - **visibility governance(1.9)** — 이미 필수인 `visibility` 필드에 대한 opt-in 일관성 린트 2개(sensitive-info 스캔 재사용): `visibility.public_sensitive`(`visibility: public` 문서에 민감값), `visibility.declared_mismatch`(`contains_sensitive_info: false`인데 민감값). 둘 다 기본 off·warning·read-only, config `rules`로 활성화(1.8 토글 재사용), 절대 default error/blocked 금지, **민감값은 finding에 미노출**(redacted count만). 접근 통제 아님(값-내용 일관성만). 정책은 `docs/llm-wiki/VISIBILITY.md`. 근거: `src/commands.js#symbol:scanVisibilityConsistency`, 범위는 `GATE_REVIEW.md`(Gate 14, accepted).
 - **monorepo profile(1.10)** — `llm-wiki monorepo`가 npm/yarn `workspaces`를 감지해 `docs/llm-wiki`가 있는 각 패키지를 validate하고 집계한다(strictly additive `packages[]` roll-up + 패키지 경로 prefix된 findings). 각 패키지는 자기 `llm-wiki.config.json`을 반영하고, 새 필드는 이 명령에만 나타나 단일 레포 출력은 byte-identical. pnpm/YAML은 zero-dep 위해 미파싱(unsupported 보고). read-only 집계. 근거: `src/commands.js#symbol:monorepoCommand`·`src/detector.js#symbol:detectWorkspaces`, 범위는 `GATE_REVIEW.md`(Gate 15, accepted).
+- **cross-repo knowledge links(1.11)** — 예약 cross-repo 참조 스킴 `repo:<name>/<path>`(+ 기존 http(s))를 wiki 링크·`source_files`/`evidence`/`related`에서 external로 인식한다. 인식된 참조는 missing-target 규칙(`wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`)에서 제외되지만 **절대 fetch/verify하지 않는다**(network/git 없음, zero-dep). URL 형태 wiki 링크의 false `wiki_link.missing`도 해소. additive: 로컬 해석 불변(진짜 미해결 로컬 링크는 여전히 flag). 근거: `src/commands.js#symbol:isCrossRepoReference`, 범위는 `GATE_REVIEW.md`(Gate 16, accepted).
 
 ## Evidence
 
@@ -91,6 +91,7 @@ contains_sensitive_info: false
 - `src/commands.js#symbol:scanVisibilityConsistency` — opt-in visibility 일관성 린트(public_sensitive·declared_mismatch; sensitive 스캔 재사용, 값 미노출)(1.9).
 - `src/commands.js#symbol:monorepoCommand` — monorepo profile: 패키지별 validate 집계(additive `packages[]`)(1.10).
 - `src/detector.js#symbol:detectWorkspaces` — npm/yarn workspaces 감지(pnpm/YAML unsupported)(1.10).
+- `src/commands.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴 인식(recognize-don't-verify)(1.11).
 
 ## Open Questions
 
@@ -109,3 +110,4 @@ contains_sensitive_info: false
 - 2026-07-15에 1.8.1 config schema growth 2부(Gate 13 완성)를 반영했다: 커스텀 문서셋(config `requiredDocs`)과 템플릿 오버라이드(config `templates`, body-only 가드레일)를 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.9.0 visibility governance(Gate 14, accepted)를 반영했다: opt-in 일관성 린트 2개(`visibility.public_sensitive`·`visibility.declared_mismatch`, sensitive-info 스캔 재사용, 기본 off·warning·read-only, 값 미노출)를 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.10.0 monorepo profile(Gate 15, accepted)을 반영했다: opt-in `monorepo` 명령(npm/yarn workspaces 감지 후 패키지별 validate 집계, additive `packages[]`, 단일 레포 byte-identical, 패키지별 config, pnpm/YAML unsupported)을 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.11.0 cross-repo knowledge links(Gate 16, accepted)를 반영했다: 예약 cross-repo 참조 스킴(`repo:<name>/<path>`+http(s))을 external로 인식해 missing-target 규칙에서 제외하되 fetch/verify하지 않는 기능을 추가했다. LLM 편집이므로 `needs_review`로 내리고 사람 재검토를 기다린다.

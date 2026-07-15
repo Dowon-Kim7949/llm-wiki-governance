@@ -224,6 +224,11 @@ first).
 
 ### 1.11 — Cross-repository knowledge links
 
+**Shipped in 1.11.0 — the 1.7–1.11 line is complete.** A reserved `repo:<name>/<path>`
+reference scheme (plus http(s) URLs) is recognized as external in wiki links and
+frontmatter references, so cross-repo references stop tripping the missing-target
+rules (GATE_REVIEW Gate 16). Recognition only — never fetched or verified.
+
 A conservative, **non-fetching** reference format (a reserved scheme) so cross-repo
 references to API specs, domain docs, and service contracts resolve without tripping
 the missing-target rules — recognize but never verify (verification would need

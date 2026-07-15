@@ -5,6 +5,33 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.11.0 — 2026-07-15
+
+Cross-repository knowledge links (Gate 15→16). Recognize a reserved, non-fetching
+cross-repo reference scheme so cross-repo references stop tripping the missing-target
+rules — the last planned `1.x` minor. Additive; CLI, JSON, programmatic-API, and
+frontmatter contracts unchanged, and no runtime dependency is added.
+
+### Added
+
+- A reserved cross-repo reference scheme `repo:<name>/<path>` (alongside existing
+  `http(s)://` URLs) recognized as external in `[[wiki links]]` and in
+  `source_files` / `evidence` / `related`. Recognized references are treated as
+  external — not flagged `wiki_link.missing` / `related.missing` /
+  `source_files.missing` / `evidence.missing` / `markdown_link.missing` — but are
+  NEVER fetched or verified (verification would need network/git). This also hardens
+  the classifier so URL-form `[[..]]` wiki links stop emitting false
+  `wiki_link.missing`. Source: `src/commands.js` (`isCrossRepoReference`,
+  `isExternalSourceReference`).
+
+### Notes
+
+- Recognition only — no network, no git, no new dependency (zero-runtime-dependency
+  preserved). Additive: local (in-repo) resolution is unchanged; a genuinely missing
+  local link is still flagged. Scope: `GATE_REVIEW.md` (Gate 16, accepted). Actually
+  following/resolving cross-repo references stays out of scope (a future major, if
+  ever). This completes the split `1.7`–`1.11` roadmap line.
+
 ## 1.10.0 — 2026-07-15
 
 Monorepo profile (Gate 15). An opt-in `monorepo` command validates each workspace

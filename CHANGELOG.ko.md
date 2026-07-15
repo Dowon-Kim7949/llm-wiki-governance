@@ -5,6 +5,28 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.11.0 — 2026-07-15
+
+cross-repository knowledge links(Gate 16). 예약된 non-fetching cross-repo 참조 스킴을
+인식해 cross-repo 참조가 missing-target 규칙을 건드리지 않게 한다 — 계획된 `1.x` 마지막
+마이너. Additive이며 CLI·JSON·프로그래매틱 API·frontmatter 계약 불변, 런타임 의존성 추가 없음.
+
+### 추가 (Added)
+
+- 예약 cross-repo 참조 스킴 `repo:<name>/<path>`(기존 `http(s)://` URL과 함께)를 wiki
+  링크와 `source_files`/`evidence`/`related`에서 external로 인식한다. 인식된 참조는 external로
+  처리돼 `wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/
+  `markdown_link.missing`에서 제외되지만 **절대 fetch/verify하지 않는다**(network/git 필요). URL
+  형태의 wiki 링크가 false `wiki_link.missing`을 내지 않게 분류기도 강화한다. 근거:
+  `src/commands.js`(`isCrossRepoReference`, `isExternalSourceReference`).
+
+### 참고 (Notes)
+
+- 인식만 함 — network/git/의존성 없음(zero-runtime-dependency 불변). Additive: 로컬(레포 내)
+  해석은 불변이며 진짜 미해결 로컬 링크는 여전히 flag된다. 범위: `GATE_REVIEW.md`(Gate 16,
+  accepted). 실제 fetch/resolve는 out of scope(future major). 이로써 분할된 `1.7`–`1.11`
+  로드맵 라인이 완성된다.
+
 ## 1.10.0 — 2026-07-15
 
 monorepo profile(Gate 15). opt-in `monorepo` 명령이 각 워크스페이스 패키지의 위키를
