@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: 1.7.2 doc-synced 문서 3개 verified 재승인
+
+- status: verified
+- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+- summary:
+  - 1.7.2 EP1/EP2 doc-sync로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.7.2 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, validate-frontmatter --strict clean.
+
 ## 2026-07-15 - release: 1.7.2 준비 (EP1+EP2 enabling-prep, config 일관화)
 
 - status: needs_review

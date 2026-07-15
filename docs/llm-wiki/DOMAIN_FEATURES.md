@@ -2,13 +2,15 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: domain_overview
 project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
+reviewed_by: WoongHwan-Kim
+reviewed_at: 2026-07-15
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -84,4 +86,4 @@ contains_sensitive_info: false
 - 2026-07-14에 1.5 프로그래매틱 API(`exports`/`commands` 맵 · `normalizeOptions` · `--format json`의 `schemaVersion`)를 기능으로 추가하고, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.6 에이전트 네이티브(MCP 서버 `llm-wiki mcp`, 읽기 전용 툴 10개)를 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.7 CI/CD 도입(`release-notes --body-only` + 본문 민감정보 차단, 컴포지트 validate GitHub Action, 태그 트리거 GitHub Release 잡)을 기능으로 추가했다(Gate 12). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
-- 2026-07-15에 1.7.2 enabling-prep(config 로딩을 CLI/API/MCP로 일원화 + `resolveOptions`, init/quickstart starter config scaffold, doctor effective-config echo)를 "프로젝트 설정 일관화" 기능으로 추가했다(Gate 13). LLM 편집이므로 `needs_review`로 내리고 사람 재검토를 기다린다.
+- 2026-07-15에 1.7.2 enabling-prep(config 로딩을 CLI/API/MCP로 일원화 + `resolveOptions`, init/quickstart starter config scaffold, doctor effective-config echo)를 "프로젝트 설정 일관화" 기능으로 추가했다(Gate 13). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
