@@ -5,6 +5,24 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.11.1 — 2026-07-16
+
+Behavior-preserving internal refactor: the monolithic `src/commands.js` was split
+into focused sibling modules under `src/commands/`. No user-facing change — the
+CLI, `--format json` output, the programmatic API (the frozen `commands` map and
+individual exports), and the frontmatter contract are byte-identical, and no
+runtime dependency is added.
+
+### Changed
+
+- Extracted reusable logic out of `src/commands.js` (~4,119 → ~1,612 lines) into
+  `src/commands/{references,findings,scans,wiki-graph,adapters,wiki-files,fix-migrate,domains,doc-templates}.js`,
+  wired back through a barrel re-export so every `from "./commands.js"` import and
+  the public API surface stay identical. Dependencies are one-directional (leaf
+  parsers → wiki-graph/adapters → scans → fix-migrate → `commands.js`);
+  `migrateCommand` stays in `commands.js` because it calls the `audit` pipeline,
+  which keeps the module graph acyclic (same pattern as `graphCommand`/`statsCommand`).
+
 ## 1.11.0 — 2026-07-15
 
 Cross-repository knowledge links (Gate 15→16). Recognize a reserved, non-fetching

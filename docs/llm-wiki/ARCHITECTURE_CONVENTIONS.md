@@ -2,11 +2,10 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - verified
-status: verified
+status: needs_review
 doc_type: architecture_conventions
 project: llm-wiki-standard
-last_updated: 2026-07-15
+last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: WoongHwan-Kim
@@ -29,12 +28,12 @@ evidence:
   - src/index.js#symbol:commands
   - src/mcp/dispatch.js#symbol:handleMessage
   - src/cli.js#symbol:applyProjectConfig
-  - src/commands.js#symbol:applyRuleConfig
+  - src/commands/findings.js#symbol:applyRuleConfig
   - src/commands.js#symbol:renderOverriddenDoc
-  - src/commands.js#symbol:scanVisibilityConsistency
+  - src/commands/scans.js#symbol:scanVisibilityConsistency
   - src/commands.js#symbol:monorepoCommand
   - src/detector.js#symbol:detectWorkspaces
-  - src/commands.js#symbol:isCrossRepoReference
+  - src/commands/references.js#symbol:isCrossRepoReference
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -56,7 +55,17 @@ contains_sensitive_info: false
 - `src/cli.js` — 인자 파싱(`parseArgs`), 기본 옵션 단일 소스(`defaultOptions`), 명령→핸들러 매핑, exit code 계산. 1.7.2부터 config 로드+병합+agent 재정규화를 공유 `applyProjectConfig`로 노출해, CLI·프로그래매틱 API·MCP 세 표면이 하나의 `llm-wiki.config.json`에서 동일 effective options를 얻게 한다.
 - `src/index.js` — 공개 프로그래매틱 API 진입점(`package.json` `exports`). 동결된 `commands` 맵·개별 함수 export·`normalizeOptions`·`parseArgs`/`run`·`SCHEMA_VERSION`을 re-export하고, MCP 표면(`startMcpServer`·`MCP_TOOLS`·`handleMcpMessage`·`MCP_PROTOCOL_VERSION`)도 함께 export한다. JSDoc typedef로 반환 형태를 문서화한다. 1.7.2부터 config 인식 async `resolveOptions`(= 동기 `normalizeOptions` + `applyProjectConfig`)도 export한다(동기 `normalizeOptions`·동결 맵은 불변).
 - `src/mcp/` — Model Context Protocol 서버(1.6, `llm-wiki mcp`). `tools.js`가 읽기 전용 툴 정의(`commands` 위 얇은 래퍼)를, `dispatch.js`가 순수 JSON-RPC 핸들러(`handleMessage`)를, `server.js`가 stdio 배선(개행 구분 JSON-RPC 2.0)을 담당한다. 서드파티 SDK 없이 Node 내장만 사용(무의존성). 쓰기 명령은 노출하지 않는다.
-- `src/commands.js` — 모든 명령 핸들러와 `scan*` 검증 함수, 생성 문서 템플릿 본문(`docMetadata`).
+- `src/commands.js` — 명령 핸들러(오케스트레이션)와 중심 `audit` 파이프라인, 그리고 순환을 피해야 하는 소수의 핸들러(`migrateCommand`는 `audit`를 호출하므로 잔류; `graphCommand`/`statsCommand`도 헬퍼만 분리하고 본체는 잔류). 재사용 로직은 아래 `src/commands/*` 모듈로 분리했다(1.11.1 동작 보존 내부 리팩터). 배럴 re-export로 `from "./commands.js"` import 표면과 동결된 CLI/프로그래매틱 API는 byte-identical하게 유지된다.
+- `src/commands/` — commands.js에서 추출한 동작 보존 서브모듈군(단방향 의존: leaf → wiki-graph/adapters → scans → fix-migrate → commands.js):
+  - `references.js` — 링크/참조 파싱 헬퍼(`escapeRegex`/`parseEvidenceReference`/`isExternalSourceReference`/`isCrossRepoReference` + Markdown·wiki 링크 추출/정규화/해석).
+  - `findings.js` — finding 레지스트리와 리포트 포매터: `FINDING_EXPLANATIONS`·`findingExplanation`·`applyRuleConfig`(+ `NON_TOGGLEABLE_CATEGORIES`)·`findingCategory`/`summarizeFindings`·`format*`·`withText`.
+  - `scans.js` — `scan*` 패밀리 전체(encoding/sensitive/source_files/related/enrichment/thin_body/visibility/evidence/okf/markdown_link/wiki_link)와 드리프트 로직(`scanEvidenceDrift` + 순수·export되는 `driftTargets`).
+  - `wiki-graph.js` — 지식 그래프 구성/렌더(`collectWikiGraph`·`buildWikiLinkTargetIndex`·`emptyWikiGraph`·`renderGraphMermaid`/`renderGraphDot`).
+  - `adapters.js` — 어댑터 레지스트리 `ADAPTER_TARGETS`(+ `TEMPLATE_ROOT`)와 스캔/제안/쓰기/상태 헬퍼(`scanAdapters`·`planAdapterSuggestions`·`writeAdapterFiles`·`summarizeAdapterStatus`·`selectedAgents`).
+  - `wiki-files.js` — 스캔·어댑터·fix/migrate가 공유하는 파일 열거/판별 유틸(`listTargetMarkdown`·`listWikiContentDocs`·`isAppendOnlyLog`).
+  - `fix-migrate.js` — `fix`/`drift` 명령과 fix/migrate 공유 헬퍼(block-version 분석·`runMechanicalRemediation`·frontmatter/evidence 편집·`renderStubDocument`·`blockedApply`). `migrateCommand`는 `audit` 순환 회피로 commands.js에 잔류하며 이 헬퍼들을 import한다.
+  - `domains.js` — backend/fullstack 도메인 감지·계획(`detectDomainDirectories`·`planDomainDocs` 등).
+  - `doc-templates.js` — 생성 문서 본문 템플릿(`docMetadata` + 본문 빌더).
 - `src/frontmatter.js` + `src/frontmatter-schema.js` — YAML frontmatter 파서와 JSON Schema 기반 필수 필드/enum 검증.
 - `src/detector.js` — package.json 신호로 project type 추론. 1.10부터 `detectWorkspaces`가 npm/yarn `workspaces`를 감지한다(pnpm/YAML은 zero-dep 위해 unsupported로 보고).
 - `src/config.js` — core/profile별 필수 문서 목록(`CORE_REQUIRED_DOCS`, `PROFILE_DOCS`).
@@ -90,12 +99,12 @@ contains_sensitive_info: false
 - `src/index.js#symbol:commands` — CLI `COMMANDS`를 1:1로 미러링하는 프로그래매틱 API 표면.
 - `src/mcp/dispatch.js#symbol:handleMessage` — 트랜스포트 무관 JSON-RPC 핸들러(초기화/tools.list/tools.call/ping). `src/mcp/server.js`가 stdio로 배선한다. 1.7.2부터 `tools/call`이 `resolveOptions`로 프로젝트 config를 병합한다.
 - `src/cli.js#symbol:applyProjectConfig` — `llm-wiki.config.json` 로드+병합의 공유 seam. CLI·`resolveOptions`(API)·MCP가 함께 써 세 표면이 동일 옵션을 해석한다(1.7.2).
-- `src/commands.js#symbol:applyRuleConfig` — config `rules` 토글을 findings에 중앙 적용(off 드롭·severity override; `sensitive.*` 비토글)(1.8).
+- `src/commands/findings.js#symbol:applyRuleConfig` — config `rules` 토글을 findings에 중앙 적용(off 드롭·severity override; `sensitive.*` 비토글)(1.8).
 - `src/commands.js#symbol:renderOverriddenDoc` — config `templates` 오버라이드를 body-only로 적용해 `verified`를 만들 수 없게 하는 가드레일(1.8).
-- `src/commands.js#symbol:scanVisibilityConsistency` — opt-in visibility 일관성 린트(sensitive-info 스캔 재사용, 값 미노출; 기본 off/warning/read-only)(1.9).
+- `src/commands/scans.js#symbol:scanVisibilityConsistency` — opt-in visibility 일관성 린트(sensitive-info 스캔 재사용, 값 미노출; 기본 off/warning/read-only)(1.9).
 - `src/commands.js#symbol:monorepoCommand` — monorepo profile: cwd-파라미터라이즈드 파이프라인을 패키지별 실행·집계(additive `packages[]`)(1.10).
 - `src/detector.js#symbol:detectWorkspaces` — npm/yarn workspaces 감지(pnpm/YAML unsupported)(1.10).
-- `src/commands.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴(`repo:<name>/<path>`) 인식; `isExternalSourceReference`/wiki-link 해석기가 external로 처리(recognize-don't-verify)(1.11).
+- `src/commands/references.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴(`repo:<name>/<path>`) 인식; `isExternalSourceReference`/wiki-link 해석기가 external로 처리(recognize-don't-verify)(1.11).
 
 ## Open Questions
 
@@ -113,3 +122,4 @@ contains_sensitive_info: false
 - 2026-07-15에 1.9.0 visibility governance(Gate 14, accepted)를 반영했다: opt-in 일관성 린트 `scanVisibilityConsistency`(sensitive-info 스캔 재사용, 값 미노출)를 Evidence에 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.10.0 monorepo profile(Gate 15, accepted)을 반영했다: `detectWorkspaces`(Module Layout)와 `monorepoCommand`(Evidence)를 추가했다 — cwd-파라미터라이즈드 파이프라인을 패키지별 실행·집계(additive `packages[]`, 단일 레포 byte-identical). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.11.0 cross-repo knowledge links(Gate 16, accepted)를 반영했다: `isCrossRepoReference`(예약 `repo:<name>/<path>` 스킴)와 `isExternalSourceReference`/wiki-link 해석기의 external 처리를 Evidence에 추가했다 — recognize-don't-verify, additive(로컬 해석 불변). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: Module Layout에 `src/commands/*` 서브모듈군(references·findings·scans·wiki-graph·adapters·wiki-files·fix-migrate·domains·doc-templates)과 단방향 의존·배럴 re-export 불변식을 기술하고, Evidence의 이동 심볼 포인터(`applyRuleConfig`→findings, `scanVisibilityConsistency`→scans, `isCrossRepoReference`→references)를 갱신했다. `migrateCommand`가 `audit` 순환 회피로 commands.js에 잔류함을 명시했다. 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기; 재검토 시 `evidence.stale`도 해소).

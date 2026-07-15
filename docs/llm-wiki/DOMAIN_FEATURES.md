@@ -2,11 +2,10 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - verified
-status: verified
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-standard
-last_updated: 2026-07-15
+last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: WoongHwan-Kim
@@ -20,10 +19,10 @@ source_files:
   - src/mcp/tools.js
   - src/release-notes.js
 evidence:
-  - src/commands.js#symbol:scanEnrichment
-  - src/commands.js#symbol:scanRelatedReferences
-  - src/commands.js#symbol:fixCommand
-  - src/commands.js#symbol:planDomainDocs
+  - src/commands/scans.js#symbol:scanEnrichment
+  - src/commands/scans.js#symbol:scanRelatedReferences
+  - src/commands/fix-migrate.js#symbol:fixCommand
+  - src/commands/domains.js#symbol:planDomainDocs
   - src/detector.js#symbol:detectProject
   - src/index.js#symbol:commands
   - src/mcp/tools.js#symbol:TOOL_DEFS
@@ -31,14 +30,14 @@ evidence:
   - src/cli.js#symbol:applyProjectConfig
   - src/index.js#symbol:resolveOptions
   - src/commands.js#symbol:scaffoldProjectConfig
-  - src/commands.js#symbol:applyRuleConfig
-  - src/commands.js#symbol:scanThinBody
+  - src/commands/findings.js#symbol:applyRuleConfig
+  - src/commands/scans.js#symbol:scanThinBody
   - src/commands.js#symbol:findMissingDocs
   - src/commands.js#symbol:renderOverriddenDoc
-  - src/commands.js#symbol:scanVisibilityConsistency
+  - src/commands/scans.js#symbol:scanVisibilityConsistency
   - src/commands.js#symbol:monorepoCommand
   - src/detector.js#symbol:detectWorkspaces
-  - src/commands.js#symbol:isCrossRepoReference
+  - src/commands/references.js#symbol:isCrossRepoReference
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -61,24 +60,24 @@ contains_sensitive_info: false
 - **enrichment 신호** — placeholder만 남은 미보강 문서를 `content.not_enriched`로 표시해 "빈 스캐폴드가 통과"하는 것을 막는다.
 - **지식 그래프** — `wikiGraph`가 문서→문서 엣지(wiki/related/markdown 링크)·미해결 개념·별칭·고아 문서를 집계한다. `llm-wiki graph`가 이를 text/JSON/Mermaid/DOT로 내보내고, `llm-wiki stats`가 헬스 스코어(verified%/enrichment%/evidence coverage/staleness)를 보고한다. `--format html` 대시보드에는 탐색용 Document Index가 있다.
 - **에이전트 인수인계** — `handoff`/`prompt`가 코드 근거로 문서를 보강하도록 유도하는 반복 프롬프트를 출력한다.
-- **범위 한정 자동수정(`fix`)** — `fix`가 승인된 좁은 범위의 안전한 수정만 적용한다: 누락 Tier A frontmatter 필드 삽입, frontmatter `evidence` 기준 본문 `## Evidence` 섹션 보완, 깨진 related/markdown 링크에 대한 `needs_review` 스텁 생성, 수정 문서의 `last_updated` 갱신. 기본은 미리보기이고 `--write` 시에만 쓴다. `verified` 문서 내용·`docs/llm-wiki/` 밖 파일·`source_files`/`evidence` 값·Tier B 필드(title/doc_type/project/author)·미보강 내용은 건드리지 않는다. 근거: `src/commands.js#symbol:fixCommand`, 범위 결정은 `GATE_REVIEW.md`.
+- **범위 한정 자동수정(`fix`)** — `fix`가 승인된 좁은 범위의 안전한 수정만 적용한다: 누락 Tier A frontmatter 필드 삽입, frontmatter `evidence` 기준 본문 `## Evidence` 섹션 보완, 깨진 related/markdown 링크에 대한 `needs_review` 스텁 생성, 수정 문서의 `last_updated` 갱신. 기본은 미리보기이고 `--write` 시에만 쓴다. `verified` 문서 내용·`docs/llm-wiki/` 밖 파일·`source_files`/`evidence` 값·Tier B 필드(title/doc_type/project/author)·미보강 내용은 건드리지 않는다. 근거: `src/commands/fix-migrate.js#symbol:fixCommand`, 범위 결정은 `GATE_REVIEW.md`.
 - **OKF v0.1 호환** — `--profile okf-v0.1`로 `type`/`aliases`/`tags`와 wiki 링크를 검증한다. 코어 검증도 OKF `type`를 필수 `doc_type`의 부가적 alias로 수용한다(1.3).
 - **프로그래매틱 API** — CLI를 spawn하지 않고 패키지를 import해 명령을 in-process로 실행한다. `package.json` `exports`(`src/index.js`)가 동결된 `commands` 맵(CLI 표면과 1:1)·개별 함수 export·`normalizeOptions`(옵션 정규화)·`parseArgs`/`run`·`SCHEMA_VERSION`을 공개한다. `--format json` 출력에는 계약 pin용 `schemaVersion` 부가 필드가 붙는다(단일 소스 `src/config.js#JSON_SCHEMA_VERSION`, 기존 필드 불변). 근거: `src/index.js#symbol:commands`, 계약은 `docs/llm-wiki/PUBLIC_API.md`(Programmatic API).
 - **에이전트 네이티브(MCP 서버)** — `llm-wiki mcp`가 stdio 위에서 Model Context Protocol 서버를 띄워, 읽기 전용 명령(validate/audit/next/status/doctor/stats/graph/explain/handoff/prompt)을 MCP 툴로 노출한다. 에이전트(Claude Code·Cursor 등)가 shell out 대신 툴로 위키를 질의·점검한다. 각 툴은 명령 결과를 `structuredContent`(1.5 `schemaVersion` 포함)로, 사람용 요약을 텍스트 콘텐츠로 반환한다. 서드파티 SDK 없이 Node 내장만으로 개행 구분 JSON-RPC 2.0을 직접 구현(무의존성 불변식 유지). **쓰기 명령은 노출하지 않는다**(읽기 전용). 근거: `src/mcp/tools.js#symbol:TOOL_DEFS`, 범위 결정은 `GATE_REVIEW.md`(Gate 11).
 - **CI/CD 도입(1.7)** — `release-notes --body-only`가 변경 섹션 본문만 안전 추출(frontmatter/H1/스캐폴드 라인 제외)하고 본문 민감정보 스캔에 매치 시 차단(exit 2)해 GitHub Release 본문으로 쓴다. `.github/actions/validate/action.yml` 컴포지트 GitHub Action이 읽기 전용 `validate`를 `npx`로 감싸며 다른 액션을 끌어오지 않아 무의존성을 유지한다. `v*` 태그 push 시 `publish.yml`의 격리된 `contents: write` 잡이 러너 `gh` CLI로 GitHub Release를 만든다(본문은 `release-notes --body-only`). 근거: `src/release-notes.js#symbol:buildReleaseNotesBody`, 범위 결정은 `GATE_REVIEW.md`(Gate 12).
 - **프로젝트 설정 일관화(config, 1.7.2 enabling-prep)** — `llm-wiki.config.json` 병합이 CLI뿐 아니라 프로그래매틱 API·MCP 세 표면에서 동일하게 동작한다(공유 `applyProjectConfig`; API는 config 인식 async `resolveOptions` 추가; MCP는 `tools/call`마다 대상 프로젝트 config를 병합, malformed는 `isError`). `init`/`quickstart --write`가 최소 starter config를 scaffold하고(감지 type·선택 agents 반영·기존 파일 미덮어씀·preview-first) `doctor`가 effective config를 echo해, Gate 13(1.8 config schema growth)의 "실사용" 전제를 관측 가능하게 만든다. additive·opt-in, 1.0.0 계약·zero-dep 불변. 근거: `src/cli.js#symbol:applyProjectConfig`·`src/index.js#symbol:resolveOptions`, 범위는 `GATE_REVIEW.md`(Gate 13).
-- **config rule 토글(1.8)** — `llm-wiki.config.json`의 `rules` 맵으로 프로젝트가 개별 finding rule을 끄거나(`off`) severity를 재정의한다(`{ "rule.id": "off"|"blocked"|"error"|"warning"|"info" }`). `audit`/`status`/`validate-frontmatter`에 중앙(`applyRuleConfig`) 적용되고 세 표면(CLI/API/MCP) 모두 반영된다. 레지스트리 rule만 대상이며 **`sensitive.*`(민감정보)는 안전상 절대 토글 불가**. opt-in lint `content.thin_body`(기본 off, `rules`로 켬)가 얇은 본문 문서를 표시해 토글 기계를 dogfood한다. 근거: `src/commands.js#symbol:applyRuleConfig`, 범위는 `GATE_REVIEW.md`(Gate 13, accepted).
+- **config rule 토글(1.8)** — `llm-wiki.config.json`의 `rules` 맵으로 프로젝트가 개별 finding rule을 끄거나(`off`) severity를 재정의한다(`{ "rule.id": "off"|"blocked"|"error"|"warning"|"info" }`). `audit`/`status`/`validate-frontmatter`에 중앙(`applyRuleConfig`) 적용되고 세 표면(CLI/API/MCP) 모두 반영된다. 레지스트리 rule만 대상이며 **`sensitive.*`(민감정보)는 안전상 절대 토글 불가**. opt-in lint `content.thin_body`(기본 off, `rules`로 켬)가 얇은 본문 문서를 표시해 토글 기계를 dogfood한다. 근거: `src/commands/findings.js#symbol:applyRuleConfig`, 범위는 `GATE_REVIEW.md`(Gate 13, accepted).
 - **커스텀 문서셋·템플릿 오버라이드(1.8)** — config `requiredDocs`로 프로젝트 자체 필수 문서를 core/profile 목록에 추가하고(같은 `structure.required_doc` 검사; 검증 전용), `templates`로 생성 문서를 프로젝트-로컬 템플릿에서 만든다. 템플릿 오버라이드는 **body만** 쓰고 frontmatter는 항상 CLI 생성이라 `status: verified`를 절대 만들 수 없다(구조적 가드레일). 이로써 Gate 13 config 3피처(rule 토글·커스텀 문서셋·템플릿 오버라이드)가 완성된다. 근거: `src/commands.js#symbol:renderOverriddenDoc`.
-- **visibility governance(1.9)** — 이미 필수인 `visibility` 필드에 대한 opt-in 일관성 린트 2개(sensitive-info 스캔 재사용): `visibility.public_sensitive`(`visibility: public` 문서에 민감값), `visibility.declared_mismatch`(`contains_sensitive_info: false`인데 민감값). 둘 다 기본 off·warning·read-only, config `rules`로 활성화(1.8 토글 재사용), 절대 default error/blocked 금지, **민감값은 finding에 미노출**(redacted count만). 접근 통제 아님(값-내용 일관성만). 정책은 `docs/llm-wiki/VISIBILITY.md`. 근거: `src/commands.js#symbol:scanVisibilityConsistency`, 범위는 `GATE_REVIEW.md`(Gate 14, accepted).
+- **visibility governance(1.9)** — 이미 필수인 `visibility` 필드에 대한 opt-in 일관성 린트 2개(sensitive-info 스캔 재사용): `visibility.public_sensitive`(`visibility: public` 문서에 민감값), `visibility.declared_mismatch`(`contains_sensitive_info: false`인데 민감값). 둘 다 기본 off·warning·read-only, config `rules`로 활성화(1.8 토글 재사용), 절대 default error/blocked 금지, **민감값은 finding에 미노출**(redacted count만). 접근 통제 아님(값-내용 일관성만). 정책은 `docs/llm-wiki/VISIBILITY.md`. 근거: `src/commands/scans.js#symbol:scanVisibilityConsistency`, 범위는 `GATE_REVIEW.md`(Gate 14, accepted).
 - **monorepo profile(1.10)** — `llm-wiki monorepo`가 npm/yarn `workspaces`를 감지해 `docs/llm-wiki`가 있는 각 패키지를 validate하고 집계한다(strictly additive `packages[]` roll-up + 패키지 경로 prefix된 findings). 각 패키지는 자기 `llm-wiki.config.json`을 반영하고, 새 필드는 이 명령에만 나타나 단일 레포 출력은 byte-identical. pnpm/YAML은 zero-dep 위해 미파싱(unsupported 보고). read-only 집계. 근거: `src/commands.js#symbol:monorepoCommand`·`src/detector.js#symbol:detectWorkspaces`, 범위는 `GATE_REVIEW.md`(Gate 15, accepted).
-- **cross-repo knowledge links(1.11)** — 예약 cross-repo 참조 스킴 `repo:<name>/<path>`(+ 기존 http(s))를 wiki 링크·`source_files`/`evidence`/`related`에서 external로 인식한다. 인식된 참조는 missing-target 규칙(`wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`)에서 제외되지만 **절대 fetch/verify하지 않는다**(network/git 없음, zero-dep). URL 형태 wiki 링크의 false `wiki_link.missing`도 해소. additive: 로컬 해석 불변(진짜 미해결 로컬 링크는 여전히 flag). 근거: `src/commands.js#symbol:isCrossRepoReference`, 범위는 `GATE_REVIEW.md`(Gate 16, accepted).
+- **cross-repo knowledge links(1.11)** — 예약 cross-repo 참조 스킴 `repo:<name>/<path>`(+ 기존 http(s))를 wiki 링크·`source_files`/`evidence`/`related`에서 external로 인식한다. 인식된 참조는 missing-target 규칙(`wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`)에서 제외되지만 **절대 fetch/verify하지 않는다**(network/git 없음, zero-dep). URL 형태 wiki 링크의 false `wiki_link.missing`도 해소. additive: 로컬 해석 불변(진짜 미해결 로컬 링크는 여전히 flag). 근거: `src/commands/references.js#symbol:isCrossRepoReference`, 범위는 `GATE_REVIEW.md`(Gate 16, accepted).
 
 ## Evidence
 
-- `src/commands.js#symbol:scanEnrichment` — enrichment 미완성 감지.
-- `src/commands.js#symbol:scanRelatedReferences` — related 존재성 검증.
-- `src/commands.js#symbol:fixCommand` — 범위 한정 자동수정.
-- `src/commands.js#symbol:planDomainDocs` — backend/fullstack 도메인 문서 계획(정렬·병합·순번).
+- `src/commands/scans.js#symbol:scanEnrichment` — enrichment 미완성 감지.
+- `src/commands/scans.js#symbol:scanRelatedReferences` — related 존재성 검증.
+- `src/commands/fix-migrate.js#symbol:fixCommand` — 범위 한정 자동수정.
+- `src/commands/domains.js#symbol:planDomainDocs` — backend/fullstack 도메인 문서 계획(정렬·병합·순번).
 - `src/detector.js#symbol:detectProject` — 프로젝트 유형 추론.
 - `src/index.js#symbol:commands` — 프로그래매틱 API의 동결된 명령 맵(CLI 표면과 1:1).
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — MCP로 노출하는 읽기 전용 툴 정의(commands 위 얇은 래퍼).
@@ -86,14 +85,14 @@ contains_sensitive_info: false
 - `src/cli.js#symbol:applyProjectConfig` — CLI/API/MCP 공유 config 로드·병합 seam(1.7.2).
 - `src/index.js#symbol:resolveOptions` — config 인식 옵션 해석(프로그래매틱 API·MCP 사용).
 - `src/commands.js#symbol:scaffoldProjectConfig` — init/quickstart starter config scaffold(미덮어씀).
-- `src/commands.js#symbol:applyRuleConfig` — config `rules` 토글을 findings에 중앙 적용(1.8; `sensitive.*` 비토글).
-- `src/commands.js#symbol:scanThinBody` — opt-in `content.thin_body` lint(1.8; 기본 off).
+- `src/commands/findings.js#symbol:applyRuleConfig` — config `rules` 토글을 findings에 중앙 적용(1.8; `sensitive.*` 비토글).
+- `src/commands/scans.js#symbol:scanThinBody` — opt-in `content.thin_body` lint(1.8; 기본 off).
 - `src/commands.js#symbol:findMissingDocs` — config `requiredDocs`(커스텀 문서셋)를 필수 목록에 병합(1.8).
 - `src/commands.js#symbol:renderOverriddenDoc` — config `templates` 오버라이드(body-only, `verified` 불가 가드레일)(1.8).
-- `src/commands.js#symbol:scanVisibilityConsistency` — opt-in visibility 일관성 린트(public_sensitive·declared_mismatch; sensitive 스캔 재사용, 값 미노출)(1.9).
+- `src/commands/scans.js#symbol:scanVisibilityConsistency` — opt-in visibility 일관성 린트(public_sensitive·declared_mismatch; sensitive 스캔 재사용, 값 미노출)(1.9).
 - `src/commands.js#symbol:monorepoCommand` — monorepo profile: 패키지별 validate 집계(additive `packages[]`)(1.10).
 - `src/detector.js#symbol:detectWorkspaces` — npm/yarn workspaces 감지(pnpm/YAML unsupported)(1.10).
-- `src/commands.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴 인식(recognize-don't-verify)(1.11).
+- `src/commands/references.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴 인식(recognize-don't-verify)(1.11).
 
 ## Open Questions
 
@@ -113,3 +112,4 @@ contains_sensitive_info: false
 - 2026-07-15에 1.9.0 visibility governance(Gate 14, accepted)를 반영했다: opt-in 일관성 린트 2개(`visibility.public_sensitive`·`visibility.declared_mismatch`, sensitive-info 스캔 재사용, 기본 off·warning·read-only, 값 미노출)를 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.10.0 monorepo profile(Gate 15, accepted)을 반영했다: opt-in `monorepo` 명령(npm/yarn workspaces 감지 후 패키지별 validate 집계, additive `packages[]`, 단일 레포 byte-identical, 패키지별 config, pnpm/YAML unsupported)을 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.11.0 cross-repo knowledge links(Gate 16, accepted)를 반영했다: 예약 cross-repo 참조 스킴(`repo:<name>/<path>`+http(s))을 external로 인식해 missing-target 규칙에서 제외하되 fetch/verify하지 않는 기능을 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 기능은 불변이며, Evidence와 근거 심볼 포인터를 이동한 모듈로 갱신했다(`scanEnrichment`/`scanRelatedReferences`/`scanThinBody`/`scanVisibilityConsistency`→scans, `applyRuleConfig`→findings, `fixCommand`→fix-migrate, `planDomainDocs`→domains, `isCrossRepoReference`→references). 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기; 재검토 시 `evidence.stale`도 해소).

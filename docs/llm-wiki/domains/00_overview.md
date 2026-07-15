@@ -2,11 +2,10 @@
 title: Domain Overview
 tags:
   - llm-wiki
-  - verified
-status: verified
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-standard
-last_updated: 2026-07-15
+last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: WoongHwan-Kim
@@ -20,7 +19,7 @@ evidence:
   - src/commands.js#symbol:validateCommand
   - src/commands.js#symbol:initCommand
   - src/commands.js#symbol:nextCommand
-  - src/commands.js#symbol:fixCommand
+  - src/commands/fix-migrate.js#symbol:fixCommand
   - src/cli.js#symbol:COMMANDS
   - src/mcp/tools.js#symbol:TOOL_DEFS
 related:
@@ -57,7 +56,7 @@ contains_sensitive_info: false
 - `src/commands.js#symbol:validateCommand` — Validate 도메인의 진입점(audit 재사용).
 - `src/commands.js#symbol:initCommand` — Generate 도메인의 dry-run/write 분기.
 - `src/commands.js#symbol:nextCommand` — Guide 도메인의 조치 추천.
-- `src/commands.js#symbol:fixCommand` — Repair 도메인의 범위 한정 자동수정.
+- `src/commands/fix-migrate.js#symbol:fixCommand` — Repair 도메인의 범위 한정 자동수정.
 - `src/cli.js#symbol:COMMANDS` — 전체 명령 표면(도메인 지도가 이를 반영해야 한다).
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — Agent-native(MCP) 도메인이 노출하는 읽기 전용 툴.
 
@@ -66,3 +65,4 @@ contains_sensitive_info: false
 - 2026-07-14에 1.3.0 명령어군과 공통 관심사를 기준으로 재검토했다.
 - 2026-07-14에 도메인 지도를 현행화했다: 누락됐던 Knowledge(`graph`/`stats`, 1.4)·Release(`release-notes`)·Agent-native(`mcp`, 1.6)를 추가하고, stale했던 "migrate --apply 안정판 차단" 서술을 Gate 8(해금, preview-first) 기준으로 정정했으며, `drift`(Gate 9)를 반영했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.7 CI/CD 도입을 반영했다: Release 도메인에 `release-notes --body-only`(GitHub Release 본문용, 민감정보 스캔·차단)를 추가하고, 컴포지트 validate Action·태그 트리거 Release 잡은 저장소/CI 표면임을 명시했다(Gate 12). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 도메인 지도는 불변이며, Evidence의 `fixCommand` 포인터를 `src/commands/fix-migrate.js`로 갱신했다. 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기; 재검토 시 `evidence.stale`도 해소).

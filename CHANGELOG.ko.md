@@ -5,6 +5,22 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.11.1 — 2026-07-16
+
+동작 보존 내부 리팩터: 모놀리식 `src/commands.js`를 `src/commands/` 하위의 목적별 모듈로
+분리했다. 사용자 표면 변화 없음 — CLI, `--format json` 출력, 프로그래매틱 API(동결된
+`commands` 맵과 개별 export), frontmatter 계약이 byte-identical하며 런타임 의존성도 추가되지
+않았다.
+
+### Changed
+
+- `src/commands.js`(~4,119 → ~1,612줄)에서 재사용 로직을
+  `src/commands/{references,findings,scans,wiki-graph,adapters,wiki-files,fix-migrate,domains,doc-templates}.js`로
+  추출하고, 배럴 re-export로 모든 `from "./commands.js"` import와 공개 API 표면을 동일하게
+  유지했다. 의존성은 단방향(leaf 파서 → wiki-graph/adapters → scans → fix-migrate →
+  `commands.js`)이며, `migrateCommand`는 `audit` 파이프라인을 호출하므로 모듈 그래프를
+  비순환으로 유지하기 위해 `commands.js`에 남겼다(`graphCommand`/`statsCommand`과 동일 패턴).
+
 ## 1.11.0 — 2026-07-15
 
 cross-repository knowledge links(Gate 16). 예약된 non-fetching cross-repo 참조 스킴을

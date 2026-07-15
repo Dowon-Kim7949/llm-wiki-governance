@@ -2,11 +2,10 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+status: needs_review
 doc_type: public_api
 project: llm-wiki-standard
-last_updated: 2026-07-15
+last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: WoongHwan-Kim
@@ -27,15 +26,15 @@ evidence:
   - src/cli.js#symbol:parseArgs
   - src/cli.js#symbol:main
   - src/commands.js#symbol:migrateCommand
-  - src/commands.js#symbol:fixCommand
+  - src/commands/fix-migrate.js#symbol:fixCommand
   - src/config-file.js#symbol:mergeConfigIntoOptions
   - src/index.js#symbol:commands
   - src/index.js#symbol:normalizeOptions
   - src/index.js#symbol:resolveOptions
   - src/cli.js#symbol:applyProjectConfig
   - src/commands.js#symbol:scaffoldProjectConfig
-  - src/commands.js#symbol:applyRuleConfig
-  - src/commands.js#symbol:scanThinBody
+  - src/commands/findings.js#symbol:applyRuleConfig
+  - src/commands/scans.js#symbol:scanThinBody
   - src/commands.js#symbol:findMissingDocs
   - src/commands.js#symbol:renderOverriddenDoc
   - src/commands.js#symbol:monorepoCommand
@@ -191,21 +190,21 @@ MCP 클라이언트 등록 예시:
 - `src/cli.js#symbol:COMMANDS` — 명령 이름 → 핸들러 매핑.
 - `src/cli.js#symbol:parseArgs` — 옵션/사용법 검증과 exit code 근거.
 - `src/commands.js#symbol:migrateCommand` — `wiki_block_version` 업그레이드 리포트 + `--apply`(Gate 8 범위).
-- `src/commands.js#symbol:fixCommand` — 범위 한정 자동수정(기본 미리보기, `--write` 적용).
+- `src/commands/fix-migrate.js#symbol:fixCommand` — 범위 한정 자동수정(기본 미리보기, `--write` 적용).
 - `src/config-file.js#symbol:mergeConfigIntoOptions` — config 기본값과 CLI 플래그의 병합 우선순위.
 - `src/index.js#symbol:commands` — 프로그래매틱 API의 동결된 명령 맵과 개별 함수 export.
 - `src/commands.js#symbol:monorepoCommand` — `monorepo` 명령: 패키지별 validate 집계, additive `packages[]`(1.10).
 - `src/detector.js#symbol:detectWorkspaces` — npm/yarn `workspaces` 감지(pnpm/YAML unsupported)(1.10).
 - `src/index.js#symbol:normalizeOptions` — 부분 옵션 또는 `parseArgs` 결과(`.options`)를 완전 옵션으로 정규화(`src/cli.js#symbol:defaultOptions` 공유). 동기·config 미로드.
 - `src/index.js#symbol:resolveOptions` — config 인식 옵션 해석(normalizeOptions + `llm-wiki.config.json` 병합); CLI·API·MCP 세 표면 공유(1.7.2).
-- `src/commands.js#symbol:applyRuleConfig` — config `rules` 토글을 findings에 중앙 적용(off 드롭·severity override; `sensitive.*` 비토글)(1.8).
-- `src/commands.js#symbol:scanThinBody` — opt-in `content.thin_body` lint(기본 off, config로 활성화)(1.8).
+- `src/commands/findings.js#symbol:applyRuleConfig` — config `rules` 토글을 findings에 중앙 적용(off 드롭·severity override; `sensitive.*` 비토글)(1.8).
+- `src/commands/scans.js#symbol:scanThinBody` — opt-in `content.thin_body` lint(기본 off, config로 활성화)(1.8).
 - `src/commands.js#symbol:findMissingDocs` — config `requiredDocs`를 core/profile 필수 목록에 병합해 `structure.required_doc`로 검사(1.8).
 - `src/commands.js#symbol:renderOverriddenDoc` — config `templates` 오버라이드(body-only; frontmatter는 항상 CLI 생성이라 `verified` 불가)(1.8).
 - `src/cli.js#symbol:applyProjectConfig` — config 로드+병합+agent 재정규화의 공유 구현(세 표면이 동일 effective options를 얻는 seam).
 - `src/commands.js#symbol:scaffoldProjectConfig` — init/quickstart의 starter config scaffold(additive·preview-first·기존 파일 미덮어씀).
 - `src/cli.js#symbol:main` — `run(argv)`의 실체. 숫자 exit code를 반환하고 `process.exitCode`도 설정한다.
-- `src/commands.js#symbol:withText` — 모든 명령 결과 객체에 `schemaVersion`을 부여한다.
+- `src/commands/findings.js#symbol:withText` — 모든 명령 결과 객체에 `schemaVersion`을 부여한다.
 - `src/config.js#symbol:JSON_SCHEMA_VERSION` — 결과 객체·`--format json`의 `schemaVersion` 단일 소스.
 - `src/report.js#symbol:dashboardDocHref` — HTML 대시보드 Document Index 링크를 `--out` 위치 기준 상대경로로 계산.
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — MCP로 노출하는 읽기 전용 툴 정의(commands 위 얇은 래퍼).
@@ -223,3 +222,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-15에 1.8.0 config schema growth(Gate 13)를 반영했다: `llm-wiki.config.json`의 `rules` 맵으로 finding rule을 끄거나 severity를 재정의하는 per-project 토글(중앙 `applyRuleConfig`, `sensitive.*`는 안전상 비토글)과 opt-in lint `content.thin_body`(기본 off)를 추가하고, `doctor`가 토글 수를 echo함을 명시했다. Configuration/Stability에 `rules`를 등재했다. additive·opt-in. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.8.1 config schema growth 2부(Gate 13 완성)를 반영했다: `requiredDocs`(커스텀 문서셋; `structure.required_doc`로 검사, 검증 전용)와 `templates`(템플릿 오버라이드; body-only라 `verified` 불가한 구조적 가드레일)를 Configuration/Stability/Evidence에 등재하고 `doctor`가 개수를 echo함을 명시했다. additive·opt-in. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.10.0 monorepo profile(Gate 14→15)을 반영했다: 명령 표면에 opt-in `monorepo` 명령(npm/yarn workspaces 감지 후 패키지별 validate 집계, additive `packages[]`, 단일 레포 출력 byte-identical)을 등재하고 Evidence에 `monorepoCommand`·`detectWorkspaces`를 추가했다. additive·opt-in. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 공개 CLI/프로그래매틱 API 표면은 byte-identical(동결 `commands` 맵·re-export 불변)이며, Evidence의 구현 심볼 포인터만 이동 모듈로 갱신했다(`fixCommand`→fix-migrate, `applyRuleConfig`/`withText`→findings, `scanThinBody`→scans). 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기; 재검토 시 `evidence.stale`도 해소).

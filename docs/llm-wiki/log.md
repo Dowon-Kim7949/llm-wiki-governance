@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-16 - refactor: commands.js 모듈 분리 완료 (안정화 2단계, 동작 보존) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시 — "분리 마저 진행")
+- scope: src, docs
+- changed:
+  - src/commands.js (3,434→1,612줄)
+  - src/commands/{references,findings,wiki-graph,wiki-files,adapters,scans,fix-migrate}.js (신규 7개)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,domains/00_overview}.md (Module Layout·이동 심볼 evidence 포인터 갱신 → needs_review)
+- summary:
+  - 안정화 2단계: commands.js에서 재사용 로직을 동작 보존 방식으로 7개 sibling 모듈로 추출했다(누적 ~4,119→1,612줄; 앞선 domains/doc-templates 포함 총 9개 서브모듈). 단방향 의존(leaf references/findings/wiki-files/doc-templates/domains → wiki-graph/adapters → scans → fix-migrate → commands.js). `migrateCommand`는 `audit` 파이프라인을 호출하므로 commands.js<->fix-migrate.js 순환을 피하려 commands.js에 잔류(graphCommand/statsCommand과 동일 패턴; 헬퍼만 분리). 배럴 re-export로 동결 CLI/프로그래매틱 API(18-명령 맵·`driftTargets`·`fixCommand`·`driftCommand`)와 `from "./commands.js"` import 표면은 byte-identical. 각 추출 커밋마다 206 테스트 통과 + validate는 날짜-롤오버 evidence.stale만.
+- evidence:
+  - src/commands/scans.js#symbol:scanEvidenceDrift
+  - src/commands/findings.js#symbol:applyRuleConfig
+  - src/commands/fix-migrate.js#symbol:runMechanicalRemediation
+- caveats:
+  - 동작 보존 내부 리팩터라 CLI/JSON/frontmatter 계약과 zero-dep 불변. 릴리스는 1.11.1로 예정.
+  - doc-sync한 4개 문서는 needs_review로 강등(사람 재검토 대기; 재검토 시 각 문서의 evidence.stale 해소). GLOSSARY는 광의의 src/commands.js 참조만 있어 내용 불변 — 사람 재검토로 reviewed_at만 갱신하면 evidence.stale 해소.
+
 ## 2026-07-15 - test: 안정화 1단계 — 교차기능 통합 테스트 3개 (invariant 재감사)
 
 - status: needs_review
