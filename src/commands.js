@@ -2211,8 +2211,16 @@ async function getLineCount(file, cache) {
   return lineCount;
 }
 
+// A reserved, NON-fetching cross-repo reference (1.11, GATE_REVIEW Gate 16):
+// `repo:<name>/<path>`. It is recognized so cross-repo references are not flagged as
+// missing targets, but it is NEVER fetched or verified (verification would need
+// network/git and break the zero-dependency invariant) — recognition only.
+function isCrossRepoReference(reference) {
+  return /^repo:\S/i.test(String(reference));
+}
+
 function isExternalSourceReference(source) {
-  return /^https?:\/\//i.test(source) || source.startsWith("#");
+  return /^https?:\/\//i.test(source) || isCrossRepoReference(source) || source.startsWith("#");
 }
 
 async function scanOkfProfile(cwd, activeProfiles = []) {
@@ -2332,6 +2340,9 @@ async function collectWikiGraph(cwd) {
     for (const rawTarget of extractWikiLinkTargets(content)) {
       const target = normalizeWikiLinkTarget(rawTarget);
       if (!target) continue;
+      // Cross-repo (repo:name/path) and URL wiki links are recognized as external
+      // (1.11, Gate 16): not flagged missing, and never fetched/verified.
+      if (isExternalSourceReference(target)) continue;
 
       const key = normalizeWikiLinkKey(target);
       const targetDoc = targetIndex.targets.get(key);

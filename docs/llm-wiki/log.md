@@ -24,6 +24,22 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - feat: cross-repo knowledge links (recognize-don't-verify) — 1.11.0, Gate 16
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/commands.js (`isCrossRepoReference`[`repo:<name>/<path>`] 헬퍼; `isExternalSourceReference`에 반영; wiki-link 해석기에 external 스킵 추가)
+  - tests/verification.test.js (+2: cross-repo/URL 참조 미flag, 로컬 미해결 링크는 여전히 flag)
+- summary:
+  - Gate 16 1.11.0(로드맵 마지막 마이너). 예약 cross-repo 참조 스킴 `repo:<name>/<path>`(+ 기존 http(s))를 인식한다. `isExternalSourceReference`를 확장해 source_files/evidence/related/markdown가 이를 external로 처리(missing 미flag)하고, wiki-link 해석기에도 external 스킵을 추가해 cross-repo/URL wiki 링크가 false wiki_link.missing을 안 낸다. **절대 fetch/verify하지 않음**(network/git 없음, zero-dep). additive: 로컬 해석 불변(진짜 미해결 로컬 링크는 여전히 flag). 203 pass, 레포 validate 0.
+- evidence:
+  - src/commands.js#symbol:isCrossRepoReference
+  - src/commands.js#symbol:isExternalSourceReference
+- caveats:
+  - 지식 문서 doc-sync는 1.11.0 release-prep에서 일괄. 실제 fetch/resolve는 out of scope(future major).
+
 ## 2026-07-15 - docs: Gate 16 accepted_for_1.11.0 (cross-repo links)
 
 - status: needs_review

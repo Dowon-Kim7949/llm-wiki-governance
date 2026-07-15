@@ -2806,6 +2806,29 @@ test("monorepo: each package honors its own llm-wiki.config.json (1.10)", async 
   assert.ok(result.findings.some((f) => f.rule === "structure.required_doc" && f.path.includes("packages/alpha") && f.path.includes("RUNBOOK")), "the package's own requiredDocs drove a per-package finding");
 });
 
+test("cross-repo references (repo:) and URLs are recognized, not flagged missing (1.11)", async () => {
+  const cwd = await makeProject("crossrepo-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "x.md"), "---\ntitle: X\nstatus: needs_review\ndoc_type: reference\nsource_files:\n  - repo:other-svc/src/api.py\nrelated:\n  - repo:other-svc/docs/llm-wiki/API.md\n---\n\nUpstream: [[repo:other-svc/docs/llm-wiki/API.md]] and [[http://example.com/x]].\n", { encoding: "utf8" });
+
+  const result = await audit(api.normalizeOptions({ cwd }));
+  const xFindings = result.findings.filter((f) => f.path.includes("x.md"));
+  assert.ok(!xFindings.some((f) => f.rule === "wiki_link.missing"), "cross-repo/URL wiki links are not flagged");
+  assert.ok(!xFindings.some((f) => f.rule === "source_files.missing"), "repo: source_files are not flagged");
+  assert.ok(!xFindings.some((f) => f.rule === "related.missing"), "repo: related are not flagged");
+});
+
+test("a genuinely missing local wiki link is still flagged (1.11 local resolution unchanged)", async () => {
+  const cwd = await makeProject("crossrepo-local-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "y.md"), "---\ntitle: Y\nstatus: needs_review\ndoc_type: reference\n---\n\nSee [[nonexistent-local-doc]].\n", { encoding: "utf8" });
+
+  const result = await audit(api.normalizeOptions({ cwd }));
+  assert.ok(result.findings.some((f) => f.rule === "wiki_link.missing" && f.path.includes("y.md")), "a real missing local wiki link is still flagged");
+});
+
 test("--format json output is stamped with schemaVersion without dropping fields", async () => {
   const result = { command: "audit", result: "pass", findings: [], text: "rendered" };
   let captured = "";
