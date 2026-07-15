@@ -51,6 +51,7 @@ import {
   renderGraphDot,
   renderGraphMermaid
 } from "./commands/wiki-graph.js";
+import { isAppendOnlyLog, listTargetMarkdown, listWikiContentDocs } from "./commands/wiki-files.js";
 export { detectDomainDirectories, domainDisplayName, normalizeDomainSlug, planDomainDocs } from "./commands/domains.js";
 
 const TEMPLATE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "templates");
@@ -978,13 +979,6 @@ function parseBlockVersion(value) {
 
 // Documents the migration / fix engines operate on: wiki markdown excluding the
 // intentional templates/ scaffolds.
-async function listWikiContentDocs(cwd) {
-  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
-  if (!(await pathExists(wikiRoot))) return [];
-  return (await listMarkdownFiles(wikiRoot))
-    .filter((file) => !toPosix(path.relative(cwd, file)).includes("/templates/"));
-}
-
 // Classify every wiki content document by its recorded block version relative
 // to the current CLI contract. Read-only.
 async function analyzeBlockVersions(cwd) {
@@ -1565,15 +1559,6 @@ function renderStubDocument(relTarget, cwd) {
     ""
   ].join("\n");
   return renderWikiDocumentTemplate({ title, docType: "reference", project, body, sourceFiles: [], evidence: [], related: [] });
-}
-
-async function listTargetMarkdown(cwd) {
-  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
-  if (await pathExists(wikiRoot)) {
-    return listMarkdownFiles(wikiRoot);
-  }
-  const files = await listMarkdownFiles(cwd);
-  return files.filter((file) => !toPosix(path.relative(cwd, file)).startsWith("templates/"));
 }
 
 async function findMissingDocs(cwd, projectType, profiles = [], customDocs = []) {
@@ -2481,10 +2466,6 @@ async function summarizeAdapterStatus(cwd, agents) {
     }
   }
   return statuses;
-}
-
-function isAppendOnlyLog(rel) {
-  return toPosix(rel) === "docs/llm-wiki/log.md";
 }
 
 function selectedAgents(options) {
