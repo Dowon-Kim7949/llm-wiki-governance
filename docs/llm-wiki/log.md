@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: 1.11.0 cross-repo 문서 2개 verified 재승인 (1.7–1.11 라인 완주)
+
+- status: verified
+- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+- summary:
+  - 1.11.0 doc-sync(cross-repo knowledge links)로 needs_review로 내려갔던 지식 문서 2개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.11.0 재검토 부채가 없고, 배포된 1.7–1.11 로드맵 라인 전체가 재검토까지 완료됐다(PUBLIC_API는 1.11에서 표면 변경 없어 verified 유지).
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, strict clean. 계획된 다음 마이너 없음(Unscheduled 1.x Backlog / Beyond-1.x-Horizon만 잔여).
+
 ## 2026-07-15 - release: 1.11.0 준비 (cross-repo links) — 1.7–1.11 라인 완성
 
 - status: needs_review
