@@ -24,6 +24,20 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: 1.9 준비 — visibility 정책 문서 + Gate 14 proposed 초안
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: docs
+- changed:
+  - docs/llm-wiki/VISIBILITY.md (신규 정책 문서, needs_review) — project-profile Open Question 해소용 설계 입력
+  - GATE_REVIEW.md (Gate 14 표 행 + "Visibility Governance Scope Decision (proposed for 1.9.0)" 섹션)
+- summary:
+  - 1.9 visibility governance의 blocker(정책 문서 + 게이트)를 코드 전에 준비했다. `docs/llm-wiki/VISIBILITY.md`가 internal/restricted/public 의미와 public-vs-content 일관성 정책을 정의한다. Gate 14(`proposed_for_1.9.0`, 아직 accepted 아님)는 opt-in 일관성 rule 2개(`visibility.public_sensitive`, `visibility.declared_mismatch`)를 스코프한다: 기본 off·warning·read-only, 1.8 config `rules` 토글로 활성화, 절대 default error/blocked 금지(additive 불변식). sensitive-info 스캔 재사용, 접근 통제 아님. `sensitive.*`는 여전히 비토글.
+- caveats:
+  - Gate 14는 proposed 단계다. 사람 검토·수락(accepted_for_1.9.0) 전까지 1.9 코드 착수하지 않는다. VISIBILITY.md는 사람 검토 전까지 needs_review.
+  - validate 0, validate-frontmatter --strict clean.
+
 ## 2026-07-15 - docs: 1.8.1 config 피처 문서 3개 verified 재승인
 
 - status: verified

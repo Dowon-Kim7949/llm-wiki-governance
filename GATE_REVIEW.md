@@ -50,6 +50,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 11 MCP Tool Surface Scope Approval | `accepted_for_1.6.0` | Add a `llm-wiki mcp` command that runs a Model Context Protocol server over stdio, exposing only the READ-ONLY commands as MCP tools. Hand-rolled JSON-RPC 2.0 on Node built-ins (no third-party SDK), preserving the zero-runtime-dependency invariant. No write/mutating command is exposed; results reuse the 1.5 result shape (`schemaVersion`) as `structuredContent`. See "MCP Tool Surface Scope Decision" below. |
 | Gate 12 CI/CD Adoption (GitHub Action + Release) Scope Approval | `accepted_for_1.7.0` | Add a composite GitHub Action (`.github/actions/validate/action.yml`) that wraps the read-only `validate` via `npx`, and a GitHub Release generated on `v*` tag push by an isolated `contents: write` job using the runner's built-in `gh` CLI (no third-party action). The release body comes from a new additive `release-notes --body-only` mode and is run through the sensitive-info scan before publish. Marketplace listing and floating-tag (`@v1`) versioning are DEFERRED behind a later gate that first deconflicts the `v*` npm-publish tag namespace and the `publish.yml` version-match guard. See "CI/CD Adoption Scope Decision" below. |
 | Gate 13 Config Schema Growth Scope Approval | `accepted_for_1.8.0` | Grow the pre-reserved `llm-wiki.config.json` seam (unknown keys already ignored) with (1) per-project **rule toggles** backed by a single severity registry consolidated from `FINDING_EXPLANATIONS`, (2) **custom document sets**, and (3) **template overrides** that can NEVER set `status: verified` (hard guardrail). Additive/opt-in; the `1.0.0` command/`--format json`/frontmatter contracts stay unchanged and the zero-runtime-dependency invariant is preserved. Enabling prep (unify config loading across CLI/programmatic-API/MCP; scaffold a starter config + `doctor` echo) shipped as `1.7.2`. Accepted by WoongHwan-Kim on 2026-07-15; `1.8.0` ships the pre-work (severity-registry consolidation — audited behavior-preserving, 0 mismatches — plus the template-override guardrail) and per-project **rule toggles**, with **custom document sets** and **template overrides** following in `1.8.x`. See "Config Schema Growth Scope Decision" below. |
+| Gate 14 Visibility Governance Scope Approval | `proposed_for_1.9.0` | Add opt-in visibility-consistency lints that reuse the sensitive-info scan: a `visibility: public` document that matches the scan, and a `contains_sensitive_info: false` document that matches it, are flagged. OFF BY DEFAULT, warning-level, read-only — enabled per project via the 1.8 config `rules` toggle; the rule can NEVER default to `error`/`blocked` (that would break the additive `1.0.0` invariant). It checks value-vs-content consistency only, not access control. Depends on the `docs/llm-wiki/VISIBILITY.md` policy doc. `proposed` — not yet accepted. See "Visibility Governance Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -517,6 +518,52 @@ Additive and opt-in; the `1.0.0` command/option, `--format json`, and frontmatte
 contracts are unchanged; zero runtime dependencies preserved; preview-first writes;
 `verified` content is never produced by config. Unknown config keys stay ignored so older
 files keep working.
+
+## Visibility Governance Scope Decision (proposed for 1.9.0)
+
+Proposed (not yet accepted) as the scope for `1.9` — visibility governance, the next
+minor after the completed Gate 13 config-schema-growth line. It proves the 1.8 config
+design on a real feature before the larger monorepo consumer (`1.10`) depends on it.
+Blocked on (and shaped by) the `docs/llm-wiki/VISIBILITY.md` policy doc.
+
+### In scope for 1.9.0
+
+- Two opt-in consistency rules, both reusing the existing sensitive-info scan
+  (`src/sensitive-info.js`):
+  - `visibility.public_sensitive` — a `visibility: public` document whose content
+    matches the sensitive-info scan (a public doc must not carry sensitive-looking
+    values).
+  - `visibility.declared_mismatch` — a `contains_sensitive_info: false` document
+    whose content matches the scan (the declaration contradicts the content).
+- Both are registered in `FINDING_EXPLANATIONS` (default warning) but INERT by
+  default — like `content.thin_body`, they run only when enabled via config `rules`
+  (e.g. `"visibility.public_sensitive": "warning"`). This dogfoods the 1.8 toggle
+  machinery again.
+
+### Invariants
+
+- OFF by default; opt-in only via config `rules`. Read-only — no file is modified.
+- The rules must NEVER default to `error`/`blocked`, preserving the additive `1.0.0`
+  invariant; a project may escalate them via the toggle, but the shipped default is
+  warning.
+- Value-vs-content consistency only. Actual access control (who may read what) stays
+  the responsibility of the repository/organization layer; the CLI never enforces it.
+- The `sensitive.*` category itself stays non-toggleable (the 1.8 safety guard); the
+  new `visibility.*` rules report the consistency issue without ever disabling secret
+  detection.
+
+### Out of scope (later gates)
+
+- Access-control enforcement or per-role `restricted` boundaries (declaration-only
+  today; revisit after real usage).
+- Forcing a `doc_type` to a minimum visibility — only as an opt-in rule if pulled by
+  real demand, never default-blocking.
+
+### Evidence
+
+- `docs/llm-wiki/VISIBILITY.md` — the policy this gate implements.
+- `src/sensitive-info.js#symbol:scanSensitiveInfo` — the scan the new rules reuse.
+- `src/config.js#symbol:VALID_VISIBILITIES` — the visibility value set.
 
 ## Release Caveats
 
