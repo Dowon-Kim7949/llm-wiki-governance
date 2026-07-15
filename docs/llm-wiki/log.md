@@ -24,6 +24,19 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: 1.10 준비 — Gate 15 (monorepo profile) proposed 초안
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 15 표 행 + "Monorepo Profile Scope Decision (proposed for 1.10.0)" 섹션)
+- summary:
+  - 1.10 monorepo profile의 스코프를 코드 전에 Gate 15로 초안화했다(`proposed_for_1.10.0`, 아직 accepted 아님). 스코프: (1) `detector.js`에 npm/yarn `workspaces` 감지(pnpm/YAML은 zero-dep 위해 defer, unsupported로 보고), (2) 기존 cwd-파라미터라이즈드 read 파이프라인(audit/collectWikiGraph/findMissingDocs)을 패키지별 실행·집계, (3) strictly additive `packages[]` JSON(단일 레포 출력 byte-identical 유지), (4) tests/fixtures/에 monorepo 픽스처. 각 패키지는 자기 `llm-wiki.config.json`을 resolveOptions로 반영. read-only, zero-dep 불변(YAML 파서 미도입).
+- caveats:
+  - Gate 15는 proposed 단계다. 사람 검토·수락(accepted_for_1.10.0) 전까지 1.10 코드 착수하지 않는다.
+  - validate 0, validate-frontmatter --strict clean.
+
 ## 2026-07-15 - docs: 1.9.0 visibility 문서 2개 verified 재승인
 
 - status: verified
