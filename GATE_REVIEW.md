@@ -16,6 +16,7 @@ source_files:
   - package.json
   - src/cli.js
   - src/commands.js
+  - src/config-file.js
   - src/frontmatter-schema.js
   - src/release-notes.js
   - .github/workflows/publish.yml
@@ -48,6 +49,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 10 Domain Detection Scope Approval | `accepted` | Expand backend/fullstack `init` domain detection to cover BOTH directory-per-domain (`domains/domain/modules/features`) and file-per-domain route/resource modules (`endpoints/routers/routes/resources/controllers/handlers`), via a bounded, exclusion-guarded project scan tuned for near-zero false positives. Accepted by WoongHwan-Kim on 2026-07-14. See "Domain Detection Scope Decision" below. |
 | Gate 11 MCP Tool Surface Scope Approval | `accepted_for_1.6.0` | Add a `llm-wiki mcp` command that runs a Model Context Protocol server over stdio, exposing only the READ-ONLY commands as MCP tools. Hand-rolled JSON-RPC 2.0 on Node built-ins (no third-party SDK), preserving the zero-runtime-dependency invariant. No write/mutating command is exposed; results reuse the 1.5 result shape (`schemaVersion`) as `structuredContent`. See "MCP Tool Surface Scope Decision" below. |
 | Gate 12 CI/CD Adoption (GitHub Action + Release) Scope Approval | `accepted_for_1.7.0` | Add a composite GitHub Action (`.github/actions/validate/action.yml`) that wraps the read-only `validate` via `npx`, and a GitHub Release generated on `v*` tag push by an isolated `contents: write` job using the runner's built-in `gh` CLI (no third-party action). The release body comes from a new additive `release-notes --body-only` mode and is run through the sensitive-info scan before publish. Marketplace listing and floating-tag (`@v1`) versioning are DEFERRED behind a later gate that first deconflicts the `v*` npm-publish tag namespace and the `publish.yml` version-match guard. See "CI/CD Adoption Scope Decision" below. |
+| Gate 13 Config Schema Growth Scope Approval | `proposed_for_1.8.0` | Grow the pre-reserved `llm-wiki.config.json` seam (unknown keys already ignored) with (1) per-project **rule toggles** backed by a single severity registry consolidated from `FINDING_EXPLANATIONS`, (2) **custom document sets**, and (3) **template overrides** that can NEVER set `status: verified` (hard guardrail). Additive/opt-in; the `1.0.0` command/`--format json`/frontmatter contracts stay unchanged and the zero-runtime-dependency invariant is preserved. Enabling prep (unify config loading across CLI/programmatic-API/MCP; scaffold a starter config + `doctor` echo) ships FIRST as additive `1.7.x` patches so real config usage accrues before schema design. `proposed` — not yet accepted. See "Config Schema Growth Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -445,6 +447,68 @@ as drafted; implementation follows under the scope below.
 - Preview-first, `--write`/`--apply`-gated writes; `log.md` and adapter files never
   overwritten; UTF-8 throughout; AI/CLI-authored docs stay `needs_review`. None of
   these are touched by an Action that only wraps read-only `validate`.
+
+## Config Schema Growth Scope Decision (proposed for 1.8.0)
+
+Proposed (not yet accepted) as the scope for the `1.8.0` line — the config-schema-growth
+minor split out of the former monolithic "team & org scale" line (see ROADMAP `1.8`). It is
+the hard dependency gate: both the monorepo profile (`1.10`, per-package config) and
+visibility governance (`1.9`, a rule toggle) consume it, so its shape is decided before
+either depends on it.
+
+### Enabling prep first (additive `1.7.x` patches, no headline release)
+
+`1.8` schema growth is deliberately pulled only AFTER a scaffolded config has produced
+real-world usage to design against. Two additive patches land first:
+
+1. **Unify config loading below the command layer.** Today `loadProjectConfig` /
+   `mergeConfigIntoOptions` (`src/config-file.js`) run only on the CLI path
+   (`src/cli.js#main`); the `1.5` programmatic API (`src/index.js`) and the `1.6` MCP
+   surface never merge `llm-wiki.config.json`. Move the merge into the shared option
+   resolution so all three surfaces compute the same effective options. Additive — it
+   only starts honoring an already-documented file on two surfaces that ignored it; the
+   `1.0.0` command/JSON/frontmatter contracts are unchanged.
+2. **Scaffold a starter config + echo it.** `init` / `quickstart` write a minimal
+   `llm-wiki.config.json` (additive, preview-first, `--write` only, never overwriting an
+   existing file), and `doctor` echoes the effective merged config. This makes the gate's
+   "real usage of the minimal config" precondition observable.
+
+### In scope for 1.8.0
+
+- **Per-project rule toggles.** A config key lets a project turn a finding rule off or
+  change its severity. Backed by consolidating the currently per-`scan*`-inlined
+  severities into `FINDING_EXPLANATIONS` as the single source of truth (each rule already
+  carries a `defaultSeverity`), so a toggle resolves coherently everywhere. Toggles are
+  opt-in and cannot silently relax CI without an explicit config entry.
+- **Custom document sets.** A config key extends the core/profile required-doc lists
+  (`src/config.js`) with project-specific required documents, checked by the same
+  `structure.required_doc` machinery.
+- **Template overrides.** A config key points at project-local templates for generated
+  documents, with a hard guardrail: an override can NEVER set `status: verified` (only the
+  human-review path may). Generated docs stay `needs_review`.
+- Folds in a richer enrichment lint `content.thin_body` (warning-level) shipped as a
+  toggleable rule, to dogfood the toggle machinery on a real rule.
+
+### Pre-work (before the config keys)
+
+- Consolidate inlined severities into the `FINDING_EXPLANATIONS` registry (single source
+  of truth for rule → severity), so rule toggles are coherent. Behavior-preserving.
+- Add the "template override can never produce `verified`" guardrail at the template layer
+  before override support is exposed.
+
+### Out of scope (deferred to later gates)
+
+- Per-package config resolution (belongs to `1.10` monorepo profile).
+- The actual visibility-enforcement rule behavior (`1.9`; `1.8` only provides the toggle
+  mechanism it will use).
+- Cross-repo reference config (`1.11`).
+
+### Invariants
+
+Additive and opt-in; the `1.0.0` command/option, `--format json`, and frontmatter
+contracts are unchanged; zero runtime dependencies preserved; preview-first writes;
+`verified` content is never produced by config. Unknown config keys stay ignored so older
+files keep working.
 
 ## Release Caveats
 

@@ -24,6 +24,19 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: Gate 13 (1.8 config schema growth) proposed 초안
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시·결정)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 13 표 행 + "Config Schema Growth Scope Decision (proposed for 1.8.0)" 섹션; source_files에 src/config-file.js 추가)
+- summary:
+  - 1.8(config schema growth)의 스코프를 코드 전에 Gate 13으로 초안화했다(`proposed_for_1.8.0`, 아직 accepted 아님). 스코프: per-project rule 토글(FINDING_EXPLANATIONS를 severity 단일 진실원으로 수렴) + 커스텀 문서셋 + 템플릿 오버라이드(verified 금지 하드 가드레일). enabling-prep(config 로딩을 CLI/프로그래매틱 API/MCP에 일원화 + starter config scaffold + doctor echo)를 1.7.x patch로 먼저 배포해 config 실사용을 축적한 뒤 1.8을 pull하는 순서를 명시했다. additive·opt-in·1.0.0 계약 불변·zero-dep·preview-first 유지. 1.7 Gate 12 draft→accepted 선례를 따른다.
+- caveats:
+  - proposed 단계다. 사람 검토·수락(accepted_for_1.8.0) 전까지 1.8 코드에 착수하지 않는다.
+  - GATE_REVIEW.md는 docs/llm-wiki/ 밖이라 validate/validate-frontmatter 스캔 대상이 아니다.
+
 ## 2026-07-15 - release: 1.7.1 준비 (commands.js NUL 바이트 제거 + LF 재정규화)
 
 - status: needs_review
