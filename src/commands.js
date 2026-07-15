@@ -168,12 +168,15 @@ async function describeEffectiveConfig(cwd) {
   if (Array.isArray(config.profiles) && config.profiles.length > 0) parts.push(`profiles=${config.profiles.join("+")}`);
   if (Array.isArray(config.agents) && config.agents.length > 0) parts.push(`agents=${config.agents.join("+")}`);
   if (config.strict) parts.push("strict=on");
+  if (config.rules && typeof config.rules === "object" && Object.keys(config.rules).length > 0) {
+    parts.push(`rules=${Object.keys(config.rules).length}`);
+  }
   return parts.length > 0 ? `present (${parts.join(", ")})` : "present (no keys set)";
 }
 
 export async function validateFrontmatterCommand(options) {
   const markdownFiles = await listTargetMarkdown(options.cwd);
-  const findings = [];
+  const raw = [];
 
   for (const file of markdownFiles) {
     const rel = toPosix(path.relative(options.cwd, file));
@@ -181,13 +184,14 @@ export async function validateFrontmatterCommand(options) {
     const parsed = parseFrontmatter(content);
 
     for (const message of parsed.errors) {
-      findings.push({ severity: "error", rule: "frontmatter.parse", path: rel, message });
+      raw.push({ severity: "error", rule: "frontmatter.parse", path: rel, message });
     }
     for (const finding of validateFrontmatter(parsed.frontmatter, { strict: options.strict })) {
-      findings.push({ ...finding, path: rel });
+      raw.push({ ...finding, path: rel });
     }
   }
 
+  const findings = applyRuleConfig(raw, options);
   const summary = [
     `files_checked: ${markdownFiles.length}`,
     `findings: ${findings.length}`,
@@ -236,7 +240,7 @@ export async function statusCommand(options) {
     ...wikiGraph.findings
   ];
   const adapterFindings = await scanAdapters(options.cwd, agents);
-  const findings = [
+  const findings = applyRuleConfig([
     ...detectionFindings,
     ...documentStatus.findings,
     ...structureFindings,
@@ -249,7 +253,7 @@ export async function statusCommand(options) {
     ...okfFindings,
     ...linkFindings,
     ...adapterFindings
-  ];
+  ], options);
   const result = findings.some((finding) => finding.severity === "blocked")
     ? "blocked"
     : findings.some((finding) => finding.severity === "error")
@@ -397,7 +401,7 @@ export async function audit(options) {
   ];
   const adapterFindings = await scanAdapters(options.cwd, agents);
 
-  const findings = [
+  const findings = applyRuleConfig([
     ...detectionFindings,
     ...structureFindings,
     ...frontmatter.findings,
@@ -412,7 +416,7 @@ export async function audit(options) {
     ...okfFindings,
     ...linkFindings,
     ...adapterFindings
-  ];
+  ], options);
 
   const result = findings.some((finding) => finding.severity === "blocked")
     ? "blocked"
@@ -3618,6 +3622,35 @@ function summarizeFindings(findings) {
 function findingCategory(rule) {
   if (!rule) return "unknown";
   return String(rule).split(".")[0] || "unknown";
+}
+
+// Finding categories that can NEVER be toggled by config `rules` — safety
+// invariants (sensitive-info detection) stay on and at their severity regardless
+// of any per-project override.
+const NON_TOGGLEABLE_CATEGORIES = new Set(["sensitive"]);
+
+// Applies per-project rule toggles (options.rules, from llm-wiki.config.json) to a
+// findings array: a rule set to "off" is dropped; any other value overrides that
+// rule's severity. Only registry rules (FINDING_EXPLANATIONS) are toggleable, and
+// safety categories above are never toggled; everything else passes through
+// unchanged. Idempotent, so it is safe as findings compose across commands.
+function applyRuleConfig(findings, options) {
+  const rules = options && options.rules;
+  if (!rules || typeof rules !== "object" || Object.keys(rules).length === 0) return findings;
+  const out = [];
+  for (const finding of findings) {
+    const action = rules[finding.rule];
+    const toggleable = action !== undefined
+      && Object.prototype.hasOwnProperty.call(FINDING_EXPLANATIONS, finding.rule)
+      && !NON_TOGGLEABLE_CATEGORIES.has(findingCategory(finding.rule));
+    if (!toggleable) {
+      out.push(finding);
+      continue;
+    }
+    if (action === "off") continue;
+    out.push({ ...finding, severity: action });
+  }
+  return out;
 }
 
 function formatFindingSummary(summary) {

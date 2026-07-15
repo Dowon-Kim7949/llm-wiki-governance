@@ -141,7 +141,8 @@ export function defaultOptions() {
     existing: "skip",
     out: null,
     profiles: [],
-    agents: []
+    agents: [],
+    rules: {}
   };
 }
 

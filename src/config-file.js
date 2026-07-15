@@ -4,6 +4,12 @@ import { readUtf8 } from "./encoding.js";
 
 export const CONFIG_FILENAME = "llm-wiki.config.json";
 
+// Allowed values for a per-project rule toggle in `rules`: "off" disables the
+// rule; the others override its severity. Enforced here so a malformed toggle is
+// reported like any other config error. The applier (src/commands.js) additionally
+// refuses to toggle safety rules (the sensitive-info category).
+export const RULE_TOGGLE_ACTIONS = new Set(["off", "blocked", "error", "warning", "info"]);
+
 // Conservative v1 schema: persistent defaults that mirror existing CLI options.
 // Unknown keys are ignored so the contract can grow without breaking old files.
 export async function loadProjectConfig(cwd) {
@@ -46,6 +52,20 @@ export async function loadProjectConfig(cwd) {
     else config.strict = parsed.strict;
   }
 
+  if ("rules" in parsed) {
+    const rules = parsed.rules;
+    if (rules === null || typeof rules !== "object" || Array.isArray(rules)) {
+      errors.push(`${CONFIG_FILENAME}: "rules" must be an object mapping rule ids to a severity or "off".`);
+    } else {
+      const bad = Object.entries(rules).filter(([, value]) => !RULE_TOGGLE_ACTIONS.has(value));
+      if (bad.length > 0) {
+        errors.push(`${CONFIG_FILENAME}: "rules" values must be one of ${[...RULE_TOGGLE_ACTIONS].join(", ")} (invalid: ${bad.map(([key]) => key).join(", ")}).`);
+      } else {
+        config.rules = { ...rules };
+      }
+    }
+  }
+
   return { found: true, config, errors };
 }
 
@@ -65,6 +85,9 @@ export function mergeConfigIntoOptions(options, config) {
   }
   if (config.strict) {
     options.strict = true;
+  }
+  if (config.rules && (!options.rules || Object.keys(options.rules).length === 0)) {
+    options.rules = { ...config.rules };
   }
 
   return options;

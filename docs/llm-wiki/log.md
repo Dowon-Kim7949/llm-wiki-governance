@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - feat: per-project rule toggles (1.8.0 config schema growth)
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/config-file.js (config `rules` 맵 검증 + 병합; `RULE_TOGGLE_ACTIONS`)
+  - src/cli.js (`defaultOptions`에 `rules: {}`)
+  - src/commands.js (중앙 `applyRuleConfig` 적용: audit/status/validate-frontmatter; `NON_TOGGLEABLE_CATEGORIES` 안전 가드; doctor echo에 `rules=N`)
+  - tests/verification.test.js (+3: rules 검증 / off·override 재등급 / sensitive 비토글 안전)
+- summary:
+  - Gate 13 1.8.0 첫 피처. `llm-wiki.config.json`에 `rules: { "rule.id": "off"|"blocked"|"error"|"warning"|"info" }`를 추가해 프로젝트가 개별 finding rule을 끄거나 severity를 재정의한다. EP1의 통합 옵션 해석(`resolveOptions`)을 타고 CLI/API/MCP 모두에서 동일 적용. 중앙 `applyRuleConfig`가 audit/status/validate-frontmatter의 findings에 idempotent하게 적용된다. 레지스트리(`FINDING_EXPLANATIONS`) rule만 토글 대상이며, **안전 불변식으로 `sensitive.*` 카테고리는 절대 토글 불가**(민감정보 탐지를 config로 끌 수 없음). `doctor`가 활성 토글 수를 echo. additive·opt-in, 1.0.0 계약·zero-dep 불변.
+- evidence:
+  - src/commands.js#symbol:applyRuleConfig
+  - src/config-file.js#symbol:loadProjectConfig
+- caveats:
+  - severity 수렴 pre-work는 감사로 이미 동작 보존 확인(불일치 0); 토글은 rule 단위 중앙 override라 push 지점 재작성 불필요.
+  - 지식 문서 doc-sync는 1.8.0 release-prep에서 일괄. 테스트 190 pass, validate 0.
+
 ## 2026-07-15 - docs: Gate 13 accepted_for_1.8.0 (config schema growth)
 
 - status: needs_review

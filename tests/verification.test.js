@@ -2627,6 +2627,50 @@ test("resolveOptions surfaces malformed config as errors instead of throwing", a
   assert.ok(errors.length > 0);
 });
 
+test("config rules: loadProjectConfig validates the toggle map (1.8)", async () => {
+  const okCwd = await makeProject("rules-ok-");
+  await writeFile(path.join(okCwd, "llm-wiki.config.json"), JSON.stringify({ rules: { "related.missing": "off", "evidence.stale": "error" } }), { encoding: "utf8" });
+  const ok = await loadProjectConfig(okCwd);
+  assert.deepEqual(ok.errors, []);
+  assert.deepEqual(ok.config.rules, { "related.missing": "off", "evidence.stale": "error" });
+
+  const badValue = await makeProject("rules-badval-");
+  await writeFile(path.join(badValue, "llm-wiki.config.json"), JSON.stringify({ rules: { "related.missing": "nope" } }), { encoding: "utf8" });
+  assert.ok((await loadProjectConfig(badValue)).errors.length > 0);
+
+  const badShape = await makeProject("rules-badshape-");
+  await writeFile(path.join(badShape, "llm-wiki.config.json"), JSON.stringify({ rules: ["related.missing"] }), { encoding: "utf8" });
+  assert.ok((await loadProjectConfig(badShape)).errors.length > 0);
+});
+
+test("rule toggle: 'off' drops a finding and a severity override re-grades it (1.8)", async () => {
+  const cwd = await makeProject("rules-toggle-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  // Frontmatter present but missing required fields -> frontmatter.required (error).
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "thin.md"), "---\ntitle: Thin\n---\n\nbody\n", { encoding: "utf8" });
+
+  const base = await validateFrontmatterCommand(api.normalizeOptions({ cwd }));
+  assert.ok(base.findings.some((f) => f.rule === "frontmatter.required"), "baseline has the rule");
+
+  const off = await validateFrontmatterCommand({ ...api.normalizeOptions({ cwd }), rules: { "frontmatter.required": "off" } });
+  assert.ok(!off.findings.some((f) => f.rule === "frontmatter.required"), "'off' drops the rule's findings");
+
+  const warn = await validateFrontmatterCommand({ ...api.normalizeOptions({ cwd }), rules: { "frontmatter.required": "warning" } });
+  const overridden = warn.findings.filter((f) => f.rule === "frontmatter.required");
+  assert.ok(overridden.length > 0 && overridden.every((f) => f.severity === "warning"), "override changes severity");
+});
+
+test("safety: sensitive-info findings are never toggleable (1.8)", async () => {
+  const cwd = await makeProject("rules-safety-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  // A clearly-fake token-assignment value trips the sensitive-info scan.
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "leak.md"), "---\ntitle: L\nstatus: needs_review\ndoc_type: reference\n---\n\ntoken: abcdefgh12345678\n", { encoding: "utf8" });
+
+  const off = await audit({ ...api.normalizeOptions({ cwd }), rules: { "sensitive.redacted": "off" } });
+  assert.ok(off.findings.some((f) => f.rule === "sensitive.redacted"), "sensitive.redacted stays even when toggled off");
+});
+
 test("--format json output is stamped with schemaVersion without dropping fields", async () => {
   const result = { command: "audit", result: "pass", findings: [], text: "rendered" };
   let captured = "";
