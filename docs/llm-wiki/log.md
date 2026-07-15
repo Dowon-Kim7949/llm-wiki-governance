@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - docs: Gate 13 accepted_for_1.8.0 (config schema growth)
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 검토·수락)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 13 `proposed_for_1.8.0` → `accepted_for_1.8.0`; 점진 딜리버리·severity 감사 결과 반영)
+- summary:
+  - Gate 13(1.8 config schema growth)을 사람 검토로 `accepted_for_1.8.0`으로 승격했다. 딜리버리는 점진: enabling-prep는 1.7.2로 출시됨, `1.8.0` = pre-work(인라인 severity를 `FINDING_EXPLANATIONS` 단일 레지스트리로 수렴[2026-07-15 감사: push 지점 severity 불일치 0 → 동작 보존] + 템플릿 오버라이드가 `status: verified`를 절대 못 만드는 가드레일) + per-project **rule 토글**; **커스텀 문서셋**·**템플릿 오버라이드**는 `1.8.x`로 후속. `blocked` 제어 findings 3개(`explain.unknown_rule`/`init.write_blocked`/`sensitive.release_body`)는 레지스트리 밖·토글 비대상.
+- caveats:
+  - 이로써 1.8 피처 코드 착수 가능. 실제 착수는 사용자 지시 후.
+
 ## 2026-07-15 - docs: 1.7.2 doc-synced 문서 3개 verified 재승인
 
 - status: verified

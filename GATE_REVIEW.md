@@ -49,7 +49,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 10 Domain Detection Scope Approval | `accepted` | Expand backend/fullstack `init` domain detection to cover BOTH directory-per-domain (`domains/domain/modules/features`) and file-per-domain route/resource modules (`endpoints/routers/routes/resources/controllers/handlers`), via a bounded, exclusion-guarded project scan tuned for near-zero false positives. Accepted by WoongHwan-Kim on 2026-07-14. See "Domain Detection Scope Decision" below. |
 | Gate 11 MCP Tool Surface Scope Approval | `accepted_for_1.6.0` | Add a `llm-wiki mcp` command that runs a Model Context Protocol server over stdio, exposing only the READ-ONLY commands as MCP tools. Hand-rolled JSON-RPC 2.0 on Node built-ins (no third-party SDK), preserving the zero-runtime-dependency invariant. No write/mutating command is exposed; results reuse the 1.5 result shape (`schemaVersion`) as `structuredContent`. See "MCP Tool Surface Scope Decision" below. |
 | Gate 12 CI/CD Adoption (GitHub Action + Release) Scope Approval | `accepted_for_1.7.0` | Add a composite GitHub Action (`.github/actions/validate/action.yml`) that wraps the read-only `validate` via `npx`, and a GitHub Release generated on `v*` tag push by an isolated `contents: write` job using the runner's built-in `gh` CLI (no third-party action). The release body comes from a new additive `release-notes --body-only` mode and is run through the sensitive-info scan before publish. Marketplace listing and floating-tag (`@v1`) versioning are DEFERRED behind a later gate that first deconflicts the `v*` npm-publish tag namespace and the `publish.yml` version-match guard. See "CI/CD Adoption Scope Decision" below. |
-| Gate 13 Config Schema Growth Scope Approval | `proposed_for_1.8.0` | Grow the pre-reserved `llm-wiki.config.json` seam (unknown keys already ignored) with (1) per-project **rule toggles** backed by a single severity registry consolidated from `FINDING_EXPLANATIONS`, (2) **custom document sets**, and (3) **template overrides** that can NEVER set `status: verified` (hard guardrail). Additive/opt-in; the `1.0.0` command/`--format json`/frontmatter contracts stay unchanged and the zero-runtime-dependency invariant is preserved. Enabling prep (unify config loading across CLI/programmatic-API/MCP; scaffold a starter config + `doctor` echo) ships FIRST as additive `1.7.x` patches so real config usage accrues before schema design. `proposed` — not yet accepted. See "Config Schema Growth Scope Decision" below. |
+| Gate 13 Config Schema Growth Scope Approval | `accepted_for_1.8.0` | Grow the pre-reserved `llm-wiki.config.json` seam (unknown keys already ignored) with (1) per-project **rule toggles** backed by a single severity registry consolidated from `FINDING_EXPLANATIONS`, (2) **custom document sets**, and (3) **template overrides** that can NEVER set `status: verified` (hard guardrail). Additive/opt-in; the `1.0.0` command/`--format json`/frontmatter contracts stay unchanged and the zero-runtime-dependency invariant is preserved. Enabling prep (unify config loading across CLI/programmatic-API/MCP; scaffold a starter config + `doctor` echo) shipped as `1.7.2`. Accepted by WoongHwan-Kim on 2026-07-15; `1.8.0` ships the pre-work (severity-registry consolidation — audited behavior-preserving, 0 mismatches — plus the template-override guardrail) and per-project **rule toggles**, with **custom document sets** and **template overrides** following in `1.8.x`. See "Config Schema Growth Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -448,15 +448,23 @@ as drafted; implementation follows under the scope below.
   overwritten; UTF-8 throughout; AI/CLI-authored docs stay `needs_review`. None of
   these are touched by an Action that only wraps read-only `validate`.
 
-## Config Schema Growth Scope Decision (proposed for 1.8.0)
+## Config Schema Growth Scope Decision (accepted for 1.8.0)
 
-Proposed (not yet accepted) as the scope for the `1.8.0` line — the config-schema-growth
-minor split out of the former monolithic "team & org scale" line (see ROADMAP `1.8`). It is
-the hard dependency gate: both the monorepo profile (`1.10`, per-package config) and
-visibility governance (`1.9`, a rule toggle) consume it, so its shape is decided before
-either depends on it.
+Accepted by WoongHwan-Kim on 2026-07-15 as the scope for the `1.8.0` line — the
+config-schema-growth minor split out of the former monolithic "team & org scale" line (see
+ROADMAP `1.8`). It is the hard dependency gate: both the monorepo profile (`1.10`,
+per-package config) and visibility governance (`1.9`, a rule toggle) consume it, so its
+shape is decided before either depends on it.
 
-### Enabling prep first (additive `1.7.x` patches, no headline release)
+**Delivery (accepted incremental).** The enabling prep shipped as `1.7.2`. `1.8.0` ships the
+pre-work (below) and per-project **rule toggles**; **custom document sets** and **template
+overrides** follow in `1.8.x`. The severity-registry consolidation was audited on 2026-07-15:
+every push-site severity already matches `FINDING_EXPLANATIONS.defaultSeverity` (0 mismatches),
+so the consolidation is behavior-preserving; three `blocked` control findings
+(`explain.unknown_rule`, `init.write_blocked`, `sensitive.release_body`) sit outside the
+registry and stay non-toggleable.
+
+### Enabling prep (shipped as 1.7.2)
 
 `1.8` schema growth is deliberately pulled only AFTER a scaffolded config has produced
 real-world usage to design against. Two additive patches land first:
