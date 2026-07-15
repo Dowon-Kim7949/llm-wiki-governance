@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - test: 안정화 1단계 — 교차기능 통합 테스트 3개 (invariant 재감사)
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시 — "안정화 우선" 방향 선택)
+- scope: tests
+- changed:
+  - tests/verification.test.js (+3 통합 테스트)
+- summary:
+  - 8릴리스(1.7.1–1.11.0)를 additive로 얹은 뒤 안정화 패스 1단계. 기능별로만 검증됐던 교차 상호작용을 잠갔다: (1) `rules`+`requiredDocs`+`visibility`+`content.thin_body`가 한 audit에서 함께 적용되고 `sensitive.redacted`-off 시도에도 sensitive 탐지가 유지됨(안전 불변식), (2) `monorepo`가 패키지별 config를 독립 적용, (3) cross-repo 참조 무시와 visibility 규칙 공존. 206 pass. 이 3개가 곧 종합 불변식 재감사 역할(zero-dep/additive/single-repo byte-identical/sensitive 비토글/never-verified는 각 릴리스에서 개별 확인됨).
+- caveats:
+  - 안정화 2단계(commands.js 4,119줄 분리)는 대량 코드 이동 위험 관리를 위해 별도 focused pass로 진행 예정(barrel re-export·클러스터별 추출·추출마다 전체 테스트 게이트). 테스트 전용 변경이라 릴리스는 분리 완료 후 함께.
+
 ## 2026-07-15 - docs: 1.11.0 cross-repo 문서 2개 verified 재승인 (1.7–1.11 라인 완주)
 
 - status: verified

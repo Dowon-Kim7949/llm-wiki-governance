@@ -2829,6 +2829,53 @@ test("a genuinely missing local wiki link is still flagged (1.11 local resolutio
   assert.ok(result.findings.some((f) => f.rule === "wiki_link.missing" && f.path.includes("y.md")), "a real missing local wiki link is still flagged");
 });
 
+// ---- cross-feature integration (stabilization) -------------------------------
+
+test("integration: rules + requiredDocs + visibility + thin_body compose in one audit; sensitive safety holds", async () => {
+  const cwd = await makeProject("integ-all-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "svc.md"), "---\ntitle: S\nstatus: needs_review\ndoc_type: reference\nvisibility: public\ncontains_sensitive_info: true\nrelated:\n  - docs/llm-wiki/gone.md\n---\n\ntoken: abcdefgh12345678\n", { encoding: "utf8" });
+  const result = await audit({
+    ...api.normalizeOptions({ cwd }),
+    rules: { "related.missing": "off", "sensitive.redacted": "off", "visibility.public_sensitive": "warning", "content.thin_body": "warning" },
+    requiredDocs: ["docs/llm-wiki/RUNBOOK.md"]
+  });
+  const rules = new Set(result.findings.map((f) => f.rule));
+  assert.ok(!rules.has("related.missing"), "related.missing toggled off");
+  assert.ok(result.findings.some((f) => f.rule === "structure.required_doc" && f.path.includes("RUNBOOK")), "custom requiredDocs applied");
+  assert.ok(rules.has("visibility.public_sensitive"), "visibility rule opted in");
+  assert.ok(rules.has("content.thin_body"), "thin_body opted in");
+  assert.ok(rules.has("sensitive.redacted"), "sensitive detection still fires even when its toggle-off is attempted (safety invariant)");
+});
+
+test("integration: monorepo applies each package's own config independently", async () => {
+  const root = await makeProject("integ-mono-");
+  await writeJson(path.join(root, "package.json"), { name: "root", private: true, workspaces: ["packages/*"] });
+  for (const name of ["alpha", "beta"]) {
+    await mkdir(path.join(root, "packages", name, "docs", "llm-wiki"), { recursive: true });
+    await writeFile(path.join(root, "packages", name, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  }
+  await writeFile(path.join(root, "packages", "alpha", "llm-wiki.config.json"), JSON.stringify({ rules: { "structure.required_doc": "off" } }), { encoding: "utf8" });
+
+  const result = await api.commands.monorepo(api.normalizeOptions({ cwd: root }));
+  const alpha = result.findings.filter((f) => f.path.startsWith("packages/alpha"));
+  const beta = result.findings.filter((f) => f.path.startsWith("packages/beta"));
+  assert.ok(!alpha.some((f) => f.rule === "structure.required_doc"), "alpha's own toggle suppressed required_doc");
+  assert.ok(beta.some((f) => f.rule === "structure.required_doc"), "beta (no toggle) still reports required_doc");
+});
+
+test("integration: cross-repo references are ignored while a visibility rule still fires", async () => {
+  const cwd = await makeProject("integ-xrepo-vis-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "svc.md"), "---\ntitle: S\nstatus: needs_review\ndoc_type: reference\nvisibility: public\ncontains_sensitive_info: true\nrelated:\n  - repo:other/docs/llm-wiki/API.md\n---\n\nUpstream [[repo:other/docs/llm-wiki/API.md]]. password = abcdefgh12345678\n", { encoding: "utf8" });
+  const result = await audit({ ...api.normalizeOptions({ cwd }), rules: { "visibility.public_sensitive": "warning" } });
+  const svc = result.findings.filter((f) => f.path.includes("svc.md"));
+  assert.ok(!svc.some((f) => f.rule === "related.missing" || f.rule === "wiki_link.missing"), "cross-repo refs are not flagged");
+  assert.ok(svc.some((f) => f.rule === "visibility.public_sensitive"), "visibility rule fires alongside cross-repo references");
+});
+
 test("--format json output is stamped with schemaVersion without dropping fields", async () => {
   const result = { command: "audit", result: "pass", findings: [], text: "rendered" };
   let captured = "";
