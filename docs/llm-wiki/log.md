@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - feat: 템플릿 오버라이드 (config templates, never-verified 가드레일) — Gate 13, 1.8.x
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/config-file.js (config `templates`[obj str→str] 검증 + 병합)
+  - src/cli.js (`defaultOptions`에 `templates: {}`)
+  - src/commands.js (`renderOverriddenDoc`[body-only 가드레일]; initWrite/initDryRun 오버라이드 인식; doctor echo `templates=N`; `renderTemplate` import)
+  - tests/verification.test.js (+3: templates 검증 / verified 가드레일 / 누락 fallback)
+- summary:
+  - Gate 13 마지막 피처(템플릿 오버라이드). config `templates`로 생성 문서를 프로젝트-로컬 템플릿에서 만든다. **핵심 안전 설계: 오버라이드는 body만 사용** — frontmatter는 항상 CLI 생성(`status: needs_review`)이라 오버라이드가 절대 `verified`를 만들 수 없다(오버라이드 파일의 frontmatter는 파싱 후 폐기). 오버라이드 파일 부재 시 built-in 폴백 + skipped 노트. `doctor`가 개수 echo. 실측: 오버라이드가 `status:verified`를 담아도 생성 문서는 `needs_review`.
+- evidence:
+  - src/commands.js#symbol:renderOverriddenDoc
+- caveats:
+  - 지식 문서 doc-sync는 1.8.1 release-prep에서 일괄. 196 pass, 레포 validate 0. 이로써 Gate 13의 3개 피처(rule 토글·커스텀 문서셋·템플릿 오버라이드) 모두 구현 완료.
+
 ## 2026-07-15 - feat: 커스텀 문서셋 (config requiredDocs) — Gate 13, 1.8.x
 
 - status: needs_review

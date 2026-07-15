@@ -11,7 +11,7 @@ import { hasRequiredField, parseFrontmatter, validateFrontmatter } from "./front
 import { schemaRequiredFields } from "./frontmatter-schema.js";
 import { renderTextReport } from "./report.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
-import { renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
+import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { apiServiceInventoryChecklist, buildTaskPrompt } from "./task-prompts.js";
 import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
 import { fileChangedSince, lineRangeChangedSince, changedFiles } from "./git.js";
@@ -174,6 +174,9 @@ async function describeEffectiveConfig(cwd) {
   }
   if (Array.isArray(config.requiredDocs) && config.requiredDocs.length > 0) {
     parts.push(`requiredDocs=${config.requiredDocs.length}`);
+  }
+  if (config.templates && typeof config.templates === "object" && Object.keys(config.templates).length > 0) {
+    parts.push(`templates=${Object.keys(config.templates).length}`);
   }
   return parts.length > 0 ? `present (${parts.join(", ")})` : "present (no keys set)";
 }
@@ -756,7 +759,8 @@ async function initDryRun(options, detection, agents, candidates) {
     if (await pathExists(path.join(options.cwd, rel))) {
       skipped.push(`${rel} exists; would not overwrite.`);
     } else {
-      planned.push(`${rel} would be created with status needs_review.`);
+      const overridePath = options.templates && options.templates[rel];
+      planned.push(`${rel} would be created with status needs_review${overridePath ? ` (via template override ${overridePath})` : ""}.`);
     }
   }
 
@@ -1551,7 +1555,21 @@ async function initWrite(options, detection, agents, candidates, domainContext =
       continue;
     }
 
-    const content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext);
+    const overridePath = options.templates && options.templates[rel];
+    let content;
+    let viaOverride = "";
+    if (overridePath) {
+      const override = await renderOverriddenDoc(options.cwd, rel, overridePath, detection, lastUpdated, domainContext);
+      if (override.missing) {
+        content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext);
+        skipped.push(`${rel}: template override ${overridePath} not found; used the built-in template.`);
+      } else {
+        content = override.content;
+        viaOverride = ` (via template override ${overridePath})`;
+      }
+    } else {
+      content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext);
+    }
     const sensitiveFindings = scanSensitiveInfo(content);
     if (sensitiveFindings.length > 0) {
       blocked.push(`${rel} was not written because generated content matched sensitive-info rules.`);
@@ -1561,9 +1579,9 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     await mkdir(path.dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, content, { encoding: "utf8" });
     if (exists) {
-      overwritten.push(`${rel} overwritten with status needs_review by explicit --existing overwrite.`);
+      overwritten.push(`${rel} overwritten with status needs_review by explicit --existing overwrite${viaOverride}.`);
     } else {
-      created.push(`${rel} created with status needs_review.`);
+      created.push(`${rel} created with status needs_review${viaOverride}.`);
     }
   }
 
@@ -2678,6 +2696,37 @@ function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), do
     related: meta.related,
     body: meta.body
   });
+}
+
+// Renders a wiki document from a project-local override template (config
+// `templates`). GUARDRAIL: only the override's BODY is used — the standard CLI
+// frontmatter (status: needs_review) always wraps it via
+// renderWikiDocumentTemplate, so an override can NEVER produce status: verified
+// (any frontmatter in the override file is parsed off and discarded). Returns
+// { content, missing }; missing is true when the override file is absent.
+async function renderOverriddenDoc(cwd, rel, overridePath, detection, lastUpdated, domainContext) {
+  const abs = path.join(cwd, overridePath);
+  if (!(await pathExists(abs))) return { content: null, missing: true };
+  const meta = docMetadata(rel, detection, lastUpdated, domainContext);
+  const project = detection.projectName ?? "project";
+  const rendered = renderTemplate(await readUtf8(abs), {
+    title: meta.title,
+    doc_type: meta.docType,
+    project,
+    last_updated: lastUpdated
+  });
+  const parsed = parseFrontmatter(rendered);
+  const body = parsed.frontmatter ? parsed.body : rendered;
+  const content = renderWikiDocumentTemplate({
+    title: meta.title,
+    docType: meta.docType,
+    project,
+    lastUpdated,
+    sourceFiles: meta.sourceFiles,
+    related: meta.related,
+    body
+  });
+  return { content, missing: false };
 }
 
 async function summarizeAdapterStatus(cwd, agents) {

@@ -2708,6 +2708,36 @@ test("custom document sets extend the structure.required_doc check (1.8)", async
   assert.ok(!present.findings.some((f) => f.rule === "structure.required_doc" && f.path === "docs/llm-wiki/RUNBOOK.md"), "satisfied once the custom doc exists");
 });
 
+test("config templates: loadProjectConfig validates the override map (1.8)", async () => {
+  const okCwd = await makeProject("tmpl-ok-");
+  await writeFile(path.join(okCwd, "llm-wiki.config.json"), JSON.stringify({ templates: { "docs/llm-wiki/GLOSSARY.md": "t.md" } }), { encoding: "utf8" });
+  assert.deepEqual((await loadProjectConfig(okCwd)).config.templates, { "docs/llm-wiki/GLOSSARY.md": "t.md" });
+
+  const bad = await makeProject("tmpl-bad-");
+  await writeFile(path.join(bad, "llm-wiki.config.json"), JSON.stringify({ templates: { "docs/llm-wiki/GLOSSARY.md": 123 } }), { encoding: "utf8" });
+  assert.ok((await loadProjectConfig(bad)).errors.length > 0);
+});
+
+test("template overrides render the override body but can NEVER set verified (1.8 guardrail)", async () => {
+  const cwd = await makeProject("tmpl-override-");
+  // An override whose frontmatter claims verified, with a distinctive body.
+  await writeFile(path.join(cwd, "my-glossary.tmpl.md"), "---\nstatus: verified\n---\n\nOVERRIDE-BODY-MARKER\n", { encoding: "utf8" });
+  await initCommand({ ...api.normalizeOptions({ cwd }), write: true, type: "library", agents: [], profiles: [], existing: "skip", templates: { "docs/llm-wiki/GLOSSARY.md": "my-glossary.tmpl.md" } });
+
+  const generated = await readFile(path.join(cwd, "docs", "llm-wiki", "GLOSSARY.md"), { encoding: "utf8" });
+  assert.ok(generated.includes("status: needs_review"), "guardrail forces needs_review");
+  assert.ok(!/^status: verified/m.test(generated), "override cannot set status: verified");
+  assert.ok(generated.includes("OVERRIDE-BODY-MARKER"), "override body is used");
+});
+
+test("template overrides: a missing override file falls back to the built-in template (1.8)", async () => {
+  const cwd = await makeProject("tmpl-missing-");
+  const result = await initCommand({ ...api.normalizeOptions({ cwd }), write: true, type: "library", agents: [], profiles: [], existing: "skip", templates: { "docs/llm-wiki/GLOSSARY.md": "nope.tmpl.md" } });
+  assert.ok(result.skipped.some((line) => line.includes("nope.tmpl.md") && line.includes("not found")), "missing override is noted");
+  const generated = await readFile(path.join(cwd, "docs", "llm-wiki", "GLOSSARY.md"), { encoding: "utf8" });
+  assert.ok(generated.includes("status: needs_review"), "still created from the built-in template");
+});
+
 test("--format json output is stamped with schemaVersion without dropping fields", async () => {
   const result = { command: "audit", result: "pass", findings: [], text: "rendered" };
   let captured = "";

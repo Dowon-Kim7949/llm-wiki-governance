@@ -75,6 +75,17 @@ export async function loadProjectConfig(cwd) {
     }
   }
 
+  if ("templates" in parsed) {
+    const templates = parsed.templates;
+    if (templates === null || typeof templates !== "object" || Array.isArray(templates)) {
+      errors.push(`${CONFIG_FILENAME}: "templates" must be an object mapping wiki doc paths to template file paths.`);
+    } else if (Object.values(templates).some((value) => typeof value !== "string")) {
+      errors.push(`${CONFIG_FILENAME}: "templates" values must be template file path strings.`);
+    } else {
+      config.templates = { ...templates };
+    }
+  }
+
   return { found: true, config, errors };
 }
 
@@ -100,6 +111,9 @@ export function mergeConfigIntoOptions(options, config) {
   }
   if (Array.isArray(config.requiredDocs) && (!options.requiredDocs || options.requiredDocs.length === 0)) {
     options.requiredDocs = [...config.requiredDocs];
+  }
+  if (config.templates && (!options.templates || Object.keys(options.templates).length === 0)) {
+    options.templates = { ...config.templates };
   }
 
   return options;

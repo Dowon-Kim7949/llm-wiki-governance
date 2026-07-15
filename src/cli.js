@@ -143,7 +143,8 @@ export function defaultOptions() {
     profiles: [],
     agents: [],
     rules: {},
-    requiredDocs: []
+    requiredDocs: [],
+    templates: {}
   };
 }
 
