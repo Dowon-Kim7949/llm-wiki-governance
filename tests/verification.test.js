@@ -2738,6 +2738,32 @@ test("template overrides: a missing override file falls back to the built-in tem
   assert.ok(generated.includes("status: needs_review"), "still created from the built-in template");
 });
 
+test("visibility.public_sensitive: opt-in, flags a public doc with sensitive content, never leaks the value (1.9)", async () => {
+  const cwd = await makeProject("vis-public-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  const secret = "abcdefgh12345678";
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "pub.md"), `---\ntitle: P\nstatus: needs_review\ndoc_type: reference\nvisibility: public\ncontains_sensitive_info: true\n---\n\ntoken: ${secret}\n`, { encoding: "utf8" });
+
+  const off = await audit(api.normalizeOptions({ cwd }));
+  assert.ok(!off.findings.some((f) => f.rule === "visibility.public_sensitive"), "off by default");
+
+  const on = await audit({ ...api.normalizeOptions({ cwd }), rules: { "visibility.public_sensitive": "warning" } });
+  const hit = on.findings.find((f) => f.rule === "visibility.public_sensitive");
+  assert.ok(hit, "opt-in flags the public + sensitive doc");
+  assert.ok(!JSON.stringify(hit).includes(secret), "the finding must never contain the raw sensitive value");
+});
+
+test("visibility.declared_mismatch: flags contains_sensitive_info:false with sensitive content (1.9)", async () => {
+  const cwd = await makeProject("vis-declared-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "d.md"), "---\ntitle: D\nstatus: needs_review\ndoc_type: reference\ncontains_sensitive_info: false\n---\n\npassword = abcdefgh12345678\n", { encoding: "utf8" });
+
+  const on = await audit({ ...api.normalizeOptions({ cwd }), rules: { "visibility.declared_mismatch": "warning" } });
+  assert.ok(on.findings.some((f) => f.rule === "visibility.declared_mismatch"), "flags the declaration/content mismatch");
+});
+
 test("--format json output is stamped with schemaVersion without dropping fields", async () => {
   const result = { command: "audit", result: "pass", findings: [], text: "rendered" };
   let captured = "";

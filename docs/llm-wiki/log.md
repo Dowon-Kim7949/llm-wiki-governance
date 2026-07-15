@@ -24,6 +24,21 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - feat: visibility governance opt-in 일관성 rule 2개 (1.9.0, Gate 14)
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/commands.js (`FINDING_EXPLANATIONS`에 `visibility.public_sensitive`·`visibility.declared_mismatch`[warning] 등록; `scanVisibilityConsistency`; audit/status 배선)
+  - tests/verification.test.js (+2: public_sensitive opt-in·no-leak, declared_mismatch)
+- summary:
+  - Gate 14 1.9.0. sensitive-info 스캔을 재사용하는 opt-in 일관성 rule 2개. `visibility.public_sensitive`: `visibility: public` 문서에 민감값. `visibility.declared_mismatch`: `contains_sensitive_info: false`인데 민감값. 둘 다 기본 off(config `rules`로 활성화, `content.thin_body` 패턴), warning, read-only. **민감값은 finding에 절대 노출하지 않는다**(redacted count만; 실측 leak 0). `sensitive.*`는 여전히 비토글. 접근 통제 아님(값-내용 일관성만). 기본 off라 레포 자신의 validate 0 유지.
+- evidence:
+  - src/commands.js#symbol:scanVisibilityConsistency
+- caveats:
+  - 지식 문서 doc-sync는 1.9.0 release-prep에서 일괄. 198 pass, 레포 validate 0.
+
 ## 2026-07-15 - docs: Gate 14 accepted_for_1.9.0 + VISIBILITY.md verified
 
 - status: verified

@@ -113,6 +113,8 @@ const FINDING_EXPLANATIONS = {
   "adapter.entrypoint": findingExplanation("adapter", "warning", "An adapter exists but does not point to docs/llm-wiki/index.md.", "Agents need a reliable entrypoint to find project knowledge before editing code.", ["Open the reported adapter file.", "Add or correct the docs/llm-wiki/index.md reference.", "Run audit again with the selected agent."], ["llm-wiki audit --agent codex", "llm-wiki audit --agent claude"], ["adapter.missing"]),
   "encoding.bom": findingExplanation("encoding", "info", "A UTF-8 BOM was detected.", "BOMs are usually harmless, but they can create noisy diffs or surprise simple parsers.", ["Leave it alone if your team accepts BOMs.", "Remove the BOM with an editor that preserves UTF-8 when you want cleaner diffs.", "Run audit again."], ["llm-wiki audit"], ["encoding.mojibake"]),
   "encoding.mojibake": findingExplanation("encoding", "blocked", "Text that looks like mojibake was detected.", "Automatic rewrites are unsafe when text may already be corrupted.", ["Stop automated rewrite work on the reported file.", "Recover the file from a known-good UTF-8 source or manually repair the encoding.", "Run audit again after repair."], ["llm-wiki audit"], ["encoding.bom"]),
+  "visibility.public_sensitive": findingExplanation("visibility", "warning", "A visibility: public document contains sensitive-looking content. Opt-in lint, enabled via config rules.", "Public documents may leave the organization, so they must not carry token/credential/secret-like values.", ["Remove or redact the sensitive value, or lower the document's visibility.", "This rule is off by default; enable it by setting \"visibility.public_sensitive\" in llm-wiki.config.json rules.", "The sensitive value is never shown in the finding; inspect the file locally."], ["llm-wiki audit", "llm-wiki explain visibility.public_sensitive"], ["sensitive.redacted", "visibility.declared_mismatch"]),
+  "visibility.declared_mismatch": findingExplanation("visibility", "warning", "A document declares contains_sensitive_info: false but sensitive-looking content was found. Opt-in lint, enabled via config rules.", "The frontmatter declaration should match the content so tooling and reviewers can trust it.", ["Set contains_sensitive_info: true, or remove/redact the sensitive value.", "This rule is off by default; enable it by setting \"visibility.declared_mismatch\" in llm-wiki.config.json rules.", "The sensitive value is never shown in the finding."], ["llm-wiki audit", "llm-wiki explain visibility.declared_mismatch"], ["sensitive.redacted", "visibility.public_sensitive"]),
   "sensitive.redacted": findingExplanation("sensitive", "blocked", "Sensitive-looking content was detected and redacted from the finding message.", "Reports and generated docs must not leak tokens, credentials, or secret-like values.", ["Inspect the reported file and line locally.", "Remove or rotate the sensitive value if it is real.", "Replace examples with clearly fake placeholder values."], ["llm-wiki audit"], []),
   "project.review_item": findingExplanation("project", "warning", "Project detection found something a human should review.", "Detection is conservative; explicit review keeps generated templates aligned with the real project.", ["Read the finding message.", "Pass --type or --profile explicitly when auto-detection is too weak.", "Run status or audit again."], ["llm-wiki status --type frontend", "llm-wiki audit --profile library"], []),
   "handoff.unsupported_agent": findingExplanation("handoff", "blocked", "The selected handoff target is not supported yet.", "Unsupported adapter contracts should not be treated as safe handoff instructions.", ["Use a supported agent such as codex or claude.", "Keep Antigravity blocked until its adapter contract is confirmed.", "Run handoff again with a supported agent."], ["llm-wiki handoff --agent codex", "llm-wiki handoff --agent claude"], ["adapter.missing"]),
@@ -248,10 +250,12 @@ export async function statusCommand(options) {
   ];
   const adapterFindings = await scanAdapters(options.cwd, agents);
   const thinBodyFindings = await scanThinBody(options.cwd, options);
+  const visibilityFindings = await scanVisibilityConsistency(options.cwd, options);
   const findings = applyRuleConfig([
     ...detectionFindings,
     ...documentStatus.findings,
     ...thinBodyFindings,
+    ...visibilityFindings,
     ...structureFindings,
     ...sourceFileFindings,
     ...relatedFindings,
@@ -410,12 +414,14 @@ export async function audit(options) {
   ];
   const adapterFindings = await scanAdapters(options.cwd, agents);
   const thinBodyFindings = await scanThinBody(options.cwd, options);
+  const visibilityFindings = await scanVisibilityConsistency(options.cwd, options);
 
   const findings = applyRuleConfig([
     ...detectionFindings,
     ...structureFindings,
     ...frontmatter.findings,
     ...thinBodyFindings,
+    ...visibilityFindings,
     ...encodingFindings,
     ...sensitiveFindings,
     ...sourceFileFindings,
@@ -1805,6 +1811,47 @@ function bodyProseWordCount(body) {
     .join(" ")
     .split(/\s+/)
     .filter(Boolean).length;
+}
+
+// Opt-in visibility-consistency lints (1.9, GATE_REVIEW Gate 14) that reuse the
+// sensitive-info scan. Both are registered in FINDING_EXPLANATIONS but INERT by
+// default; each runs only when enabled via config `rules`:
+//   visibility.public_sensitive  — a `visibility: public` doc with sensitive content.
+//   visibility.declared_mismatch — a `contains_sensitive_info: false` doc with it.
+// Read-only and warning-level; the sensitive value is NEVER included in the finding
+// (only a redacted count). Access control is out of scope — value-vs-content only.
+async function scanVisibilityConsistency(cwd, options) {
+  const rules = (options && options.rules) || {};
+  const wantPublic = Boolean(rules["visibility.public_sensitive"]) && rules["visibility.public_sensitive"] !== "off";
+  const wantDeclared = Boolean(rules["visibility.declared_mismatch"]) && rules["visibility.declared_mismatch"] !== "off";
+  if (!wantPublic && !wantDeclared) return [];
+  const findings = [];
+  for (const file of await listWikiContentDocs(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    if (isAppendOnlyLog(rel)) continue;
+    const content = await readUtf8(file);
+    const sensitive = scanSensitiveInfo(content);
+    if (sensitive.length === 0) continue;
+    const frontmatter = parseFrontmatter(content).frontmatter || {};
+    const at = `${rel}:${sensitive[0].line}`;
+    if (wantPublic && frontmatter.visibility === "public") {
+      findings.push({
+        severity: "warning",
+        rule: "visibility.public_sensitive",
+        path: at,
+        message: `Public document has ${sensitive.length} sensitive-looking value(s); values omitted. Redact them or lower visibility.`
+      });
+    }
+    if (wantDeclared && frontmatter.contains_sensitive_info === false) {
+      findings.push({
+        severity: "warning",
+        rule: "visibility.declared_mismatch",
+        path: at,
+        message: `Document declares contains_sensitive_info: false but ${sensitive.length} sensitive-looking value(s) were found; values omitted.`
+      });
+    }
+  }
+  return findings;
 }
 
 async function scanEvidenceReferences(cwd, options = {}) {
