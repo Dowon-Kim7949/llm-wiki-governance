@@ -5,6 +5,41 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.7.0 — 2026-07-15
+
+CI/CD adoption. Make the wiki easy to wire into GitHub Actions and release
+automation. This is the lead slice of the split "Team & org scale" line.
+Backward-compatible — an additive command mode, a composite action, and a
+release job only; the CLI, JSON, programmatic-API, and frontmatter contracts are
+unchanged, and no runtime dependency is added.
+
+### Added
+
+- `release-notes --body-only` — emits only the change-section body (no
+  frontmatter, no H1 title, no "review before publishing" scaffold line) for use
+  as a GitHub Release body. Commit subjects flow into the body, so it is scanned
+  for sensitive-looking values and BLOCKED (exit 2, body withheld) on a match.
+  Source: `src/release-notes.js`, `src/commands.js`, `src/cli.js`.
+- A composite GitHub Action at `.github/actions/validate/action.yml` that wraps
+  the read-only `validate` via `npx`. It pulls in NO other actions (only bash +
+  npx), preserving the zero-runtime-dependency ethos, and can only read. Pin it
+  by an exact `vX.Y.Z` tag or commit SHA.
+- GitHub Release automation on a `v*` tag push: an isolated `contents: write` job
+  in `.github/workflows/publish.yml` (`needs: publish`), body sourced from
+  `release-notes --body-only`, created with the runner's built-in `gh` CLI (no
+  third-party release action).
+- Per-command `--format json` examples in `help` for the ten read-only report
+  commands (`doctor`, `validate`, `validate-frontmatter`, `audit`, `status`,
+  `next`, `stats`, `graph`, `explain`, `release-notes`).
+
+### Notes
+
+- Additive and backward-compatible; the zero-runtime-dependency policy is
+  preserved. Scope: `GATE_REVIEW.md` (Gate 12). The CI/CD line was split, so
+  `1.7.0` ships only the lead slice — Marketplace listing, a floating `@v1` tag,
+  the config-loading/init-scaffolding/doctor-echo enabling prep, and `1.8`–`1.11`
+  are deferred.
+
 ## 1.6.0 — 2026-07-14
 
 Agent-native (MCP). Let agents query and check the wiki as tools instead of

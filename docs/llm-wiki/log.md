@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-standard
-last_updated: 2026-07-14
+last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,29 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-15 - release: 1.7.0 준비 (CI/CD 도입) + 전 문서 1.7.0 정합화
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시: "모든 문서가 1.7.0에 맞는지 분석 후 릴리스")
+- scope: release, docs
+- changed:
+  - package.json (1.6.0 → 1.7.0), tests/verification.test.js (버전 어서션 → 1.7.0)
+  - CHANGELOG.md / CHANGELOG.ko.md (1.7.0 항목)
+  - ROADMAP.md / ROADMAP.ko.md (1.7을 Shipped Through 1.7.0로 이동, Release Plan → 1.8–1.11, "next is Gate 12" 정정, 승격 노트 갱신)
+  - docs/llm-wiki/releases/v1.7.0.md (신규)
+  - doc-sync (verified → needs_review): docs/llm-wiki/RELEASE_FLOW.md, PUBLIC_API.md, DOMAIN_FEATURES.md, domains/00_overview.md, project-profile.md, ARCHITECTURE_CONVENTIONS.md
+  - RELEASE_CHECKLIST.md / VERIFICATION.md (하드코딩 1.0.0 → version-agnostic, 사실오류 "migrate --apply 차단" 정정[1.2에서 해금], 1.7 표면 반영)
+  - README.md / README.ko.md (CI 불릿에 composite Action 참조), GATE_REVIEW.md (source_files += action.yml)
+- summary:
+  - 다중 에이전트 전 문서 감사(5개 그룹, blocking 13 + recommended 다수)에 따라 1.7.0(CI/CD 도입)에 맞게 모든 문서를 정합화했다. 1.7.0은 분할된 "팀 & 조직 확장" 라인의 리드 슬라이스만 낸다.
+  - BLOCKING: 버전 단일 소스(package.json)와 커플링된 버전 어서션 테스트를 1.7.0으로; CHANGELOG(EN/KO) 1.7.0 항목(2026-07-15); ROADMAP(EN/KO)에서 1.7을 Shipped로 이동하고 계획을 1.8–1.11로 축소(enabling prep·1.8–1.11은 계획에 유지); releases/v1.7.0.md 생성; 내용이 바뀌는 wiki 지식 문서 6개 doc-sync(release-notes --body-only·composite Action·태그 트리거 Release 잡 반영, `verified` → `needs_review`, reviewed_by/at 제거, 1.7 Review Note).
+  - RECOMMENDED: 배포물에 포함되는 RELEASE_CHECKLIST/VERIFICATION의 하드코딩 1.0.0을 version-agnostic으로 바꾸고, 세 릴리스째 stale였던 "migrate --apply 차단"(1.2 Gate 8에서 해금됨) 사실오류를 정정했으며, README(EN/KO) CI 불릿에 `uses: .../.github/actions/validate@v1.7.0`(정확한 태그 고정, floating @v1 아님)을 추가하고 GATE_REVIEW source_files에 action.yml을 넣었다.
+  - 버전 무관하게 정확한 문서(VERSIONING·SECURITY·CONTRIBUTING·CODE_OF_CONDUCT·index/README/GLOSSARY/profiles·이력 릴리스노트)는 감사에서 변경 불필요로 확인해 손대지 않았다.
+- caveats:
+  - node --test 177 pass, validate 0 findings, validate-frontmatter --strict 0 findings, npm pack --dry-run(v1.7.0, 58 files) 정상. 무의존성·계약 불변 유지.
+  - **재검토 부채**: doc-sync로 needs_review로 내려간 wiki 지식 문서 6개(RELEASE_FLOW·PUBLIC_API·DOMAIN_FEATURES·00_overview·project-profile·ARCHITECTURE)는 사람 검토 후 `verified` 재승인이 필요하다. 내용 미변경으로 verified로 남긴 문서(index·README·GLOSSARY·profiles/library·EXAMPLES)는 `src/cli.js`/`src/commands.js`를 인용하므로 이후 리뷰일에 evidence.stale이 뜰 수 있어 같은 재검토 사이클에서 함께 처리한다.
+  - **배포 미실행**: push/tag(v1.7.0)/npm은 사용자의 명시적 지시 후에만. 태그 push가 publish.yml(npm Trusted Publishing + 신규 GitHub Release 잡)을 트리거한다. README/action 참조의 `@v1.7.0`은 태그 배포 시 유효해진다.
 
 ## 2026-07-15 - feat: 1.7 CI/CD 도입 구현 (composite Action + GitHub Release + release-notes --body-only + JSON help)
 

@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: release_checklist
 project: llm-wiki-standard
-last_updated: 2026-07-14
+last_updated: 2026-07-15
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -17,6 +17,7 @@ source_files:
   - README.md
   - README.ko.md
   - VERIFICATION.md
+  - .github/workflows/publish.yml
 related:
   - GATE_REVIEW.md
 visibility: internal
@@ -25,7 +26,7 @@ contains_sensitive_info: false
 
 # LLM-WIKI Standard Package Release Checklist
 
-Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@1.0.0`.
+Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@<version>` (the version in `package.json`, matched against the release tag). It is version-agnostic — the steps apply to every `1.x` release.
 
 ## Local Verification
 
@@ -67,13 +68,14 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@1.0.0`.
 - [ ] Confirm generated wiki drafts include summary, inspection, evidence, open question, and review note sections where applicable.
 - [ ] Confirm `init --profile okf-v0.1` creates OKF templates for concept, project, api_reference, meeting_note, and event documents.
 - [ ] Confirm `init --profile okf-v0.1` creates `docs/llm-wiki/OKF_CONVERSION_GUIDE.md` and keeps conversion review-assisted, not automatic.
-- [ ] Confirm `migrate --apply` is blocked.
+- [ ] Confirm `migrate --apply` applies only the accepted `fix`-engine scope and never edits `verified` docs (GATE_REVIEW Gate 8).
+- [ ] Confirm `release-notes --body-only` emits only the change body and blocks (exit 2) on a sensitive-looking commit subject.
 - [ ] Confirm sensitive-looking values are redacted and never written raw.
 
 ## Release Metadata
 
 - [ ] Confirm package name is `@dowonk-7949/llm-wiki-standard`.
-- [ ] Confirm version is `1.0.0`.
+- [ ] Confirm `package.json` version matches the release tag.
 - [ ] Confirm `CHANGELOG.md` records the release version at the top.
 - [ ] Confirm package has no `publishConfig` override.
 - [ ] Confirm package-level `.npmrc` is absent.
@@ -96,9 +98,10 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@1.0.0`.
 
 - [ ] Configure npm Trusted Publisher for GitHub Actions with workflow filename `publish.yml`.
 - [ ] Configure GitHub Environment `npm-release`; set required reviewers in GitHub UI if human approval is required before publish.
-- [ ] Create the release tag after local verification: `git tag v1.0.0`.
-- [ ] Push only the release tag to start publish: `git push origin v1.0.0`.
+- [ ] Create the release tag after local verification: `git tag vX.Y.Z` (matching `package.json`).
+- [ ] Push only the release tag to start publish: `git push origin vX.Y.Z`.
 - [ ] Confirm the publish workflow validates the tag version against `package.json`.
-- [ ] Verify `npm install -D @dowonk-7949/llm-wiki-standard@1.0.0`.
-- [ ] Verify `npx @dowonk-7949/llm-wiki-standard@1.0.0 doctor`.
-- [ ] Verify `yarn add -D @dowonk-7949/llm-wiki-standard@1.0.0`.
+- [ ] Confirm the isolated `contents: write` Release job creates a GitHub Release from `release-notes --body-only` after npm publish (GATE_REVIEW Gate 12).
+- [ ] Verify `npm install -D @dowonk-7949/llm-wiki-standard@<version>`.
+- [ ] Verify `npx @dowonk-7949/llm-wiki-standard@<version> doctor`.
+- [ ] Verify `yarn add -D @dowonk-7949/llm-wiki-standard@<version>`.

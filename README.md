@@ -61,7 +61,7 @@ Full command, option, exit-code, and programmatic-API reference: run `npx llm-wi
 - **Trust, but verify.** Agent-written docs stay `needs_review`; a human promotes to `verified`. Use `drift` to catch verified docs whose sources moved.
 - **Let agents self-serve.** Point your agent at the `mcp` server so it queries the wiki as tools instead of re-scanning the code.
 - **Make it readable.** `graph --format mermaid`, `stats`, and `audit --format html` help humans see the corpus; it renders natively on GitHub/GitLab, Obsidian, or MkDocs (it stays Markdown-in-git, not a static-site generator).
-- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-standard/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR.
+- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-standard/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-standard/.github/actions/validate@v1.7.0` (pin an exact tag).
 
 ## Agent-native (MCP)
 

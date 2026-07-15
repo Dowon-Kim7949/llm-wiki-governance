@@ -2,15 +2,13 @@
 title: Domain Overview
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -43,7 +41,7 @@ contains_sensitive_info: false
 - **Guide (안내)** — `handoff`, `prompt`, `next`, `explain`: 에이전트 인수인계 프롬프트, 반복 작업 프롬프트, 다음 조치 추천, finding 규칙 설명.
 - **Knowledge (지식)** — `graph`, `stats`: 지식 그래프(문서→문서 링크)를 text/JSON/Mermaid/DOT로 출력, 위키 헬스 스냅샷(verified%/enrichment%/evidence coverage + 헬스 스코어). 둘 다 읽기 전용(1.4).
 - **Migrate & Repair (이관·자동수정)** — `migrate [--apply]`: 기본은 이관 계획 미리보기, `--apply` 시 `fix` 범위 재사용 + `wiki_block_version` 업그레이드로 문서를 현재 계약으로 올림(`verified` 내용 보존; GATE_REVIEW Gate 8). `fix [--write]`: 승인된 좁은 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 보완, 깨진 related/링크 `needs_review` 스텁, `last_updated` 갱신; 기본 미리보기). `drift [--downgrade]`: `evidence.stale` 드리프트를 리포트하고 `--downgrade` 시 드리프트된 `verified` 문서를 `needs_review`로 강등(GATE_REVIEW Gate 9). `verified` 내용·`docs/llm-wiki/` 밖은 건드리지 않는다. 근거: `src/commands.js` `fixCommand`.
-- **Release (릴리스)** — `release-notes`: 마지막 `v*` 태그 이후 conventional commit을 한국어 우선 이중언어 섹션으로 묶어 릴리스 노트 문서를 생성(`--out` 시 쓰기).
+- **Release (릴리스)** — `release-notes`: 마지막 `v*` 태그 이후 conventional commit을 한국어 우선 이중언어 섹션으로 묶어 릴리스 노트 문서를 생성(`--out` 시 쓰기). `--body-only`는 변경 섹션 본문만 출력(frontmatter/H1/스캐폴드 제외, GitHub Release 본문용)하고 본문 민감정보 스캔에 매치 시 차단(exit 2)한다(1.7). 1.7 CI/CD 도입의 컴포지트 validate Action과 태그 트리거 GitHub Release 잡은 새 명령 도메인이 아니라 저장소/CI 표면이다(GATE_REVIEW Gate 12).
 - **Agent-native (에이전트 네이티브)** — `mcp`: stdio 위 Model Context Protocol 서버를 실행해 읽기 전용 명령(validate/audit/next/status/doctor/stats/graph/explain/handoff/prompt)을 MCP 툴로 노출. 무의존성(Node 내장 JSON-RPC), 쓰기 미노출(1.6, GATE_REVIEW Gate 11). 근거: `src/mcp/tools.js` `TOOL_DEFS`.
 
 ## Cross-Cutting Concerns
@@ -65,3 +63,4 @@ contains_sensitive_info: false
 
 - 2026-07-14에 1.3.0 명령어군과 공통 관심사를 기준으로 재검토했다.
 - 2026-07-14에 도메인 지도를 현행화했다: 누락됐던 Knowledge(`graph`/`stats`, 1.4)·Release(`release-notes`)·Agent-native(`mcp`, 1.6)를 추가하고, stale했던 "migrate --apply 안정판 차단" 서술을 Gate 8(해금, preview-first) 기준으로 정정했으며, `drift`(Gate 9)를 반영했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.7 CI/CD 도입을 반영했다: Release 도메인에 `release-notes --body-only`(GitHub Release 본문용, 민감정보 스캔·차단)를 추가하고, 컴포지트 validate Action·태그 트리거 Release 잡은 저장소/CI 표면임을 명시했다(Gate 12). 내용 변경으로 `needs_review`로 내려갔으며 사람 재검토가 필요하다.

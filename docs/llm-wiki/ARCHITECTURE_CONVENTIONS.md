@@ -2,15 +2,13 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: architecture_conventions
 project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -53,6 +51,7 @@ contains_sensitive_info: false
 - `src/config.js` — core/profile별 필수 문서 목록(`CORE_REQUIRED_DOCS`, `PROFILE_DOCS`).
 - `src/template-renderer.js` — 생성 문서 frontmatter 템플릿과 `todayIsoDate()`.
 - `src/task-prompts.js` — `prompt`/`handoff`용 반복 작업 프롬프트.
+- `src/release-notes.js` — `release-notes` 구현: conventional commit 파싱·수집(`collectCommits`)과 릴리스 노트 렌더링. `buildReleaseNotesBody`가 1.7의 `--body-only` 본문(frontmatter/H1/스캐폴드 라인 제외)을 만들어 GitHub Release 본문 + 본문 민감정보 스캔에 쓰인다.
 - `src/report.js` · `src/encoding.js` · `src/files.js` · `src/sensitive-info.js` — 출력, UTF-8 처리, 파일 열거, 민감정보 스캔.
 
 ## Command Pipeline
@@ -87,3 +86,4 @@ contains_sensitive_info: false
 - 2026-07-14에 1.3.0 명령 표면과 소스 구조를 기준으로 재검토했다.
 - 2026-07-14에 1.5 프로그래매틱 API 모듈(`src/index.js`)과 `--format json`의 `schemaVersion` 부가를 반영하고, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.6 MCP 서버 모듈군(`src/mcp/{tools,dispatch,server}.js`, `llm-wiki mcp` 명령)을 반영했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.7 CI/CD 도입을 반영했다: Module Layout에 `src/release-notes.js`(`buildReleaseNotesBody`의 `--body-only` 본문 추출)를 추가하고, `.github/actions/validate/action.yml`·`publish.yml`의 GitHub Release 잡을 src 밖 CI 표면으로 언급했다(Gate 12). 내용 변경으로 `needs_review`로 내려갔으며 사람 재검토가 필요하다.

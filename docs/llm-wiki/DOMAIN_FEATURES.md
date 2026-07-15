@@ -2,21 +2,20 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
 wiki_block_version: v1
 source_files:
   - src/commands.js
   - src/detector.js
   - src/index.js
   - src/mcp/tools.js
+  - src/release-notes.js
 evidence:
   - src/commands.js#symbol:scanEnrichment
   - src/commands.js#symbol:scanRelatedReferences
@@ -25,6 +24,7 @@ evidence:
   - src/detector.js#symbol:detectProject
   - src/index.js#symbol:commands
   - src/mcp/tools.js#symbol:TOOL_DEFS
+  - src/release-notes.js#symbol:buildReleaseNotesBody
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -51,6 +51,7 @@ contains_sensitive_info: false
 - **OKF v0.1 호환** — `--profile okf-v0.1`로 `type`/`aliases`/`tags`와 wiki 링크를 검증한다. 코어 검증도 OKF `type`를 필수 `doc_type`의 부가적 alias로 수용한다(1.3).
 - **프로그래매틱 API** — CLI를 spawn하지 않고 패키지를 import해 명령을 in-process로 실행한다. `package.json` `exports`(`src/index.js`)가 동결된 `commands` 맵(CLI 표면과 1:1)·개별 함수 export·`normalizeOptions`(옵션 정규화)·`parseArgs`/`run`·`SCHEMA_VERSION`을 공개한다. `--format json` 출력에는 계약 pin용 `schemaVersion` 부가 필드가 붙는다(단일 소스 `src/config.js#JSON_SCHEMA_VERSION`, 기존 필드 불변). 근거: `src/index.js#symbol:commands`, 계약은 `docs/llm-wiki/PUBLIC_API.md`(Programmatic API).
 - **에이전트 네이티브(MCP 서버)** — `llm-wiki mcp`가 stdio 위에서 Model Context Protocol 서버를 띄워, 읽기 전용 명령(validate/audit/next/status/doctor/stats/graph/explain/handoff/prompt)을 MCP 툴로 노출한다. 에이전트(Claude Code·Cursor 등)가 shell out 대신 툴로 위키를 질의·점검한다. 각 툴은 명령 결과를 `structuredContent`(1.5 `schemaVersion` 포함)로, 사람용 요약을 텍스트 콘텐츠로 반환한다. 서드파티 SDK 없이 Node 내장만으로 개행 구분 JSON-RPC 2.0을 직접 구현(무의존성 불변식 유지). **쓰기 명령은 노출하지 않는다**(읽기 전용). 근거: `src/mcp/tools.js#symbol:TOOL_DEFS`, 범위 결정은 `GATE_REVIEW.md`(Gate 11).
+- **CI/CD 도입(1.7)** — `release-notes --body-only`가 변경 섹션 본문만 안전 추출(frontmatter/H1/스캐폴드 라인 제외)하고 본문 민감정보 스캔에 매치 시 차단(exit 2)해 GitHub Release 본문으로 쓴다. `.github/actions/validate/action.yml` 컴포지트 GitHub Action이 읽기 전용 `validate`를 `npx`로 감싸며 다른 액션을 끌어오지 않아 무의존성을 유지한다. `v*` 태그 push 시 `publish.yml`의 격리된 `contents: write` 잡이 러너 `gh` CLI로 GitHub Release를 만든다(본문은 `release-notes --body-only`). 근거: `src/release-notes.js#symbol:buildReleaseNotesBody`, 범위 결정은 `GATE_REVIEW.md`(Gate 12).
 
 ## Evidence
 
@@ -61,6 +62,7 @@ contains_sensitive_info: false
 - `src/detector.js#symbol:detectProject` — 프로젝트 유형 추론.
 - `src/index.js#symbol:commands` — 프로그래매틱 API의 동결된 명령 맵(CLI 표면과 1:1).
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — MCP로 노출하는 읽기 전용 툴 정의(commands 위 얇은 래퍼).
+- `src/release-notes.js#symbol:buildReleaseNotesBody` — `release-notes --body-only`의 변경 섹션 본문 추출(GitHub Release 본문 + 민감정보 차단).
 
 ## Open Questions
 
@@ -73,3 +75,4 @@ contains_sensitive_info: false
 - 2026-07-14에 1.4.0 기능(파일 기반 도메인 감지[Gate 10] · `graph`/`stats` 명령 · 대시보드 Document Index)을 반영해 갱신하고 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.5 프로그래매틱 API(`exports`/`commands` 맵 · `normalizeOptions` · `--format json`의 `schemaVersion`)를 기능으로 추가하고, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.6 에이전트 네이티브(MCP 서버 `llm-wiki mcp`, 읽기 전용 툴 10개)를 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.7 CI/CD 도입(`release-notes --body-only` + 본문 민감정보 차단, 컴포지트 validate GitHub Action, 태그 트리거 GitHub Release 잡)을 기능으로 추가했다(Gate 12). 내용 변경으로 `needs_review`로 내려갔으며 사람 재검토가 필요하다.

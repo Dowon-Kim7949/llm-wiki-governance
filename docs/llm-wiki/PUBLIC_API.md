@@ -2,19 +2,18 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: public_api
 project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
 wiki_block_version: v1
 source_files:
   - src/cli.js
   - src/commands.js
+  - src/release-notes.js
   - src/config-file.js
   - src/index.js
   - src/report.js
@@ -65,13 +64,13 @@ contains_sensitive_info: false
 | `drift [--downgrade]` | `verified` 문서의 `evidence.stale` 드리프트 리포트. `--downgrade`로 드리프트 문서를 `needs_review`로 강등(GATE_REVIEW Gate 9) | `--downgrade` 시 |
 | `graph` | 지식 그래프(문서 + 해소된 문서→문서 링크)를 출력. `--format text\|json\|mermaid\|dot`(graph 전용 토큰) | 없음 |
 | `stats` | wiki 헬스 스냅샷(verified%/enrichment%/evidence coverage/staleness/orphan) + 헬스 스코어 | 없음 |
-| `release-notes` | 마지막 `v*` 태그 이후 conventional commit으로 릴리스 노트 문서 생성 | `--out` 시 |
+| `release-notes [--body-only]` | 마지막 `v*` 태그 이후 conventional commit으로 릴리스 노트 문서 생성. `--body-only`는 변경 섹션 본문만 출력(frontmatter/H1/스캐폴드 라인 제외, GitHub Release 본문용)하고 본문 민감정보 스캔에 매치 시 차단(exit 2, 본문 withhold) | `--out` 시 |
 
 ## Key Options
 
 - `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; 나머지는 명시 선택. writable: codex/claude/cursor/copilot/windsurf/gemini, candidate: jetbrains/antigravity)
 - `--format <text|json|markdown|html>`(대부분 명령), `graph`는 `--format <text|json|mermaid|dot>`(mermaid/dot는 graph 전용). `--out <path>`, `--strict`, `--minimal`
-- `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate), `--changed` (validate)
+- `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate), `--body-only` (release-notes), `--changed` (validate)
 
 ## Exit Codes
 
@@ -191,3 +190,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-14에 1.5 프로그래매틱 API(`package.json` `exports` → `src/index.js`, 동결된 `commands` 맵·개별 함수 export·`normalizeOptions`·`parseArgs`/`run`·`SCHEMA_VERSION`)와 `--format json`의 부가적 `schemaVersion` 필드를 반영하고, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.5.1 API/출력 결함 수정을 반영했다(소비 프로젝트 스모크 테스트 발견): 결과 객체가 `schemaVersion`을 항상 담고 `.text`는 항상 텍스트임을 명시, `normalizeOptions`가 `parseArgs` 결과를 수용, `run(argv)`가 exit code 반환, HTML 대시보드 링크를 `--out` 기준 상대경로로. 모두 additive/refinement라 안정 계약을 깨지 않는다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.6 에이전트 네이티브(MCP 서버 `llm-wiki mcp`) 계약을 추가했다: stdio JSON-RPC 2.0 직접 구현(무의존성), 읽기 전용 툴 10개(쓰기 미노출), 결과는 `structuredContent`(schemaVersion 포함)+텍스트. 적대적 다차원 리뷰(프로토콜/정확성/안전/통합/테스트)로 확정 결함(버전 협상·알림 무응답·배치 처리·graph 설명)을 수정했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.7 계약을 반영했다: `release-notes`에 `--body-only`(변경 섹션 본문만; frontmatter/H1/스캐폴드 제외, 본문 민감정보 스캔·매치 시 차단 exit 2)를 추가하고 Key Options에 등재했다. `src/release-notes.js`를 source_files에 추가했다. 내용 변경으로 `needs_review`로 내려갔으며 사람 재검토가 필요하다.

@@ -2,15 +2,13 @@
 title: Project Profile
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: project_profile
 project: llm-wiki-standard
-last_updated: 2026-07-14
+last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-14
 wiki_block_version: v1
 source_files:
   - package.json
@@ -47,7 +45,7 @@ contains_sensitive_info: false
 - 런타임: Node.js `>=18.18.0` (package.json `engines`), `type: module` (ESM).
 - 진입점: `bin/llm-wiki.js` → `src/cli.js`의 `main()`.
 - 의존성: 런타임 서드파티 의존성 없음(Node 내장 모듈만 사용).
-- 배포: `v*` 태그 push → `.github/workflows/publish.yml`의 npm Trusted Publishing. 자세한 내용은 [Release Flow](RELEASE_FLOW.md).
+- 배포: `v*` 태그 push → `.github/workflows/publish.yml`의 npm Trusted Publishing. 1.7부터 같은 태그 트리거에 격리된 `contents: write` 잡이 추가돼 러너 `gh` CLI로 GitHub Release도 만든다(본문은 `release-notes --body-only`; GATE_REVIEW Gate 12). 자세한 내용은 [Release Flow](RELEASE_FLOW.md).
 
 ## Ownership
 
@@ -68,3 +66,4 @@ contains_sensitive_info: false
 ## Review Notes
 
 - 2026-07-14에 버전 표기를 version-agnostic으로 전환하고(고정 버전 숫자 제거 → `package.json` 참조) 1.2에서 해금된 `migrate --apply`를 반영한 뒤, 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.7 CI/CD 도입을 반영했다: 배포 절차에 `v*` 태그 push 시 GitHub Release 잡(gh CLI·`release-notes --body-only` 본문)이 추가됐다(Gate 12). 내용 변경으로 `needs_review`로 내려갔으며 사람 재검토가 필요하다.

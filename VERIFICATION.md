@@ -8,13 +8,14 @@ tags:
 status: needs_review
 doc_type: verification_report
 project: llm-wiki-standard
-last_updated: 2026-07-14
+last_updated: 2026-07-15
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
 source_files:
   - package.json
   - src/commands.js
+  - src/release-notes.js
   - tests/verification.test.js
 related:
   - README.md
@@ -26,7 +27,7 @@ contains_sensitive_info: false
 
 # LLM-WIKI Standard Package Verification Report
 
-This report records verification coverage for the `1.0.0` stable release line.
+This report records verification coverage for the stable `1.x` release line (the version in `package.json`, matched against the release tag). It is version-agnostic.
 
 ## Automated Coverage
 
@@ -42,7 +43,8 @@ The Node test suite covers:
 - existing LLM-WIKI frontmatter validation
 - audit-backed `validate`
 - `migrate --dry-run`
-- `migrate --apply` blocked behavior
+- `migrate --apply` block-version upgrade under the accepted `fix`-engine scope, preserving `verified` docs (GATE_REVIEW Gate 8)
+- `release-notes --body-only` change-body emission and its sensitive-info block (exit 2, body withheld, on a match)
 - Korean UTF-8 content audit without mojibake findings
 - sensitive-looking value redaction
 - repeated `--profile`, repeated `--agent`, and `--agent all`
@@ -66,17 +68,17 @@ npm pack --dry-run
 ## Expected Repository Result
 
 - package: `@dowonk-7949/llm-wiki-standard`
-- version: `1.0.0`
+- version: the value in `package.json` (single source; matched against the release tag)
 - publish registry: `https://registry.npmjs.org`
 - package-level `.npmrc`: not required
 - public source repository: `https://github.com/Dowon-Kim7949/llm-wiki-standard`
-- migration apply: blocked by design
+- migration apply: applies the accepted `fix`-engine scope, preserving `verified` docs (GATE_REVIEW Gate 8)
 - report output: UTF-8 Markdown with `needs_review` frontmatter
 
 ## Residual Risk
 
 - macOS/Linux shell execution should run in release CI before publish.
-- `migrate --apply` is intentionally omitted from `1.0.0`.
+- `migrate --apply` writes only the accepted mechanical scope; broader migration (Tier B fields, path repair, `verified` edits, status changes) stays out of scope until separately gated.
 - Fixture tests cover representative project detection, not every framework ecosystem.
 - CI artifact conventions remain a team decision.
 - CLI parsing remains intentionally small and does not support combined short flags.

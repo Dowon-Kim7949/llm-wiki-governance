@@ -19,6 +19,7 @@ source_files:
   - src/frontmatter-schema.js
   - src/release-notes.js
   - .github/workflows/publish.yml
+  - .github/actions/validate/action.yml
   - tests/verification.test.js
 related:
   - README.md

@@ -5,6 +5,36 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.7.0 — 2026-07-15
+
+CI/CD 도입. 위키를 GitHub Actions·릴리스 자동화에 쉽게 연결한다. 분할된 "팀 & 조직
+확장" 라인의 리드 슬라이스다. 하위호환 — 부가 명령 모드·컴포지트 액션·릴리스 잡만
+추가하며 CLI·JSON·프로그래매틱 API·frontmatter 계약은 불변이고 런타임 의존성 추가도
+없다.
+
+### 추가 (Added)
+
+- `release-notes --body-only` — 변경 섹션 본문만 출력한다(frontmatter·H1 제목·"게시
+  전 검토" 스캐폴드 라인 제외). GitHub Release 본문용이다. 커밋 제목이 본문에
+  들어가므로 민감정보 스캔을 돌려 매치 시 차단한다(exit 2, 본문 withhold). 근거:
+  `src/release-notes.js`, `src/commands.js`, `src/cli.js`.
+- `.github/actions/validate/action.yml`의 컴포지트 GitHub Action — 읽기 전용
+  `validate`를 `npx`로 감싼다. 다른 액션을 전혀 끌어오지 않아(bash + npx만) 무의존성
+  원칙을 유지하고 읽기만 한다. 정확한 `vX.Y.Z` 태그/커밋 SHA로 고정해 참조한다.
+- `v*` 태그 push 시 GitHub Release 자동화: `.github/workflows/publish.yml`의 격리된
+  `contents: write` 잡(`needs: publish`)이 `release-notes --body-only` 본문으로,
+  러너 내장 `gh` CLI로 릴리스를 생성한다(서드파티 릴리스 액션 없음).
+- 읽기 전용 리포트 명령 10개(`doctor`·`validate`·`validate-frontmatter`·`audit`·
+  `status`·`next`·`stats`·`graph`·`explain`·`release-notes`)의 `help`에 명령별
+  `--format json` 예시 추가.
+
+### 참고 (Notes)
+
+- 부가적·하위호환이며 무의존성 정책을 유지한다. 범위: `GATE_REVIEW.md`(Gate 12).
+  CI/CD 라인을 분할해 `1.7.0`은 리드 슬라이스만 낸다 — Marketplace 게시, floating
+  `@v1` 태그, config 로딩/init 스캐폴딩/doctor echo enabling prep, `1.8`–`1.11`은
+  보류다.
+
 ## 1.6.0 — 2026-07-14
 
 에이전트 네이티브(MCP). 에이전트가 CLI를 spawn하지 않고 위키를 툴로 질의·점검하게

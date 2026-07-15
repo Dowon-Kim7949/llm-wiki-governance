@@ -48,9 +48,22 @@ Humans review and approve verified status.
 CI continuously checks quality.
 ```
 
-## Shipped Through 1.6.0
+## Shipped Through 1.7.0
 
-`1.6.0` (this release) is the agent-native line: `llm-wiki mcp` runs a Model
+`1.7.0` (this release) is the CI/CD-adoption line — the lead slice of the split
+"Team & org scale" plan: a composite GitHub Action
+(`.github/actions/validate/action.yml`) wrapping the read-only `validate` via
+`npx` (pulls in no other actions, zero-dep, referenced by an exact `vX.Y.Z`
+tag/SHA); a GitHub Release on a `v*` tag push from an isolated `contents: write`
+job in `publish.yml` built with the runner's `gh` CLI, its body from the new
+additive `release-notes --body-only` mode run through the sensitive-info scan
+(blocks on a match); and per-command `--format json` examples in `help` for the
+ten read-only report commands. Backward-compatible — an additive command mode
+plus CI artifacts only. Marketplace publishing and a floating `@v1` tag are
+deferred behind a later gate (they need the `v*` tag-namespace deconflict first).
+Scope: `GATE_REVIEW.md` (Gate 12).
+
+`1.6.0` is the agent-native line: `llm-wiki mcp` runs a Model
 Context Protocol server over stdio so agents (Claude Code, Cursor, other MCP
 clients) query and check the wiki as tools instead of shelling out. It exposes
 the read-only commands (`validate`/`audit`/`next`/`status`/`doctor`/`stats`/
@@ -120,7 +133,7 @@ not re-list shipped work.
 - **Breaking changes are out of scope for `1.x`** and are parked under "Beyond
   the 1.x Horizon" below.
 
-## Release Plan (1.7–1.11) — Team & org scale, split
+## Release Plan (1.8–1.11) — Team & org scale, split
 
 Goal: support adoption beyond a single repo and a single maintainer.
 
@@ -133,8 +146,8 @@ contradicts two of this roadmap's own rules: *one minor at a time, in order* and
 *slip a release rather than ship it half-verified* (any one feature slipping would
 block the other four). So the line is **split into ordered minors, lowest-risk and
 highest-leverage first**, each pulled by need and each recording its scope as a new
-`GATE_REVIEW.md` gate (the next is Gate 12) *before* code — the same discipline that
-framed every prior scope decision.
+`GATE_REVIEW.md` gate (Gate 12 covered the shipped 1.7; the next is Gate 13, for
+1.8) *before* code — the same discipline that framed every prior scope decision.
 
 ### Enabling prep (additive; no new headline release)
 
@@ -157,26 +170,6 @@ generating the real-usage feedback the big features need. None of these change t
   missing visibility governance policy doc (a `project-profile` Open Question), a
   monorepo test fixture under `tests/fixtures/`, and the cross-repo reference-format
   spec — each captured as its own accepted `GATE_REVIEW` gate.
-
-### 1.7 — CI/CD adoption (lead)
-
-The one feature from the original bundle with **no dependency on the other four and
-no touch to the invariant-bearing core scanner** — so it is the lowest-risk,
-highest-leverage piece, and shipping it early generates the multi-team feedback the
-remaining minors need before their design freezes.
-
-- **First-class GitHub Action** — a composite action (one `uses:` step) wrapping the
-  read-only `validate` via `npx`.
-- **GitHub Release on tag push** — generated from release notes, extending
-  `.github/workflows/publish.yml`; built with the runner's `gh` CLI (no third-party
-  action, protecting the zero-dep ethos), in a job isolated to `contents: write`,
-  with the release body run through the sensitive-info scan.
-- **Per-command `--format json` examples in `help`** (moved up from the backlog) for
-  Action / wrapper / MCP authors.
-
-Deferred behind a dedicated gate: Marketplace publishing and Action floating-tag
-versioning, which first require deconflicting the `v*` npm-publish tag namespace and
-the `publish.yml` version-match guard.
 
 ### 1.8 — Config schema growth
 
@@ -233,8 +226,8 @@ Additive candidates worth doing but not yet slotted into a release:
   `backend` instead of `library` (deferred from `1.3`: reliable detection needs
   source scanning and risks false positives, so it needs a bounded heuristic).
 
-Promoted into the release plan above: per-command JSON `help` examples (→ 1.7) and
-richer enrichment linting (→ 1.8, as a toggleable `content.thin_body` rule).
+Shipped in 1.7.0: per-command JSON `help` examples. Promoted into the release plan
+above: richer enrichment linting (→ 1.8, as a toggleable `content.thin_body` rule).
 
 ## Beyond the 1.x Horizon (not planned now)
 
