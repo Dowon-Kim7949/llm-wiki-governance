@@ -1,5 +1,5 @@
 import path from "node:path";
-import { audit, doctor, driftCommand, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, doctor, driftCommand, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, monorepoCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { startMcpServer } from "./mcp/server.js";
@@ -8,6 +8,7 @@ const COMMANDS = new Map([
   ["doctor", doctor],
   ["validate", validateCommand],
   ["validate-frontmatter", validateFrontmatterCommand],
+  ["monorepo", monorepoCommand],
   ["status", statusCommand],
   ["next", nextCommand],
   ["explain", explainCommand],
@@ -370,6 +371,7 @@ Usage:
   llm-wiki explain <finding> [--format text|json|markdown|html] [--out <path>]
   llm-wiki validate [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--changed] [--since <git-ref>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki validate-frontmatter [--cwd <path>] [--strict]
+  llm-wiki monorepo [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--format text|json|markdown|html] [--out <path>]
   llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]

@@ -3,10 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
-import { detectProject } from "./detector.js";
+import { detectProject, detectWorkspaces } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
-import { CONFIG_FILENAME, loadProjectConfig } from "./config-file.js";
+import { CONFIG_FILENAME, loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { hasRequiredField, parseFrontmatter, validateFrontmatter } from "./frontmatter.js";
 import { schemaRequiredFields } from "./frontmatter-schema.js";
 import { renderTextReport } from "./report.js";
@@ -466,6 +466,68 @@ export async function audit(options) {
     { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: ["Stable validation is warning-friendly by default; use --strict when warnings should fail CI."] }
+  ]);
+}
+
+// Monorepo profile (1.10, GATE_REVIEW Gate 15): opt-in per-package validation.
+// Detects npm/yarn workspace packages, runs the cwd-parameterized validate over
+// each package that has docs/llm-wiki/, and aggregates. Each package honors its
+// own llm-wiki.config.json (loaded per package). Read-only. The additive
+// `packages[]` (per-package roll-up) and flattened, package-prefixed `findings`
+// appear only in this command, so single-repo command output is unchanged.
+export async function monorepoCommand(options) {
+  const { packages, unsupported } = await detectWorkspaces(options.cwd);
+  const packageResults = [];
+  const skipped = [];
+  const findings = [];
+  for (const pkgRel of packages) {
+    const pkgPosix = toPosix(pkgRel);
+    const pkgCwd = path.join(options.cwd, pkgRel);
+    if (!(await pathExists(path.join(pkgCwd, "docs", "llm-wiki")))) {
+      skipped.push(`${pkgPosix}: no docs/llm-wiki`);
+      continue;
+    }
+    const pkgOptions = { ...options, cwd: pkgCwd, type: null, profiles: [], rules: {}, requiredDocs: [], templates: {} };
+    const { config, errors: configErrors } = await loadProjectConfig(pkgCwd);
+    if (configErrors.length === 0) mergeConfigIntoOptions(pkgOptions, config);
+    const validateResult = await validateCommand(pkgOptions);
+    const pkgFindings = (validateResult.findings ?? []).map((finding) => ({ ...finding, path: `${pkgPosix}::${finding.path}` }));
+    findings.push(...pkgFindings);
+    packageResults.push({
+      path: pkgPosix,
+      result: validateResult.result ?? "pass",
+      findings: pkgFindings.length,
+      configError: configErrors.length > 0
+    });
+  }
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const summary = [
+    `result: ${result}`,
+    `workspaces_detected: ${packages.length}`,
+    `wiki_packages: ${packageResults.length}`,
+    `skipped: ${skipped.length}`,
+    `findings: ${findings.length}`
+  ];
+  if (unsupported) summary.push(`unsupported: ${unsupported}`);
+
+  return withText({
+    command: "monorepo",
+    result,
+    packages: packageResults,
+    skipped,
+    unsupported: unsupported ?? null,
+    findings
+  }, "LLM-WIKI Monorepo", [
+    { title: "Summary", body: summary },
+    { title: "Packages", body: packageResults.length ? packageResults.map((pkg) => `${pkg.path}: ${pkg.result} (${pkg.findings} findings${pkg.configError ? "; config error" : ""})`) : ["no workspace packages with docs/llm-wiki"] },
+    { title: "Skipped", body: skipped.length ? skipped : ["none"] },
+    { title: "Caveats", body: ["Per-package validate; each package honors its own llm-wiki.config.json. npm/yarn workspaces only (pnpm/YAML deferred — see unsupported). Read-only aggregation."] }
   ]);
 }
 

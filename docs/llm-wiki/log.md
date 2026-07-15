@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - feat: monorepo profile (per-package 검증) — 1.10.0, Gate 15
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/detector.js (`detectWorkspaces`: npm/yarn `workspaces` 감지 + `/*` glob·literal 확장; pnpm/YAML은 unsupported 보고)
+  - src/commands.js (`monorepoCommand`: 패키지별 validate + additive `packages[]`·패키지 prefix된 flattened findings 집계; 패키지별 loadProjectConfig/mergeConfigIntoOptions)
+  - src/cli.js (`monorepo` 명령 등록 + help), src/index.js (commands 맵 + 개별 export)
+  - tests/verification.test.js (파리티 목록에 monorepo 추가 + 3: workspaces 감지·집계·skip, single/pnpm unsupported, 패키지별 config 적용)
+- summary:
+  - Gate 15 1.10.0. `llm-wiki monorepo`가 npm/yarn `workspaces`를 감지해 각 패키지의 `docs/llm-wiki`를 validate하고 집계한다. additive `packages[]`(패키지별 roll-up)과 패키지 경로 prefix된 flattened `findings`는 이 명령에만 나타나 단일 레포 출력은 byte-identical 유지. 각 패키지는 자기 `llm-wiki.config.json`을 반영(패키지별 config 로드). pnpm/`pnpm-workspace.yaml`은 zero-dep 위해 미파싱(unsupported로 보고). read-only 집계. 201 pass, 레포 validate 0.
+- evidence:
+  - src/detector.js#symbol:detectWorkspaces
+  - src/commands.js#symbol:monorepoCommand
+- caveats:
+  - 지식 문서 doc-sync는 1.10.0 release-prep에서 일괄. deeper glob(`dir/**`)·pnpm/YAML은 후속(Gate 15 out of scope 명시).
+
 ## 2026-07-15 - docs: Gate 15 accepted_for_1.10.0 (monorepo profile)
 
 - status: needs_review

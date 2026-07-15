@@ -5,6 +5,61 @@ import { readUtf8 } from "./encoding.js";
 
 const KNOWN_PROFILES = new Set(["frontend", "backend", "fullstack", "library", "mixed", "unknown", "okf-v0.1"]);
 
+// Detects npm/yarn workspace packages from the root package.json `workspaces`
+// field (an array, or { packages: [] }). Expands a trailing `/*` glob to the
+// immediate subdirectories and accepts literal paths; deeper globs and pnpm/YAML
+// workspaces are not parsed (that would need a YAML/glob dependency), so they are
+// reported via `unsupported` rather than guessed. Returns a deterministic, deduped
+// list of workspace package paths (repo-relative, POSIX) plus an optional
+// `unsupported` note. Read-only.
+export async function detectWorkspaces(cwd) {
+  const packagePath = path.join(cwd, "package.json");
+  let patterns = null;
+  if (await pathExists(packagePath)) {
+    try {
+      const pkg = JSON.parse(await readUtf8(packagePath));
+      if (Array.isArray(pkg.workspaces)) patterns = pkg.workspaces;
+      else if (pkg.workspaces && Array.isArray(pkg.workspaces.packages)) patterns = pkg.workspaces.packages;
+    } catch {
+      patterns = null;
+    }
+  }
+  if (!patterns) {
+    if (await pathExists(path.join(cwd, "pnpm-workspace.yaml"))) {
+      return { packages: [], unsupported: "pnpm-workspace.yaml — YAML workspaces are not parsed (zero-dependency). List packages via npm/yarn workspaces to use monorepo mode." };
+    }
+    return { packages: [], unsupported: null };
+  }
+  const dirs = new Set();
+  for (const pattern of patterns) {
+    if (typeof pattern !== "string") continue;
+    for (const dir of await expandWorkspacePattern(cwd, pattern)) dirs.add(dir);
+  }
+  return { packages: [...dirs].sort(), unsupported: null };
+}
+
+async function expandWorkspacePattern(cwd, pattern) {
+  const normalized = pattern.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (normalized.endsWith("/*")) {
+    const base = normalized.slice(0, -2);
+    const baseDir = path.join(cwd, base);
+    if (!(await pathExists(baseDir))) return [];
+    let entries;
+    try {
+      entries = await readdir(baseDir, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+    return entries
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+      .map((entry) => (base ? `${base}/${entry.name}` : entry.name));
+  }
+  // Deeper globs are not expanded; a literal directory path is used as-is.
+  if (normalized.includes("*")) return [];
+  if (await pathExists(path.join(cwd, normalized))) return [normalized];
+  return [];
+}
+
 export async function detectProject(cwd, explicitType, explicitProfiles = []) {
   const signals = [];
   const packagePath = path.join(cwd, "package.json");

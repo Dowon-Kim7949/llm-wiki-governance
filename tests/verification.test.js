@@ -2550,7 +2550,7 @@ No Evidence section here on purpose.
 
 test("programmatic API exposes a frozen command map mirroring the CLI surface", () => {
   const expected = [
-    "doctor", "validate", "validate-frontmatter", "status", "next", "explain",
+    "doctor", "validate", "validate-frontmatter", "monorepo", "status", "next", "explain",
     "audit", "quickstart", "handoff", "prompt", "init", "migrate", "fix",
     "drift", "graph", "stats", "release-notes"
   ];
@@ -2565,6 +2565,7 @@ test("programmatic API exposes a frozen command map mirroring the CLI surface", 
   assert.equal(api.commands.doctor, api.doctor);
   assert.equal(api.commands.fix, api.fixCommand);
   assert.equal(api.commands["release-notes"], api.releaseNotesCommand);
+  assert.equal(api.commands.monorepo, api.monorepoCommand);
   assert.equal(typeof api.parseArgs, "function");
   assert.equal(typeof api.run, "function");
 });
@@ -2762,6 +2763,47 @@ test("visibility.declared_mismatch: flags contains_sensitive_info:false with sen
 
   const on = await audit({ ...api.normalizeOptions({ cwd }), rules: { "visibility.declared_mismatch": "warning" } });
   assert.ok(on.findings.some((f) => f.rule === "visibility.declared_mismatch"), "flags the declaration/content mismatch");
+});
+
+test("monorepo: detects npm/yarn workspaces and validates each wiki package (1.10)", async () => {
+  const root = await makeProject("mono-");
+  await writeJson(path.join(root, "package.json"), { name: "root", private: true, workspaces: ["packages/*"] });
+  for (const name of ["alpha", "beta"]) {
+    const wiki = path.join(root, "packages", name, "docs", "llm-wiki");
+    await mkdir(wiki, { recursive: true });
+    await writeFile(path.join(wiki, "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  }
+  await mkdir(path.join(root, "packages", "gamma"), { recursive: true }); // no wiki -> skipped
+
+  const result = await api.commands.monorepo(api.normalizeOptions({ cwd: root }));
+  assert.equal(result.command, "monorepo");
+  assert.deepEqual(result.packages.map((p) => p.path).sort(), ["packages/alpha", "packages/beta"]);
+  assert.ok(result.skipped.some((s) => s.includes("packages/gamma")));
+});
+
+test("monorepo: single repo yields empty packages; pnpm workspaces reported unsupported (1.10)", async () => {
+  const single = await makeProject("mono-single-");
+  const r1 = await api.commands.monorepo(api.normalizeOptions({ cwd: single }));
+  assert.deepEqual(r1.packages, []);
+  assert.equal(r1.unsupported, null);
+
+  const pnpm = await makeProject("mono-pnpm-");
+  await writeFile(path.join(pnpm, "pnpm-workspace.yaml"), "packages:\n  - 'packages/*'\n", { encoding: "utf8" });
+  const r2 = await api.commands.monorepo(api.normalizeOptions({ cwd: pnpm }));
+  assert.deepEqual(r2.packages, []);
+  assert.ok(r2.unsupported && r2.unsupported.includes("pnpm"));
+});
+
+test("monorepo: each package honors its own llm-wiki.config.json (1.10)", async () => {
+  const root = await makeProject("mono-config-");
+  await writeJson(path.join(root, "package.json"), { name: "root", private: true, workspaces: ["packages/*"] });
+  const wiki = path.join(root, "packages", "alpha", "docs", "llm-wiki");
+  await mkdir(wiki, { recursive: true });
+  await writeFile(path.join(wiki, "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+  await writeFile(path.join(root, "packages", "alpha", "llm-wiki.config.json"), JSON.stringify({ requiredDocs: ["docs/llm-wiki/RUNBOOK.md"] }), { encoding: "utf8" });
+
+  const result = await api.commands.monorepo(api.normalizeOptions({ cwd: root }));
+  assert.ok(result.findings.some((f) => f.rule === "structure.required_doc" && f.path.includes("packages/alpha") && f.path.includes("RUNBOOK")), "the package's own requiredDocs drove a per-package finding");
 });
 
 test("--format json output is stamped with schemaVersion without dropping fields", async () => {
