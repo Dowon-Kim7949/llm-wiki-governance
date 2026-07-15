@@ -2,15 +2,13 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: public_api
 project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -38,6 +36,8 @@ evidence:
   - src/commands.js#symbol:scanThinBody
   - src/commands.js#symbol:findMissingDocs
   - src/commands.js#symbol:renderOverriddenDoc
+  - src/commands.js#symbol:monorepoCommand
+  - src/detector.js#symbol:detectWorkspaces
   - src/report.js#symbol:dashboardDocHref
   - src/mcp/tools.js#symbol:TOOL_DEFS
   - src/mcp/dispatch.js#symbol:handleMessage
@@ -63,6 +63,7 @@ contains_sensitive_info: false
 | `explain <finding>` | finding 규칙 의미와 안전한 조치법 설명 | 없음 |
 | `validate` | audit 커버리지 재사용 구조/안전 검증(CI용) | 없음 |
 | `validate-frontmatter` | 필수 frontmatter 필드/값만 검증 | 없음 |
+| `monorepo` | npm/yarn workspaces 감지 후 패키지별 validate를 집계(additive `packages[]`; 단일 레포 출력 불변)(1.10) | 없음 |
 | `audit` | detection/structure/frontmatter/related/evidence/link/adapter/enrichment findings | 없음 |
 | `quickstart --dry-run\|--write` | doctor+init+frontmatter+handoff 프롬프트 | `--write` 시 |
 | `handoff` | Codex/Claude Code 인수인계 프롬프트 출력 | `--out` 시 |
@@ -191,6 +192,8 @@ MCP 클라이언트 등록 예시:
 - `src/commands.js#symbol:fixCommand` — 범위 한정 자동수정(기본 미리보기, `--write` 적용).
 - `src/config-file.js#symbol:mergeConfigIntoOptions` — config 기본값과 CLI 플래그의 병합 우선순위.
 - `src/index.js#symbol:commands` — 프로그래매틱 API의 동결된 명령 맵과 개별 함수 export.
+- `src/commands.js#symbol:monorepoCommand` — `monorepo` 명령: 패키지별 validate 집계, additive `packages[]`(1.10).
+- `src/detector.js#symbol:detectWorkspaces` — npm/yarn `workspaces` 감지(pnpm/YAML unsupported)(1.10).
 - `src/index.js#symbol:normalizeOptions` — 부분 옵션 또는 `parseArgs` 결과(`.options`)를 완전 옵션으로 정규화(`src/cli.js#symbol:defaultOptions` 공유). 동기·config 미로드.
 - `src/index.js#symbol:resolveOptions` — config 인식 옵션 해석(normalizeOptions + `llm-wiki.config.json` 병합); CLI·API·MCP 세 표면 공유(1.7.2).
 - `src/commands.js#symbol:applyRuleConfig` — config `rules` 토글을 findings에 중앙 적용(off 드롭·severity override; `sensitive.*` 비토글)(1.8).
@@ -217,3 +220,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-15에 1.7.2(enabling-prep) 계약을 반영했다: `resolveOptions`(config 인식 async 옵션 해석)를 프로그래매틱 API에 추가하고, MCP 툴 호출이 `llm-wiki.config.json`을 병합하도록 갱신하면서 1.6의 "MCP는 config 미병합" 서술을 정정했다. `init`/`quickstart`의 starter config scaffold와 `doctor`의 effective-config echo도 명시했다. 모두 additive(동기 `normalizeOptions`·동결 `commands` 맵 불변). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.8.0 config schema growth(Gate 13)를 반영했다: `llm-wiki.config.json`의 `rules` 맵으로 finding rule을 끄거나 severity를 재정의하는 per-project 토글(중앙 `applyRuleConfig`, `sensitive.*`는 안전상 비토글)과 opt-in lint `content.thin_body`(기본 off)를 추가하고, `doctor`가 토글 수를 echo함을 명시했다. Configuration/Stability에 `rules`를 등재했다. additive·opt-in. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.8.1 config schema growth 2부(Gate 13 완성)를 반영했다: `requiredDocs`(커스텀 문서셋; `structure.required_doc`로 검사, 검증 전용)와 `templates`(템플릿 오버라이드; body-only라 `verified` 불가한 구조적 가드레일)를 Configuration/Stability/Evidence에 등재하고 `doctor`가 개수를 echo함을 명시했다. additive·opt-in. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.10.0 monorepo profile(Gate 14→15)을 반영했다: 명령 표면에 opt-in `monorepo` 명령(npm/yarn workspaces 감지 후 패키지별 validate 집계, additive `packages[]`, 단일 레포 출력 byte-identical)을 등재하고 Evidence에 `monorepoCommand`·`detectWorkspaces`를 추가했다. additive·opt-in. LLM 편집이므로 `needs_review`로 내리고 사람 재검토를 기다린다.

@@ -5,6 +5,29 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.10.0 — 2026-07-15
+
+monorepo profile(Gate 15). opt-in `monorepo` 명령이 각 워크스페이스 패키지의 위키를
+validate하고 결과를 집계한다. Additive이며 단일 레포의 CLI·JSON·프로그래매틱 API·frontmatter
+계약은 불변, 런타임 의존성 추가 없음.
+
+### 추가 (Added)
+
+- `llm-wiki monorepo` — npm/yarn `workspaces`(배열 또는 `{ packages }`)를 감지해
+  `docs/llm-wiki/`가 있는 각 패키지에 기존 cwd-파라미터라이즈드 validate를 실행하고 집계한다.
+  결과는 strictly additive `packages[]` roll-up(경로·패키지별 result·finding 수)과 패키지 경로
+  prefix된 `findings`(exit code 결정)를 담는다. 각 패키지는 자기 `llm-wiki.config.json`을
+  반영한다. pnpm/`pnpm-workspace.yaml`은 unsupported로 보고한다(YAML 미파싱 — zero-dep). 근거:
+  `src/detector.js`(`detectWorkspaces`), `src/commands.js`(`monorepoCommand`). CLI와
+  프로그래매틱 API `commands` 맵에 노출.
+
+### 참고 (Notes)
+
+- opt-in·additive: 새 `packages[]` 필드와 패키지별 findings는 `monorepo` 명령에만 나타나 단일 레포
+  출력은 byte-identical. read-only 집계, `1.0.0` 계약·zero-runtime-dependency 정책 불변. 범위:
+  `GATE_REVIEW.md`(Gate 15, accepted). deeper glob·pnpm/YAML은 후속, cross-repo 링크는 다음
+  마이너(`1.11`).
+
 ## 1.9.0 — 2026-07-15
 
 visibility governance(Gate 14). 이미 필수인 `visibility` 필드에 대한 opt-in 일관성 린트로,

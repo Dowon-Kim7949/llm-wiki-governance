@@ -187,6 +187,10 @@ config가 설계 근거가 될 실사용을 만들어낸 뒤 당긴다.
 
 ### 1.10 — 모노레포 프로필
 
+**1.10.0 출시:** `monorepo` 명령이 npm/yarn `workspaces`를 감지해 각 패키지를 validate하고
+additive `packages[]` roll-up으로 집계한다(GATE_REVIEW Gate 15). read-only, 단일 레포
+byte-identical, pnpm/YAML은 후속. 패키지 간 집계 그래프·deeper glob은 이후. 다음 예정 마이너: `1.11`.
+
 검증·그래프를 집계하는 패키지별 wiki를, **이미 cwd 파라미터화된 파이프라인**
 (`audit` / `collectWikiGraph` / `findMissingDocs`) 위의 opt-in map으로 만든다. JSON
 형태는 엄격히 부가적인 `packages[]`라 단일 저장소 출력은 byte 동일하게 유지된다. 이제

@@ -209,6 +209,11 @@ default error/blocked rule (that would break the additive invariant).
 
 ### 1.10 — Monorepo profile
 
+**Shipped in 1.10.0:** the `monorepo` command detects npm/yarn `workspaces` and
+validates each package, aggregating an additive `packages[]` roll-up (GATE_REVIEW
+Gate 15). Read-only; single-repo output byte-identical; pnpm/YAML deferred. An
+aggregated cross-package graph and deeper globs can follow. Next planned minor: `1.11`.
+
 Per-package wikis with aggregated validation and graph, built as an **opt-in map
 over the already cwd-parameterized pipeline** (`audit` / `collectWikiGraph` /
 `findMissingDocs`), with a strictly additive `packages[]` JSON shape so single-repo

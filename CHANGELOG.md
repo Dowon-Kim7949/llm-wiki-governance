@@ -5,6 +5,33 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.10.0 — 2026-07-15
+
+Monorepo profile (Gate 15). An opt-in `monorepo` command validates each workspace
+package's wiki and aggregates the results. Additive; the single-repo CLI, JSON,
+programmatic-API, and frontmatter contracts are unchanged, and no runtime
+dependency is added.
+
+### Added
+
+- `llm-wiki monorepo` — detects npm/yarn `workspaces` (an array or `{ packages }`),
+  runs the existing cwd-parameterized validate over each package that has a
+  `docs/llm-wiki/`, and aggregates. The result carries a strictly additive
+  `packages[]` roll-up (path, per-package result, finding count) plus
+  package-path-prefixed `findings` that drive the exit code. Each package honors its
+  own `llm-wiki.config.json`. pnpm / `pnpm-workspace.yaml` are reported as
+  unsupported (YAML is not parsed — zero dependency). Source: `src/detector.js`
+  (`detectWorkspaces`), `src/commands.js` (`monorepoCommand`). Exposed on the CLI
+  and the programmatic-API `commands` map.
+
+### Notes
+
+- Opt-in and additive: the new `packages[]` field and per-package findings appear
+  only in the `monorepo` command, so single-repo command output is byte-identical.
+  Read-only aggregation; the `1.0.0` contracts and zero-runtime-dependency policy are
+  preserved. Scope: `GATE_REVIEW.md` (Gate 15, accepted). Deeper globs and
+  pnpm/YAML workspaces are deferred; cross-repo links are the next minor (`1.11`).
+
 ## 1.9.0 — 2026-07-15
 
 Visibility governance (Gate 14). Opt-in consistency lints for the already-required
