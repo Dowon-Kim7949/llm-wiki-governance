@@ -5,6 +5,32 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.8.1 — 2026-07-15
+
+Config schema growth, part 2 — custom document sets and template overrides. These
+complete Gate 13's three config features (rule toggles shipped in 1.8.0). Additive
+and opt-in; CLI/JSON/programmatic-API/frontmatter contracts unchanged; no runtime
+dependency added.
+
+### Added
+
+- Custom document sets: a `requiredDocs` array in `llm-wiki.config.json` adds
+  project-specific required documents to the core/profile set, checked by the same
+  `structure.required_doc` machinery (validation only — `init` does not scaffold
+  arbitrary custom docs). Source: `src/config-file.js`, `src/commands.js`.
+- Template overrides: a `templates` map points a generated wiki doc at a
+  project-local template. Only the override's body is used — the standard CLI
+  frontmatter always wraps it, so an override can NEVER set `status: verified` (a
+  hard, structural guardrail); a missing override file falls back to the built-in
+  template. Source: `src/commands.js`.
+- `doctor` echoes `requiredDocs` and `templates` counts in its config line.
+
+### Notes
+
+- Additive/opt-in; the `1.0.0` contracts and the zero-runtime-dependency policy are
+  preserved. Scope: `GATE_REVIEW.md` (Gate 13, accepted). This completes the config
+  schema growth line; visibility governance is the next planned minor (`1.9`).
+
 ## 1.8.0 — 2026-07-15
 
 Config schema growth — per-project rule toggles (Gate 13). The first feature slice

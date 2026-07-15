@@ -2,15 +2,13 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: public_api
 project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -36,6 +34,8 @@ evidence:
   - src/commands.js#symbol:scaffoldProjectConfig
   - src/commands.js#symbol:applyRuleConfig
   - src/commands.js#symbol:scanThinBody
+  - src/commands.js#symbol:findMissingDocs
+  - src/commands.js#symbol:renderOverriddenDoc
   - src/report.js#symbol:dashboardDocHref
   - src/mcp/tools.js#symbol:TOOL_DEFS
   - src/mcp/dispatch.js#symbol:handleMessage
@@ -87,6 +87,7 @@ contains_sensitive_info: false
 
 - 프로젝트 루트의 `llm-wiki.config.json`으로 `type`/`profiles`/`agents`/`strict`의 영속 기본값을 선언할 수 있다.
 - 1.8부터 `rules` 맵으로 개별 finding rule을 끄거나 severity를 재정의한다: `{ "rule.id": "off"|"blocked"|"error"|"warning"|"info" }`. `audit`/`status`/`validate-frontmatter`에 중앙 적용되고(그래서 `validate`·`next`도 상속) CLI·API·MCP 모두에 반영된다. 레지스트리 rule만 토글되며 **`sensitive.*`(민감정보)는 절대 토글 불가**(안전 불변식). opt-in lint `content.thin_body`(기본 off)는 `rules`에 설정해 켠다.
+- 1.8부터 `requiredDocs`(문서 경로 배열)로 프로젝트 자체 필수 문서를 core/profile 목록에 추가한다(같은 `structure.required_doc` 검사; 검증 전용, `init`은 임의 문서를 scaffold하지 않음). `templates`(생성문서경로→템플릿파일경로)로 생성 문서를 프로젝트-로컬 템플릿에서 만든다 — **오버라이드는 body만 쓰고 frontmatter는 항상 CLI가 생성해 `status: verified`를 절대 만들 수 없다**(구조적 가드레일).
 - 적용 우선순위: CLI 플래그 > config > 자동감지. 잘못된 config는 exit code `3`으로 거부된다.
 - 배포물에는 포함되지 않는 저장소-로컬 설정이다(`package.json` `files` 미포함).
 
@@ -177,7 +178,7 @@ MCP 클라이언트 등록 예시:
 - 프로그래매틱 API(`commands` 맵 키, 개별 함수 export, `SCHEMA_VERSION`, 공통 결과 필드)는 안정 계약이다. 명령별 payload 필드는 CLI `--format json`과 동일한 부가적(additive) SemVer 정책을 따른다.
 - `migrate --apply`는 GATE_REVIEW Gate 8 범위로 활성화돼 있다(preview-first, `fix` 범위 + `wiki_block_version` 업그레이드, `verified` 내용·status 불변). `graph`/`stats`는 읽기전용이다.
 - `fix`는 `GATE_REVIEW.md`의 "Autofix (--fix) Scope Decision"에 명시된 좁은 범위만 수정한다: `verified` 문서 내용·`docs/llm-wiki/` 밖 파일·`source_files`/`evidence` 값·Tier B 필드(title/doc_type/project/author)·미보강 내용은 건드리지 않는다.
-- `llm-wiki.config.json` 스키마는 Gate 13(1.8)으로 성장 중이다: `type`/`profiles`/`agents`/`strict`에 더해 1.8이 `rules`(rule 토글)를 추가한다. 1.7.2부터 `init`/`quickstart --write`가 최소 config를 scaffold하고(기존 파일 미덮어씀) `doctor`가 effective config를 echo한다. 커스텀 문서셋·템플릿 오버라이드는 `1.8.x`로 후속.
+- `llm-wiki.config.json` 스키마는 Gate 13(1.8)으로 성장했다: `type`/`profiles`/`agents`/`strict`에 더해 `rules`(rule 토글)·`requiredDocs`(커스텀 문서셋)·`templates`(템플릿 오버라이드, never-`verified` 가드레일)가 추가돼 config 성장이 완성됐다. unknown 키는 여전히 무시돼 옛 파일이 계속 동작한다. 1.7.2부터 `init`/`quickstart --write`가 최소 config를 scaffold하고 `doctor`가 effective config를 echo한다.
 - MCP 서버(1.6)는 읽기 전용 툴만 노출하고 무의존성(Node 내장 JSON-RPC)으로 구현한다. MCP 툴 이름 집합과 결과 형태(1.5 result + `schemaVersion`)가 새 안정 계약이다(GATE_REVIEW Gate 11). 1.7.2부터 MCP 툴 호출도 대상 프로젝트의 `llm-wiki.config.json`을 `resolveOptions`로 병합해 CLI·API와 동일한 effective options를 쓴다(malformed config는 `isError`로 표면화).
 
 ## Evidence
@@ -192,6 +193,8 @@ MCP 클라이언트 등록 예시:
 - `src/index.js#symbol:resolveOptions` — config 인식 옵션 해석(normalizeOptions + `llm-wiki.config.json` 병합); CLI·API·MCP 세 표면 공유(1.7.2).
 - `src/commands.js#symbol:applyRuleConfig` — config `rules` 토글을 findings에 중앙 적용(off 드롭·severity override; `sensitive.*` 비토글)(1.8).
 - `src/commands.js#symbol:scanThinBody` — opt-in `content.thin_body` lint(기본 off, config로 활성화)(1.8).
+- `src/commands.js#symbol:findMissingDocs` — config `requiredDocs`를 core/profile 필수 목록에 병합해 `structure.required_doc`로 검사(1.8).
+- `src/commands.js#symbol:renderOverriddenDoc` — config `templates` 오버라이드(body-only; frontmatter는 항상 CLI 생성이라 `verified` 불가)(1.8).
 - `src/cli.js#symbol:applyProjectConfig` — config 로드+병합+agent 재정규화의 공유 구현(세 표면이 동일 effective options를 얻는 seam).
 - `src/commands.js#symbol:scaffoldProjectConfig` — init/quickstart의 starter config scaffold(additive·preview-first·기존 파일 미덮어씀).
 - `src/cli.js#symbol:main` — `run(argv)`의 실체. 숫자 exit code를 반환하고 `process.exitCode`도 설정한다.
@@ -211,3 +214,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-15에 1.7 계약을 반영했다: `release-notes`에 `--body-only`(변경 섹션 본문만; frontmatter/H1/스캐폴드 제외, 본문 민감정보 스캔·매치 시 차단 exit 2)를 추가하고 Key Options에 등재했다. `src/release-notes.js`를 source_files에 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.7.2(enabling-prep) 계약을 반영했다: `resolveOptions`(config 인식 async 옵션 해석)를 프로그래매틱 API에 추가하고, MCP 툴 호출이 `llm-wiki.config.json`을 병합하도록 갱신하면서 1.6의 "MCP는 config 미병합" 서술을 정정했다. `init`/`quickstart`의 starter config scaffold와 `doctor`의 effective-config echo도 명시했다. 모두 additive(동기 `normalizeOptions`·동결 `commands` 맵 불변). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.8.0 config schema growth(Gate 13)를 반영했다: `llm-wiki.config.json`의 `rules` 맵으로 finding rule을 끄거나 severity를 재정의하는 per-project 토글(중앙 `applyRuleConfig`, `sensitive.*`는 안전상 비토글)과 opt-in lint `content.thin_body`(기본 off)를 추가하고, `doctor`가 토글 수를 echo함을 명시했다. Configuration/Stability에 `rules`를 등재했다. additive·opt-in. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.8.1 config schema growth 2부(Gate 13 완성)를 반영했다: `requiredDocs`(커스텀 문서셋; `structure.required_doc`로 검사, 검증 전용)와 `templates`(템플릿 오버라이드; body-only라 `verified` 불가한 구조적 가드레일)를 Configuration/Stability/Evidence에 등재하고 `doctor`가 개수를 echo함을 명시했다. additive·opt-in. LLM 편집이므로 `needs_review`로 내리고 사람 재검토를 기다린다.
