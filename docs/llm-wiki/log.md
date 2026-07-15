@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - feat: 커스텀 문서셋 (config requiredDocs) — Gate 13, 1.8.x
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/config-file.js (config `requiredDocs`[string[]] 검증 + 병합)
+  - src/cli.js (`defaultOptions`에 `requiredDocs: []`)
+  - src/commands.js (`findMissingDocs`가 customDocs를 required 목록에 병합[dedupe]; audit/status 호출부 갱신; doctor echo에 `requiredDocs=N`)
+  - tests/verification.test.js (+2: requiredDocs 검증 / 누락→structure.required_doc·존재→해소)
+- summary:
+  - Gate 13의 두 번째 피처(커스텀 문서셋). config `requiredDocs`로 프로젝트가 core/profile 필수 문서 목록에 자체 문서를 추가하면 같은 `structure.required_doc` 검사가 audit/status/validate에 적용된다. **검증 전용**(init 자동생성 아님 — 임의 이름엔 템플릿이 없음). `doctor`가 개수를 echo. additive·opt-in, 1.0.0 계약·zero-dep 불변.
+- evidence:
+  - src/commands.js#symbol:findMissingDocs
+- caveats:
+  - 지식 문서 doc-sync는 1.8.x release-prep에서 일괄. 193 pass, 레포 validate 0.
+
 ## 2026-07-15 - docs: 1.8.0 rule-toggle 문서 3개 verified 재승인
 
 - status: verified

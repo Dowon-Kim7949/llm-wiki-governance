@@ -142,7 +142,8 @@ export function defaultOptions() {
     out: null,
     profiles: [],
     agents: [],
-    rules: {}
+    rules: {},
+    requiredDocs: []
   };
 }
 

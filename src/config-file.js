@@ -66,6 +66,15 @@ export async function loadProjectConfig(cwd) {
     }
   }
 
+  if ("requiredDocs" in parsed) {
+    const docs = parsed.requiredDocs;
+    if (!Array.isArray(docs) || docs.some((value) => typeof value !== "string")) {
+      errors.push(`${CONFIG_FILENAME}: "requiredDocs" must be an array of document path strings.`);
+    } else {
+      config.requiredDocs = [...docs];
+    }
+  }
+
   return { found: true, config, errors };
 }
 
@@ -88,6 +97,9 @@ export function mergeConfigIntoOptions(options, config) {
   }
   if (config.rules && (!options.rules || Object.keys(options.rules).length === 0)) {
     options.rules = { ...config.rules };
+  }
+  if (Array.isArray(config.requiredDocs) && (!options.requiredDocs || options.requiredDocs.length === 0)) {
+    options.requiredDocs = [...config.requiredDocs];
   }
 
   return options;

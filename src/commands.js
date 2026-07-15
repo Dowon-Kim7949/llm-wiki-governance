@@ -172,6 +172,9 @@ async function describeEffectiveConfig(cwd) {
   if (config.rules && typeof config.rules === "object" && Object.keys(config.rules).length > 0) {
     parts.push(`rules=${Object.keys(config.rules).length}`);
   }
+  if (Array.isArray(config.requiredDocs) && config.requiredDocs.length > 0) {
+    parts.push(`requiredDocs=${config.requiredDocs.length}`);
+  }
   return parts.length > 0 ? `present (${parts.join(", ")})` : "present (no keys set)";
 }
 
@@ -227,7 +230,7 @@ export async function statusCommand(options) {
     path: ".",
     message
   }));
-  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles);
+  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles, options.requiredDocs);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
   const relatedFindings = await scanRelatedReferences(options.cwd);
   const enrichmentFindings = await scanEnrichment(options.cwd);
@@ -387,7 +390,7 @@ export async function audit(options) {
     path: ".",
     message
   }));
-  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles);
+  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles, options.requiredDocs);
   const encodingFindings = await scanEncoding(options.cwd);
   const sensitiveFindings = await scanSensitive(options.cwd);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
@@ -1502,7 +1505,7 @@ async function listTargetMarkdown(cwd) {
   return files.filter((file) => !toPosix(path.relative(cwd, file)).startsWith("templates/"));
 }
 
-async function findMissingDocs(cwd, projectType, profiles = []) {
+async function findMissingDocs(cwd, projectType, profiles = [], customDocs = []) {
   const findings = [];
   const wikiEntry = path.join(cwd, "docs", "llm-wiki", "index.md");
   if (!(await pathExists(wikiEntry))) {
@@ -1515,7 +1518,8 @@ async function findMissingDocs(cwd, projectType, profiles = []) {
     return findings;
   }
 
-  for (const rel of plannedDocs(projectType, false, profiles)) {
+  const required = [...new Set([...plannedDocs(projectType, false, profiles), ...customDocs])];
+  for (const rel of required) {
     if (!(await pathExists(path.join(cwd, rel)))) {
       findings.push({
         severity: "warning",

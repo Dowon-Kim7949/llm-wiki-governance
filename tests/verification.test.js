@@ -2683,6 +2683,31 @@ test("content.thin_body is off by default and opt-in via config rules (1.8)", as
   assert.ok(optedIn.findings.some((f) => f.rule === "content.thin_body"), "opt-in produces the finding");
 });
 
+test("config requiredDocs: loadProjectConfig validates the array shape (1.8)", async () => {
+  const okCwd = await makeProject("reqdocs-ok-");
+  await writeFile(path.join(okCwd, "llm-wiki.config.json"), JSON.stringify({ requiredDocs: ["docs/llm-wiki/RUNBOOK.md"] }), { encoding: "utf8" });
+  const ok = await loadProjectConfig(okCwd);
+  assert.deepEqual(ok.errors, []);
+  assert.deepEqual(ok.config.requiredDocs, ["docs/llm-wiki/RUNBOOK.md"]);
+
+  const bad = await makeProject("reqdocs-bad-");
+  await writeFile(path.join(bad, "llm-wiki.config.json"), JSON.stringify({ requiredDocs: "docs/llm-wiki/RUNBOOK.md" }), { encoding: "utf8" });
+  assert.ok((await loadProjectConfig(bad)).errors.length > 0);
+});
+
+test("custom document sets extend the structure.required_doc check (1.8)", async () => {
+  const cwd = await makeProject("reqdocs-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "---\ntitle: I\nstatus: needs_review\ndoc_type: index\n---\n", { encoding: "utf8" });
+
+  const missing = await audit({ ...api.normalizeOptions({ cwd }), requiredDocs: ["docs/llm-wiki/RUNBOOK.md"] });
+  assert.ok(missing.findings.some((f) => f.rule === "structure.required_doc" && f.path === "docs/llm-wiki/RUNBOOK.md"), "custom required doc flagged when missing");
+
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "RUNBOOK.md"), "---\ntitle: R\nstatus: needs_review\ndoc_type: reference\n---\n\nbody\n", { encoding: "utf8" });
+  const present = await audit({ ...api.normalizeOptions({ cwd }), requiredDocs: ["docs/llm-wiki/RUNBOOK.md"] });
+  assert.ok(!present.findings.some((f) => f.rule === "structure.required_doc" && f.path === "docs/llm-wiki/RUNBOOK.md"), "satisfied once the custom doc exists");
+});
+
 test("--format json output is stamped with schemaVersion without dropping fields", async () => {
   const result = { command: "audit", result: "pass", findings: [], text: "rendered" };
   let captured = "";
