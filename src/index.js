@@ -35,7 +35,7 @@ import {
   validateCommand,
   validateFrontmatterCommand
 } from "./commands.js";
-import { defaultOptions, main, parseArgs } from "./cli.js";
+import { applyProjectConfig, defaultOptions, main, parseArgs } from "./cli.js";
 import { JSON_SCHEMA_VERSION } from "./config.js";
 import { startMcpServer } from "./mcp/server.js";
 import { handleMessage as handleMcpMessage, MCP_PROTOCOL_VERSION } from "./mcp/dispatch.js";
@@ -141,6 +141,25 @@ export function normalizeOptions(overrides = {}) {
   const options = { ...defaultOptions(), ...source };
   if (typeof options.cwd === "string") options.cwd = path.resolve(options.cwd);
   return options;
+}
+
+/**
+ * Config-aware companion to {@link normalizeOptions}. Builds a full options
+ * object, then loads the project's `llm-wiki.config.json` (from `cwd`) and merges
+ * it in — the same resolution the `llm-wiki` binary performs — so in-process
+ * callers and the MCP server get the same effective options the CLI would.
+ * Explicit/override values win; config only fills what was left unset and can
+ * additively turn `strict` on. Async because it reads the config file. Returns
+ * the resolved options plus any config `errors` (malformed JSON, invalid field,
+ * or an invalid config-supplied agent) — the same conditions the CLI exits 3 on;
+ * callers decide how to surface them.
+ * @param {Partial<Options> | { options: Partial<Options> }} [overrides]
+ * @returns {Promise<{ options: Options, errors: string[] }>}
+ */
+export async function resolveOptions(overrides = {}) {
+  const options = normalizeOptions(overrides);
+  const { errors } = await applyProjectConfig(options);
+  return { options, errors };
 }
 
 // Individual command functions, exported under their source names for direct

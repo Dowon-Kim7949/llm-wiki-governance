@@ -83,22 +83,11 @@ export async function main(argv) {
     return 3;
   }
 
-  const { config, errors: configErrors } = await loadProjectConfig(options.cwd);
+  const { errors: configErrors } = await applyProjectConfig(options);
   if (configErrors.length > 0) {
     for (const error of configErrors) console.error(error);
     process.exitCode = 3;
     return 3;
-  }
-  const usedConfigAgents = (!options.agents || options.agents.length === 0) && Array.isArray(config?.agents);
-  mergeConfigIntoOptions(options, config);
-  if (usedConfigAgents) {
-    const agentErrors = [];
-    options.agents = normalizeAgents(options.agents, options.withAdapters, agentErrors);
-    if (agentErrors.length > 0) {
-      for (const error of agentErrors) console.error(error);
-      process.exitCode = 3;
-      return 3;
-    }
   }
 
   const result = await handler(options);
@@ -106,6 +95,25 @@ export async function main(argv) {
   const code = exitCodeFor(result, options);
   process.exitCode = code;
   return code;
+}
+
+// Loads llm-wiki.config.json for options.cwd and merges it into `options`
+// (explicit/CLI values win; strict is additive; agents supplied by config are
+// re-normalized). Mutates `options` in place and returns any config errors
+// (malformed JSON, invalid field, or an invalid config-supplied agent). Shared by
+// the CLI (main), the programmatic API (index.js resolveOptions), and the MCP
+// server so all three surfaces resolve the same effective options from one file.
+export async function applyProjectConfig(options) {
+  const { config, errors } = await loadProjectConfig(options.cwd);
+  if (errors.length > 0) return { errors };
+  const usedConfigAgents = (!options.agents || options.agents.length === 0) && Array.isArray(config?.agents);
+  mergeConfigIntoOptions(options, config);
+  if (usedConfigAgents) {
+    const agentErrors = [];
+    options.agents = normalizeAgents(options.agents, options.withAdapters, agentErrors);
+    if (agentErrors.length > 0) return { errors: agentErrors };
+  }
+  return { errors: [] };
 }
 
 // The full option set every command handler reads, with default values. This is

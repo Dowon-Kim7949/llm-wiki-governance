@@ -2561,6 +2561,39 @@ test("a command runs in-process via the map with normalized options", async () =
   assert.ok(typeof result.text === "string");
 });
 
+test("resolveOptions merges llm-wiki.config.json like the CLI (config-aware API)", async () => {
+  const cwd = await makeProject("api-config-");
+  await writeJson(path.join(cwd, "llm-wiki.config.json"), { type: "backend", strict: true, agents: ["codex"] });
+  const { options, errors } = await api.resolveOptions({ cwd });
+  assert.deepEqual(errors, []);
+  assert.equal(options.type, "backend");
+  assert.equal(options.strict, true);
+  assert.deepEqual(options.agents, ["codex"]);
+  assert.ok(path.isAbsolute(options.cwd));
+});
+
+test("resolveOptions lets explicit overrides win while config still adds strict", async () => {
+  const cwd = await makeProject("api-config-win-");
+  await writeJson(path.join(cwd, "llm-wiki.config.json"), { type: "backend", strict: true });
+  const { options } = await api.resolveOptions({ cwd, type: "frontend" });
+  assert.equal(options.type, "frontend"); // explicit override wins over config
+  assert.equal(options.strict, true);      // config can still turn strict on additively
+});
+
+test("resolveOptions with no config file is a clean no-op", async () => {
+  const cwd = await makeProject("api-config-none-");
+  const { options, errors } = await api.resolveOptions({ cwd });
+  assert.deepEqual(errors, []);
+  assert.equal(options.type, null);
+});
+
+test("resolveOptions surfaces malformed config as errors instead of throwing", async () => {
+  const cwd = await makeProject("api-config-bad-");
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), "{ not json", { encoding: "utf8" });
+  const { errors } = await api.resolveOptions({ cwd });
+  assert.ok(errors.length > 0);
+});
+
 test("--format json output is stamped with schemaVersion without dropping fields", async () => {
   const result = { command: "audit", result: "pass", findings: [], text: "rendered" };
   let captured = "";

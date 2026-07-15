@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-15 - feat: EP1 config 로딩 일원화 (CLI/API/MCP 동일 effective options) — 1.7.2 enabling-prep
+
+- status: needs_review
+- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/cli.js (인라인 config 로드+병합+agent 재정규화를 공유 export `applyProjectConfig`로 추출; main()은 이를 호출 — 동작 보존)
+  - src/index.js (async `resolveOptions` 추가·export: normalizeOptions + applyProjectConfig; 동기 normalizeOptions 계약 불변)
+  - src/mcp/dispatch.js (handleToolCall이 normalizeOptions 대신 resolveOptions 사용 → MCP가 프로젝트 llm-wiki.config.json 반영; malformed config는 isError로 표면화)
+  - tests/verification.test.js (+4 resolveOptions), tests/mcp.test.js (+2 MCP config)
+- summary:
+  - Gate 13 enabling-prep #1. 지금까지 config 병합은 CLI(main)에만 있었고 1.5 프로그래매틱 API·1.6 MCP는 llm-wiki.config.json을 무시했다(Gate 11 honest limit). 공유 `applyProjectConfig`로 로직을 한 곳에 모으고, index.js가 config-aware async `resolveOptions`를 추가 export하며, MCP dispatcher가 이를 호출하도록 해 세 표면이 동일한 effective options를 얻는다. additive: 동기 normalizeOptions·프로즌 commands 맵·1.0.0 계약 불변, zero-dep 유지. 실사용 축적을 위해 EP2(starter config scaffold + doctor echo)와 함께 1.7.2 patch로 배포 예정.
+- evidence:
+  - src/cli.js#symbol:applyProjectConfig
+  - src/index.js#symbol:resolveOptions
+  - src/mcp/dispatch.js#symbol:handleToolCall
+- caveats:
+  - 지식 문서 doc-sync(PUBLIC_API/DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS)는 1.7.2 release-prep에서 EP2와 함께 일괄 반영한다.
+  - 테스트 183 pass. validate/validate-frontmatter 0 findings.
+
 ## 2026-07-15 - docs: Gate 13 (1.8 config schema growth) proposed 초안
 
 - status: needs_review

@@ -11,7 +11,7 @@
 // small and stable. Implementing it with Node built-ins preserves the project's
 // zero-runtime-dependency invariant (no @modelcontextprotocol/sdk).
 
-import { commands, normalizeOptions } from "../index.js";
+import { commands, resolveOptions } from "../index.js";
 import { TOOL_DEFS, buildToolOptions } from "./tools.js";
 
 // The MCP protocol version this server pins. On initialize we echo the client's
@@ -111,7 +111,16 @@ async function handleToolCall(id, params, ctx) {
   try {
     const partial = buildToolOptions(tool, args);
     if (!partial.cwd && ctx.defaultCwd) partial.cwd = ctx.defaultCwd;
-    const options = normalizeOptions(partial);
+    // Resolve the same effective options the CLI would, merging the project's
+    // llm-wiki.config.json (from cwd) so MCP honors it too. Malformed config is
+    // surfaced as an isError result, matching the CLI's exit-3 behavior.
+    const { options, errors: configErrors } = await resolveOptions(partial);
+    if (configErrors.length > 0) {
+      return jsonrpcResult(id, {
+        content: [{ type: "text", text: `Tool "${tool.name}" failed: ${configErrors.join("; ")}` }],
+        isError: true
+      });
+    }
     // ctx.commands is an internal test seam (inject a throwing/stub command);
     // production always uses the real, frozen commands map.
     const registry = (ctx && ctx.commands) || commands;

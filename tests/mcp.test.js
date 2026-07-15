@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,6 +65,30 @@ test("tools/call runs a read-only command and returns structuredContent with sch
   assert.equal(res.result.structuredContent.text, undefined);
   assert.equal(typeof res.result.content[0].text, "string");
   assert.ok(res.result.content[0].text.startsWith("# LLM-WIKI"));
+});
+
+test("tools/call merges llm-wiki.config.json from cwd (MCP honors project config)", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "mcp-config-"));
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), JSON.stringify({ type: "backend" }), { encoding: "utf8" });
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 30, method: "tools/call", params: { name: "audit", arguments: { cwd } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  // Without config merging this empty dir would detect as "unknown"; config forces backend.
+  assert.equal(res.result.structuredContent.detection.projectType, "backend");
+});
+
+test("tools/call surfaces a malformed llm-wiki.config.json as isError", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "mcp-config-bad-"));
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), "{ not json", { encoding: "utf8" });
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 31, method: "tools/call", params: { name: "audit", arguments: { cwd } } },
+    {}
+  );
+  assert.equal(res.error, undefined); // a JSON-RPC result, not a protocol error
+  assert.equal(res.result.isError, true);
+  assert.match(res.result.content[0].text, /config\.json/);
 });
 
 test("ping returns an empty result", async () => {
