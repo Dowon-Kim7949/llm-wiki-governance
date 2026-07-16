@@ -83,6 +83,12 @@ export const PROFILE_DOCS = {
     "docs/llm-wiki/EXAMPLES.md",
     "docs/llm-wiki/RELEASE_FLOW.md"
   ],
+  mobile: [
+    "docs/llm-wiki/profiles/mobile.md",
+    "docs/llm-wiki/PLATFORM_MATRIX.md",
+    "docs/llm-wiki/SCREENS.md",
+    "docs/llm-wiki/BUILD_RELEASE.md"
+  ],
   "okf-v0.1": [
     "docs/llm-wiki/profiles/okf-v0.1.md",
     "docs/llm-wiki/templates/OKF_CONCEPT.template.md",

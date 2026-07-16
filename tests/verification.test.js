@@ -900,6 +900,79 @@ test("detects PHP/Ruby packages without web frameworks as library", async () => 
   assert.equal(ruby.detection.projectType, "library");
 });
 
+test("detects React Native projects as mobile and plans the mobile doc set", async () => {
+  const cwd = await makeProject("rn-");
+  await writeJson(path.join(cwd, "package.json"), {
+    name: "my-app",
+    dependencies: { react: "^18.2.0", "react-native": "0.74.0" }
+  });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(result.detection.projectType, "mobile");
+  assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/profiles/mobile.md")));
+  assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/PLATFORM_MATRIX.md")));
+});
+
+test("detects Flutter projects as mobile", async () => {
+  const cwd = await makeProject("flutter-");
+  await writeFile(path.join(cwd, "pubspec.yaml"), "name: my_app\ndependencies:\n  flutter:\n    sdk: flutter\nflutter:\n  uses-material-design: true\n", { encoding: "utf8" });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(result.detection.projectType, "mobile");
+  assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/SCREENS.md")));
+});
+
+test("detects Android Gradle projects as mobile (fixes the JVM library misclassification)", async () => {
+  const cwd = await makeProject("android-");
+  await writeFile(path.join(cwd, "build.gradle"), "plugins {\n  id 'com.android.application'\n}\nandroid {\n  namespace 'com.example.app'\n}\n", { encoding: "utf8" });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(result.detection.projectType, "mobile");
+});
+
+test("detects iOS projects as mobile from a Podfile", async () => {
+  const cwd = await makeProject("ios-");
+  await writeFile(path.join(cwd, "Podfile"), "platform :ios, '15.0'\ntarget 'MyApp' do\n  use_frameworks!\nend\n", { encoding: "utf8" });
+
+  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(result.detection.projectType, "mobile");
+});
+
+test("does not misclassify plain JVM/Dart projects as mobile", async () => {
+  const springCwd = await makeProject("jvm-web-");
+  await writeFile(path.join(springCwd, "build.gradle"), "plugins {\n  id 'org.springframework.boot' version '3.2.0'\n}\ndependencies {\n  implementation 'org.springframework.boot:spring-boot-starter-web'\n}\n", { encoding: "utf8" });
+  const libCwd = await makeProject("jvm-lib-");
+  await writeFile(path.join(libCwd, "build.gradle"), "plugins {\n  id 'java-library'\n}\n", { encoding: "utf8" });
+  const dartCwd = await makeProject("dart-lib-");
+  await writeFile(path.join(dartCwd, "pubspec.yaml"), "name: pure_dart\nenvironment:\n  sdk: '>=3.0.0 <4.0.0'\ndependencies:\n  meta: ^1.9.0\n", { encoding: "utf8" });
+
+  const spring = await initCommand({ cwd: springCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const lib = await initCommand({ cwd: libCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const dart = await initCommand({ cwd: dartCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(spring.detection.projectType, "backend");
+  assert.equal(lib.detection.projectType, "library");
+  assert.notEqual(dart.detection.projectType, "mobile");
+});
+
+test("init write on a Flutter project anchors source_files to pubspec.yaml and validates clean", async () => {
+  const cwd = await makeProject("flutter-init-");
+  await writeFile(path.join(cwd, "pubspec.yaml"), "name: my_app\ndependencies:\n  flutter:\n    sdk: flutter\nflutter:\n  uses-material-design: true\n", { encoding: "utf8" });
+
+  await initCommand({ cwd, dryRun: false, write: true, minimal: true, withAdapters: false, type: null, profiles: [], agents: [], existing: "skip" });
+  const index = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), { encoding: "utf8" });
+
+  const auditResult = await audit({ cwd, type: null, profiles: [], agents: [], format: "text", strict: false });
+
+  assert.ok(index.includes("- pubspec.yaml"));
+  assert.equal(index.includes("- package.json"), false);
+  assert.equal(auditResult.findings.some((finding) => finding.rule === "source_files.missing"), false);
+});
+
 test("init write on a Python project anchors source_files to its manifest", async () => {
   const cwd = await makeProject("python-init-");
   await writeFile(path.join(cwd, "pyproject.toml"), "[project]\nname = \"svc\"\nversion = \"0.1.0\"\ndependencies = [\"fastapi\"]\n", { encoding: "utf8" });

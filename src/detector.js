@@ -3,7 +3,7 @@ import { readdir } from "node:fs/promises";
 import { pathExists } from "./files.js";
 import { readUtf8 } from "./encoding.js";
 
-const KNOWN_PROFILES = new Set(["frontend", "backend", "fullstack", "library", "mixed", "unknown", "okf-v0.1"]);
+const KNOWN_PROFILES = new Set(["frontend", "backend", "fullstack", "library", "mobile", "mixed", "unknown", "okf-v0.1"]);
 
 // Detects npm/yarn workspace packages from the root package.json `workspaces`
 // field (an array, or { packages: [] }). Expands a trailing `/*` glob to the
@@ -113,7 +113,13 @@ export async function detectProject(cwd, explicitType, explicitProfiles = []) {
     else if (eco.role === "library") librarySignals.push(`${eco.ecosystem}:package`);
   }
 
-  const detectedType = decideType(frontendSignals, backendSignals, librarySignals, signals);
+  const mobile = await detectMobile(cwd, deps);
+  if (mobile) {
+    for (const mobileSignal of mobile.signals) signals.push(mobileSignal);
+    if (!primaryManifest && mobile.manifest) primaryManifest = mobile.manifest;
+  }
+
+  const detectedType = decideType(frontendSignals, backendSignals, librarySignals, signals, Boolean(mobile));
   const projectType = explicitType ?? detectedType.projectType;
   const baseProfiles = projectType === "fullstack"
     ? ["core", "frontend", "backend", "fullstack"]
@@ -188,6 +194,96 @@ async function detectNonNodeEcosystems(cwd) {
   return found;
 }
 
+const MOBILE_SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", ".dart_tool", "Pods", ".gradle", "vendor", ".idea", "DerivedData"]);
+
+// Bounded, best-effort DFS: does any entry within `maxDepth` satisfy `match(name,
+// isDir)`? Skips heavy/vendored dirs and unreadable directories. Deterministic
+// (each level sorted). Used to spot nested mobile signals (AndroidManifest.xml,
+// *.xcodeproj) without scanning the whole tree.
+async function existsMatching(cwd, match, maxDepth) {
+  const walk = async (dir, depth) => {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return false;
+    }
+    const sorted = [...entries].sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of sorted) {
+      if (match(entry.name, entry.isDirectory())) return true;
+    }
+    if (depth >= maxDepth) return false;
+    for (const entry of sorted) {
+      if (entry.isDirectory() && !entry.name.startsWith(".") && !MOBILE_SKIP_DIRS.has(entry.name)) {
+        if (await walk(path.join(dir, entry.name), depth + 1)) return true;
+      }
+    }
+    return false;
+  };
+  return walk(cwd, 0);
+}
+
+// Detects a mobile app project from manifest/file signals for Android, Flutter,
+// Apple/iOS, and React Native. Recognition only: no build tool (Gradle/Xcode/
+// CocoaPods) is invoked and no dependency graph is parsed (zero-dependency).
+// Returns { platforms, signals, manifest } or null when no mobile signal is
+// found. `manifest` is a representative existing file used as a source_files
+// anchor when no other manifest was detected (e.g. a Flutter-only repo).
+async function detectMobile(cwd, deps) {
+  const platforms = [];
+  const signals = [];
+  let manifest = null;
+  const setManifest = (candidate) => {
+    if (!manifest && candidate) manifest = candidate;
+  };
+
+  // React Native — a direct dependency (always sourced from package.json, so a
+  // package.json manifest already exists; no manifest hint needed here).
+  if (deps["react-native"]) {
+    platforms.push("react-native");
+    signals.push({ path: "package.json", reason: "React Native app detected (react-native dependency)" });
+  }
+
+  // Flutter — a pubspec with a flutter section / SDK (a Dart-only pubspec stays library).
+  const pub = await readFirstManifest(cwd, ["pubspec.yaml", "pubspec.yml"]);
+  if (pub && (/(^|\n)flutter\s*:/.test(pub.content) || /\bsdk:\s*flutter\b/.test(pub.content))) {
+    platforms.push("flutter");
+    signals.push({ path: pub.name, reason: `Flutter app detected (${pub.name} flutter section)` });
+    setManifest(pub.name);
+  }
+
+  // Android — a Gradle file applying the Android plugin / AndroidX, or an AndroidManifest.xml.
+  const gradle = await readFirstManifest(cwd, [
+    "build.gradle",
+    "build.gradle.kts",
+    "settings.gradle",
+    "settings.gradle.kts",
+    "app/build.gradle",
+    "app/build.gradle.kts"
+  ]);
+  const androidByGradle = gradle && /com\.android\.(application|library)|androidx\.|com\.android\.tools\.build/i.test(gradle.content);
+  const androidByManifest = await existsMatching(cwd, (name, isDir) => !isDir && name === "AndroidManifest.xml", 4);
+  if (androidByGradle || androidByManifest) {
+    platforms.push("android");
+    signals.push({ path: gradle?.name ?? "AndroidManifest.xml", reason: "Android app detected (Android Gradle plugin / AndroidManifest.xml)" });
+    setManifest(gradle?.name ?? null);
+  }
+
+  // Apple/iOS — a Podfile, an Apple-platform Package.swift, or an Xcode project/workspace.
+  const hasPodfile = await pathExists(path.join(cwd, "Podfile"));
+  const swiftPkg = await readFirstManifest(cwd, ["Package.swift"]);
+  const appleSwift = swiftPkg && /\.(iOS|tvOS|watchOS|macOS)\s*\(/.test(swiftPkg.content);
+  const hasXcode = await existsMatching(cwd, (name, isDir) => isDir && (name.endsWith(".xcodeproj") || name.endsWith(".xcworkspace")), 3);
+  if (hasPodfile || appleSwift || hasXcode) {
+    platforms.push("ios");
+    signals.push({ path: hasPodfile ? "Podfile" : appleSwift ? "Package.swift" : "*.xcodeproj", reason: "Apple/iOS app detected (Podfile / .xcodeproj / Apple-platform Package.swift)" });
+    setManifest(hasPodfile ? "Podfile" : appleSwift ? "Package.swift" : null);
+  }
+
+  if (!platforms.length) return null;
+  return { platforms, signals, manifest };
+}
+
 // Find the first *.csproj / *.fsproj since .NET project files carry arbitrary
 // names and commonly sit under src/<Name>/. Bounded, deterministic (files
 // before subdirs, each sorted), depth-limited DFS skipping heavy dirs.
@@ -249,11 +345,15 @@ function normalizeProjectName(name, cwd) {
   return path.basename(cwd) || "project";
 }
 
-function decideType(frontendSignals, backendSignals, librarySignals, signals) {
+function decideType(frontendSignals, backendSignals, librarySignals, signals, hasMobile = false) {
   const hasFrontend = frontendSignals.length > 0 || signals.some((signal) => signal.path === "src/components");
   const hasBackend = backendSignals.length > 0;
   const hasLibrary = librarySignals.length > 0;
 
+  // Mobile signals are specific (Android Gradle plugin, Flutter section, Xcode
+  // project, react-native dep) so they take precedence — this is also what
+  // reclassifies an Android `build.gradle` away from the JVM `library` default.
+  if (hasMobile) return { projectType: "mobile", confidence: "high" };
   if (hasFrontend && hasBackend) return { projectType: "fullstack", confidence: "medium" };
   if (hasFrontend) return { projectType: "frontend", confidence: "high" };
   if (hasBackend) return { projectType: "backend", confidence: "medium" };
