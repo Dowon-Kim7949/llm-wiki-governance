@@ -2,14 +2,15 @@
 title: Domain Features
 tags:
   - llm-wiki
-status: needs_review
+  - verified
+status: verified
 doc_type: domain_overview
 project: llm-wiki-standard
 last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
+reviewed_at: 2026-07-16
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -112,4 +113,4 @@ contains_sensitive_info: false
 - 2026-07-15에 1.9.0 visibility governance(Gate 14, accepted)를 반영했다: opt-in 일관성 린트 2개(`visibility.public_sensitive`·`visibility.declared_mismatch`, sensitive-info 스캔 재사용, 기본 off·warning·read-only, 값 미노출)를 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.10.0 monorepo profile(Gate 15, accepted)을 반영했다: opt-in `monorepo` 명령(npm/yarn workspaces 감지 후 패키지별 validate 집계, additive `packages[]`, 단일 레포 byte-identical, 패키지별 config, pnpm/YAML unsupported)을 기능으로 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.11.0 cross-repo knowledge links(Gate 16, accepted)를 반영했다: 예약 cross-repo 참조 스킴(`repo:<name>/<path>`+http(s))을 external로 인식해 missing-target 규칙에서 제외하되 fetch/verify하지 않는 기능을 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
-- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 기능은 불변이며, Evidence와 근거 심볼 포인터를 이동한 모듈로 갱신했다(`scanEnrichment`/`scanRelatedReferences`/`scanThinBody`/`scanVisibilityConsistency`→scans, `applyRuleConfig`→findings, `fixCommand`→fix-migrate, `planDomainDocs`→domains, `isCrossRepoReference`→references). 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기; 재검토 시 `evidence.stale`도 해소).
+- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 기능은 불변이며, Evidence와 근거 심볼 포인터를 이동한 모듈로 갱신했다(`scanEnrichment`/`scanRelatedReferences`/`scanThinBody`/`scanVisibilityConsistency`→scans, `applyRuleConfig`→findings, `fixCommand`→fix-migrate, `planDomainDocs`→domains, `isCrossRepoReference`→references). 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: WoongHwan-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.

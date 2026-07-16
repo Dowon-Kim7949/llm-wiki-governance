@@ -2,14 +2,15 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-status: needs_review
+  - verified
+status: verified
 doc_type: architecture_conventions
 project: llm-wiki-standard
 last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: WoongHwan-Kim
-reviewed_at: 2026-07-15
+reviewed_at: 2026-07-16
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -122,4 +123,4 @@ contains_sensitive_info: false
 - 2026-07-15에 1.9.0 visibility governance(Gate 14, accepted)를 반영했다: opt-in 일관성 린트 `scanVisibilityConsistency`(sensitive-info 스캔 재사용, 값 미노출)를 Evidence에 추가했다. 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.10.0 monorepo profile(Gate 15, accepted)을 반영했다: `detectWorkspaces`(Module Layout)와 `monorepoCommand`(Evidence)를 추가했다 — cwd-파라미터라이즈드 파이프라인을 패키지별 실행·집계(additive `packages[]`, 단일 레포 byte-identical). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.11.0 cross-repo knowledge links(Gate 16, accepted)를 반영했다: `isCrossRepoReference`(예약 `repo:<name>/<path>` 스킴)와 `isExternalSourceReference`/wiki-link 해석기의 external 처리를 Evidence에 추가했다 — recognize-don't-verify, additive(로컬 해석 불변). 사람 검토(reviewed_by: WoongHwan-Kim)를 거쳐 `verified`로 재승인했다.
-- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: Module Layout에 `src/commands/*` 서브모듈군(references·findings·scans·wiki-graph·adapters·wiki-files·fix-migrate·domains·doc-templates)과 단방향 의존·배럴 re-export 불변식을 기술하고, Evidence의 이동 심볼 포인터(`applyRuleConfig`→findings, `scanVisibilityConsistency`→scans, `isCrossRepoReference`→references)를 갱신했다. `migrateCommand`가 `audit` 순환 회피로 commands.js에 잔류함을 명시했다. 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기; 재검토 시 `evidence.stale`도 해소).
+- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: Module Layout에 `src/commands/*` 서브모듈군(references·findings·scans·wiki-graph·adapters·wiki-files·fix-migrate·domains·doc-templates)과 단방향 의존·배럴 re-export 불변식을 기술하고, Evidence의 이동 심볼 포인터(`applyRuleConfig`→findings, `scanVisibilityConsistency`→scans, `isCrossRepoReference`→references)를 갱신했다. `migrateCommand`가 `audit` 순환 회피로 commands.js에 잔류함을 명시했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: WoongHwan-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
