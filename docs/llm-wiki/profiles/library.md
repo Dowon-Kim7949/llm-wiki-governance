@@ -9,7 +9,7 @@ project: llm-wiki-standard
 last_updated: 2026-07-15
 author: cli-generated
 last_edited_by: Codex
-reviewed_by: WoongHwan-Kim
+reviewed_by: Dowon-Kim
 reviewed_at: 2026-07-16
 wiki_block_version: v1
 source_files:
