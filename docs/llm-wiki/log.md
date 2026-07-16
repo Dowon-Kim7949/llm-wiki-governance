@@ -24,6 +24,27 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-16 - release: prepare 1.12.0 (mobile profile, Gate 17) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "작업을 진행하자. push 하도록 해")
+- scope: src, tests, docs
+- changed:
+  - src/detector.js (`detectMobile` + `decideType` mobile 최우선 분기), src/config.js (`PROFILE_DOCS.mobile`)
+  - tests/verification.test.js (+6 mobile 테스트; 버전 assertion 1.11.1→1.12.0)
+  - package.json (1.11.1→1.12.0), CHANGELOG.md/CHANGELOG.ko.md, ROADMAP.md/ROADMAP.ko.md(1.12 shipped), README.md/README.ko.md(감지 대상 행), GATE_REVIEW.md(Gate 17 shipped), docs/llm-wiki/releases/v1.12.0.md(신규)
+  - doc-sync: ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md → needs_review, VISIBILITY.md → needs_review(config.js 드리프트, 내용 불변)
+- summary:
+  - 1.12.0 = 모바일 프로젝트 프로필(Gate 17). `detectMobile`이 Android/Flutter/iOS/React Native 신호로 부가적 `mobile` 유형을 감지하고, `decideType` 최우선 순위로 Android `build.gradle`의 JVM `library` 오분류를 교정한다. `init`이 mobile 문서셋(profiles/mobile.md·PLATFORM_MATRIX·SCREENS·BUILD_RELEASE)을 생성한다.
+  - 인식만 함(빌드 도구 미호출·의존성 그래프 미파싱, zero-dep). additive: `--type`에 `mobile` 추가, 신호 없는 레포 byte-identical(plain JVM/Dart 미재분류).
+  - 검증: node --test 212 통과(신규 6), validate result:pass 0 findings, validate-frontmatter --strict pass. Android 감지 CLI end-to-end 스모크 확인.
+- evidence:
+  - src/detector.js
+  - src/config.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 배포 후 doc-sync 3개 문서(ARCHITECTURE·DOMAIN_FEATURES·VISIBILITY) 사람 재검토 필요.
+
 ## 2026-07-16 - decision: Gate 17 (모바일 프로필, 1.12.0) 승인
 
 - status: needs_review

@@ -5,6 +5,33 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.12.0 — 2026-07-16
+
+모바일 프로젝트 프로필(Gate 17) — `1.11` 이후 "detect & adapt 확장" 라인의 첫 마이너.
+부가적·opt-in이며 CLI·`--format json`·프로그래매틱 API·frontmatter 계약 불변, 런타임
+의존성 추가 없음.
+
+### Added
+
+- 새 `mobile` 프로젝트 유형. `detectMobile`이 Android(`build.gradle`(.kts)/
+  `settings.gradle`의 Android Gradle 플러그인·AndroidX, 또는 중첩 `AndroidManifest.xml`),
+  Flutter(`pubspec.yaml`의 `flutter:` 섹션 / `sdk: flutter`), Apple/iOS(`Podfile`,
+  Apple-플랫폼 `Package.swift`, 또는 `*.xcodeproj`/`*.xcworkspace`), React Native
+  (`react-native` 의존성)를 감지한다.
+- `init`이 생성하는 모바일 문서셋(`profiles/mobile.md`, `PLATFORM_MATRIX.md`,
+  `SCREENS.md`, `BUILD_RELEASE.md`).
+
+### Fixed
+
+- Android `build.gradle` 프로젝트가 JVM `library`로 오분류되던 문제 — `decideType`에서
+  모바일 신호가 최우선이 되어 `mobile`로 감지된다.
+
+### Notes
+
+- 인식만 함: 빌드 도구(Gradle/Xcode/CocoaPods) 미호출·의존성 그래프 미파싱(zero-dep
+  유지). 매니페스트 신호 + bounded·exclusion-guarded 스캔. 모바일 신호가 없는 레포는
+  byte-identical(plain JVM/Dart 미재분류). 범위: `GATE_REVIEW.md`(Gate 17).
+
 ## 1.11.1 — 2026-07-16
 
 동작 보존 내부 리팩터: 모놀리식 `src/commands.js`를 `src/commands/` 하위의 목적별 모듈로

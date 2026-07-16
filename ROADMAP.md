@@ -244,18 +244,18 @@ put the CLI in front of real multi-team usage.
 
 ## Release Plan (1.12–1.14) — Detect & adapt breadth
 
-**Status: Gate 17 (`1.12`, mobile) accepted by Dowon-Kim on 2026-07-16 — the active next
-minor; Gates 18 (`1.13`) and 19 (`1.14`) remain proposed, pending acceptance.** The
-`1.7–1.11` "Team & org scale" line is complete and shipped (`1.11.1` on npm). The next
+**Status: `1.12` (mobile profile, Gate 17) shipped in `1.12.0`; Gates 18 (`1.13`) and 19
+(`1.14`) remain proposed, pending acceptance.** The `1.7–1.11` "Team & org scale" line is
+complete and shipped (`1.11.1` on npm). The next
 line extends project
 *breadth* — the successor to `1.3`'s PHP/Ruby/.NET work — and follows the same discipline:
 one minor at a time, in order, each recording its scope as a new `GATE_REVIEW.md` gate
 *before* code (Gate 17 → 18 → 19). These three are largely independent, so they are
 sequenced by leverage and risk rather than by hard dependency.
 
-### 1.12 — Mobile profile (Gate 17, accepted 2026-07-16)
+### 1.12 — Mobile profile (Gate 17)
 
-A new additive `mobile` project type. Detect Android (`build.gradle`/`build.gradle.kts`/
+**Shipped in 1.12.0.** A new additive `mobile` project type. Detect Android (`build.gradle`/`build.gradle.kts`/
 `settings.gradle` with an Android Gradle Plugin or AndroidX signal, `AndroidManifest.xml`),
 Flutter (`pubspec.yaml` with a `flutter:` section), Apple/iOS (`*.xcodeproj`/
 `*.xcworkspace`, `Podfile`, `Package.swift` targeting an Apple platform), and React Native

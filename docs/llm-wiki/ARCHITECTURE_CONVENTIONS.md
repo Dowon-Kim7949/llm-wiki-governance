@@ -2,15 +2,13 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: architecture_conventions
 project: llm-wiki-standard
 last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-16
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -68,7 +66,7 @@ contains_sensitive_info: false
   - `domains.js` — backend/fullstack 도메인 감지·계획(`detectDomainDirectories`·`planDomainDocs` 등).
   - `doc-templates.js` — 생성 문서 본문 템플릿(`docMetadata` + 본문 빌더).
 - `src/frontmatter.js` + `src/frontmatter-schema.js` — YAML frontmatter 파서와 JSON Schema 기반 필수 필드/enum 검증.
-- `src/detector.js` — package.json 신호로 project type 추론. 1.10부터 `detectWorkspaces`가 npm/yarn `workspaces`를 감지한다(pnpm/YAML은 zero-dep 위해 unsupported로 보고).
+- `src/detector.js` — package.json 신호로 project type 추론. 1.10부터 `detectWorkspaces`가 npm/yarn `workspaces`를 감지한다(pnpm/YAML은 zero-dep 위해 unsupported로 보고). 1.12부터 `detectMobile`이 Android(Gradle Android 플러그인/AndroidX/AndroidManifest.xml)·Flutter(`pubspec.yaml` flutter 섹션)·Apple/iOS(Podfile/`*.xcodeproj`/Apple-플랫폼 Package.swift)·React Native(`react-native` 의존성) 신호로 `mobile` 유형을 감지하고, `decideType`에서 최우선 순위를 가져 Android `build.gradle`의 JVM `library` 오분류를 교정한다(빌드 도구 미호출·bounded 스캔·zero-dep).
 - `src/config.js` — core/profile별 필수 문서 목록(`CORE_REQUIRED_DOCS`, `PROFILE_DOCS`).
 - `src/template-renderer.js` — 생성 문서 frontmatter 템플릿과 `todayIsoDate()`.
 - `src/task-prompts.js` — `prompt`/`handoff`용 반복 작업 프롬프트.
@@ -105,6 +103,7 @@ contains_sensitive_info: false
 - `src/commands/scans.js#symbol:scanVisibilityConsistency` — opt-in visibility 일관성 린트(sensitive-info 스캔 재사용, 값 미노출; 기본 off/warning/read-only)(1.9).
 - `src/commands.js#symbol:monorepoCommand` — monorepo profile: cwd-파라미터라이즈드 파이프라인을 패키지별 실행·집계(additive `packages[]`)(1.10).
 - `src/detector.js#symbol:detectWorkspaces` — npm/yarn workspaces 감지(pnpm/YAML unsupported)(1.10).
+- `src/detector.js#symbol:detectMobile` — Android/Flutter/iOS/React Native 신호로 `mobile` 유형 감지(빌드 도구 미호출, recognize-don't-build); `decideType` 최우선 순위로 Android `build.gradle` library 오분류 교정(1.12).
 - `src/commands/references.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴(`repo:<name>/<path>`) 인식; `isExternalSourceReference`/wiki-link 해석기가 external로 처리(recognize-don't-verify)(1.11).
 
 ## Open Questions
@@ -124,3 +123,4 @@ contains_sensitive_info: false
 - 2026-07-15에 1.10.0 monorepo profile(Gate 15, accepted)을 반영했다: `detectWorkspaces`(Module Layout)와 `monorepoCommand`(Evidence)를 추가했다 — cwd-파라미터라이즈드 파이프라인을 패키지별 실행·집계(additive `packages[]`, 단일 레포 byte-identical). 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.11.0 cross-repo knowledge links(Gate 16, accepted)를 반영했다: `isCrossRepoReference`(예약 `repo:<name>/<path>` 스킴)와 `isExternalSourceReference`/wiki-link 해석기의 external 처리를 Evidence에 추가했다 — recognize-don't-verify, additive(로컬 해석 불변). 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: Module Layout에 `src/commands/*` 서브모듈군(references·findings·scans·wiki-graph·adapters·wiki-files·fix-migrate·domains·doc-templates)과 단방향 의존·배럴 re-export 불변식을 기술하고, Evidence의 이동 심볼 포인터(`applyRuleConfig`→findings, `scanVisibilityConsistency`→scans, `isCrossRepoReference`→references)를 갱신했다. `migrateCommand`가 `audit` 순환 회피로 commands.js에 잔류함을 명시했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
+- 2026-07-16에 1.12.0 mobile profile(Gate 17, accepted)을 반영했다: `src/detector.js`에 `detectMobile`(Android/Flutter/iOS/React Native 신호)과 `decideType` mobile 최우선 분기를 Module Layout·Evidence에 추가하고, Android `build.gradle` → JVM `library` 오분류 교정을 기술했다. 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기).

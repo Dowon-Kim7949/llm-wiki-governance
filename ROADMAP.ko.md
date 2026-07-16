@@ -217,15 +217,15 @@ wiki 링크·frontmatter 참조에서 external로 인식해 cross-repo 참조가
 
 ## 릴리스 계획 (1.12–1.14) — detect & adapt 확장
 
-**상태: Gate 17(`1.12`, 모바일)은 2026-07-16 Dowon-Kim 승인 — 활성 다음 마이너; Gate 18(`1.13`)·19(`1.14`)는 제안 상태로 승인 대기.** `1.7–1.11` "팀 & 조직 확장" 라인은 완료·출시됐다
+**상태: `1.12`(모바일 프로필, Gate 17)은 `1.12.0`으로 출시; Gate 18(`1.13`)·19(`1.14`)는 제안 상태로 승인 대기.** `1.7–1.11` "팀 & 조직 확장" 라인은 완료·출시됐다
 (`1.11.1` npm). 다음 라인은 프로젝트 *브레드스*를 확장한다 — `1.3`의 PHP/Ruby/.NET 작업의
 후속 테마 — 그리고 같은 규율을 따른다: 한 번에 한 마이너, 순서대로, 각자 코드보다 **먼저**
 새 `GATE_REVIEW.md` 게이트로 범위를 못박는다(Gate 17 → 18 → 19). 세 항목은 대체로 독립적이라
 하드 의존성이 아니라 레버리지·리스크 기준으로 순서를 정한다.
 
-### 1.12 — 모바일 프로필 (Gate 17, 2026-07-16 승인)
+### 1.12 — 모바일 프로필 (Gate 17)
 
-부가적 새 `mobile` 프로젝트 유형. Android(`build.gradle`/`build.gradle.kts`/`settings.gradle`에
+**1.12.0 출시.** 부가적 새 `mobile` 프로젝트 유형. Android(`build.gradle`/`build.gradle.kts`/`settings.gradle`에
 Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`flutter:` 섹션이
 있는 `pubspec.yaml`), Apple/iOS(`*.xcodeproj`/`*.xcworkspace`, `Podfile`, Apple 플랫폼 대상
 `Package.swift`), React Native(`package.json`의 `react-native` 의존성)를 감지하고 모바일

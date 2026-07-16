@@ -664,7 +664,7 @@ of multi-package usage.
 
 ## Mobile Profile Scope Decision (accepted for 1.12.0)
 
-Accepted by Dowon-Kim on 2026-07-16 as the scope for `1.12` — a mobile project profile,
+**Shipped in 1.12.0.** Accepted by Dowon-Kim on 2026-07-16 as the scope for `1.12` — a mobile project profile,
 first of the post-`1.11` "detect & adapt breadth" line (the successor theme to `1.3`'s
 PHP/Ruby/.NET breadth). It leads because it also fixes a concrete misclassification: an
 Android `build.gradle` project is detected today as `jvm` with role `library`

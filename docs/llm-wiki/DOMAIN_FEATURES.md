@@ -2,15 +2,13 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-standard
 last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-16
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -53,7 +51,7 @@ contains_sensitive_info: false
 
 ## Features
 
-- **프로젝트 자동 감지** — `src/detector.js`가 Node(`package.json`)뿐 아니라 Python(`pyproject.toml`/`requirements.txt` 등)·Go(`go.mod`)·Rust(`Cargo.toml`)·JVM(`pom.xml`/`build.gradle`)·PHP(`composer.json`)·Ruby(`Gemfile`)·.NET(`*.csproj`/`*.fsproj`) 매니페스트 신호로 `frontend/backend/fullstack/library` 유형과 생태계·주 매니페스트(`primaryManifest`)를 추론한다. `--type`로 명시 override 가능.
+- **프로젝트 자동 감지** — `src/detector.js`가 Node(`package.json`)뿐 아니라 Python(`pyproject.toml`/`requirements.txt` 등)·Go(`go.mod`)·Rust(`Cargo.toml`)·JVM(`pom.xml`/`build.gradle`)·PHP(`composer.json`)·Ruby(`Gemfile`)·.NET(`*.csproj`/`*.fsproj`) 매니페스트 신호로 `frontend/backend/fullstack/library` 유형과 생태계·주 매니페스트(`primaryManifest`)를 추론한다. 1.12부터 `mobile` 유형도 감지한다(Android Gradle 플러그인/AndroidX/AndroidManifest.xml, Flutter `pubspec.yaml`, Apple/iOS Podfile·`*.xcodeproj`·Package.swift, React Native `react-native` 의존성). `--type`로 명시 override 가능.
 - **초기 문서 생성** — `init --write`가 core + profile 문서와 선택 adapter를 생성한다. backend/fullstack에서는 업무 도메인을 감지해 도메인별 문서(`domains/NN_<name>.md`, `doc_type: domain`, `source_files`=탐지 경로)를 만들고 `domains/00_overview.md`에서 상대링크로 연결한다. 두 컨벤션을 모두 잡는다: **디렉터리 도메인**(`domains/domain/modules/features`의 직속 하위 폴더)과 **파일 도메인**(`endpoints/routers/routes/resources/controllers/handlers`의 소스 파일, 예: FastAPI `app/api/api_v2/endpoints/hazard.py`). bounded 탐색·제외 가드로 오탐을 0에 가깝게(vendored/venv/test/dunder 제외, 집계자 파일명 제외). 결정적 정렬·파일↔폴더 slug 병합. 기존 파일은 기본 보존, `log.md`는 append-only. 범위는 `GATE_REVIEW.md`(Gate 10).
 - **frontmatter 계약 검증** — 필수 필드/status enum/날짜 형식/배열 형태를 검증하고, `verified`는 `--strict`에서 리뷰 메타를 요구한다.
 - **근거 추적** — `source_files`(넓은 근거)와 `evidence`(파일/라인/심볼/섹션/라우트 정밀 근거)를 검증하고 본문 `## Evidence` 정렬을 확인한다.
@@ -72,6 +70,7 @@ contains_sensitive_info: false
 - **visibility governance(1.9)** — 이미 필수인 `visibility` 필드에 대한 opt-in 일관성 린트 2개(sensitive-info 스캔 재사용): `visibility.public_sensitive`(`visibility: public` 문서에 민감값), `visibility.declared_mismatch`(`contains_sensitive_info: false`인데 민감값). 둘 다 기본 off·warning·read-only, config `rules`로 활성화(1.8 토글 재사용), 절대 default error/blocked 금지, **민감값은 finding에 미노출**(redacted count만). 접근 통제 아님(값-내용 일관성만). 정책은 `docs/llm-wiki/VISIBILITY.md`. 근거: `src/commands/scans.js#symbol:scanVisibilityConsistency`, 범위는 `GATE_REVIEW.md`(Gate 14, accepted).
 - **monorepo profile(1.10)** — `llm-wiki monorepo`가 npm/yarn `workspaces`를 감지해 `docs/llm-wiki`가 있는 각 패키지를 validate하고 집계한다(strictly additive `packages[]` roll-up + 패키지 경로 prefix된 findings). 각 패키지는 자기 `llm-wiki.config.json`을 반영하고, 새 필드는 이 명령에만 나타나 단일 레포 출력은 byte-identical. pnpm/YAML은 zero-dep 위해 미파싱(unsupported 보고). read-only 집계. 근거: `src/commands.js#symbol:monorepoCommand`·`src/detector.js#symbol:detectWorkspaces`, 범위는 `GATE_REVIEW.md`(Gate 15, accepted).
 - **cross-repo knowledge links(1.11)** — 예약 cross-repo 참조 스킴 `repo:<name>/<path>`(+ 기존 http(s))를 wiki 링크·`source_files`/`evidence`/`related`에서 external로 인식한다. 인식된 참조는 missing-target 규칙(`wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`)에서 제외되지만 **절대 fetch/verify하지 않는다**(network/git 없음, zero-dep). URL 형태 wiki 링크의 false `wiki_link.missing`도 해소. additive: 로컬 해석 불변(진짜 미해결 로컬 링크는 여전히 flag). 근거: `src/commands/references.js#symbol:isCrossRepoReference`, 범위는 `GATE_REVIEW.md`(Gate 16, accepted).
+- **mobile profile(1.12)** — 부가적 `mobile` 프로젝트 유형. `detectMobile`이 Android(`build.gradle`(.kts)/`settings.gradle`의 Android Gradle 플러그인·AndroidX, 또는 중첩 `AndroidManifest.xml`)·Flutter(`pubspec.yaml`의 flutter 섹션/`sdk: flutter`)·Apple/iOS(Podfile·`*.xcodeproj`/`*.xcworkspace`·Apple-플랫폼 `Package.swift`)·React Native(`package.json`의 `react-native` 의존성)를 감지하고, `decideType`에서 최우선 순위를 가진다. 이로써 지금까지 `jvm`+`library`로 잘못 분류되던 Android `build.gradle`이 교정된다. `init`이 mobile 문서셋(`profiles/mobile.md`·`PLATFORM_MATRIX.md`·`SCREENS.md`·`BUILD_RELEASE.md`)을 생성한다. **빌드 도구(Gradle/Xcode/CocoaPods) 미호출·의존성 그래프 미파싱**(recognize-don't-build, zero-dep), bounded·exclusion-guarded 스캔(Gate 10 규율). additive: `--type`에 `mobile` 추가, 신호 없는 레포는 byte-identical(plain JVM/Dart 미재분류). 근거: `src/detector.js#symbol:detectMobile`, 범위는 `GATE_REVIEW.md`(Gate 17, accepted).
 
 ## Evidence
 
@@ -93,6 +92,7 @@ contains_sensitive_info: false
 - `src/commands/scans.js#symbol:scanVisibilityConsistency` — opt-in visibility 일관성 린트(public_sensitive·declared_mismatch; sensitive 스캔 재사용, 값 미노출)(1.9).
 - `src/commands.js#symbol:monorepoCommand` — monorepo profile: 패키지별 validate 집계(additive `packages[]`)(1.10).
 - `src/detector.js#symbol:detectWorkspaces` — npm/yarn workspaces 감지(pnpm/YAML unsupported)(1.10).
+- `src/detector.js#symbol:detectMobile` — Android/Flutter/iOS/React Native 신호로 `mobile` 유형 감지(recognize-don't-build, zero-dep); Android `build.gradle` library 오분류 교정(1.12).
 - `src/commands/references.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴 인식(recognize-don't-verify)(1.11).
 
 ## Open Questions
@@ -114,3 +114,4 @@ contains_sensitive_info: false
 - 2026-07-15에 1.10.0 monorepo profile(Gate 15, accepted)을 반영했다: opt-in `monorepo` 명령(npm/yarn workspaces 감지 후 패키지별 validate 집계, additive `packages[]`, 단일 레포 byte-identical, 패키지별 config, pnpm/YAML unsupported)을 기능으로 추가했다. 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.11.0 cross-repo knowledge links(Gate 16, accepted)를 반영했다: 예약 cross-repo 참조 스킴(`repo:<name>/<path>`+http(s))을 external로 인식해 missing-target 규칙에서 제외하되 fetch/verify하지 않는 기능을 추가했다. 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 기능은 불변이며, Evidence와 근거 심볼 포인터를 이동한 모듈로 갱신했다(`scanEnrichment`/`scanRelatedReferences`/`scanThinBody`/`scanVisibilityConsistency`→scans, `applyRuleConfig`→findings, `fixCommand`→fix-migrate, `planDomainDocs`→domains, `isCrossRepoReference`→references). 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
+- 2026-07-16에 1.12.0 mobile profile(Gate 17, accepted)을 반영했다: 부가적 `mobile` 유형(`detectMobile`의 Android/Flutter/iOS/React Native 감지 + Android `build.gradle` 오분류 교정 + mobile 문서셋)을 기능·Evidence로 추가했다. 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기).

@@ -5,6 +5,34 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.12.0 — 2026-07-16
+
+Mobile project profile (Gate 17) — the lead minor of the post-`1.11` "detect &
+adapt breadth" line. Additive and opt-in; CLI, `--format json`, the programmatic
+API, and the frontmatter contract are unchanged, and no runtime dependency is added.
+
+### Added
+
+- A new `mobile` project type. `detectMobile` recognizes Android
+  (`build.gradle`(.kts)/`settings.gradle` with the Android Gradle plugin or AndroidX,
+  or a nested `AndroidManifest.xml`), Flutter (`pubspec.yaml` with a `flutter:` section
+  / `sdk: flutter`), Apple/iOS (a `Podfile`, an Apple-platform `Package.swift`, or an
+  `*.xcodeproj`/`*.xcworkspace`), and React Native (a `react-native` dependency).
+- A mobile document set created by `init` (`profiles/mobile.md`, `PLATFORM_MATRIX.md`,
+  `SCREENS.md`, `BUILD_RELEASE.md`).
+
+### Fixed
+
+- An Android `build.gradle` project was misclassified as JVM `library`; mobile signals
+  now take precedence in `decideType`, so it is detected as `mobile`.
+
+### Notes
+
+- Recognition only: no build tool (Gradle/Xcode/CocoaPods) is invoked and no dependency
+  graph is parsed (zero-dependency preserved). Detection uses manifest signals plus a
+  bounded, exclusion-guarded scan. Repos with no mobile signal are byte-identical
+  (a plain JVM/Dart project is not reclassified). Scope: `GATE_REVIEW.md` (Gate 17).
+
 ## 1.11.1 — 2026-07-16
 
 Behavior-preserving internal refactor: the monolithic `src/commands.js` was split
