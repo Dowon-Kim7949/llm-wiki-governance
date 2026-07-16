@@ -748,7 +748,7 @@ backend/library/mobile) is present, so a containerized app repo (a backend with 
 
 ## Stdlib-Server Detection Scope Decision (accepted for 1.14.0)
 
-Accepted by Dowon-Kim on 2026-07-16 as the scope for `1.14` — promoting the long-standing
+**Shipped in 1.14.0 — completes the 1.12–1.14 detect & adapt breadth line.** Accepted by Dowon-Kim on 2026-07-16 as the scope for `1.14` — promoting the long-standing
 "stdlib-server detection" backlog item (deferred from `1.3`) into a shipped minor. It is
 the smallest of the three and lands last; its only real risk is over-classification, so the
 heuristic stays strictly conservative.

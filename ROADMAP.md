@@ -244,9 +244,9 @@ put the CLI in front of real multi-team usage.
 
 ## Release Plan (1.12–1.14) — Detect & adapt breadth
 
-**Status: `1.12` (mobile profile, Gate 17) and `1.13` (infra/DevOps profile, Gate 18)
-shipped; Gate 19 (`1.14`, stdlib-server) remains proposed, pending acceptance.** The
-`1.7–1.11` "Team & org scale" line is complete and shipped (`1.11.1` on npm). The next
+**Status: complete — `1.12` (mobile, Gate 17), `1.13` (infra/DevOps, Gate 18), and `1.14`
+(stdlib-server, Gate 19) all shipped.** The `1.7–1.11` "Team & org scale" line is complete
+and shipped (`1.11.1` on npm). This
 line extends project
 *breadth* — the successor to `1.3`'s PHP/Ruby/.NET work — and follows the same discipline:
 one minor at a time, in order, each recording its scope as a new `GATE_REVIEW.md` gate
@@ -275,7 +275,7 @@ registry/`terraform`/`kubectl`/`helm` access). Scope: `GATE_REVIEW.md` (Gate 18)
 
 ### 1.14 — Stdlib-server detection (Gate 19)
 
-Promote the long-standing backlog item (deferred from `1.3`): classify Go `net/http` and
+**Shipped in 1.14.0 — the 1.12–1.14 detect & adapt breadth line is complete.** Promote the long-standing backlog item (deferred from `1.3`): classify Go `net/http` and
 Python stdlib HTTP servers as `backend` instead of `library`, via a bounded,
 false-positive-guarded source scan (an HTTP import **plus** a server-start call). The
 smallest of the three and last; the only risk is over-classification, so the heuristic

@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-16 - release: prepare 1.14.0 (stdlib-server detection, Gate 19) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "승인")
+- scope: src, tests, docs
+- changed:
+  - src/detector.js (`detectGoStdlibServer`/`detectPythonStdlibServer` + `anySourceMatches` bounded 소스 스캐너; Go/Python 브랜치 one-directional library→backend)
+  - tests/verification.test.js (+2 stdlib 테스트; 버전 assertion 1.13.0→1.14.0)
+  - package.json (1.13.0→1.14.0), CHANGELOG.md/CHANGELOG.ko.md, ROADMAP.md/ROADMAP.ko.md(1.14 shipped·라인 완성), GATE_REVIEW.md(Gate 19 accepted+shipped), docs/llm-wiki/releases/v1.14.0.md(신규)
+  - doc-sync: ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md → needs_review
+- summary:
+  - 1.14.0 = stdlib-server 감지(Gate 19). Go `net/http`(비-test .go가 net/http import + ListenAndServe/http.Serve 호출)·Python stdlib HTTP(.py가 http.server/socketserver import + serve_forever/HTTPServer) 서버를 bounded 소스 스캔으로 감지해 role을 `library`→`backend`로 **단방향** 승격한다.
+  - 보수적: 강한 import+시작-호출 쌍에만 반응, `http.client`만 쓰는 라이브러리는 library 유지, 기존 backend 미강등. 인식만 함(읽기 전용 스캔, 프레임워크 의존성 불요, zero-dep). README는 새 생태계/유형 추가가 아니라 변경 없음.
+  - 검증: node --test 217 통과(신규 2), validate result:pass 0 findings, strict pass. Go server→backend / Go client→library CLI e2e 스모크 확인. **이로써 1.12–1.14 detect & adapt 확장 라인 완성.**
+- evidence:
+  - src/detector.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 배포 후 doc-sync 2개 문서(ARCHITECTURE·DOMAIN_FEATURES) 사람 재검토 필요.
+
 ## 2026-07-16 - release: prepare 1.13.0 (infra/DevOps profile, Gate 18) + doc-sync
 
 - status: needs_review

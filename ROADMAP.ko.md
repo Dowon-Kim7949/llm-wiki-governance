@@ -217,7 +217,7 @@ wiki 링크·frontmatter 참조에서 external로 인식해 cross-repo 참조가
 
 ## 릴리스 계획 (1.12–1.14) — detect & adapt 확장
 
-**상태: `1.12`(모바일 프로필, Gate 17)·`1.13`(infra/DevOps 프로필, Gate 18)은 출시; Gate 19(`1.14`, stdlib-server)는 제안 상태로 승인 대기.** `1.7–1.11` "팀 & 조직 확장" 라인은 완료·출시됐다
+**상태: 완료 — `1.12`(모바일, Gate 17)·`1.13`(infra/DevOps, Gate 18)·`1.14`(stdlib-server, Gate 19) 모두 출시.** `1.7–1.11` "팀 & 조직 확장" 라인은 완료·출시됐다
 (`1.11.1` npm). 다음 라인은 프로젝트 *브레드스*를 확장한다 — `1.3`의 PHP/Ruby/.NET 작업의
 후속 테마 — 그리고 같은 규율을 따른다: 한 번에 한 마이너, 순서대로, 각자 코드보다 **먼저**
 새 `GATE_REVIEW.md` 게이트로 범위를 못박는다(Gate 17 → 18 → 19). 세 항목은 대체로 독립적이라
@@ -244,7 +244,7 @@ Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`f
 
 ### 1.14 — stdlib 서버 감지 (Gate 19)
 
-오래된 백로그 항목 승격(1.3에서 보류): Go `net/http`·Python stdlib HTTP 서버를 `library`가
+**1.14.0 출시 — 1.12–1.14 detect & adapt 확장 라인 완성.** 오래된 백로그 항목 승격(1.3에서 보류): Go `net/http`·Python stdlib HTTP 서버를 `library`가
 아닌 `backend`로 분류 — bounded·오탐 방지 소스 스캔(HTTP import **와** 서버 시작 호출)으로.
 셋 중 가장 작고 마지막; 유일한 리스크는 과분류라서 휴리스틱은 보수적·단방향(`library`→`backend`
 승격만, 강등 없음)을 유지한다. 무의존성. 범위: `GATE_REVIEW.md`(Gate 19).

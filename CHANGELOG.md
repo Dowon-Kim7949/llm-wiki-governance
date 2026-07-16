@@ -5,6 +5,29 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.14.0 — 2026-07-16
+
+Stdlib-server detection (Gate 19) — the final minor of the "detect & adapt breadth"
+line. Additive and opt-in; CLI, `--format json`, the programmatic API, and the
+frontmatter contract are unchanged, and no runtime dependency is added.
+
+### Changed
+
+- Role inference now classifies a Go `net/http` server and a Python stdlib HTTP server
+  (`http.server`/`socketserver`) as `backend` instead of `library`, via a bounded,
+  exclusion-guarded source scan: a Go file that imports `net/http` **and** calls
+  `ListenAndServe`/`http.Serve`, or a Python file that imports `http.server`/`socketserver`
+  **and** starts a server (`serve_forever` / `HTTPServer(...)`).
+
+### Notes
+
+- One-directional and conservative: the signal only promotes `library`→`backend`, only on
+  a strong import + server-start pair, and never demotes an existing `backend`. An
+  `http.client`-only library stays `library`. Recognition only — a read-only source scan
+  (maxDepth 4, file cap, skips vendored/test/example dirs); no framework dependency
+  required; zero-dependency preserved. Scope: `GATE_REVIEW.md` (Gate 19). This completes
+  the `1.12`–`1.14` detect & adapt breadth line.
+
 ## 1.13.0 — 2026-07-16
 
 Infra/DevOps project profile (Gate 18) — the second minor of the "detect & adapt

@@ -2,15 +2,13 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-standard
 last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-16
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -53,7 +51,7 @@ contains_sensitive_info: false
 
 ## Features
 
-- **프로젝트 자동 감지** — `src/detector.js`가 Node(`package.json`)뿐 아니라 Python(`pyproject.toml`/`requirements.txt` 등)·Go(`go.mod`)·Rust(`Cargo.toml`)·JVM(`pom.xml`/`build.gradle`)·PHP(`composer.json`)·Ruby(`Gemfile`)·.NET(`*.csproj`/`*.fsproj`) 매니페스트 신호로 `frontend/backend/fullstack/library` 유형과 생태계·주 매니페스트(`primaryManifest`)를 추론한다. 1.12부터 `mobile` 유형도 감지한다(Android Gradle 플러그인/AndroidX/AndroidManifest.xml, Flutter `pubspec.yaml`, Apple/iOS Podfile·`*.xcodeproj`·Package.swift, React Native `react-native` 의존성). 1.13부터 `infra` 유형도 감지한다(Docker `Dockerfile`·Compose, Kubernetes(apiVersion+kind YAML), Helm `Chart.yaml`, Terraform `*.tf`) — 단 앱 신호가 없을 때만 선택되는 fallback이라 컨테이너화된 앱 레포는 앱 유형을 유지한다. `--type`로 명시 override 가능.
+- **프로젝트 자동 감지** — `src/detector.js`가 Node(`package.json`)뿐 아니라 Python(`pyproject.toml`/`requirements.txt` 등)·Go(`go.mod`)·Rust(`Cargo.toml`)·JVM(`pom.xml`/`build.gradle`)·PHP(`composer.json`)·Ruby(`Gemfile`)·.NET(`*.csproj`/`*.fsproj`) 매니페스트 신호로 `frontend/backend/fullstack/library` 유형과 생태계·주 매니페스트(`primaryManifest`)를 추론한다. 1.12부터 `mobile` 유형도 감지한다(Android Gradle 플러그인/AndroidX/AndroidManifest.xml, Flutter `pubspec.yaml`, Apple/iOS Podfile·`*.xcodeproj`·Package.swift, React Native `react-native` 의존성). 1.13부터 `infra` 유형도 감지한다(Docker `Dockerfile`·Compose, Kubernetes(apiVersion+kind YAML), Helm `Chart.yaml`, Terraform `*.tf`) — 단 앱 신호가 없을 때만 선택되는 fallback이라 컨테이너화된 앱 레포는 앱 유형을 유지한다. 1.14부터 Go `net/http`·Python stdlib HTTP 서버를 소스에서 감지하면 해당 생태계를 `library`가 아닌 `backend`로 단방향 승격한다. `--type`로 명시 override 가능.
 - **초기 문서 생성** — `init --write`가 core + profile 문서와 선택 adapter를 생성한다. backend/fullstack에서는 업무 도메인을 감지해 도메인별 문서(`domains/NN_<name>.md`, `doc_type: domain`, `source_files`=탐지 경로)를 만들고 `domains/00_overview.md`에서 상대링크로 연결한다. 두 컨벤션을 모두 잡는다: **디렉터리 도메인**(`domains/domain/modules/features`의 직속 하위 폴더)과 **파일 도메인**(`endpoints/routers/routes/resources/controllers/handlers`의 소스 파일, 예: FastAPI `app/api/api_v2/endpoints/hazard.py`). bounded 탐색·제외 가드로 오탐을 0에 가깝게(vendored/venv/test/dunder 제외, 집계자 파일명 제외). 결정적 정렬·파일↔폴더 slug 병합. 기존 파일은 기본 보존, `log.md`는 append-only. 범위는 `GATE_REVIEW.md`(Gate 10).
 - **frontmatter 계약 검증** — 필수 필드/status enum/날짜 형식/배열 형태를 검증하고, `verified`는 `--strict`에서 리뷰 메타를 요구한다.
 - **근거 추적** — `source_files`(넓은 근거)와 `evidence`(파일/라인/심볼/섹션/라우트 정밀 근거)를 검증하고 본문 `## Evidence` 정렬을 확인한다.
@@ -74,6 +72,7 @@ contains_sensitive_info: false
 - **cross-repo knowledge links(1.11)** — 예약 cross-repo 참조 스킴 `repo:<name>/<path>`(+ 기존 http(s))를 wiki 링크·`source_files`/`evidence`/`related`에서 external로 인식한다. 인식된 참조는 missing-target 규칙(`wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`)에서 제외되지만 **절대 fetch/verify하지 않는다**(network/git 없음, zero-dep). URL 형태 wiki 링크의 false `wiki_link.missing`도 해소. additive: 로컬 해석 불변(진짜 미해결 로컬 링크는 여전히 flag). 근거: `src/commands/references.js#symbol:isCrossRepoReference`, 범위는 `GATE_REVIEW.md`(Gate 16, accepted).
 - **mobile profile(1.12)** — 부가적 `mobile` 프로젝트 유형. `detectMobile`이 Android(`build.gradle`(.kts)/`settings.gradle`의 Android Gradle 플러그인·AndroidX, 또는 중첩 `AndroidManifest.xml`)·Flutter(`pubspec.yaml`의 flutter 섹션/`sdk: flutter`)·Apple/iOS(Podfile·`*.xcodeproj`/`*.xcworkspace`·Apple-플랫폼 `Package.swift`)·React Native(`package.json`의 `react-native` 의존성)를 감지하고, `decideType`에서 최우선 순위를 가진다. 이로써 지금까지 `jvm`+`library`로 잘못 분류되던 Android `build.gradle`이 교정된다. `init`이 mobile 문서셋(`profiles/mobile.md`·`PLATFORM_MATRIX.md`·`SCREENS.md`·`BUILD_RELEASE.md`)을 생성한다. **빌드 도구(Gradle/Xcode/CocoaPods) 미호출·의존성 그래프 미파싱**(recognize-don't-build, zero-dep), bounded·exclusion-guarded 스캔(Gate 10 규율). additive: `--type`에 `mobile` 추가, 신호 없는 레포는 byte-identical(plain JVM/Dart 미재분류). 근거: `src/detector.js#symbol:detectMobile`, 범위는 `GATE_REVIEW.md`(Gate 17, accepted).
 - **infra/DevOps profile(1.13)** — 부가적 `infra` 프로젝트 유형. `detectInfra`가 Docker(`Dockerfile`)·Compose(`docker-compose.y*ml`/`compose.y*ml`)·Kubernetes(`apiVersion`+`kind` YAML, top-level/k8s·kubernetes·manifests 등)·Helm(`Chart.yaml`)·Terraform(`*.tf`)를 감지한다. **`infra`는 fallback** — `decideType`에서 앱 신호(frontend/backend/library/mobile)가 없을 때만 선택되므로, `Dockerfile`을 가진 백엔드 레포는 여전히 `backend`로 남고 기존 출력은 byte-identical(infra 신호는 `infra`로 확정될 때만 표면화). `init`이 infra 문서셋(`profiles/infra.md`·`DEPLOYMENT.md`·`RUNBOOK.md`·`SERVICE_TOPOLOGY.md`)을 생성한다. **클러스터/레지스트리 접근 없음·배포 없음**(recognize-don't-deploy, zero-dep), bounded 스캔. 근거: `src/detector.js#symbol:detectInfra`, 범위는 `GATE_REVIEW.md`(Gate 18, accepted).
+- **stdlib-server 감지(1.14)** — 프레임워크 없이 표준 라이브러리만 쓰는 서버를 소스에서 감지해 role을 교정한다: Go `net/http`(비-test `.go`가 `net/http` import + `ListenAndServe`/`http.Serve` 호출)와 Python stdlib HTTP(`.py`가 `http.server`/`socketserver` import + `serve_forever`/`HTTPServer(...)`)를 만나면 해당 생태계를 `library`→`backend`로 승격한다. **단방향·보수적** — 강한 import+시작-호출 쌍에만 반응하고, `http.client`만 쓰는 라이브러리는 `library`로 남으며, 기존 `backend`를 강등하지 않는다. bounded·exclusion-guarded 소스 스캔(vendored/test/example 제외, maxFiles 캡), zero-dep. 근거: `src/detector.js#symbol:detectGoStdlibServer`, 범위는 `GATE_REVIEW.md`(Gate 19, accepted).
 
 ## Evidence
 
@@ -97,6 +96,7 @@ contains_sensitive_info: false
 - `src/detector.js#symbol:detectWorkspaces` — npm/yarn workspaces 감지(pnpm/YAML unsupported)(1.10).
 - `src/detector.js#symbol:detectMobile` — Android/Flutter/iOS/React Native 신호로 `mobile` 유형 감지(recognize-don't-build, zero-dep); Android `build.gradle` library 오분류 교정(1.12).
 - `src/detector.js#symbol:detectInfra` — Docker/Compose/Kubernetes/Helm/Terraform 신호로 `infra` 유형 감지(fallback, recognize-don't-deploy, zero-dep; 앱 레포 byte-identical)(1.13).
+- `src/detector.js#symbol:detectGoStdlibServer`·`detectPythonStdlibServer` — Go `net/http`·Python stdlib HTTP 서버 소스 감지 → role `library`→`backend` 단방향 승격(bounded 스캔, 클라이언트-only 미승격)(1.14).
 - `src/commands/references.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴 인식(recognize-don't-verify)(1.11).
 
 ## Open Questions
@@ -120,3 +120,4 @@ contains_sensitive_info: false
 - 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 기능은 불변이며, Evidence와 근거 심볼 포인터를 이동한 모듈로 갱신했다(`scanEnrichment`/`scanRelatedReferences`/`scanThinBody`/`scanVisibilityConsistency`→scans, `applyRuleConfig`→findings, `fixCommand`→fix-migrate, `planDomainDocs`→domains, `isCrossRepoReference`→references). 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.12.0 mobile profile(Gate 17, accepted)을 반영했다: 부가적 `mobile` 유형(`detectMobile`의 Android/Flutter/iOS/React Native 감지 + Android `build.gradle` 오분류 교정 + mobile 문서셋)을 기능·Evidence로 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.13.0 infra/DevOps profile(Gate 18, accepted)을 반영했다: 부가적 `infra` 유형(`detectInfra`의 Docker/Compose/Kubernetes/Helm/Terraform 감지 + fallback 우선순위 + infra 문서셋)을 기능·Evidence로 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
+- 2026-07-16에 1.14.0 stdlib-server detection(Gate 19, accepted)을 반영했다: Go `net/http`·Python stdlib HTTP 서버 소스 감지로 role을 `library`→`backend` 단방향 승격하는 기능(`detectGoStdlibServer`/`detectPythonStdlibServer`)을 기능·Evidence로 추가했다. 코드에 맞춰 문서를 수정했으므로 `needs_review`로 강등했다(사람 재검토 대기).

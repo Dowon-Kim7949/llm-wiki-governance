@@ -5,6 +5,26 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.14.0 — 2026-07-16
+
+stdlib-server 감지(Gate 19) — "detect & adapt 확장" 라인의 마지막 마이너. 부가적·opt-in이며
+CLI·`--format json`·프로그래매틱 API·frontmatter 계약 불변, 런타임 의존성 추가 없음.
+
+### Changed
+
+- role 추론이 Go `net/http` 서버와 Python stdlib HTTP 서버(`http.server`/`socketserver`)를
+  `library`가 아닌 `backend`로 분류한다 — bounded·exclusion-guarded 소스 스캔으로: `net/http`를
+  import하고 `ListenAndServe`/`http.Serve`를 호출하는 Go 파일, 또는 `http.server`/`socketserver`를
+  import하고 서버를 시작(`serve_forever` / `HTTPServer(...)`)하는 Python 파일.
+
+### Notes
+
+- 단방향·보수적: 신호는 `library`→`backend` 승격만 하며, 강한 import + 서버-시작 쌍에만 반응하고,
+  기존 `backend`를 강등하지 않는다. `http.client`만 쓰는 라이브러리는 `library`로 남는다. 인식만
+  함 — 읽기 전용 소스 스캔(maxDepth 4·파일 캡·vendored/test/example 제외), 프레임워크 의존성 불요,
+  zero-dep 유지. 범위: `GATE_REVIEW.md`(Gate 19). 이로써 `1.12`–`1.14` detect & adapt 확장 라인이
+  완성된다.
+
 ## 1.13.0 — 2026-07-16
 
 infra/DevOps 프로젝트 프로필(Gate 18) — "detect & adapt 확장" 라인의 두 번째 마이너.
