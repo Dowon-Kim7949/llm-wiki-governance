@@ -17,7 +17,7 @@ The CLI creates the safe structure and guardrails; an agent (Codex, Claude Code,
 | --- | --- |
 | **Runtime** | Node.js ≥ 18.18.0 · Windows, macOS, Linux |
 | **Dependencies** | none — no runtime third-party dependencies |
-| **Detects** | Node · Python · Go · Rust · JVM · PHP · Ruby · .NET · mobile (Android / Flutter / iOS / React Native) |
+| **Detects** | Node · Python · Go · Rust · JVM · PHP · Ruby · .NET · mobile (Android / Flutter / iOS / React Native) · infra (Docker / Compose / Kubernetes / Helm / Terraform) |
 | **Agents / editors** | Codex (`AGENTS.md`), Claude Code (`CLAUDE.md`), Cursor, GitHub Copilot, Windsurf, Gemini CLI — plus any MCP client via `llm-wiki mcp` |
 | **Standalone** | the CLI (init / validate / audit / graph / stats / CI) works fully **without any agent** |
 

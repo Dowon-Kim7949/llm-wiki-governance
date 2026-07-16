@@ -244,9 +244,9 @@ put the CLI in front of real multi-team usage.
 
 ## Release Plan (1.12–1.14) — Detect & adapt breadth
 
-**Status: `1.12` (mobile profile, Gate 17) shipped in `1.12.0`; Gates 18 (`1.13`) and 19
-(`1.14`) remain proposed, pending acceptance.** The `1.7–1.11` "Team & org scale" line is
-complete and shipped (`1.11.1` on npm). The next
+**Status: `1.12` (mobile profile, Gate 17) and `1.13` (infra/DevOps profile, Gate 18)
+shipped; Gate 19 (`1.14`, stdlib-server) remains proposed, pending acceptance.** The
+`1.7–1.11` "Team & org scale" line is complete and shipped (`1.11.1` on npm). The next
 line extends project
 *breadth* — the successor to `1.3`'s PHP/Ruby/.NET work — and follows the same discipline:
 one minor at a time, in order, each recording its scope as a new `GATE_REVIEW.md` gate
@@ -267,7 +267,7 @@ build tool; zero-dep. Scope: `GATE_REVIEW.md` (Gate 17).
 
 ### 1.13 — Infra/DevOps profile (Gate 18)
 
-A new additive `infra` project type. Detect `Dockerfile`, Docker Compose, Kubernetes
+**Shipped in 1.13.0.** A new additive `infra` project type. Detect `Dockerfile`, Docker Compose, Kubernetes
 manifests, Helm charts (`Chart.yaml`), and Terraform (`*.tf`), plus an infra/DevOps
 document set. Reuses the exact bounded-detector pattern from Gate 17, so it lands second.
 Additive/opt-in; zero-dep (signal-file presence + bounded content sniff, no cluster/

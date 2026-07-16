@@ -5,6 +5,31 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.13.0 — 2026-07-16
+
+Infra/DevOps project profile (Gate 18) — the second minor of the "detect & adapt
+breadth" line. Additive and opt-in; CLI, `--format json`, the programmatic API, and
+the frontmatter contract are unchanged, and no runtime dependency is added.
+
+### Added
+
+- A new `infra` project type. `detectInfra` recognizes Docker (`Dockerfile`), Docker
+  Compose (`docker-compose.y*ml`/`compose.y*ml`), Kubernetes (a top-level or
+  conventional-directory `*.yaml`/`*.yml` carrying both `apiVersion:` and `kind:`),
+  Helm (`Chart.yaml`), and Terraform (`*.tf`).
+- An infra document set created by `init` (`profiles/infra.md`, `DEPLOYMENT.md`,
+  `RUNBOOK.md`, `SERVICE_TOPOLOGY.md`).
+
+### Notes
+
+- `infra` is a **fallback** type: it is chosen only when no app signal
+  (frontend/backend/library/mobile) is present, so a containerized app repo (a backend
+  with a `Dockerfile`) keeps its app type and existing outputs are byte-identical — only
+  genuine IaC-first repos (previously `unknown`) become `infra`.
+- Recognition only: no cluster/registry access, no deploy, no dependency graph parsed
+  (zero-dependency preserved); a bounded, exclusion-guarded scan. Scope: `GATE_REVIEW.md`
+  (Gate 18).
+
 ## 1.12.0 — 2026-07-16
 
 Mobile project profile (Gate 17) — the lead minor of the post-`1.11` "detect &

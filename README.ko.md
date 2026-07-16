@@ -17,7 +17,7 @@ CLI는 안전한 구조와 가드레일을 만들고, 에이전트(Codex·Claude
 | --- | --- |
 | **런타임** | Node.js ≥ 18.18.0 · Windows, macOS, Linux |
 | **의존성** | 없음 — 런타임 서드파티 의존성 0 |
-| **감지 대상** | Node · Python · Go · Rust · JVM · PHP · Ruby · .NET · 모바일(Android / Flutter / iOS / React Native) |
+| **감지 대상** | Node · Python · Go · Rust · JVM · PHP · Ruby · .NET · 모바일(Android / Flutter / iOS / React Native) · 인프라(Docker / Compose / Kubernetes / Helm / Terraform) |
 | **에이전트/에디터** | Codex(`AGENTS.md`), Claude Code(`CLAUDE.md`), Cursor, GitHub Copilot, Windsurf, Gemini CLI — 그리고 `llm-wiki mcp`로 모든 MCP 클라이언트 |
 | **단독 사용** | CLI(init/validate/audit/graph/stats/CI)는 **에이전트 없이도** 완전히 동작 |
 

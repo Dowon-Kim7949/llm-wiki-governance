@@ -24,6 +24,27 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-16 - release: prepare 1.13.0 (infra/DevOps profile, Gate 18) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "진행")
+- scope: src, tests, docs
+- changed:
+  - src/detector.js (`detectInfra` + `findKubernetesManifest` + `decideType` infra fallback), src/config.js (`PROFILE_DOCS.infra`)
+  - tests/verification.test.js (+3 infra 테스트; 버전 assertion 1.12.0→1.13.0)
+  - package.json (1.12.0→1.13.0), CHANGELOG.md/CHANGELOG.ko.md, ROADMAP.md/ROADMAP.ko.md(1.13 shipped), README.md/README.ko.md(감지 대상 행에 infra), GATE_REVIEW.md(Gate 18 accepted+shipped), docs/llm-wiki/releases/v1.13.0.md(신규)
+  - doc-sync: ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md → needs_review
+- summary:
+  - 1.13.0 = infra/DevOps 프로젝트 프로필(Gate 18). `detectInfra`가 Docker/Compose/Kubernetes/Helm/Terraform 신호로 부가적 `infra` 유형을 감지하고, `init`이 infra 문서셋(profiles/infra.md·DEPLOYMENT·RUNBOOK·SERVICE_TOPOLOGY)을 생성한다.
+  - `infra`는 **fallback** — `decideType`에서 앱 신호(frontend/backend/library/mobile)가 없을 때만 선택. `Dockerfile`을 가진 백엔드 레포는 backend 유지, 기존 출력 byte-identical(infra 신호는 infra로 확정될 때만 표면화). 인식만 함(클러스터/레지스트리 접근·배포 없음, zero-dep).
+  - 검증: node --test 215 통과(신규 3), validate result:pass 0 findings, strict pass. Terraform→infra / backend+Dockerfile→backend CLI end-to-end 스모크 확인.
+- evidence:
+  - src/detector.js
+  - src/config.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 배포 후 doc-sync 2개 문서(ARCHITECTURE·DOMAIN_FEATURES) 사람 재검토 필요.
+
 ## 2026-07-16 - release: prepare 1.12.0 (mobile profile, Gate 17) + doc-sync
 
 - status: needs_review

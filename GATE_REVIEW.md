@@ -715,7 +715,7 @@ Android `build.gradle` project is detected today as `jvm` with role `library`
 
 ## Infra/DevOps Profile Scope Decision (accepted for 1.13.0)
 
-Accepted by Dowon-Kim on 2026-07-16 as the scope for `1.13` — an infrastructure/DevOps
+**Shipped in 1.13.0.** Accepted by Dowon-Kim on 2026-07-16 as the scope for `1.13` — an infrastructure/DevOps
 project profile, the second of the breadth line. It reuses the exact bounded-detector
 pattern accepted for Gate 17, so it lands after mobile. An important precedence rule keeps
 it additive: `infra` is a **fallback** type, chosen only when no app signal (frontend/

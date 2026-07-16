@@ -5,6 +5,28 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.13.0 — 2026-07-16
+
+infra/DevOps 프로젝트 프로필(Gate 18) — "detect & adapt 확장" 라인의 두 번째 마이너.
+부가적·opt-in이며 CLI·`--format json`·프로그래매틱 API·frontmatter 계약 불변, 런타임
+의존성 추가 없음.
+
+### Added
+
+- 새 `infra` 프로젝트 유형. `detectInfra`가 Docker(`Dockerfile`)·Docker Compose
+  (`docker-compose.y*ml`/`compose.y*ml`)·Kubernetes(top-level 또는 관례 디렉터리의
+  `apiVersion:`+`kind:` YAML)·Helm(`Chart.yaml`)·Terraform(`*.tf`)을 감지한다.
+- `init`이 생성하는 infra 문서셋(`profiles/infra.md`, `DEPLOYMENT.md`, `RUNBOOK.md`,
+  `SERVICE_TOPOLOGY.md`).
+
+### Notes
+
+- `infra`는 **fallback** 유형 — 앱 신호(frontend/backend/library/mobile)가 없을 때만
+  선택되므로, `Dockerfile`을 가진 백엔드 레포는 앱 유형을 유지하고 기존 출력은
+  byte-identical. IaC 중심 레포(이전 `unknown`)만 `infra`가 된다.
+- 인식만 함: 클러스터/레지스트리 접근·배포·의존성 그래프 파싱 없음(zero-dep 유지),
+  bounded·exclusion-guarded 스캔. 범위: `GATE_REVIEW.md`(Gate 18).
+
 ## 1.12.0 — 2026-07-16
 
 모바일 프로젝트 프로필(Gate 17) — `1.11` 이후 "detect & adapt 확장" 라인의 첫 마이너.
