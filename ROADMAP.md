@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-standard
-last_updated: 2026-07-15
+last_updated: 2026-07-16
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -242,14 +242,53 @@ independently shippable and verifiable, and the biggest, most feedback-hungry
 features (monorepo, cross-repo) come after the cheaper adoption and config work has
 put the CLI in front of real multi-team usage.
 
+## Release Plan (1.12–1.14) — Detect & adapt breadth
+
+**Status: Gate 17 (`1.12`, mobile) accepted by Dowon-Kim on 2026-07-16 — the active next
+minor; Gates 18 (`1.13`) and 19 (`1.14`) remain proposed, pending acceptance.** The
+`1.7–1.11` "Team & org scale" line is complete and shipped (`1.11.1` on npm). The next
+line extends project
+*breadth* — the successor to `1.3`'s PHP/Ruby/.NET work — and follows the same discipline:
+one minor at a time, in order, each recording its scope as a new `GATE_REVIEW.md` gate
+*before* code (Gate 17 → 18 → 19). These three are largely independent, so they are
+sequenced by leverage and risk rather than by hard dependency.
+
+### 1.12 — Mobile profile (Gate 17, accepted 2026-07-16)
+
+A new additive `mobile` project type. Detect Android (`build.gradle`/`build.gradle.kts`/
+`settings.gradle` with an Android Gradle Plugin or AndroidX signal, `AndroidManifest.xml`),
+Flutter (`pubspec.yaml` with a `flutter:` section), Apple/iOS (`*.xcodeproj`/
+`*.xcworkspace`, `Podfile`, `Package.swift` targeting an Apple platform), and React Native
+(`package.json` `react-native` dependency), plus a mobile document set. **Leads because it
+also fixes a real misclassification** — an Android `build.gradle` is detected today as
+`jvm`+`library` (`src/detector.js`). Additive/opt-in (a new detected type and profile docs;
+`--type` gains a value); detection uses manifest/file signals and a bounded scan, never a
+build tool; zero-dep. Scope: `GATE_REVIEW.md` (Gate 17).
+
+### 1.13 — Infra/DevOps profile (Gate 18)
+
+A new additive `infra` project type. Detect `Dockerfile`, Docker Compose, Kubernetes
+manifests, Helm charts (`Chart.yaml`), and Terraform (`*.tf`), plus an infra/DevOps
+document set. Reuses the exact bounded-detector pattern from Gate 17, so it lands second.
+Additive/opt-in; zero-dep (signal-file presence + bounded content sniff, no cluster/
+registry/`terraform`/`kubectl`/`helm` access). Scope: `GATE_REVIEW.md` (Gate 18).
+
+### 1.14 — Stdlib-server detection (Gate 19)
+
+Promote the long-standing backlog item (deferred from `1.3`): classify Go `net/http` and
+Python stdlib HTTP servers as `backend` instead of `library`, via a bounded,
+false-positive-guarded source scan (an HTTP import **plus** a server-start call). The
+smallest of the three and last; the only risk is over-classification, so the heuristic
+stays conservative and one-directional (promotes `library`→`backend` only, never demotes).
+Zero-dep. Scope: `GATE_REVIEW.md` (Gate 19).
+
 ## Unscheduled 1.x Backlog
 
 Additive candidates worth doing but not yet slotted into a release:
 
 - More `prompt --task` presets as real workflows emerge.
-- Stdlib-server detection — classify Go `net/http` / Python stdlib HTTP servers as
-  `backend` instead of `library` (deferred from `1.3`: reliable detection needs
-  source scanning and risks false positives, so it needs a bounded heuristic).
+
+Promoted into the release plan above: stdlib-server detection (→ 1.14, Gate 19).
 
 Shipped in 1.7.0: per-command JSON `help` examples. Promoted into the release plan
 above: richer enrichment linting (→ 1.8, as a toggleable `content.thin_body` rule).

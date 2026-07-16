@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: gate_review
 project: llm-wiki-standard
-last_updated: 2026-07-15
+last_updated: 2026-07-16
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -16,6 +16,8 @@ source_files:
   - package.json
   - src/cli.js
   - src/commands.js
+  - src/detector.js
+  - src/config.js
   - src/config-file.js
   - src/frontmatter-schema.js
   - src/release-notes.js
@@ -44,15 +46,18 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 5 Implementation Approval | `accepted_for_0.1.0` | Ship `@dowonk-7949/llm-wiki-standard@0.1.0` as the first stable npmjs release candidate. |
 | Gate 6 Autofix (`--fix`) Scope Approval | `accepted_for_0.1.8` | Ship a scoped `llm-wiki fix` command (default preview, `--write` applies) limited to the safe remediations in "Autofix (`--fix`) Scope Decision" below. Content-bearing fixes never touch `verified` documents, and nothing outside `docs/llm-wiki/` is written. |
 | Gate 7 1.0.0 Stability Approval | `accepted_for_1.0.0` | Promote the `0.1.8` contract to a stable `1.0.0` with no functional command changes. Declare the CLI command/option surface, `--format json` output shape, and required frontmatter contract stable; breaking changes to these now require a major version bump. See "1.0.0 Stability Milestone" below. |
-| Gate 8 Migration Apply Scope Approval | `accepted_for_1.2.0` | Unblock `migrate --apply` for the `1.2.0` line under a pre-decided, preview-first, `verified`-preserving scope that reuses the accepted `fix` engine (Gate 6) plus `wiki_block_version` stamping. Revisits Gate 4's block for the `1.x` line. Accepted by WoongHwan-Kim on 2026-07-14; the rename map ships empty (`v1` is the only block version). See "Migration Apply Scope Decision" below. |
-| Gate 9 Drift Downgrade Scope Approval | `accepted_for_1.2.0` | Add an opt-in `llm-wiki drift` command: report-only by default, `--downgrade` flips drifted `verified` documents to `needs_review` and refreshes `last_updated`, nothing else. It never promotes to `verified` and never edits other content. Accepted by WoongHwan-Kim on 2026-07-14. See "Drift Downgrade Scope Decision" below. |
-| Gate 10 Domain Detection Scope Approval | `accepted` | Expand backend/fullstack `init` domain detection to cover BOTH directory-per-domain (`domains/domain/modules/features`) and file-per-domain route/resource modules (`endpoints/routers/routes/resources/controllers/handlers`), via a bounded, exclusion-guarded project scan tuned for near-zero false positives. Accepted by WoongHwan-Kim on 2026-07-14. See "Domain Detection Scope Decision" below. |
+| Gate 8 Migration Apply Scope Approval | `accepted_for_1.2.0` | Unblock `migrate --apply` for the `1.2.0` line under a pre-decided, preview-first, `verified`-preserving scope that reuses the accepted `fix` engine (Gate 6) plus `wiki_block_version` stamping. Revisits Gate 4's block for the `1.x` line. Accepted by Dowon-Kim on 2026-07-14; the rename map ships empty (`v1` is the only block version). See "Migration Apply Scope Decision" below. |
+| Gate 9 Drift Downgrade Scope Approval | `accepted_for_1.2.0` | Add an opt-in `llm-wiki drift` command: report-only by default, `--downgrade` flips drifted `verified` documents to `needs_review` and refreshes `last_updated`, nothing else. It never promotes to `verified` and never edits other content. Accepted by Dowon-Kim on 2026-07-14. See "Drift Downgrade Scope Decision" below. |
+| Gate 10 Domain Detection Scope Approval | `accepted` | Expand backend/fullstack `init` domain detection to cover BOTH directory-per-domain (`domains/domain/modules/features`) and file-per-domain route/resource modules (`endpoints/routers/routes/resources/controllers/handlers`), via a bounded, exclusion-guarded project scan tuned for near-zero false positives. Accepted by Dowon-Kim on 2026-07-14. See "Domain Detection Scope Decision" below. |
 | Gate 11 MCP Tool Surface Scope Approval | `accepted_for_1.6.0` | Add a `llm-wiki mcp` command that runs a Model Context Protocol server over stdio, exposing only the READ-ONLY commands as MCP tools. Hand-rolled JSON-RPC 2.0 on Node built-ins (no third-party SDK), preserving the zero-runtime-dependency invariant. No write/mutating command is exposed; results reuse the 1.5 result shape (`schemaVersion`) as `structuredContent`. See "MCP Tool Surface Scope Decision" below. |
 | Gate 12 CI/CD Adoption (GitHub Action + Release) Scope Approval | `accepted_for_1.7.0` | Add a composite GitHub Action (`.github/actions/validate/action.yml`) that wraps the read-only `validate` via `npx`, and a GitHub Release generated on `v*` tag push by an isolated `contents: write` job using the runner's built-in `gh` CLI (no third-party action). The release body comes from a new additive `release-notes --body-only` mode and is run through the sensitive-info scan before publish. Marketplace listing and floating-tag (`@v1`) versioning are DEFERRED behind a later gate that first deconflicts the `v*` npm-publish tag namespace and the `publish.yml` version-match guard. See "CI/CD Adoption Scope Decision" below. |
-| Gate 13 Config Schema Growth Scope Approval | `accepted_for_1.8.0` | Grow the pre-reserved `llm-wiki.config.json` seam (unknown keys already ignored) with (1) per-project **rule toggles** backed by a single severity registry consolidated from `FINDING_EXPLANATIONS`, (2) **custom document sets**, and (3) **template overrides** that can NEVER set `status: verified` (hard guardrail). Additive/opt-in; the `1.0.0` command/`--format json`/frontmatter contracts stay unchanged and the zero-runtime-dependency invariant is preserved. Enabling prep (unify config loading across CLI/programmatic-API/MCP; scaffold a starter config + `doctor` echo) shipped as `1.7.2`. Accepted by WoongHwan-Kim on 2026-07-15; `1.8.0` ships the pre-work (severity-registry consolidation — audited behavior-preserving, 0 mismatches — plus the template-override guardrail) and per-project **rule toggles**, with **custom document sets** and **template overrides** following in `1.8.x`. See "Config Schema Growth Scope Decision" below. |
-| Gate 14 Visibility Governance Scope Approval | `accepted_for_1.9.0` | Add opt-in visibility-consistency lints that reuse the sensitive-info scan: a `visibility: public` document that matches the scan, and a `contains_sensitive_info: false` document that matches it, are flagged. OFF BY DEFAULT, warning-level, read-only — enabled per project via the 1.8 config `rules` toggle; the rule can NEVER default to `error`/`blocked` (that would break the additive `1.0.0` invariant). It checks value-vs-content consistency only, not access control. Depends on the `docs/llm-wiki/VISIBILITY.md` policy doc. Accepted by WoongHwan-Kim on 2026-07-15. See "Visibility Governance Scope Decision" below. |
-| Gate 15 Monorepo Profile Scope Approval | `accepted_for_1.10.0` | Add opt-in per-package wiki support: detect workspace packages (npm/yarn `workspaces` first; pnpm/YAML deferred to keep zero-dep) and run the already cwd-parameterized read pipeline (`audit`/`collectWikiGraph`/`findMissingDocs`) per package, aggregating under a strictly additive `packages[]` JSON field. Single-repo output stays byte-identical when there are no workspaces or the mode is off. Each package honors its own `llm-wiki.config.json` via the same `resolveOptions` merge. Additive/opt-in; `1.0.0` contracts and the zero-runtime-dependency invariant preserved. Accepted by WoongHwan-Kim on 2026-07-15. See "Monorepo Profile Scope Decision" below. |
-| Gate 16 Cross-Repository Links Scope Approval | `accepted_for_1.11.0` | Add a conservative, NON-fetching cross-repo reference scheme (a reserved `repo:<name>/<path>` form, plus the already-recognized `http(s)://` URLs) recognized in `[[wiki links]]` and in `source_files`/`evidence`/`related`. Recognized references are treated as external — resolved (not flagged `wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`) but NEVER verified (verification would need network/git and break zero-dependency). Additive: local resolution is unchanged; only the reserved scheme is newly recognized. Accepted by WoongHwan-Kim on 2026-07-15. See "Cross-Repository Links Scope Decision" below. |
+| Gate 13 Config Schema Growth Scope Approval | `accepted_for_1.8.0` | Grow the pre-reserved `llm-wiki.config.json` seam (unknown keys already ignored) with (1) per-project **rule toggles** backed by a single severity registry consolidated from `FINDING_EXPLANATIONS`, (2) **custom document sets**, and (3) **template overrides** that can NEVER set `status: verified` (hard guardrail). Additive/opt-in; the `1.0.0` command/`--format json`/frontmatter contracts stay unchanged and the zero-runtime-dependency invariant is preserved. Enabling prep (unify config loading across CLI/programmatic-API/MCP; scaffold a starter config + `doctor` echo) shipped as `1.7.2`. Accepted by Dowon-Kim on 2026-07-15; `1.8.0` ships the pre-work (severity-registry consolidation — audited behavior-preserving, 0 mismatches — plus the template-override guardrail) and per-project **rule toggles**, with **custom document sets** and **template overrides** following in `1.8.x`. See "Config Schema Growth Scope Decision" below. |
+| Gate 14 Visibility Governance Scope Approval | `accepted_for_1.9.0` | Add opt-in visibility-consistency lints that reuse the sensitive-info scan: a `visibility: public` document that matches the scan, and a `contains_sensitive_info: false` document that matches it, are flagged. OFF BY DEFAULT, warning-level, read-only — enabled per project via the 1.8 config `rules` toggle; the rule can NEVER default to `error`/`blocked` (that would break the additive `1.0.0` invariant). It checks value-vs-content consistency only, not access control. Depends on the `docs/llm-wiki/VISIBILITY.md` policy doc. Accepted by Dowon-Kim on 2026-07-15. See "Visibility Governance Scope Decision" below. |
+| Gate 15 Monorepo Profile Scope Approval | `accepted_for_1.10.0` | Add opt-in per-package wiki support: detect workspace packages (npm/yarn `workspaces` first; pnpm/YAML deferred to keep zero-dep) and run the already cwd-parameterized read pipeline (`audit`/`collectWikiGraph`/`findMissingDocs`) per package, aggregating under a strictly additive `packages[]` JSON field. Single-repo output stays byte-identical when there are no workspaces or the mode is off. Each package honors its own `llm-wiki.config.json` via the same `resolveOptions` merge. Additive/opt-in; `1.0.0` contracts and the zero-runtime-dependency invariant preserved. Accepted by Dowon-Kim on 2026-07-15. See "Monorepo Profile Scope Decision" below. |
+| Gate 17 Mobile Profile Scope Approval | `accepted_for_1.12.0` | Add an additive `mobile` project type. Detect Android (`build.gradle`/`build.gradle.kts`/`settings.gradle` with an Android Gradle Plugin or AndroidX signal, `AndroidManifest.xml`), Flutter (`pubspec.yaml` with a `flutter:` section), Apple/iOS (`*.xcodeproj`/`*.xcworkspace`, `Podfile`, `Package.swift` targeting an Apple platform), and React Native (`package.json` `react-native` dependency), plus a mobile document set. Fixes today's misclassification of an Android `build.gradle` as `jvm`+`library` (`src/detector.js`). Additive/opt-in: a new detected type and profile docs only; `--type` gains an accepted value, existing detection is unchanged where no mobile signal is present; zero-dep preserved (manifest signals + bounded file checks, no build tools invoked). Accepted by Dowon-Kim on 2026-07-16. See "Mobile Profile Scope Decision" below. |
+| Gate 18 Infra/DevOps Profile Scope Approval | `proposed_for_1.13.0` | Add an additive `infra` project type. Detect `Dockerfile`, Docker Compose (`docker-compose.y*ml`/`compose.y*ml`), Kubernetes manifests, Helm charts (`Chart.yaml`), and Terraform (`*.tf`), plus an infra/DevOps document set. Reuses the same bounded, exclusion-guarded detector pattern as Gate 17. Additive/opt-in; zero-dep (signal-file presence + bounded content sniff, no cluster/registry access). Pending acceptance by Dowon-Kim. See "Infra/DevOps Profile Scope Decision" below. |
+| Gate 19 Stdlib-Server Detection Scope Approval | `proposed_for_1.14.0` | Refine role inference so Go `net/http` and Python stdlib HTTP servers classify as `backend` instead of `library`, via a bounded, false-positive-guarded source scan (import + server-start call, not framework deps). The smallest of the three; the only risk is over-classification, so the heuristic stays conservative and additive (promotes `library`→`backend` only on a strong signal; never demotes). Zero-dep. Pending acceptance by Dowon-Kim. See "Stdlib-Server Detection Scope Decision" below. |
+| Gate 16 Cross-Repository Links Scope Approval | `accepted_for_1.11.0` | Add a conservative, NON-fetching cross-repo reference scheme (a reserved `repo:<name>/<path>` form, plus the already-recognized `http(s)://` URLs) recognized in `[[wiki links]]` and in `source_files`/`evidence`/`related`. Recognized references are treated as external — resolved (not flagged `wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`) but NEVER verified (verification would need network/git and break zero-dependency). Additive: local resolution is unchanged; only the reserved scheme is newly recognized. Accepted by Dowon-Kim on 2026-07-15. See "Cross-Repository Links Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -144,7 +149,7 @@ Accepted for the `0.1.8` line. `llm-wiki fix` applies only the safest, mechanica
 
 ## Migration Apply Scope Decision (accepted for 1.2.0)
 
-Accepted for the `1.2.0` line (WoongHwan-Kim, 2026-07-14). Gate 8 revisits
+Accepted for the `1.2.0` line (Dowon-Kim, 2026-07-14). Gate 8 revisits
 Gate 4: `migrate --apply` has been blocked since `0.1.0` because automatic
 migration writes needed a separately accepted scope. This decision grants that
 scope by **reusing the accepted `fix` engine** (Gate 6) under a
@@ -206,7 +211,7 @@ Identical to the `fix` refusals:
 
 ## Drift Downgrade Scope Decision (accepted for 1.2.0)
 
-Accepted for the `1.2.0` line (WoongHwan-Kim, 2026-07-14). `fix` (Gate 6) and
+Accepted for the `1.2.0` line (Dowon-Kim, 2026-07-14). `fix` (Gate 6) and
 `migrate` (Gate 8) both refuse to change document `status`, so the opt-in
 `verified → needs_review` auto-downgrade on drift gets its own isolated command.
 Downgrading is safe in a way promotion is not: it moves a document toward
@@ -250,7 +255,7 @@ human did not give. Promotion to `verified` stays human-only in every command.
 
 ## Domain Detection Scope Decision (accepted)
 
-Accepted (WoongHwan-Kim, 2026-07-14). The `1.3` domain split created a per-domain
+Accepted (Dowon-Kim, 2026-07-14). The `1.3` domain split created a per-domain
 document only from directory-per-domain layouts. Real usage surfaced backends
 (e.g. FastAPI `app/api/api_v2/endpoints/hazard.py`) whose domains are **module
 files**, not folders — those produced only `00_overview`. This decision expands
@@ -351,7 +356,7 @@ as the CLI.
 
 ## CI/CD Adoption Scope Decision (accepted for 1.7.0)
 
-Accepted for the `1.7.0` line (WoongHwan-Kim, 2026-07-15) as the lead of the split
+Accepted for the `1.7.0` line (Dowon-Kim, 2026-07-15) as the lead of the split
 "Team & org scale" plan (see `ROADMAP.md`, "Release Plan (1.7–1.11)"). `1.7` makes
 the CLI cheap to adopt in CI/CD: a one-`uses:`-step GitHub Action wrapping the
 read-only `validate`, and a GitHub Release generated on tag push. It is the only
@@ -453,7 +458,7 @@ as drafted; implementation follows under the scope below.
 
 ## Config Schema Growth Scope Decision (accepted for 1.8.0)
 
-Accepted by WoongHwan-Kim on 2026-07-15 as the scope for the `1.8.0` line — the
+Accepted by Dowon-Kim on 2026-07-15 as the scope for the `1.8.0` line — the
 config-schema-growth minor split out of the former monolithic "team & org scale" line (see
 ROADMAP `1.8`). It is the hard dependency gate: both the monorepo profile (`1.10`,
 per-package config) and visibility governance (`1.9`, a rule toggle) consume it, so its
@@ -523,7 +528,7 @@ files keep working.
 
 ## Visibility Governance Scope Decision (accepted for 1.9.0)
 
-Accepted by WoongHwan-Kim on 2026-07-15 as the scope for `1.9` — visibility governance, the next
+Accepted by Dowon-Kim on 2026-07-15 as the scope for `1.9` — visibility governance, the next
 minor after the completed Gate 13 config-schema-growth line. It proves the 1.8 config
 design on a real feature before the larger monorepo consumer (`1.10`) depends on it.
 Blocked on (and shaped by) the `docs/llm-wiki/VISIBILITY.md` policy doc.
@@ -569,7 +574,7 @@ Blocked on (and shaped by) the `docs/llm-wiki/VISIBILITY.md` policy doc.
 
 ## Monorepo Profile Scope Decision (accepted for 1.10.0)
 
-Accepted by WoongHwan-Kim on 2026-07-15 as the scope for `1.10` — the monorepo profile, the next
+Accepted by Dowon-Kim on 2026-07-15 as the scope for `1.10` — the monorepo profile, the next
 minor after visibility governance (`1.9`). It reuses the config growth (`1.8`) and the
 already cwd-parameterized read pipeline; it is the first feature that needs real
 multi-package usage, so it lands opt-in and conservative.
@@ -617,7 +622,7 @@ multi-package usage, so it lands opt-in and conservative.
 
 ## Cross-Repository Links Scope Decision (accepted for 1.11.0)
 
-Accepted by WoongHwan-Kim on 2026-07-15 as the scope for `1.11` — cross-repository knowledge
+Accepted by Dowon-Kim on 2026-07-15 as the scope for `1.11` — cross-repository knowledge
 links, the last planned minor. It is the most design- and feedback-heavy feature, so
 it lands conservative and non-fetching, after monorepo (`1.10`) put the CLI in front
 of multi-package usage.
@@ -656,6 +661,118 @@ of multi-package usage.
   reserved scheme.
 - `src/commands.js` — the `[[..]]` wiki-link resolver (`wiki_link.missing`) that
   recognizes the scheme so cross-repo links are not flagged.
+
+## Mobile Profile Scope Decision (accepted for 1.12.0)
+
+Accepted by Dowon-Kim on 2026-07-16 as the scope for `1.12` — a mobile project profile,
+first of the post-`1.11` "detect & adapt breadth" line (the successor theme to `1.3`'s
+PHP/Ruby/.NET breadth). It leads because it also fixes a concrete misclassification: an
+Android `build.gradle` project is detected today as `jvm` with role `library`
+(`src/detector.js`), and Flutter / iOS / React Native are not detected as mobile at all.
+
+### In scope for 1.12.0
+
+- **A new additive `mobile` project type**, detected from manifest signals:
+  - **Android** — `build.gradle`/`build.gradle.kts`/`settings.gradle` carrying an Android
+    Gradle Plugin (`com.android.application`/`com.android.library`) or AndroidX signal, or
+    an `AndroidManifest.xml`.
+  - **Flutter** — `pubspec.yaml` with a `flutter:` section (Dart-only `pubspec.yaml` stays
+    `library`).
+  - **Apple/iOS** — `*.xcodeproj`/`*.xcworkspace`, a `Podfile`, or a `Package.swift`
+    targeting an Apple platform.
+  - **React Native** — a `package.json` with a `react-native` dependency (recognized
+    alongside the existing Node signal).
+- **A mobile document set** (profile docs under the same `PROFILE_DOCS` mechanism as
+  backend/fullstack/library), created by `init --write` and validated like any other
+  profile.
+- **Ordered first** of the three profile/detection minors (`1.12` → `1.13` infra →
+  `1.14` stdlib-server), one minor at a time per the roadmap's own rule.
+
+### Invariants
+
+- Additive/opt-in: `--type` gains `mobile` as an accepted value (existing values keep
+  working); auto-detection output changes only for inputs that carry a mobile signal.
+  Repos with no mobile signal are byte-identical.
+- Detection uses manifest/file signals and a bounded, exclusion-guarded scan (same
+  discipline as Gate 10 domain detection); no build tool (Gradle/Xcode/CocoaPods) is ever
+  invoked. Zero-runtime-dependency preserved.
+- The `1.0.0` command/`--format json`/frontmatter contracts are unchanged; this is an
+  additive detector + profile doc set (the pattern `1.3` established).
+- CLI-created docs stay `needs_review`; conservative-write (`--write` only) unchanged.
+
+### Out of scope
+
+- Parsing app build graphs, variants/flavors, or dependency trees.
+- Platform-specific lint beyond project-type detection and the profile doc set.
+
+### Evidence
+
+- `src/detector.js#symbol:detectEcosystems` — where `build.gradle` is currently mapped to
+  `jvm`+`library` (the misclassification this gate corrects) and where mobile signals are
+  added.
+- `src/config.js#symbol:PROFILE_DOCS` — the profile document-set mechanism the mobile doc
+  set plugs into.
+
+## Infra/DevOps Profile Scope Decision (proposed for 1.13.0)
+
+Proposed as the scope for `1.13` — an infrastructure/DevOps project profile, the second of
+the breadth line. It reuses the exact bounded-detector pattern accepted for Gate 17, so it
+lands after mobile. **Pending acceptance by Dowon-Kim.**
+
+### In scope for 1.13.0
+
+- **A new additive `infra` project type**, detected from signal files: `Dockerfile`,
+  Docker Compose (`docker-compose.y*ml`/`compose.y*ml`), Kubernetes manifests, Helm charts
+  (`Chart.yaml` with a Helm shape), and Terraform (`*.tf`).
+- **An infra/DevOps document set** (runbook/architecture/ownership-oriented docs) via the
+  same `PROFILE_DOCS` mechanism.
+
+### Invariants
+
+- Additive/opt-in: `--type` gains `infra`; repos with no infra signal are byte-identical.
+- Zero-dep: detection is signal-file presence plus a bounded content sniff; no cluster,
+  registry, or `terraform`/`kubectl`/`helm` invocation.
+- `1.0.0` contracts unchanged; CLI-created docs stay `needs_review`.
+
+### Out of scope
+
+- Parsing/validating manifests semantically, or any live infrastructure access.
+
+### Evidence
+
+- `src/detector.js#symbol:detectEcosystems` — where infra signal files are recognized.
+- `src/config.js#symbol:PROFILE_DOCS` — the infra doc set.
+
+## Stdlib-Server Detection Scope Decision (proposed for 1.14.0)
+
+Proposed as the scope for `1.14` — promoting the long-standing "stdlib-server detection"
+backlog item (deferred from `1.3`) into a shipped minor. It is the smallest of the three
+and lands last; its only real risk is over-classification, so the heuristic stays strictly
+conservative. **Pending acceptance by Dowon-Kim.**
+
+### In scope for 1.14.0
+
+- **Refined role inference**: classify Go `net/http` and Python stdlib HTTP servers as
+  `backend` instead of `library`, via a bounded, false-positive-guarded source scan
+  (an HTTP import **plus** a server-start call such as `http.ListenAndServe` /
+  `http.server`/`socketserver` usage), not a framework dependency.
+
+### Invariants
+
+- Additive and one-directional: the signal only promotes `library`→`backend`; it never
+  demotes an existing `backend` classification and never fires without a strong
+  import+start-call pair.
+- Bounded, exclusion-guarded scan (Gate 10 discipline); zero-dep.
+- `1.0.0` contracts unchanged.
+
+### Out of scope
+
+- Framework-grade routing analysis or classifying arbitrary custom servers.
+
+### Evidence
+
+- `src/detector.js#symbol:detectEcosystems` — the Go/Python role heuristic extended with a
+  guarded stdlib-server source signal.
 
 ## Release Caveats
 

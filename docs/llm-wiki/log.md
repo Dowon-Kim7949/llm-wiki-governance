@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-standard
-last_updated: 2026-07-15
+last_updated: 2026-07-16
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -24,10 +24,59 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-16 - decision: Gate 17 (모바일 프로필, 1.12.0) 승인
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 승인 기록)
+- scope: docs (게이트 결정; 코드 없음)
+- changed:
+  - GATE_REVIEW.md (Gate 17 상태 `proposed_for_1.12.0` → `accepted_for_1.12.0`; scope 서술 "Accepted by Dowon-Kim on 2026-07-16"로 갱신)
+  - ROADMAP.md / ROADMAP.ko.md ("Release Plan (1.12–1.14)" 상태를 Gate 17 승인/활성 다음 마이너로 갱신; Gate 18·19는 proposed 유지)
+- summary:
+  - Dowon-Kim이 Gate 17(모바일 프로필)을 `accepted_for_1.12.0`으로 승인했다. 이로써 `1.12`가 다음 활성 마이너가 된다: 부가적 `mobile` 프로젝트 유형(Android/Flutter/iOS/React Native 감지 + 모바일 문서셋)이며, 지금 Android `build.gradle`이 `jvm`+`library`로 오분류되는 문제(`src/detector.js`)도 함께 고친다.
+  - Gate 18(1.13 infra)·Gate 19(1.14 stdlib-server)는 여전히 `proposed_*`로 승인 대기 — 로드맵 규율(한 번에 한 마이너)에 따라 1.12 완료 후 순서대로 당긴다.
+- caveats:
+  - 승인 단계까지만 진행 — 아직 코드/테스트 변경 없음. 1.0.0 계약·zero-dep 불변. 구현은 다음 단계.
+
+## 2026-07-16 - chore: 유지보수자 표기명 정정 (WoongHwan-Kim → Dowon-Kim, 동일 인물)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — 옛 이름 표기를 현재 이름으로 교정)
+- scope: docs, git-config
+- changed:
+  - git config user.name (local + global): WoongHwan-Kim → Dowon-Kim (email whkim@dareesoft.com 유지)
+  - 문서 21개 파일 149곳의 "WoongHwan-Kim" → "Dowon-Kim" 일괄 치환(reviewed_by·"Accepted by …"·리뷰 노트 등)
+- summary:
+  - 유지보수자의 옛 이름(WoongHwan-Kim)을 현재 이름(Dowon-Kim)으로 통일했다. 동일 인물의 표기명 정정이므로 리뷰의 유효성은 불변 — verified 문서의 status는 유지했다(재검토 부채 없음). GitHub 계정·npm 스코프는 이미 Dowon-Kim7949/@dowonk-7949라 신원과도 정렬된다.
+  - 과거 커밋 히스토리(132개 커밋의 author/committer)는 의도적으로 건드리지 않았다: SHA 재작성·강제 push·태그 재작성·npm provenance 훼손을 피하기 위함. 즉 git log 상 옛 이름은 역사적 기록으로 보존된다.
+  - 이 log.md의 과거 항목 66곳도 이름 일관성을 위해 정정했다(엄밀한 append-only에서 벗어난 예외 — 무엇이 일어났는지는 불변, 사람 이름 철자만 정정).
+- caveats:
+  - 코드/CLI/JSON/frontmatter 계약과 zero-dep 불변(내용 변경 없음, 표기명만 정정).
+  - 바이너리 프레젠테이션(outputs/*.pptx)에 옛 이름이 남아 있을 수 있으며, 필요 시 별도로 갱신해야 한다.
+
+## 2026-07-16 - plan: 다음 라인(1.12–1.14 detect & adapt 브레드스) 게이트/로드맵 초안 (제안, 승인 대기)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 버전 작업" + "모든 것에 대해 진행")
+- scope: docs (계획만; 코드 변경 없음)
+- changed:
+  - GATE_REVIEW.md (Gate 17–19 테이블 행 + scope 서술 3개; source_files에 src/detector.js·src/config.js 추가 → needs_review)
+  - ROADMAP.md / ROADMAP.ko.md ("Release Plan (1.12–1.14)" 신규 섹션; stdlib-server 백로그→1.14 승격 → needs_review)
+- summary:
+  - `1.7–1.11` "팀 & 조직 확장" 라인이 `1.11.1`로 완성·npm 배포된 상태에서, 사용자가 다음 세 후보(모바일 프로필·infra/DevOps 프로필·stdlib-server 감지)를 모두 진행하기로 결정했다. 로드맵 규율(한 번에 한 마이너, 코드보다 먼저 게이트)에 맞춰 한 릴리스로 묶지 않고 순서 있는 마이너 3개로 계획했다: 1.12 모바일(Gate 17, Android build.gradle→library 오분류도 수정) → 1.13 infra(Gate 18) → 1.14 stdlib-server(Gate 19).
+  - 세 게이트 모두 `proposed_for_*` 상태로 기록하고 Dowon-Kim 승인 대기임을 명시했다. 승인 후에야 코드 착수한다.
+- evidence:
+  - src/detector.js
+  - src/config.js
+  - package.json
+- caveats:
+  - 아직 계획 단계다 — 코드/테스트 변경 없음, `1.0.0` 계약·zero-dep 불변. 게이트는 사람 승인 전까지 proposed로 유지한다.
+  - 계획 문서(GATE_REVIEW·ROADMAP·ROADMAP.ko)는 LLM 편집이라 needs_review로 강등했다.
+
 ## 2026-07-16 - refactor: commands.js 모듈 분리 완료 (안정화 2단계, 동작 보존) + doc-sync
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시 — "분리 마저 진행")
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "분리 마저 진행")
 - scope: src, docs
 - changed:
   - src/commands.js (3,434→1,612줄)
@@ -46,7 +95,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - test: 안정화 1단계 — 교차기능 통합 테스트 3개 (invariant 재감사)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시 — "안정화 우선" 방향 선택)
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "안정화 우선" 방향 선택)
 - scope: tests
 - changed:
   - tests/verification.test.js (+3 통합 테스트)
@@ -58,19 +107,19 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.11.0 cross-repo 문서 2개 verified 재승인 (1.7–1.11 라인 완주)
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
 - summary:
-  - 1.11.0 doc-sync(cross-repo knowledge links)로 needs_review로 내려갔던 지식 문서 2개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.11.0 재검토 부채가 없고, 배포된 1.7–1.11 로드맵 라인 전체가 재검토까지 완료됐다(PUBLIC_API는 1.11에서 표면 변경 없어 verified 유지).
+  - 1.11.0 doc-sync(cross-repo knowledge links)로 needs_review로 내려갔던 지식 문서 2개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.11.0 재검토 부채가 없고, 배포된 1.7–1.11 로드맵 라인 전체가 재검토까지 완료됐다(PUBLIC_API는 1.11에서 표면 변경 없어 verified 유지).
 - caveats:
   - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, strict clean. 계획된 다음 마이너 없음(Unscheduled 1.x Backlog / Beyond-1.x-Horizon만 잔여).
 
 ## 2026-07-15 - release: 1.11.0 준비 (cross-repo links) — 1.7–1.11 라인 완성
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: release, docs
 - changed:
   - package.json (1.10.0 → 1.11.0), tests/verification.test.js (버전 assertion → 1.11.0)
@@ -88,7 +137,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: cross-repo knowledge links (recognize-don't-verify) — 1.11.0, Gate 16
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/commands.js (`isCrossRepoReference`[`repo:<name>/<path>`] 헬퍼; `isExternalSourceReference`에 반영; wiki-link 해석기에 external 스킵 추가)
@@ -104,7 +153,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: Gate 16 accepted_for_1.11.0 (cross-repo links)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·수락)
+- actor: Claude Code (사용자 Dowon-Kim 검토·수락)
 - scope: docs
 - changed:
   - GATE_REVIEW.md (Gate 16 `proposed_for_1.11.0` → `accepted_for_1.11.0`)
@@ -116,7 +165,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.11 준비 — Gate 16 (cross-repo links) proposed 초안
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: docs
 - changed:
   - GATE_REVIEW.md (Gate 16 표 행 + "Cross-Repository Links Scope Decision (proposed for 1.11.0)" 섹션)
@@ -129,19 +178,19 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.10.0 monorepo 문서 3개 verified 재승인
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
 - summary:
-  - 1.10.0 doc-sync(monorepo profile)로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.10.0 재검토 부채가 없다.
+  - 1.10.0 doc-sync(monorepo profile)로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.10.0 재검토 부채가 없다.
 - caveats:
   - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, strict clean.
 
 ## 2026-07-15 - release: 1.10.0 준비 (monorepo profile)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: release, docs
 - changed:
   - package.json (1.9.0 → 1.10.0), tests/verification.test.js (버전 assertion → 1.10.0)
@@ -159,7 +208,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: monorepo profile (per-package 검증) — 1.10.0, Gate 15
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/detector.js (`detectWorkspaces`: npm/yarn `workspaces` 감지 + `/*` glob·literal 확장; pnpm/YAML은 unsupported 보고)
@@ -177,7 +226,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: Gate 15 accepted_for_1.10.0 (monorepo profile)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·수락)
+- actor: Claude Code (사용자 Dowon-Kim 검토·수락)
 - scope: docs
 - changed:
   - GATE_REVIEW.md (Gate 15 `proposed_for_1.10.0` → `accepted_for_1.10.0`)
@@ -189,7 +238,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.10 준비 — Gate 15 (monorepo profile) proposed 초안
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: docs
 - changed:
   - GATE_REVIEW.md (Gate 15 표 행 + "Monorepo Profile Scope Decision (proposed for 1.10.0)" 섹션)
@@ -202,19 +251,19 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.9.0 visibility 문서 2개 verified 재승인
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
 - summary:
-  - 1.9.0 doc-sync(visibility governance)로 needs_review로 내려갔던 지식 문서 2개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.9.0 재검토 부채가 없다.
+  - 1.9.0 doc-sync(visibility governance)로 needs_review로 내려갔던 지식 문서 2개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.9.0 재검토 부채가 없다.
 - caveats:
   - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, strict clean.
 
 ## 2026-07-15 - release: 1.9.0 준비 (visibility governance)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: release, docs
 - changed:
   - package.json (1.8.1 → 1.9.0), tests/verification.test.js (버전 assertion → 1.9.0)
@@ -232,7 +281,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: visibility governance opt-in 일관성 rule 2개 (1.9.0, Gate 14)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/commands.js (`FINDING_EXPLANATIONS`에 `visibility.public_sensitive`·`visibility.declared_mismatch`[warning] 등록; `scanVisibilityConsistency`; audit/status 배선)
@@ -247,20 +296,20 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: Gate 14 accepted_for_1.9.0 + VISIBILITY.md verified
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·수락)
+- actor: Claude Code (사용자 Dowon-Kim 검토·수락)
 - scope: docs
 - changed:
   - GATE_REVIEW.md (Gate 14 `proposed_for_1.9.0` → `accepted_for_1.9.0`)
   - docs/llm-wiki/VISIBILITY.md (needs_review → verified)
 - summary:
-  - 1.9 visibility governance의 Gate 14를 사람 검토로 `accepted_for_1.9.0`으로 승격하고, 정책 문서 `VISIBILITY.md`를 `verified`로 승인했다(reviewed_by: WoongHwan-Kim, reviewed_at: 2026-07-15). 스코프: opt-in 일관성 rule 2개(`visibility.public_sensitive`, `visibility.declared_mismatch`) — 기본 off·warning·read-only, 1.8 config `rules`로 활성화, 절대 default error/blocked 금지, sensitive-info 스캔 재사용, `sensitive.*` 비토글, 접근 통제 아님.
+  - 1.9 visibility governance의 Gate 14를 사람 검토로 `accepted_for_1.9.0`으로 승격하고, 정책 문서 `VISIBILITY.md`를 `verified`로 승인했다(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-15). 스코프: opt-in 일관성 rule 2개(`visibility.public_sensitive`, `visibility.declared_mismatch`) — 기본 off·warning·read-only, 1.8 config `rules`로 활성화, 절대 default error/blocked 금지, sensitive-info 스캔 재사용, `sensitive.*` 비토글, 접근 통제 아님.
 - caveats:
   - 이로써 1.9 피처 코드 착수 가능. validate 0, validate-frontmatter --strict clean.
 
 ## 2026-07-15 - docs: 1.9 준비 — visibility 정책 문서 + Gate 14 proposed 초안
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: docs
 - changed:
   - docs/llm-wiki/VISIBILITY.md (신규 정책 문서, needs_review) — project-profile Open Question 해소용 설계 입력
@@ -274,19 +323,19 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.8.1 config 피처 문서 3개 verified 재승인
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
 - summary:
-  - 1.8.1 doc-sync(커스텀 문서셋·템플릿 오버라이드)로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.8.1 재검토 부채가 없다.
+  - 1.8.1 doc-sync(커스텀 문서셋·템플릿 오버라이드)로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.8.1 재검토 부채가 없다.
 - caveats:
   - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, validate-frontmatter --strict clean. Gate 13 config schema growth 완성.
 
 ## 2026-07-15 - release: 1.8.1 준비 (config schema growth 2부 — 커스텀 문서셋 + 템플릿 오버라이드)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: release, docs
 - changed:
   - package.json (1.8.0 → 1.8.1), tests/verification.test.js (버전 assertion → 1.8.1)
@@ -304,7 +353,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: 템플릿 오버라이드 (config templates, never-verified 가드레일) — Gate 13, 1.8.x
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/config-file.js (config `templates`[obj str→str] 검증 + 병합)
@@ -321,7 +370,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: 커스텀 문서셋 (config requiredDocs) — Gate 13, 1.8.x
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/config-file.js (config `requiredDocs`[string[]] 검증 + 병합)
@@ -338,19 +387,19 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.8.0 rule-toggle 문서 3개 verified 재승인
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
 - summary:
-  - 1.8.0 rule-토글 doc-sync로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.8.0 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
+  - 1.8.0 rule-토글 doc-sync로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.8.0 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
 - caveats:
   - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, validate-frontmatter --strict clean.
 
 ## 2026-07-15 - release: 1.8.0 준비 (config schema growth — rule 토글)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: release, docs
 - changed:
   - package.json (1.7.2 → 1.8.0), tests/verification.test.js (버전 assertion → 1.8.0)
@@ -368,7 +417,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: content.thin_body opt-in lint (1.8.0 dogfood)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/commands.js (`FINDING_EXPLANATIONS`에 `content.thin_body`[warning] 등록; `scanThinBody`+`bodyProseWordCount`; audit/status 배선)
@@ -383,7 +432,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: per-project rule toggles (1.8.0 config schema growth)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/config-file.js (config `rules` 맵 검증 + 병합; `RULE_TOGGLE_ACTIONS`)
@@ -402,7 +451,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: Gate 13 accepted_for_1.8.0 (config schema growth)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·수락)
+- actor: Claude Code (사용자 Dowon-Kim 검토·수락)
 - scope: docs
 - changed:
   - GATE_REVIEW.md (Gate 13 `proposed_for_1.8.0` → `accepted_for_1.8.0`; 점진 딜리버리·severity 감사 결과 반영)
@@ -414,19 +463,19 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.7.2 doc-synced 문서 3개 verified 재승인
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
 - summary:
-  - 1.7.2 EP1/EP2 doc-sync로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.7.2 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
+  - 1.7.2 EP1/EP2 doc-sync로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.7.2 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
 - caveats:
   - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, validate-frontmatter --strict clean.
 
 ## 2026-07-15 - release: 1.7.2 준비 (EP1+EP2 enabling-prep, config 일관화)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: release, docs
 - changed:
   - package.json (1.7.1 → 1.7.2), tests/verification.test.js (버전 assertion → 1.7.2)
@@ -444,7 +493,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: EP2 starter config scaffold + doctor echo — 1.7.2 enabling-prep
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/commands.js (init/quickstart가 최소 llm-wiki.config.json을 scaffold: `scaffoldProjectConfig` 헬퍼 — additive·preview-first·기존 파일 절대 미덮어씀[--existing overwrite에서도]; `doctor`가 `describeEffectiveConfig`로 config 선언 키[type/profiles/agents/strict]를 echo; config-file.js import 추가)
@@ -461,7 +510,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - feat: EP1 config 로딩 일원화 (CLI/API/MCP 동일 effective options) — 1.7.2 enabling-prep
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, tests
 - changed:
   - src/cli.js (인라인 config 로드+병합+agent 재정규화를 공유 export `applyProjectConfig`로 추출; main()은 이를 호출 — 동작 보존)
@@ -481,7 +530,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: Gate 13 (1.8 config schema growth) proposed 초안
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시·결정)
+- actor: Claude Code (사용자 Dowon-Kim 지시·결정)
 - scope: docs
 - changed:
   - GATE_REVIEW.md (Gate 13 표 행 + "Config Schema Growth Scope Decision (proposed for 1.8.0)" 섹션; source_files에 src/config-file.js 추가)
@@ -494,7 +543,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - release: 1.7.1 준비 (commands.js NUL 바이트 제거 + LF 재정규화)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시)
+- actor: Claude Code (사용자 Dowon-Kim 지시)
 - scope: code, docs
 - changed:
   - src/commands.js (wikiGraph 엣지 키의 날것 U+0000 → `\\u0000` 이스케이프; 파일 CRLF→LF 재정규화)
@@ -514,20 +563,20 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.7 doc-sync 문서 6개 verified 재승인
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/RELEASE_FLOW.md, PUBLIC_API.md, DOMAIN_FEATURES.md, domains/00_overview.md, project-profile.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
   - docs/llm-wiki/VERSIONING.md (verified 유지, reviewed_at/last_updated → 2026-07-15)
 - summary:
-  - 1.7.0 doc-sync로 needs_review로 내려갔던 지식 문서 6개를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 추가로 VERSIONING.md가 인용 소스(`package.json` 버전 bump·`RELEASE_CHECKLIST.md` 갱신) 변경으로 `evidence.stale`이 떠서, version-agnostic 내용이 여전히 정확함을 확인하고 검토 기준일을 2026-07-15로 갱신해 해소했다(내용 변경 없음). 이로써 1.7.0 배포 전 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
+  - 1.7.0 doc-sync로 needs_review로 내려갔던 지식 문서 6개를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 추가로 VERSIONING.md가 인용 소스(`package.json` 버전 bump·`RELEASE_CHECKLIST.md` 갱신) 변경으로 `evidence.stale`이 떠서, version-agnostic 내용이 여전히 정확함을 확인하고 검토 기준일을 2026-07-15로 갱신해 해소했다(내용 변경 없음). 이로써 1.7.0 배포 전 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
 - caveats:
   - `reviewed_at: 2026-07-15`가 같은날(2026-07-15) src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0 findings, validate-frontmatter --strict clean. 배포 직전 상태.
 
 ## 2026-07-15 - release: 1.7.0 준비 (CI/CD 도입) + 전 문서 1.7.0 정합화
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 지시: "모든 문서가 1.7.0에 맞는지 분석 후 릴리스")
+- actor: Claude Code (사용자 Dowon-Kim 지시: "모든 문서가 1.7.0에 맞는지 분석 후 릴리스")
 - scope: release, docs
 - changed:
   - package.json (1.6.0 → 1.7.0), tests/verification.test.js (버전 어서션 → 1.7.0)
@@ -569,7 +618,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs(gate): Gate 12 수락 (accepted_for_1.7.0)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 승인)
+- actor: Claude Code (사용자 Dowon-Kim 승인)
 - scope: docs, gate
 - changed:
   - GATE_REVIEW.md
@@ -596,7 +645,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: ROADMAP 1.7 단일 라인 → 1.7~1.11 순차 분할 재작성 (1.7 계획 1단계)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 방향 결정: "1.7 분할안에 전적으로 동의, 단계별로 진행")
+- actor: Claude Code (사용자 Dowon-Kim 방향 결정: "1.7 분할안에 전적으로 동의, 단계별로 진행")
 - scope: docs
 - changed:
   - ROADMAP.md, ROADMAP.ko.md
@@ -612,13 +661,13 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.6 doc-sync 문서 verified 재승인 + MCP 로컬 등록 정리
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/PUBLIC_API.md, ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md, domains/00_overview.md (needs_review → verified)
   - docs/llm-wiki/README.md (verified 유지, reviewed_at/last_updated → 2026-07-15)
 - summary:
-  - 1.6.0 배포 후, 1.6 doc-sync로 needs_review로 내려가 있던 4개 문서(PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·domains/00_overview)를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: WoongHwan-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트 재승인 문구). 추가로 위키 README(`docs/llm-wiki/README.md`)가 루트 README 재작성(front-door 슬림, c21c504)을 source로 인용해 `evidence.stale`로 떠서, 내용이 여전히 정확함을 확인하고 검토일을 2026-07-15로 갱신해 해소했다.
+  - 1.6.0 배포 후, 1.6 doc-sync로 needs_review로 내려가 있던 4개 문서(PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·domains/00_overview)를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트 재승인 문구). 추가로 위키 README(`docs/llm-wiki/README.md`)가 루트 README 재작성(front-door 슬림, c21c504)을 source로 인용해 `evidence.stale`로 떠서, 내용이 여전히 정확함을 확인하고 검토일을 2026-07-15로 갱신해 해소했다.
   - 사전 검증용으로 등록해 둔 로컬 MCP 서버(`claude mcp add llm-wiki -s local`)를 정리했다. 이 등록은 사용자 홈 `~/.claude.json`에만 있던 로컬 전용 항목으로, git·npm 배포물에 흔적이 없어 배포된 1.6.0에는 아무 영향이 없었다(제거는 정돈 목적). 다시 쓰려면 배포판 기준으로 `claude mcp add llm-wiki -s local -- npx -y @dowonk-7949/llm-wiki-standard mcp`.
 - caveats:
   - validate 0 findings, validate-frontmatter --strict clean(26 docs), node --test 173 통과. 이로써 재검토 부채 없음(log.md·releases/*.md만 관례상 needs_review).
@@ -626,7 +675,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: README(EN/KO) 프론트도어형으로 슬림 재구성
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 방향 결정)
+- actor: Claude Code (사용자 Dowon-Kim 방향 결정)
 - scope: docs
 - changed:
   - README.md, README.ko.md (약 510/500줄 → 각 101줄)
@@ -638,7 +687,7 @@ contains_sensitive_info: false
 ## 2026-07-15 - docs: 1.6.0 배포 전 validate 경고 전부 해소
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/EXAMPLES.md, GLOSSARY.md, index.md, profiles/library.md (reviewed_at/last_updated → 2026-07-15)
@@ -646,7 +695,7 @@ contains_sensitive_info: false
   - docs/llm-wiki/templates/DECISION_LOG.template.md, TASK_PROMPT.template.md (동일 재검증)
   - docs/llm-wiki/log.md (아래 wiki-link 오탐 표현 정정)
 - summary:
-  - 1.6.0 배포 전 `validate`의 경고 15건을 전부 해소했다. (1) `evidence.stale` 13건: 위 8개 `verified` 문서의 검토 기준일이 2026-07-13이었고 1.6 작업으로 소스(cli.js·commands.js·config.js·package.json·README.md)가 2026-07-14에 바뀌어 드리프트로 떴다. 사람 검토(WoongHwan-Kim)로 내용이 현행과 일치함을 확인하고 `reviewed_at`/`last_updated`를 2026-07-15로 갱신해 기준선을 이동, 드리프트를 해소했다(도구가 안내하는 "re-review and update" 경로; 내용 변경 없음). (2) `wiki_link.missing` 2건: 과거 로그 항목의 이중 대괄호 리터럴 토큰이 "위키 링크 문법"을 지칭하는 서술이었으나 스캐너가 실제 문서 링크로 오탐한 것 — 사실은 그대로 두고 "위키 링크"로 표현만 정정했다.
+  - 1.6.0 배포 전 `validate`의 경고 15건을 전부 해소했다. (1) `evidence.stale` 13건: 위 8개 `verified` 문서의 검토 기준일이 2026-07-13이었고 1.6 작업으로 소스(cli.js·commands.js·config.js·package.json·README.md)가 2026-07-14에 바뀌어 드리프트로 떴다. 사람 검토(Dowon-Kim)로 내용이 현행과 일치함을 확인하고 `reviewed_at`/`last_updated`를 2026-07-15로 갱신해 기준선을 이동, 드리프트를 해소했다(도구가 안내하는 "re-review and update" 경로; 내용 변경 없음). (2) `wiki_link.missing` 2건: 과거 로그 항목의 이중 대괄호 리터럴 토큰이 "위키 링크 문법"을 지칭하는 서술이었으나 스캐너가 실제 문서 링크로 오탐한 것 — 사실은 그대로 두고 "위키 링크"로 표현만 정정했다.
   - 결과: `validate` findings 0.
 - caveats:
   - 역사적 릴리스 노트(v0.1.7·v0.1.8)가 `package.json`을 source_files로 인용해 릴리스마다 반복 드리프트하는 구조적 스멜은 향후 별도 정리 후보다(현재는 재검증으로 유지).
@@ -712,12 +761,12 @@ contains_sensitive_info: false
 ## 2026-07-14 - docs: wiki README verified 재승인 (1.5.1)
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/README.md
 - summary:
-  - 1.5.1 발표자료 링크 갱신으로 needs_review로 내려갔던 wiki README를 사람 검토·승인(레이아웃 직접 확인 포함)에 따라 `verified`로 재승인하고 `reviewed_by: WoongHwan-Kim`/`reviewed_at: 2026-07-14`를 기록했다.
+  - 1.5.1 발표자료 링크 갱신으로 needs_review로 내려갔던 wiki README를 사람 검토·승인(레이아웃 직접 확인 포함)에 따라 `verified`로 재승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다.
 - caveats:
   - validate-frontmatter --strict pass. 재검토 부채 없음.
 
@@ -740,12 +789,12 @@ contains_sensitive_info: false
 ## 2026-07-14 - docs: PUBLIC_API verified 재승인 (1.5.1)
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/PUBLIC_API.md
 - summary:
-  - 1.5.1 결함 수정 doc-sync로 needs_review로 내려갔던 PUBLIC_API.md를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: WoongHwan-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
+  - 1.5.1 결함 수정 doc-sync로 needs_review로 내려갔던 PUBLIC_API.md를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
 - caveats:
   - validate-frontmatter --strict pass. 1.5.1 배포 전 재검토 부채 없음(log.md·release notes만 관례상 needs_review).
 
@@ -797,14 +846,14 @@ contains_sensitive_info: false
 ## 2026-07-14 - docs: PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES verified 재승인 (1.5)
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/PUBLIC_API.md
   - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
   - docs/llm-wiki/DOMAIN_FEATURES.md
 - summary:
-  - 1.5 프로그래매틱 API doc-sync로 needs_review로 내려갔던 세 문서를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: WoongHwan-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
+  - 1.5 프로그래매틱 API doc-sync로 needs_review로 내려갔던 세 문서를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
 - caveats:
   - validate-frontmatter --strict pass(22 files, findings 0). 이로써 1.5 배포 전 재검토 부채가 없다(log.md·release notes만 관례상 needs_review).
 
@@ -838,13 +887,13 @@ contains_sensitive_info: false
 ## 2026-07-14 - docs: DOMAIN_FEATURES·PUBLIC_API verified 재승인 (1.4.0)
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/DOMAIN_FEATURES.md
   - docs/llm-wiki/PUBLIC_API.md
 - summary:
-  - 1.4.0 doc-sync로 needs_review로 내려갔던 두 문서를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: WoongHwan-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
+  - 1.4.0 doc-sync로 needs_review로 내려갔던 두 문서를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
 - caveats:
   - validate-frontmatter --strict pass. 이로써 1.4.0 배포 전 재검토 부채가 없다(log.md·release notes만 관례상 needs_review).
 
@@ -927,7 +976,7 @@ contains_sensitive_info: false
 ## 2026-07-14 - feat: 파일+디렉터리 통합 도메인 탐지 (Gate 10, 1.4 이전 선행)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 설계·범위 승인)
+- actor: Claude Code (사용자 Dowon-Kim 설계·범위 승인)
 - scope: code, test, docs, gate
 - changed:
   - GATE_REVIEW.md
@@ -946,7 +995,7 @@ contains_sensitive_info: false
 ## 2026-07-14 - docs: 1.3 wiki 문서 verified 재승인 + stale 0.1.8 리뷰 baseline 정리
 
 - status: verified
-- actor: Claude Code (사용자 WoongHwan-Kim 검토·승인)
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
 - scope: docs
 - changed:
   - docs/llm-wiki/VERSIONING.md
@@ -958,7 +1007,7 @@ contains_sensitive_info: false
   - docs/llm-wiki/RELEASE_FLOW.md
   - docs/llm-wiki/README.md
 - summary:
-  - 사용자 검토·승인에 따라 콘텐츠/레퍼런스 문서 8개를 `verified`로 (재)승인하고 `reviewed_by: WoongHwan-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 1.2/1.3에서 needs_review로 내려갔던 4개(VERSIONING·project-profile·DOMAIN_FEATURES·PUBLIC_API)와 docs/llm-wiki/README.md를 승격하고, 이미 verified였던 3개(ARCHITECTURE_CONVENTIONS·domains/00_overview·RELEASE_FLOW)를 리프레시했다.
+  - 사용자 검토·승인에 따라 콘텐츠/레퍼런스 문서 8개를 `verified`로 (재)승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 1.2/1.3에서 needs_review로 내려갔던 4개(VERSIONING·project-profile·DOMAIN_FEATURES·PUBLIC_API)와 docs/llm-wiki/README.md를 승격하고, 이미 verified였던 3개(ARCHITECTURE_CONVENTIONS·domains/00_overview·RELEASE_FLOW)를 리프레시했다.
   - stale한 "2026-07-13에 0.1.8 …기준으로 검토했다" 리뷰 baseline을 1.3.0 기준 재검토 문구로 갱신했다(위 5개 문서). PUBLIC_API의 stale evidence 서술(`migrateCommand — --apply 차단`)을 `wiki_block_version 업그레이드 + --apply(Gate 8)`로 정정했다.
   - 역사적 0.1.8 기록은 보존했다: 이 log.md의 과거 항목(append-only), `releases/v0.1.8.md`, `releases/v1.0.0.md`의 "0.1.8→1.0.0" 서술, README의 팀 소개 pptx 파일명 링크(`...v0.1.8.pptx`, 실제 자산).
 - caveats:
@@ -1109,7 +1158,7 @@ contains_sensitive_info: false
 ## 2026-07-14 - feat: drift 명령 + opt-in 강등 (1.2 step 3b, Gate 9)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 표면 승인)
+- actor: Claude Code (사용자 Dowon-Kim 표면 승인)
 - scope: code, test, docs, gate
 - changed:
   - GATE_REVIEW.md
@@ -1184,7 +1233,7 @@ contains_sensitive_info: false
 ## 2026-07-14 - docs(gate): Gate 8 수락 (accepted_for_1.2.0)
 
 - status: needs_review
-- actor: Claude Code (사용자 WoongHwan-Kim 승인)
+- actor: Claude Code (사용자 Dowon-Kim 승인)
 - scope: docs, gate
 - changed:
   - GATE_REVIEW.md
@@ -1355,7 +1404,7 @@ contains_sensitive_info: false
   - docs/llm-wiki/VERSIONING.md
   - docs/llm-wiki/project-profile.md
 - summary:
-  - 1.0.0 갱신 후 needs_review로 내려갔던 VERSIONING.md·project-profile.md를 사람 검토(reviewed_by: WoongHwan-Kim, 2026-07-14) 완료에 따라 verified로 승격하고 reviewed_by/reviewed_at를 기록했다.
+  - 1.0.0 갱신 후 needs_review로 내려갔던 VERSIONING.md·project-profile.md를 사람 검토(reviewed_by: Dowon-Kim, 2026-07-14) 완료에 따라 verified로 승격하고 reviewed_by/reviewed_at를 기록했다.
 - caveats:
   - 두 문서가 참조하는 package.json이 같은 날(2026-07-14) 커밋되어 validate의 evidence.stale이 same-day 특성(src/git.js의 --since)으로 경고를 낼 수 있으나 warning이며 비차단이다.
 
@@ -1437,7 +1486,7 @@ contains_sensitive_info: false
 
 - status: verified
 - actor: Codex
-- reviewed_by: WoongHwan-Kim
+- reviewed_by: Dowon-Kim
 - scope: docs
 - changed:
   - docs/llm-wiki/**/*.md
