@@ -105,3 +105,7 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@<version>` 
 - [ ] Verify `npm install -D @dowonk-7949/llm-wiki-standard@<version>`.
 - [ ] Verify `npx @dowonk-7949/llm-wiki-standard@<version> doctor`.
 - [ ] Verify `yarn add -D @dowonk-7949/llm-wiki-standard@<version>`.
+
+## Team Materials (internal — not shipped to npm)
+
+- [ ] If this release changes user-facing behavior (commands, options, usage, or the MCP tool surface), update the team briefing deck and speaker notes in `outputs/team-briefing/` (`llm-wiki-briefing.html` + `SPEAKER_NOTES.md`) together, and sync their target-version label to `package.json`. See `outputs/team-briefing/README.md` for the "what changed → what to edit" map. Re-publish the shared Artifact link after editing.
