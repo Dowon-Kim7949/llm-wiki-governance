@@ -161,14 +161,24 @@ async function detectNonNodeEcosystems(cwd) {
 
   const python = await readFirstManifest(cwd, ["pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile"]);
   if (python) {
-    const role = /\b(django|fastapi|flask|starlette|aiohttp|sanic|tornado|quart)\b/i.test(python.content) ? "backend" : "library";
-    found.push({ ecosystem: "python", path: python.name, reason: `Python manifest detected (${python.name})`, role });
+    let role = /\b(django|fastapi|flask|starlette|aiohttp|sanic|tornado|quart)\b/i.test(python.content) ? "backend" : "library";
+    let reason = `Python manifest detected (${python.name})`;
+    if (role === "library" && await detectPythonStdlibServer(cwd)) {
+      role = "backend";
+      reason = `Python manifest detected (${python.name}); stdlib HTTP server usage found`;
+    }
+    found.push({ ecosystem: "python", path: python.name, reason, role });
   }
 
   const go = await readFirstManifest(cwd, ["go.mod"]);
   if (go) {
-    const role = /(gin-gonic\/gin|labstack\/echo|gofiber\/fiber|go-chi\/chi|gorilla\/mux|beego|revel)/i.test(go.content) ? "backend" : "library";
-    found.push({ ecosystem: "go", path: "go.mod", reason: "Go module detected (go.mod)", role });
+    let role = /(gin-gonic\/gin|labstack\/echo|gofiber\/fiber|go-chi\/chi|gorilla\/mux|beego|revel)/i.test(go.content) ? "backend" : "library";
+    let reason = "Go module detected (go.mod)";
+    if (role === "library" && await detectGoStdlibServer(cwd)) {
+      role = "backend";
+      reason = "Go module detected (go.mod); net/http server usage found";
+    }
+    found.push({ ecosystem: "go", path: "go.mod", reason, role });
   }
 
   const rust = await readFirstManifest(cwd, ["Cargo.toml"]);
@@ -384,6 +394,72 @@ async function detectInfra(cwd) {
 
   if (!kinds.length) return null;
   return { kinds, signals, manifest };
+}
+
+const STDLIB_SKIP_DIRS = new Set([
+  "node_modules", ".git", "dist", "build", "vendor", "testdata", "examples", "example",
+  "docs", ".venv", "venv", "env", "__pycache__", "site-packages", ".tox", ".mypy_cache",
+  "target", "bin", "obj"
+]);
+
+// Bounded, best-effort source scan: returns true when any file whose name
+// satisfies `extMatch` has content satisfying `contentTest`, within `maxDepth`
+// and after reading at most `maxFiles` files (a hard IO cap). Skips vendored,
+// heavy, and test/example directories. Read-only, zero-dep.
+async function anySourceMatches(cwd, extMatch, contentTest, { maxDepth = 4, maxFiles = 250 } = {}) {
+  let filesRead = 0;
+  const walk = async (dir, depth) => {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return false;
+    }
+    const sorted = [...entries].sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of sorted) {
+      if (!entry.isFile() || !extMatch(entry.name)) continue;
+      if (filesRead >= maxFiles) return false;
+      filesRead += 1;
+      try {
+        if (contentTest(await readUtf8(path.join(dir, entry.name)))) return true;
+      } catch {
+        // unreadable — skip
+      }
+    }
+    if (depth >= maxDepth) return false;
+    for (const entry of sorted) {
+      if (entry.isDirectory() && !entry.name.startsWith(".") && !STDLIB_SKIP_DIRS.has(entry.name)) {
+        if (await walk(path.join(dir, entry.name), depth + 1)) return true;
+      }
+    }
+    return false;
+  };
+  return walk(cwd, 0);
+}
+
+// Conservative Go net/http *server* signal: a non-test `.go` file that both
+// imports net/http and calls ListenAndServe / http.Serve. A client-only program
+// (http.Get, http.Client) has no such call, so it stays `library`. One-directional
+// — only ever promotes library→backend, never demotes.
+function detectGoStdlibServer(cwd) {
+  return anySourceMatches(
+    cwd,
+    (name) => name.endsWith(".go") && !name.endsWith("_test.go"),
+    (text) => /"net\/http"/.test(text) && (/\bListenAndServe(TLS)?\s*\(/.test(text) || /\bhttp\.Serve\s*\(/.test(text))
+  );
+}
+
+// Conservative Python stdlib HTTP *server* signal: a `.py` file that imports
+// http.server / socketserver and starts a server (serve_forever / HTTPServer(...)).
+// An http.client user stays `library`. One-directional — never demotes.
+function detectPythonStdlibServer(cwd) {
+  return anySourceMatches(
+    cwd,
+    (name) => name.endsWith(".py"),
+    (text) =>
+      /(^|\n)\s*(from\s+http\.server\b|import\s+http\.server\b|from\s+socketserver\b|import\s+socketserver\b)/.test(text) &&
+      (/\.serve_forever\s*\(/.test(text) || /\b(HTTPServer|ThreadingHTTPServer)\s*\(/.test(text))
+  );
 }
 
 // Find the first *.csproj / *.fsproj since .NET project files carry arbitrary

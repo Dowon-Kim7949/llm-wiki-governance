@@ -56,7 +56,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 15 Monorepo Profile Scope Approval | `accepted_for_1.10.0` | Add opt-in per-package wiki support: detect workspace packages (npm/yarn `workspaces` first; pnpm/YAML deferred to keep zero-dep) and run the already cwd-parameterized read pipeline (`audit`/`collectWikiGraph`/`findMissingDocs`) per package, aggregating under a strictly additive `packages[]` JSON field. Single-repo output stays byte-identical when there are no workspaces or the mode is off. Each package honors its own `llm-wiki.config.json` via the same `resolveOptions` merge. Additive/opt-in; `1.0.0` contracts and the zero-runtime-dependency invariant preserved. Accepted by Dowon-Kim on 2026-07-15. See "Monorepo Profile Scope Decision" below. |
 | Gate 17 Mobile Profile Scope Approval | `accepted_for_1.12.0` | Add an additive `mobile` project type. Detect Android (`build.gradle`/`build.gradle.kts`/`settings.gradle` with an Android Gradle Plugin or AndroidX signal, `AndroidManifest.xml`), Flutter (`pubspec.yaml` with a `flutter:` section), Apple/iOS (`*.xcodeproj`/`*.xcworkspace`, `Podfile`, `Package.swift` targeting an Apple platform), and React Native (`package.json` `react-native` dependency), plus a mobile document set. Fixes today's misclassification of an Android `build.gradle` as `jvm`+`library` (`src/detector.js`). Additive/opt-in: a new detected type and profile docs only; `--type` gains an accepted value, existing detection is unchanged where no mobile signal is present; zero-dep preserved (manifest signals + bounded file checks, no build tools invoked). Accepted by Dowon-Kim on 2026-07-16. See "Mobile Profile Scope Decision" below. |
 | Gate 18 Infra/DevOps Profile Scope Approval | `accepted_for_1.13.0` | Add an additive `infra` project type. Detect `Dockerfile`, Docker Compose (`docker-compose.y*ml`/`compose.y*ml`), Kubernetes manifests, Helm charts (`Chart.yaml`), and Terraform (`*.tf`), plus an infra/DevOps document set. Reuses the same bounded, exclusion-guarded detector pattern as Gate 17. Additive/opt-in; zero-dep (signal-file presence + bounded content sniff, no cluster/registry access). Accepted by Dowon-Kim on 2026-07-16. See "Infra/DevOps Profile Scope Decision" below. |
-| Gate 19 Stdlib-Server Detection Scope Approval | `proposed_for_1.14.0` | Refine role inference so Go `net/http` and Python stdlib HTTP servers classify as `backend` instead of `library`, via a bounded, false-positive-guarded source scan (import + server-start call, not framework deps). The smallest of the three; the only risk is over-classification, so the heuristic stays conservative and additive (promotes `library`→`backend` only on a strong signal; never demotes). Zero-dep. Pending acceptance by Dowon-Kim. See "Stdlib-Server Detection Scope Decision" below. |
+| Gate 19 Stdlib-Server Detection Scope Approval | `accepted_for_1.14.0` | Refine role inference so Go `net/http` and Python stdlib HTTP servers classify as `backend` instead of `library`, via a bounded, false-positive-guarded source scan (import + server-start call, not framework deps). The smallest of the three; the only risk is over-classification, so the heuristic stays conservative and additive (promotes `library`→`backend` only on a strong signal; never demotes). Zero-dep. Accepted by Dowon-Kim on 2026-07-16. See "Stdlib-Server Detection Scope Decision" below. |
 | Gate 16 Cross-Repository Links Scope Approval | `accepted_for_1.11.0` | Add a conservative, NON-fetching cross-repo reference scheme (a reserved `repo:<name>/<path>` form, plus the already-recognized `http(s)://` URLs) recognized in `[[wiki links]]` and in `source_files`/`evidence`/`related`. Recognized references are treated as external — resolved (not flagged `wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`) but NEVER verified (verification would need network/git and break zero-dependency). Additive: local resolution is unchanged; only the reserved scheme is newly recognized. Accepted by Dowon-Kim on 2026-07-15. See "Cross-Repository Links Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
@@ -746,12 +746,12 @@ backend/library/mobile) is present, so a containerized app repo (a backend with 
 - `src/detector.js#symbol:detectEcosystems` — where infra signal files are recognized.
 - `src/config.js#symbol:PROFILE_DOCS` — the infra doc set.
 
-## Stdlib-Server Detection Scope Decision (proposed for 1.14.0)
+## Stdlib-Server Detection Scope Decision (accepted for 1.14.0)
 
-Proposed as the scope for `1.14` — promoting the long-standing "stdlib-server detection"
-backlog item (deferred from `1.3`) into a shipped minor. It is the smallest of the three
-and lands last; its only real risk is over-classification, so the heuristic stays strictly
-conservative. **Pending acceptance by Dowon-Kim.**
+Accepted by Dowon-Kim on 2026-07-16 as the scope for `1.14` — promoting the long-standing
+"stdlib-server detection" backlog item (deferred from `1.3`) into a shipped minor. It is
+the smallest of the three and lands last; its only real risk is over-classification, so the
+heuristic stays strictly conservative.
 
 ### In scope for 1.14.0
 

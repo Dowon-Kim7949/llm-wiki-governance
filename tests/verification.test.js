@@ -1024,6 +1024,36 @@ test("init write on a Terraform project anchors source_files to a .tf file and v
   assert.equal(auditResult.findings.some((finding) => finding.rule === "source_files.missing"), false);
 });
 
+test("detects Go net/http and Python stdlib HTTP servers as backend", async () => {
+  const goCwd = await makeProject("go-stdlib-srv-");
+  await writeFile(path.join(goCwd, "go.mod"), "module example.com/srv\n\ngo 1.22\n", { encoding: "utf8" });
+  await writeFile(path.join(goCwd, "main.go"), "package main\n\nimport \"net/http\"\n\nfunc main() {\n  http.ListenAndServe(\":8080\", nil)\n}\n", { encoding: "utf8" });
+  const pyCwd = await makeProject("py-stdlib-srv-");
+  await writeFile(path.join(pyCwd, "pyproject.toml"), "[project]\nname = \"srv\"\nversion = \"0.1.0\"\n", { encoding: "utf8" });
+  await writeFile(path.join(pyCwd, "server.py"), "from http.server import HTTPServer, BaseHTTPRequestHandler\n\nHTTPServer((\"\", 8000), BaseHTTPRequestHandler).serve_forever()\n", { encoding: "utf8" });
+
+  const go = await initCommand({ cwd: goCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const py = await initCommand({ cwd: pyCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(go.detection.projectType, "backend");
+  assert.equal(py.detection.projectType, "backend");
+});
+
+test("does not upgrade a stdlib-importing client/library to backend without a server-start call", async () => {
+  const goCwd = await makeProject("go-http-client-");
+  await writeFile(path.join(goCwd, "go.mod"), "module example.com/lib\n\ngo 1.22\n", { encoding: "utf8" });
+  await writeFile(path.join(goCwd, "client.go"), "package lib\n\nimport \"net/http\"\n\nfunc Fetch(u string) (*http.Response, error) {\n  return http.Get(u)\n}\n", { encoding: "utf8" });
+  const pyCwd = await makeProject("py-http-client-");
+  await writeFile(path.join(pyCwd, "pyproject.toml"), "[project]\nname = \"lib\"\nversion = \"0.1.0\"\n", { encoding: "utf8" });
+  await writeFile(path.join(pyCwd, "client.py"), "import http.client\n\nconn = http.client.HTTPSConnection(\"example.com\")\n", { encoding: "utf8" });
+
+  const go = await initCommand({ cwd: goCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const py = await initCommand({ cwd: pyCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+
+  assert.equal(go.detection.projectType, "library");
+  assert.equal(py.detection.projectType, "library");
+});
+
 test("init write on a Python project anchors source_files to its manifest", async () => {
   const cwd = await makeProject("python-init-");
   await writeFile(path.join(cwd, "pyproject.toml"), "[project]\nname = \"svc\"\nversion = \"0.1.0\"\ndependencies = [\"fastapi\"]\n", { encoding: "utf8" });
