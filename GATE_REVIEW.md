@@ -59,7 +59,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 19 Stdlib-Server Detection Scope Approval | `accepted_for_1.14.0` | Refine role inference so Go `net/http` and Python stdlib HTTP servers classify as `backend` instead of `library`, via a bounded, false-positive-guarded source scan (import + server-start call, not framework deps). The smallest of the three; the only risk is over-classification, so the heuristic stays conservative and additive (promotes `library`→`backend` only on a strong signal; never demotes). Zero-dep. Accepted by Dowon-Kim on 2026-07-16. See "Stdlib-Server Detection Scope Decision" below. |
 | Gate 16 Cross-Repository Links Scope Approval | `accepted_for_1.11.0` | Add a conservative, NON-fetching cross-repo reference scheme (a reserved `repo:<name>/<path>` form, plus the already-recognized `http(s)://` URLs) recognized in `[[wiki links]]` and in `source_files`/`evidence`/`related`. Recognized references are treated as external — resolved (not flagged `wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`) but NEVER verified (verification would need network/git and break zero-dependency). Additive: local resolution is unchanged; only the reserved scheme is newly recognized. Accepted by Dowon-Kim on 2026-07-15. See "Cross-Repository Links Scope Decision" below. |
 | Gate 20 Review Workflow Scope Approval | `proposed_for_next` (DRAFT — not yet accepted) | Add a read-only `review` command that supports the human review→`verified` step (the weakest, most manual part of the loop, and the governance core): list `needs_review` content docs risk-ranked (thin / no-evidence / broken-link / never-enriched first) with a per-doc quality + evidence summary for fast spot-checking. Promotion to `verified` (stamping `reviewed_by`/`reviewed_at`) happens ONLY on an explicit, per-doc/confirmed `--approve <path>…` (or `--approve-all` with a confirmation) — NEVER automatically; the review DECISION stays human, only the MECHANICS get cheap. Additive/opt-in, read-only by default, zero-dep; `1.0.0` contracts unchanged. Motivated by the first external end-to-end run (a backend dev enriched a full wiki; the maintainer then had no ergonomic way to review + bless the `needs_review` backlog). DRAFTED for human acceptance. See "Review Workflow Scope Decision" below. |
-| Gate 21 Skill Generation Scope Approval | `proposed_for_1.15.0` (DRAFT — not yet accepted) | Generate Claude Code **Skills** (`.claude/skills/llm-wiki-<task>/SKILL.md`) that package the repeatable, wiki-grounded feature/fix/docs-sync workflows already encoded in `src/task-prompts.js`, so a user can invoke `/llm-wiki-feature "…"` inside their agent to run "read the wiki → ground the change on it → update docs (needs_review) → log" — the automation-prompt entrypoint that closes the value loop (#8: a generated wiki that is never actually USED). Opt-in (rides the `--agent claude` selection or a `--skills` flag), preview-first, existing skill files never overwritten. The tool only WRITES the skill; the agent runs it (recognize-don't-run). The needs_review / never-auto-verify discipline is embedded in the skill body. Additive/opt-in, zero-dep; `1.0.0` command/`--format json`/frontmatter contracts unchanged (existing output byte-identical when skills are not requested). MINOR (`1.15.0`), not a patch. DRAFTED for human acceptance. See "Skill Generation Scope Decision" below. |
+| Gate 21 Skill Generation Scope Approval | `accepted_for_1.15.0` | Generate invocable, wiki-grounded automation prompts for the feature/fix/docs-sync workflows already encoded in `src/task-prompts.js`, in each agent's native shape — Claude skill (`.claude/skills/llm-wiki-<task>/SKILL.md`), Cursor rule (`.cursor/rules/llm-wiki-<task>.mdc`), and an agent-neutral prompt doc (`docs/llm-wiki/prompts/llm-wiki-<task>.prompt.md`, for Codex/others) — so a user can invoke `/llm-wiki-feature "…"` to run "read the wiki → ground the change → update docs (needs_review) → log", closing the value loop (#8). Each body embeds a generation-time snapshot of the project's domain map so the agent knows which docs to read. Opt-in (per `--agent`/`--skills`), preview-first, existing files never overwritten, recognize-don't-run, needs_review discipline embedded. Additive, zero-dep; `1.0.0` contracts unchanged. Accepted by Dowon-Kim on 2026-07-20 with two additions over the draft (domain-map injection + multi-agent formats). MINOR (`1.15.0`). See "Skill Generation Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -834,43 +834,54 @@ weakening the human sign-off invariant.
   `src/commands/fix-migrate.js`; register a `review` entry in the CLI `COMMANDS` map and
   the frozen programmatic-API `commands` map.
 
-## Skill Generation Scope Decision (proposed — NOT yet accepted)
+## Skill Generation Scope Decision (accepted for 1.15.0)
 
-**DRAFTED 2026-07-20; awaiting human acceptance. Target: `1.15.0` (MINOR — a new
-artifact/opt-in surface, not a patch).** Motivated by the exposure tests: generation is
-proven, but a tester could not judge the tool's value (#8) because they never actually
-USED the generated wiki for real work. The tool already encodes the wiki-grounded
-feature/fix/docs-sync workflow (`src/task-prompts.js`, surfaced by `prompt --task`); this
-gate packages that workflow as a Claude Code **Skill** so "use the wiki when you add or
-change a feature" becomes a single `/llm-wiki-feature` invocation — the automation-prompt
-entrypoint the user asked for, and the thing that closes the value loop. Aligns with the
-prior "Layer 1 (thinnest wiki-grounded prompt tool)" and "distribute as a Claude Code
-skill/plugin" direction notes.
+**ACCEPTED_for_1.15.0 by Dowon-Kim on 2026-07-20**, with two scope additions over the
+original draft (chosen at acceptance): **(1) inject the project's domain map from the
+generated wiki into the artifact body**, and **(2) emit multi-agent formats (Claude
+skill + Cursor rule + an agent-neutral prompt file for Codex/others), not just Claude.**
+Motivated by the exposure tests: generation is proven, but a tester could not judge the
+tool's value (#8) because they never actually USED the generated wiki for real work. The
+tool already encodes the wiki-grounded feature/fix/docs-sync workflow
+(`src/task-prompts.js`, surfaced by `prompt --task`); this gate packages that workflow as
+an invocable, project-specific automation prompt so "use the wiki when you add or change
+a feature" becomes a single `/llm-wiki-feature` invocation — closing the value loop.
+Aligns with the prior "Layer 1 (thinnest wiki-grounded prompt tool)" and "distribute as a
+Claude Code skill/plugin" direction notes. MINOR = `1.15.0` (a new artifact/opt-in
+surface, not a patch).
 
-### Proposed scope
+### Accepted scope
 
-- Generate Claude Code Skill files at `.claude/skills/llm-wiki-<task>/SKILL.md` (the
-  Claude Code convention: one directory per skill, `SKILL.md` with `name`/`description`
-  frontmatter so the agent discovers and lists it) for the repeatable workflows —
-  initially `feature` (and likely `fix`, `docs-sync`).
-- The skill BODY reuses the existing `src/task-prompts.js` workflow text: read
-  `docs/llm-wiki/index.md` → locate the relevant domain/API/architecture/workflow docs →
-  inspect real source → produce a plan → make the smallest safe change → update every
-  affected wiki doc (kept `needs_review`) → append `log.md` → run tests → never promote to
-  `verified`. The user supplies the concrete feature description when they invoke the
-  skill in their agent (not to the CLI).
-- Delivery is opt-in: emitted when the `claude` agent is selected (skills are a Claude
-  Code mechanism) or behind an explicit `--skills` flag; preview-first (dry-run lists
-  what would be created).
+- **Tasks (one artifact per task):** `feature`, `fix`, `docs-sync` — bodies reuse the
+  existing `src/task-prompts.js` workflow text (read `docs/llm-wiki/index.md` → locate the
+  relevant domain/API/architecture/workflow docs → inspect real source → plan → smallest
+  safe change → update every affected wiki doc kept `needs_review` → append `log.md` → run
+  tests → never promote to `verified`). The user supplies the concrete change description
+  when they invoke it in their agent (not to the CLI).
+- **Multi-agent formats (addition 1):** emit the workflow in each agent's native shape —
+  - Claude Code: `.claude/skills/llm-wiki-<task>/SKILL.md` (skill; `name`/`description` frontmatter).
+  - Cursor: `.cursor/rules/llm-wiki-<task>.mdc` (rule).
+  - Agent-neutral (covers Codex and any other agent, which lack a per-command skill
+    mechanism): `docs/llm-wiki/prompts/llm-wiki-<task>.prompt.md` (a copy-paste prompt doc,
+    LLM-WIKI frontmatter, `needs_review`).
+  Emitted per selected agent: `--agent claude` → skills, `--agent cursor` → rules; the
+  agent-neutral prompt docs are always written (usable by Codex/others). A `--skills`
+  flag (or `--agent all`) requests the set. Opt-in, preview-first.
+- **Domain-map injection (addition 2):** each artifact body embeds a snapshot of the
+  project's domain map built from the generated wiki (the `domains/*.md` titles + paths,
+  via the existing domain/graph helpers), so the agent immediately knows which domain
+  docs to read for a given change — project-specific, not a generic "go read the wiki".
+  It is a SNAPSHOT at generation time (recognize-don't-run, not live); regenerate to
+  refresh. When no domain docs exist yet, the body falls back to the generic pointer.
 
 ### Invariants (non-negotiable)
 
-- **Recognize-don't-run**: the tool only WRITES the skill file; it never executes the
-  workflow or calls an agent. Execution is the agent's job.
-- Additive/opt-in: no skill is created unless requested; **existing skill files are never
-  overwritten** (same guardrail as adapter files).
+- **Recognize-don't-run**: the tool only WRITES the artifact; it never executes the
+  workflow, calls an agent, or fetches anything. Execution is the agent's job.
+- Additive/opt-in: nothing is created unless requested; **existing skill/rule/prompt files
+  are never overwritten** (same guardrail as adapter files).
 - The `needs_review` / never-auto-`verified` discipline (Gate 2) is embedded verbatim in
-  the skill body.
+  every artifact body.
 - Zero-dependency; `1.0.0` command/`--format json`/frontmatter contracts unchanged, and
   output is byte-identical when skills are not requested.
 
@@ -878,22 +889,20 @@ skill/plugin" direction notes.
 
 - Executing the skill, calling agents, or any "change-request form → auto-implement →
   auto-deploy" platform behavior (that is a separate, larger product, not this CLI).
-- Non-Claude skill/command formats (Codex, Cursor, …) — a later gate if wanted.
-- Injecting live wiki CONTENT into the skill body (the skill points the agent at the
-  wiki; dynamic content injection could be a later refinement).
+- Live/dynamic wiki-content injection beyond the generation-time domain-map snapshot.
 
-### Open questions (for acceptance)
+### Resolved at acceptance
 
-- Delivery seam: ride `--agent claude` vs a dedicated `--skills` flag vs a new `skills`
-  command.
-- Which tasks ship as skills (`feature` only, or `feature`+`fix`+`docs-sync`).
-- One combined `/llm-wiki` skill vs one skill per task.
+- Tasks = `feature` + `fix` + `docs-sync`; **one artifact per task** (not a single
+  combined skill). Delivery = per selected agent (`--agent claude`/`cursor`) plus a
+  `--skills` opt-in; agent-neutral prompt docs always emitted.
 
 ### Evidence (planned, not yet implemented)
 
-- Would reuse `src/task-prompts.js` (workflow bodies) and the adapter-generation pattern
-  (`src/commands/adapters.js` `ADAPTER_TARGETS`/`writeAdapterFiles` + `templates/`),
-  adding skill targets and templates analogous to the adapter files.
+- Reuse `src/task-prompts.js` (workflow bodies) + the adapter-generation pattern
+  (`src/commands/adapters.js` `ADAPTER_TARGETS`/`writeAdapterFiles` + `templates/`) for
+  emission, and the domain/graph helpers (`src/commands/domains.js` /
+  `src/commands/wiki-graph.js`) for the injected domain-map snapshot.
 
 ## Release Caveats
 
