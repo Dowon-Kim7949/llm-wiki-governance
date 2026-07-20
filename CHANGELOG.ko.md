@@ -5,6 +5,30 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.14.1 — 2026-07-20
+
+1.14 이후 노출 테스트에서 나온 버그 수정 배치. 온램프·브라운필드 적합성 수정이며, 새 명령·옵션·
+`--format json` 필드·frontmatter 변경 없음, 런타임 의존성 추가 없음.
+
+### Fixed
+
+- **비-UTF-8 매니페스트가 더 이상 프로젝트 유형을 오분류하지 않는다.** UTF-16 또는 UTF-8-BOM으로
+  저장된 매니페스트(Windows에서 흔함, 예: PowerShell로 리다이렉트한 `requirements.txt`)가 UTF-8로
+  읽히며 mojibake가 되어 프레임워크 키워드를 놓쳤고, FastAPI 백엔드가 `library`로 오분류됐다. 이제
+  detector의 모든 매니페스트/소스 읽기를 BOM 인식 리더가 담당한다(UTF-16LE·UTF-16BE·UTF-8 BOM).
+  BOM이 없는 파일은 이전과 동일하게 디코드되며, 위키 문서 인코딩 스캔은 그대로다.
+- **handoff 프롬프트가 생성되지 않은 어댑터 파일을 가리키지 않는다.** `--agent`를 명시하지 않으면
+  `quickstart`/`init`은 어댑터 파일을 만들지 않는데도, 프롬프트는 받는 에이전트에게 존재하지 않는
+  `AGENTS.md`/`CLAUDE.md`를 먼저 읽으라고 시작했다. 이제 명시적으로 선택된 에이전트의 어댑터 파일만
+  진입점에 넣고, 그 외에는 `docs/llm-wiki/index.md`를 가리킨다.
+
+### Changed
+
+- **모드 플래그 없는 `init`/`quickstart`이 오류가 아니라 안내로 읽힌다.** `--dry-run`도 `--write`도
+  없이 실행하면 이전에는 `Blocked` 리포트(exit 2)를 출력해 실패처럼 보였다. 이제 `Ready (needs
+  --write)`와 `Next Step`을 렌더하고 exit 0으로 끝난다(`next` 명령의 `ready` 결과와 동일). `--dry-run`과
+  `--write`를 동시에 주는 것은 여전히 거부된다.
+
 ## 1.14.0 — 2026-07-16
 
 stdlib-server 감지(Gate 19) — "detect & adapt 확장" 라인의 마지막 마이너. 부가적·opt-in이며

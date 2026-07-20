@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: glossary
 project: llm-wiki-standard
-last_updated: 2026-07-16
+last_updated: 2026-07-20
 author: cli-generated
 last_edited_by: Codex
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-16
+reviewed_at: 2026-07-20
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -54,3 +54,4 @@ contains_sensitive_info: false
 
 - 2026-07-13에 현재 frontmatter 및 CLI 용어 계약을 기준으로 검토했다.
 - 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)에 따라 재검토했다: GLOSSARY는 광의의 `src/commands.js` 참조만 있어 내용은 불변이며, 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 재승인하고 review baseline을 갱신해 `evidence.stale`을 해소했다.
+- 2026-07-20에 1.14.1 노출-테스트 fix 배치에 따라 재검토했다: 용어 목록은 불변이며(광의의 `src/commands.js` 참조만), 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)로 재승인하고 review baseline을 갱신해 `evidence.stale`을 해소했다.

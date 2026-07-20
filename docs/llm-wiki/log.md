@@ -24,6 +24,30 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-20 - release: prepare 1.14.1 (exposure-test fix batch) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업 진행" + 배포 방향 선택)
+- scope: src, tests, docs
+- changed:
+  - src/encoding.js (`decodeWithBom`/`readTextAuto` BOM 인식 리더 추가; UTF-16LE/BE·UTF-8 BOM)
+  - src/detector.js (매니페스트/소스 읽기를 `readTextAuto`로 전환), src/commands.js (`buildHandoff` 진입점 명시적-에이전트 한정 + `needsWriteFlag` 사용), src/commands/fix-migrate.js (`needsWriteFlag` 헬퍼)
+  - tests/verification.test.js (+3 테스트; 버전 assertion 1.14.0→1.14.1)
+  - package.json (1.14.0→1.14.1), CHANGELOG.md/CHANGELOG.ko.md(1.14.1 항목), docs/llm-wiki/releases/v1.14.1.md(신규)
+  - doc-sync + re-verify: ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md
+- summary:
+  - 1.14 이후 노출 테스트 P0/P1 버그 수정 배치. (A) 비-UTF-8 매니페스트(UTF-16/UTF-8-BOM)가 mojibake로 읽혀 FastAPI 백엔드가 `library`로 오분류되던 문제를 BOM 인식 리더로 교정. detector의 모든 매니페스트/소스 읽기를 `readTextAuto`로 전환(BOM 없는 파일 byte-identical, 위키 문서 `readUtf8` 불변).
+  - (B) `--agent` 미지정 시 handoff 프롬프트가 생성되지 않은 `AGENTS.md`/`CLAUDE.md`를 먼저 읽으라고 하던 문제를, 진입점을 명시적 선택 에이전트의 어댑터 파일로만 한정해 교정(미선택 시 `docs/llm-wiki/index.md`).
+  - (C) 모드 플래그 없는 `init`/`quickstart`이 `Blocked`(exit 2)로 실패처럼 보이던 것을 `Ready (needs --write)`(result `ready`, exit 0)로 리네임. 충돌 플래그는 여전히 hard error.
+  - 검증: node --test 220 통과(신규 3), validate result:pass 0 findings, validate-frontmatter --strict pass. 세 수정 모두 실제 CLI로 end-to-end 확인.
+- evidence:
+  - src/encoding.js
+  - src/detector.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기.
+  - (C)는 no-flag 종료코드를 2→0으로 바꾸는 동작 변경 — 사용자가 명시적으로 승인함("Ready + exit 0").
+
 ## 2026-07-16 - release: prepare 1.14.0 (stdlib-server detection, Gate 19) + doc-sync
 
 - status: needs_review

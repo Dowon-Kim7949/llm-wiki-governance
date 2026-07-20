@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: architecture_conventions
 project: llm-wiki-standard
-last_updated: 2026-07-16
+last_updated: 2026-07-20
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-16
+reviewed_at: 2026-07-20
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -20,6 +20,7 @@ source_files:
   - src/index.js
   - src/config-file.js
   - src/detector.js
+  - src/encoding.js
   - src/mcp/server.js
 evidence:
   - src/cli.js#symbol:parseArgs
@@ -68,12 +69,12 @@ contains_sensitive_info: false
   - `domains.js` — backend/fullstack 도메인 감지·계획(`detectDomainDirectories`·`planDomainDocs` 등).
   - `doc-templates.js` — 생성 문서 본문 템플릿(`docMetadata` + 본문 빌더).
 - `src/frontmatter.js` + `src/frontmatter-schema.js` — YAML frontmatter 파서와 JSON Schema 기반 필수 필드/enum 검증.
-- `src/detector.js` — package.json 신호로 project type 추론. 1.10부터 `detectWorkspaces`가 npm/yarn `workspaces`를 감지한다(pnpm/YAML은 zero-dep 위해 unsupported로 보고). 1.12부터 `detectMobile`이 Android(Gradle Android 플러그인/AndroidX/AndroidManifest.xml)·Flutter(`pubspec.yaml` flutter 섹션)·Apple/iOS(Podfile/`*.xcodeproj`/Apple-플랫폼 Package.swift)·React Native(`react-native` 의존성) 신호로 `mobile` 유형을 감지하고, `decideType`에서 최우선 순위를 가져 Android `build.gradle`의 JVM `library` 오분류를 교정한다(빌드 도구 미호출·bounded 스캔·zero-dep). 1.13부터 `detectInfra`가 Docker(`Dockerfile`)·Compose·Kubernetes(apiVersion+kind YAML)·Helm(`Chart.yaml`)·Terraform(`*.tf`) 신호로 `infra` 유형을 감지한다 — 단, `infra`는 **fallback**이라 앱 신호(frontend/backend/library/mobile)가 없을 때만 선택되어 컨테이너화된 앱 레포는 앱 유형을 유지한다(클러스터/레지스트리 접근 없음·zero-dep). 1.14부터 `detectGoStdlibServer`/`detectPythonStdlibServer`가 bounded 소스 스캔(import + 서버 시작 호출)으로 Go `net/http`·Python stdlib HTTP 서버를 감지해 해당 생태계 role을 `library`→`backend`로 **단방향** 승격한다(강등 없음, 프레임워크 의존성 불요).
+- `src/detector.js` — package.json 신호로 project type 추론. 1.10부터 `detectWorkspaces`가 npm/yarn `workspaces`를 감지한다(pnpm/YAML은 zero-dep 위해 unsupported로 보고). 1.12부터 `detectMobile`이 Android(Gradle Android 플러그인/AndroidX/AndroidManifest.xml)·Flutter(`pubspec.yaml` flutter 섹션)·Apple/iOS(Podfile/`*.xcodeproj`/Apple-플랫폼 Package.swift)·React Native(`react-native` 의존성) 신호로 `mobile` 유형을 감지하고, `decideType`에서 최우선 순위를 가져 Android `build.gradle`의 JVM `library` 오분류를 교정한다(빌드 도구 미호출·bounded 스캔·zero-dep). 1.13부터 `detectInfra`가 Docker(`Dockerfile`)·Compose·Kubernetes(apiVersion+kind YAML)·Helm(`Chart.yaml`)·Terraform(`*.tf`) 신호로 `infra` 유형을 감지한다 — 단, `infra`는 **fallback**이라 앱 신호(frontend/backend/library/mobile)가 없을 때만 선택되어 컨테이너화된 앱 레포는 앱 유형을 유지한다(클러스터/레지스트리 접근 없음·zero-dep). 1.14부터 `detectGoStdlibServer`/`detectPythonStdlibServer`가 bounded 소스 스캔(import + 서버 시작 호출)으로 Go `net/http`·Python stdlib HTTP 서버를 감지해 해당 생태계 role을 `library`→`backend`로 **단방향** 승격한다(강등 없음, 프레임워크 의존성 불요). 1.14.1부터 detector의 모든 매니페스트/소스 읽기는 BOM 인식(`readTextAuto`)이라 UTF-16(LE/BE)·UTF-8 BOM으로 저장된 매니페스트(예: Windows에서 저장된 `requirements.txt`)도 mojibake 없이 디코드해 유형 오분류를 막는다.
 - `src/config.js` — core/profile별 필수 문서 목록(`CORE_REQUIRED_DOCS`, `PROFILE_DOCS`).
 - `src/template-renderer.js` — 생성 문서 frontmatter 템플릿과 `todayIsoDate()`.
 - `src/task-prompts.js` — `prompt`/`handoff`용 반복 작업 프롬프트.
 - `src/release-notes.js` — `release-notes` 구현: conventional commit 파싱·수집(`collectCommits`)과 릴리스 노트 렌더링. `buildReleaseNotesBody`가 1.7의 `--body-only` 본문(frontmatter/H1/스캐폴드 라인 제외)을 만들어 GitHub Release 본문 + 본문 민감정보 스캔에 쓰인다.
-- `src/report.js` · `src/encoding.js` · `src/files.js` · `src/sensitive-info.js` — 출력, UTF-8 처리, 파일 열거, 민감정보 스캔.
+- `src/report.js` · `src/encoding.js` · `src/files.js` · `src/sensitive-info.js` — 출력, UTF-8 처리, 파일 열거, 민감정보 스캔. 1.14.1부터 `encoding.js`는 detector 전용 BOM 인식 리더(`readTextAuto`/`decodeWithBom`; UTF-16LE/BE·UTF-8 BOM)도 제공한다 — 위키 문서용 `readUtf8`는 raw UTF-8을 보존해 mojibake 스캔이 계속 동작하도록 불변.
 
 ## Command Pipeline
 
@@ -109,6 +110,9 @@ contains_sensitive_info: false
 - `src/detector.js#symbol:detectInfra` — Docker/Compose/Kubernetes/Helm/Terraform 신호로 `infra` 유형 감지(클러스터/레지스트리 접근 없음, recognize-don't-deploy); `decideType`에서 fallback(앱 신호 없을 때만)이라 앱 레포 byte-identical(1.13).
 - `src/detector.js#symbol:detectGoStdlibServer`·`detectPythonStdlibServer` — bounded 소스 스캔(import + 서버 시작 호출)으로 Go `net/http`·Python stdlib HTTP 서버를 감지해 role을 `library`→`backend`로 단방향 승격(강등 없음, 클라이언트-only는 library 유지)(1.14).
 - `src/commands/references.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴(`repo:<name>/<path>`) 인식; `isExternalSourceReference`/wiki-link 해석기가 external로 처리(recognize-don't-verify)(1.11).
+- `src/encoding.js#symbol:readTextAuto` — detector 매니페스트/소스 읽기용 BOM 인식 리더(UTF-16LE/BE·UTF-8 BOM 디코드; BOM 없는 파일은 byte-identical). 위키 문서용 `readUtf8`는 raw UTF-8 보존으로 불변(1.14.1).
+- `src/commands.js#symbol:buildHandoff` — handoff 진입점을 명시적으로 선택된 에이전트의 어댑터 파일로만 한정(미선택 시 `docs/llm-wiki/index.md`), 생성되지 않은 `AGENTS.md`/`CLAUDE.md`를 가리키지 않음(1.14.1).
+- `src/commands/fix-migrate.js#symbol:needsWriteFlag` — 모드 플래그 없는 `init`/`quickstart`을 `Ready (needs --write)`(result `ready`, exit 0)로 안내; 충돌 플래그는 여전히 `blockedApply`(1.14.1).
 
 ## Open Questions
 
@@ -130,3 +134,4 @@ contains_sensitive_info: false
 - 2026-07-16에 1.12.0 mobile profile(Gate 17, accepted)을 반영했다: `src/detector.js`에 `detectMobile`(Android/Flutter/iOS/React Native 신호)과 `decideType` mobile 최우선 분기를 Module Layout·Evidence에 추가하고, Android `build.gradle` → JVM `library` 오분류 교정을 기술했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.13.0 infra/DevOps profile(Gate 18, accepted)을 반영했다: `src/detector.js`에 `detectInfra`(Docker/Compose/Kubernetes/Helm/Terraform)와 `decideType`의 infra fallback 분기(앱 신호 없을 때만)를 Module Layout·Evidence에 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.14.0 stdlib-server detection(Gate 19, accepted)을 반영했다: `detectGoStdlibServer`/`detectPythonStdlibServer`(bounded 소스 스캔; Go `net/http`·Python stdlib HTTP 서버 → role `library`→`backend` 단방향 승격)를 Module Layout·Evidence에 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
+- 2026-07-20에 1.14.1 노출-테스트 fix 배치를 반영했다: (A) `src/encoding.js`의 BOM 인식 리더(`readTextAuto`/`decodeWithBom`)와 이를 쓰는 detector 매니페스트/소스 읽기 — UTF-16/UTF-8-BOM 매니페스트 오분류 교정 — 를 Module Layout·Evidence에 추가하고 `src/encoding.js`를 source_files에 넣었다. (B) `buildHandoff`가 진입점에 명시적 선택 에이전트의 어댑터 파일만 넣도록, (C) `needsWriteFlag`로 모드 플래그 없는 `init`/`quickstart`이 `Ready (needs --write)`(exit 0)로 안내하도록 한 변경을 Evidence에 기술했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.

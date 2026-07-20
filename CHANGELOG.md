@@ -5,6 +5,34 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.14.1 — 2026-07-20
+
+Bug-fix batch from the post-1.14 exposure test. On-ramp and brownfield-fit fixes; no
+new commands, options, `--format json` fields, or frontmatter changes, and no runtime
+dependency added.
+
+### Fixed
+
+- **Non-UTF-8 manifests no longer mis-type the project.** A manifest saved as UTF-16
+  or UTF-8-with-BOM (common on Windows, e.g. a PowerShell-redirected `requirements.txt`)
+  was read as UTF-8, turned into mojibake, and made detection miss the framework
+  keyword — so a FastAPI backend was mis-typed as `library`. A BOM-aware reader now
+  backs every detector manifest/source read (UTF-16LE, UTF-16BE, and UTF-8 BOM). Files
+  without a BOM decode exactly as before; the wiki-doc encoding scan is unchanged.
+- **Handoff prompt no longer points at adapter files that were never created.** Without
+  an explicit `--agent`, `quickstart`/`init` create no adapter files, yet the handoff
+  prompt still opened by telling the receiving agent to first read a non-existent
+  `AGENTS.md`/`CLAUDE.md`. The prompt now names adapter files only for explicitly
+  selected agents and otherwise points at `docs/llm-wiki/index.md`.
+
+### Changed
+
+- **`init`/`quickstart` with no mode flag now reads as guidance, not an error.** Running
+  either with neither `--dry-run` nor `--write` previously printed a `Blocked` report
+  (exit 2), which read as a failure. It now renders `Ready (needs --write)` with a
+  `Next Step` and exits 0 (matching the `next` command's `ready` result). Requesting
+  both `--dry-run` and `--write` at once is still rejected.
+
 ## 1.14.0 — 2026-07-16
 
 Stdlib-server detection (Gate 19) — the final minor of the "detect & adapt breadth"

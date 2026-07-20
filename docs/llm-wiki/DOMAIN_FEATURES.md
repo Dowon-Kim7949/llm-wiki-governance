@@ -6,16 +6,17 @@ tags:
 status: verified
 doc_type: domain_overview
 project: llm-wiki-standard
-last_updated: 2026-07-16
+last_updated: 2026-07-20
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-16
+reviewed_at: 2026-07-20
 wiki_block_version: v1
 source_files:
   - src/commands.js
   - src/cli.js
   - src/detector.js
+  - src/encoding.js
   - src/index.js
   - src/mcp/tools.js
   - src/release-notes.js
@@ -53,14 +54,14 @@ contains_sensitive_info: false
 
 ## Features
 
-- **프로젝트 자동 감지** — `src/detector.js`가 Node(`package.json`)뿐 아니라 Python(`pyproject.toml`/`requirements.txt` 등)·Go(`go.mod`)·Rust(`Cargo.toml`)·JVM(`pom.xml`/`build.gradle`)·PHP(`composer.json`)·Ruby(`Gemfile`)·.NET(`*.csproj`/`*.fsproj`) 매니페스트 신호로 `frontend/backend/fullstack/library` 유형과 생태계·주 매니페스트(`primaryManifest`)를 추론한다. 1.12부터 `mobile` 유형도 감지한다(Android Gradle 플러그인/AndroidX/AndroidManifest.xml, Flutter `pubspec.yaml`, Apple/iOS Podfile·`*.xcodeproj`·Package.swift, React Native `react-native` 의존성). 1.13부터 `infra` 유형도 감지한다(Docker `Dockerfile`·Compose, Kubernetes(apiVersion+kind YAML), Helm `Chart.yaml`, Terraform `*.tf`) — 단 앱 신호가 없을 때만 선택되는 fallback이라 컨테이너화된 앱 레포는 앱 유형을 유지한다. 1.14부터 Go `net/http`·Python stdlib HTTP 서버를 소스에서 감지하면 해당 생태계를 `library`가 아닌 `backend`로 단방향 승격한다. `--type`로 명시 override 가능.
+- **프로젝트 자동 감지** — `src/detector.js`가 Node(`package.json`)뿐 아니라 Python(`pyproject.toml`/`requirements.txt` 등)·Go(`go.mod`)·Rust(`Cargo.toml`)·JVM(`pom.xml`/`build.gradle`)·PHP(`composer.json`)·Ruby(`Gemfile`)·.NET(`*.csproj`/`*.fsproj`) 매니페스트 신호로 `frontend/backend/fullstack/library` 유형과 생태계·주 매니페스트(`primaryManifest`)를 추론한다. 1.12부터 `mobile` 유형도 감지한다(Android Gradle 플러그인/AndroidX/AndroidManifest.xml, Flutter `pubspec.yaml`, Apple/iOS Podfile·`*.xcodeproj`·Package.swift, React Native `react-native` 의존성). 1.13부터 `infra` 유형도 감지한다(Docker `Dockerfile`·Compose, Kubernetes(apiVersion+kind YAML), Helm `Chart.yaml`, Terraform `*.tf`) — 단 앱 신호가 없을 때만 선택되는 fallback이라 컨테이너화된 앱 레포는 앱 유형을 유지한다. 1.14부터 Go `net/http`·Python stdlib HTTP 서버를 소스에서 감지하면 해당 생태계를 `library`가 아닌 `backend`로 단방향 승격한다. 1.14.1부터 매니페스트/소스 읽기가 BOM 인식이라 UTF-16(LE/BE)·UTF-8 BOM으로 저장된 매니페스트(Windows에서 저장된 `requirements.txt` 등이 mojibake로 `library` 오분류되던 문제 교정)도 올바르게 디코드한다. `--type`로 명시 override 가능.
 - **초기 문서 생성** — `init --write`가 core + profile 문서와 선택 adapter를 생성한다. backend/fullstack에서는 업무 도메인을 감지해 도메인별 문서(`domains/NN_<name>.md`, `doc_type: domain`, `source_files`=탐지 경로)를 만들고 `domains/00_overview.md`에서 상대링크로 연결한다. 두 컨벤션을 모두 잡는다: **디렉터리 도메인**(`domains/domain/modules/features`의 직속 하위 폴더)과 **파일 도메인**(`endpoints/routers/routes/resources/controllers/handlers`의 소스 파일, 예: FastAPI `app/api/api_v2/endpoints/hazard.py`). bounded 탐색·제외 가드로 오탐을 0에 가깝게(vendored/venv/test/dunder 제외, 집계자 파일명 제외). 결정적 정렬·파일↔폴더 slug 병합. 기존 파일은 기본 보존, `log.md`는 append-only. 범위는 `GATE_REVIEW.md`(Gate 10).
 - **frontmatter 계약 검증** — 필수 필드/status enum/날짜 형식/배열 형태를 검증하고, `verified`는 `--strict`에서 리뷰 메타를 요구한다.
 - **근거 추적** — `source_files`(넓은 근거)와 `evidence`(파일/라인/심볼/섹션/라우트 정밀 근거)를 검증하고 본문 `## Evidence` 정렬을 확인한다.
 - **연결성 검증** — 로컬 markdown 링크, 위키 링크(이중 대괄호 표기), `related` 항목의 존재성을 검증한다(`related.missing`).
 - **enrichment 신호** — placeholder만 남은 미보강 문서를 `content.not_enriched`로 표시해 "빈 스캐폴드가 통과"하는 것을 막는다.
 - **지식 그래프** — `wikiGraph`가 문서→문서 엣지(wiki/related/markdown 링크)·미해결 개념·별칭·고아 문서를 집계한다. `llm-wiki graph`가 이를 text/JSON/Mermaid/DOT로 내보내고, `llm-wiki stats`가 헬스 스코어(verified%/enrichment%/evidence coverage/staleness)를 보고한다. `--format html` 대시보드에는 탐색용 Document Index가 있다.
-- **에이전트 인수인계** — `handoff`/`prompt`가 코드 근거로 문서를 보강하도록 유도하는 반복 프롬프트를 출력한다.
+- **에이전트 인수인계** — `handoff`/`prompt`가 코드 근거로 문서를 보강하도록 유도하는 반복 프롬프트를 출력한다. 1.14.1부터 `handoff` 진입점은 명시적으로 선택된 에이전트의 어댑터 파일만 나열하고, 미선택 시 `docs/llm-wiki/index.md`만 가리켜 setup이 생성하지 않은 `AGENTS.md`/`CLAUDE.md`를 먼저 읽으라고 하지 않는다.
 - **범위 한정 자동수정(`fix`)** — `fix`가 승인된 좁은 범위의 안전한 수정만 적용한다: 누락 Tier A frontmatter 필드 삽입, frontmatter `evidence` 기준 본문 `## Evidence` 섹션 보완, 깨진 related/markdown 링크에 대한 `needs_review` 스텁 생성, 수정 문서의 `last_updated` 갱신. 기본은 미리보기이고 `--write` 시에만 쓴다. `verified` 문서 내용·`docs/llm-wiki/` 밖 파일·`source_files`/`evidence` 값·Tier B 필드(title/doc_type/project/author)·미보강 내용은 건드리지 않는다. 근거: `src/commands/fix-migrate.js#symbol:fixCommand`, 범위 결정은 `GATE_REVIEW.md`.
 - **OKF v0.1 호환** — `--profile okf-v0.1`로 `type`/`aliases`/`tags`와 wiki 링크를 검증한다. 코어 검증도 OKF `type`를 필수 `doc_type`의 부가적 alias로 수용한다(1.3).
 - **프로그래매틱 API** — CLI를 spawn하지 않고 패키지를 import해 명령을 in-process로 실행한다. `package.json` `exports`(`src/index.js`)가 동결된 `commands` 맵(CLI 표면과 1:1)·개별 함수 export·`normalizeOptions`(옵션 정규화)·`parseArgs`/`run`·`SCHEMA_VERSION`을 공개한다. `--format json` 출력에는 계약 pin용 `schemaVersion` 부가 필드가 붙는다(단일 소스 `src/config.js#JSON_SCHEMA_VERSION`, 기존 필드 불변). 근거: `src/index.js#symbol:commands`, 계약은 `docs/llm-wiki/PUBLIC_API.md`(Programmatic API).
@@ -100,6 +101,8 @@ contains_sensitive_info: false
 - `src/detector.js#symbol:detectInfra` — Docker/Compose/Kubernetes/Helm/Terraform 신호로 `infra` 유형 감지(fallback, recognize-don't-deploy, zero-dep; 앱 레포 byte-identical)(1.13).
 - `src/detector.js#symbol:detectGoStdlibServer`·`detectPythonStdlibServer` — Go `net/http`·Python stdlib HTTP 서버 소스 감지 → role `library`→`backend` 단방향 승격(bounded 스캔, 클라이언트-only 미승격)(1.14).
 - `src/commands/references.js#symbol:isCrossRepoReference` — 예약 cross-repo 참조 스킴 인식(recognize-don't-verify)(1.11).
+- `src/encoding.js#symbol:readTextAuto` — detector 매니페스트/소스 읽기용 BOM 인식 리더(UTF-16/UTF-8-BOM 디코드, BOM 없는 파일 byte-identical); 위키 문서 `readUtf8`는 불변(1.14.1).
+- `src/commands.js#symbol:buildHandoff` — handoff 진입점을 명시적 선택 에이전트의 어댑터 파일로만 한정(1.14.1).
 
 ## Open Questions
 
@@ -123,3 +126,4 @@ contains_sensitive_info: false
 - 2026-07-16에 1.12.0 mobile profile(Gate 17, accepted)을 반영했다: 부가적 `mobile` 유형(`detectMobile`의 Android/Flutter/iOS/React Native 감지 + Android `build.gradle` 오분류 교정 + mobile 문서셋)을 기능·Evidence로 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.13.0 infra/DevOps profile(Gate 18, accepted)을 반영했다: 부가적 `infra` 유형(`detectInfra`의 Docker/Compose/Kubernetes/Helm/Terraform 감지 + fallback 우선순위 + infra 문서셋)을 기능·Evidence로 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.14.0 stdlib-server detection(Gate 19, accepted)을 반영했다: Go `net/http`·Python stdlib HTTP 서버 소스 감지로 role을 `library`→`backend` 단방향 승격하는 기능(`detectGoStdlibServer`/`detectPythonStdlibServer`)을 기능·Evidence로 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
+- 2026-07-20에 1.14.1 노출-테스트 fix 배치를 반영했다: (A) 매니페스트/소스 읽기의 BOM 인식(`readTextAuto`; UTF-16/UTF-8-BOM 매니페스트 오분류 교정)을 "프로젝트 자동 감지" 기능과 Evidence에, (B) `handoff` 진입점을 명시적 선택 에이전트의 어댑터 파일로만 한정하는 변경을 "에이전트 인수인계" 기능과 Evidence에 추가했다. (C) 모드 플래그 없는 `init`/`quickstart`이 `Blocked` 대신 `Ready (needs --write)`(exit 0)로 안내하도록 한 변경도 함께 반영했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
