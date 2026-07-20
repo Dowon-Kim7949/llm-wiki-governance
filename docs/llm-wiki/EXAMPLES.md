@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-standard
-last_updated: 2026-07-16
+last_updated: 2026-07-20
 author: cli-generated
 last_edited_by: Codex
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-16
+reviewed_at: 2026-07-20
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -69,3 +69,4 @@ llm-wiki explain content.not_enriched
 
 - 2026-07-13에 CLI 도움말과 공개 명령 표면을 기준으로 검토했다.
 - 2026-07-16에 1.12.0 release-prep에서 `README.md`가 변경되어(감지 대상 행 추가) `evidence.stale`이 발생했다. 이 문서 내용은 무관하며 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
+- 2026-07-20에 1.14.3 release-prep에서 `src/cli.js`가 변경되어(bare 명령/`--help` 오리엔테이션 헤더 추가) `evidence.stale`이 발생했다. 이 문서의 명령 예시는 그대로 유효하며 내용은 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
