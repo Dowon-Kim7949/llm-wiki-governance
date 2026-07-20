@@ -5,6 +5,21 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.14.4 — 2026-07-20
+
+테스터 산출물을 유지관리자가 검토하다 발견한 도메인 감지 수정. 명령·옵션·`--format json`·
+frontmatter 계약 불변, 런타임 의존성 추가 없음.
+
+### Fixed
+
+- **도메인 감지가 가상환경/설치된 의존성을 스캔하지 않는다.** 버전형 가상환경(예: `venv3.10/`)이 있는
+  Python 프로젝트에서 스캔이 `venv3.10/Lib/site-packages/`로 파고들어 서드파티 라이브러리(passlib의
+  `handlers/`, boto3의 `resources/` 등)에 대해 빈 도메인 문서를 수십 개 만들던 문제 — venv 이름이 스킵
+  목록에 없고 `site-packages`도 제외되지 않아서였다. 이제: `pyvenv.cfg`를 가진 디렉터리는 가상환경으로
+  간주해 통째로 스킵(이름 무관 — `venv3.10`·`.venv-py39` 등 모두 포착), `site-packages`/`dist-packages`를
+  순회에서 제외, 버전형 `venv*`/`env<N>` 이름도 스킵. 가상환경이 없는 레포는 영향 없음(byte-identical),
+  프로젝트 자기 `handlers`/`routers`/… 도메인은 그대로 감지된다.
+
 ## 1.14.3 — 2026-07-20
 
 두 번째 노출 보고서 기반 온보딩 오리엔테이션. 처음 쓰는 사용자가 bare 명령만으로는 도구가 뭘 하는지

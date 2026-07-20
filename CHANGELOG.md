@@ -5,6 +5,25 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.14.4 — 2026-07-20
+
+Domain-detection fix, from a maintainer review of a tester's output. No command,
+option, `--format json`, or frontmatter contract change; zero runtime dependency added.
+
+### Fixed
+
+- **Domain detection no longer scans into virtualenvs / installed dependencies.** On a
+  Python project with a version-suffixed virtualenv (e.g. `venv3.10/`), the scan
+  descended into `venv3.10/Lib/site-packages/` and generated dozens of empty domain
+  docs for third-party libraries (passlib's `handlers/`, boto3's `resources/`, …),
+  because the venv name was not in the skip list and `site-packages` was not excluded.
+  Now: a directory containing `pyvenv.cfg` is treated as a virtualenv and skipped
+  wholesale (name-agnostic, so `venv3.10`/`.venv-py39`/etc. are all caught),
+  `site-packages`/`dist-packages` are excluded from traversal, and version-suffixed
+  `venv*`/`env<N>` directory names are skipped. A repository without a virtualenv is
+  unaffected (byte-identical); the project's own `handlers`/`routers`/… domains are
+  still detected.
+
 ## 1.14.3 — 2026-07-20
 
 Onboarding orientation, from a second exposure report. A first-time user could not tell

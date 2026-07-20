@@ -2533,7 +2533,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "@dowonk-7949/llm-wiki-standard");
-  assert.equal(packageJson.version, "1.14.3");
+  assert.equal(packageJson.version, "1.14.4");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
@@ -3619,5 +3619,25 @@ test("quickstart output opens with a bilingual About orientation (1.14.3)", asyn
   const result = await quickstartCommand({ cwd, dryRun: true, write: false, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: [], existing: "skip" });
   assert.ok(result.text.includes("About · 소개"), "About section present for the quickstart-direct path");
   assert.ok(result.text.includes("코드-근거 지식베이스") && result.text.includes("code-grounded knowledge base"), "bilingual orientation");
+});
+
+test("domain detection skips virtualenvs and site-packages, not the project's own code (1.14.4)", async () => {
+  const cwd = await makeProject("venv-domains-");
+  // A version-suffixed virtualenv (name not in the skip list) with an installed
+  // dependency whose handlers/ dir would otherwise be mistaken for domains.
+  await mkdir(path.join(cwd, "venv3.10", "Lib", "site-packages", "passlib", "handlers"), { recursive: true });
+  await writeFile(path.join(cwd, "venv3.10", "pyvenv.cfg"), "home = /usr\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "venv3.10", "Lib", "site-packages", "passlib", "handlers", "sha1_crypt.py"), "x = 1\n", { encoding: "utf8" });
+  // A bare site-packages tree WITHOUT a venv marker (exercises the name skip directly).
+  await mkdir(path.join(cwd, "thirdparty", "site-packages", "boto3", "resources"), { recursive: true });
+  await writeFile(path.join(cwd, "thirdparty", "site-packages", "boto3", "resources", "collection.py"), "x = 1\n", { encoding: "utf8" });
+  // The project's OWN backend handlers — must still be detected.
+  await mkdir(path.join(cwd, "app", "handlers"), { recursive: true });
+  await writeFile(path.join(cwd, "app", "handlers", "orders.py"), "y = 1\n", { encoding: "utf8" });
+
+  const detected = await detectDomainDirectories(cwd);
+  const sources = detected.map((d) => d.sourceFile);
+  assert.ok(!sources.some((s) => s.includes("site-packages") || s.includes("venv3.10")), "no venv/site-packages domains leak in");
+  assert.ok(sources.some((s) => s.endsWith("app/handlers/orders.py")), "the project's own handler is still detected");
 });
 

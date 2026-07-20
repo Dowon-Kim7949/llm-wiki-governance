@@ -24,6 +24,27 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-20 - release: prepare 1.14.4 (도메인 감지 venv 스캔 버그 수정) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — 테스터 산출물 검토 중 발견, "지금 고쳐서 1.14.4로 함께 배포")
+- scope: src, tests, docs
+- changed:
+  - src/commands/domains.js (`scanForDomainParents`에 `pyvenv.cfg` venv 통째 스킵 + `DOMAIN_TRAVERSAL_SKIP`에 site-packages/dist-packages/virtualenv + `isSkippedTraversalDir`에 버전형 `venv*`/`env<N>` 패턴)
+  - tests/verification.test.js (+1 테스트: venv3.10/site-packages 제외 & 실제 app/handlers 감지; 버전 assertion 1.14.3→1.14.4)
+  - package.json (1.14.3→1.14.4), CHANGELOG.md/CHANGELOG.ko.md, docs/llm-wiki/releases/v1.14.4.md(신규)
+  - doc-sync + re-verify: ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES (reviewed_at 2026-07-20 유지)
+- summary:
+  - 유지관리자가 테스터 산출물을 검토하다 발견: 도메인 문서 40여 개가 전부 빈 스캐폴드였고 `source_files`가 `venv3.10/Lib/site-packages/{passlib,boto3}/...` — 즉 도메인 감지가 **가상환경을 스캔**해 설치된 의존성을 도메인으로 오탐하고 있었다.
+  - 근본 원인: 버전형 venv 이름(`venv3.10`)이 스킵 목록에 없고 `site-packages`도 제외 안 됨, venv 마커 체크 없음.
+  - 수정: (1) `pyvenv.cfg`를 가진 디렉터리는 venv로 간주해 통째 스킵(이름 무관), (2) `site-packages`/`dist-packages` 제외, (3) 버전형 `venv*`/`env<N>` 이름 스킵. venv 없는 레포는 byte-identical, 프로젝트 자기 `handlers`/`routers`/… 도메인은 그대로 감지.
+  - 검증: node --test 229 통과(신규 1), validate result:pass 0 findings, strict pass. venv3.10 시뮬레이션에서 passlib 미유출·실제 endpoint만 감지 CLI 확인.
+- evidence:
+  - src/commands/domains.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 1.14.2·1.14.3·1.14.4 함께 배포 예정.
+
 ## 2026-07-20 - release: prepare 1.14.3 (온보딩 오리엔테이션 + 이중언어) + doc-sync
 
 - status: needs_review

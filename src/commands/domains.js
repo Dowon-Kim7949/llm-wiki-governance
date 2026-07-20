@@ -25,7 +25,7 @@ const DOMAIN_EXCLUDE_NAMES = new Set([
 // (`__`) directories are also skipped. Keeps the scan bounded and FPs near zero.
 const DOMAIN_TRAVERSAL_SKIP = new Set([
   "node_modules", "dist", "build", "out", "target", "bin", "obj",
-  "venv", "env", "vendor", "coverage", "migrations",
+  "venv", "env", "virtualenv", "site-packages", "dist-packages", "vendor", "coverage", "migrations",
   "spec", "docs", "doc", "examples", "example", "scripts"
 ]);
 
@@ -100,6 +100,11 @@ async function scanForDomainParents(cwd, dir, depth, found) {
   } catch {
     return;
   }
+  // A directory containing pyvenv.cfg is a Python virtualenv; everything beneath it
+  // (Lib/site-packages, ...) is installed third-party code, never a project domain.
+  // This catches version-suffixed names (venv3.10, .venv-py39) the name list misses,
+  // so a dependency's handlers/routers/... directory can't masquerade as a domain.
+  if (entries.some((entry) => entry.isFile() && entry.name === "pyvenv.cfg")) return;
   const base = path.basename(dir).toLowerCase();
 
   if (DIR_DOMAIN_PARENTS.has(base)) {
@@ -129,7 +134,10 @@ async function scanForDomainParents(cwd, dir, depth, found) {
 function isSkippedTraversalDir(name) {
   if (name.startsWith(".") || name.startsWith("__")) return true;
   const lower = name.toLowerCase();
-  return DOMAIN_TRAVERSAL_SKIP.has(lower) || DOMAIN_EXCLUDE_NAMES.has(lower);
+  if (DOMAIN_TRAVERSAL_SKIP.has(lower) || DOMAIN_EXCLUDE_NAMES.has(lower)) return true;
+  // Version/impl-suffixed virtualenv directories (venv3.10, venv-py39, env39) whose
+  // contents are installed dependencies rather than project domains.
+  return /^venv[\d._-]/i.test(name) || /^env\d/i.test(name);
 }
 
 function isExcludedDomainDir(name) {
