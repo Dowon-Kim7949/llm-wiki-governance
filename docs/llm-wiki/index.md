@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: wiki_index
 project: llm-wiki-standard
-last_updated: 2026-07-20
+last_updated: 2026-07-21
 author: cli-generated
 last_edited_by: Codex
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-20
+reviewed_at: 2026-07-21
 wiki_block_version: v1
 source_files:
   - package.json
