@@ -58,6 +58,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 18 Infra/DevOps Profile Scope Approval | `accepted_for_1.13.0` | Add an additive `infra` project type. Detect `Dockerfile`, Docker Compose (`docker-compose.y*ml`/`compose.y*ml`), Kubernetes manifests, Helm charts (`Chart.yaml`), and Terraform (`*.tf`), plus an infra/DevOps document set. Reuses the same bounded, exclusion-guarded detector pattern as Gate 17. Additive/opt-in; zero-dep (signal-file presence + bounded content sniff, no cluster/registry access). Accepted by Dowon-Kim on 2026-07-16. See "Infra/DevOps Profile Scope Decision" below. |
 | Gate 19 Stdlib-Server Detection Scope Approval | `accepted_for_1.14.0` | Refine role inference so Go `net/http` and Python stdlib HTTP servers classify as `backend` instead of `library`, via a bounded, false-positive-guarded source scan (import + server-start call, not framework deps). The smallest of the three; the only risk is over-classification, so the heuristic stays conservative and additive (promotes `library`→`backend` only on a strong signal; never demotes). Zero-dep. Accepted by Dowon-Kim on 2026-07-16. See "Stdlib-Server Detection Scope Decision" below. |
 | Gate 16 Cross-Repository Links Scope Approval | `accepted_for_1.11.0` | Add a conservative, NON-fetching cross-repo reference scheme (a reserved `repo:<name>/<path>` form, plus the already-recognized `http(s)://` URLs) recognized in `[[wiki links]]` and in `source_files`/`evidence`/`related`. Recognized references are treated as external — resolved (not flagged `wiki_link.missing`/`related.missing`/`source_files.missing`/`evidence.missing`/`markdown_link.missing`) but NEVER verified (verification would need network/git and break zero-dependency). Additive: local resolution is unchanged; only the reserved scheme is newly recognized. Accepted by Dowon-Kim on 2026-07-15. See "Cross-Repository Links Scope Decision" below. |
+| Gate 20 Review Workflow Scope Approval | `proposed_for_next` (DRAFT — not yet accepted) | Add a read-only `review` command that supports the human review→`verified` step (the weakest, most manual part of the loop, and the governance core): list `needs_review` content docs risk-ranked (thin / no-evidence / broken-link / never-enriched first) with a per-doc quality + evidence summary for fast spot-checking. Promotion to `verified` (stamping `reviewed_by`/`reviewed_at`) happens ONLY on an explicit, per-doc/confirmed `--approve <path>…` (or `--approve-all` with a confirmation) — NEVER automatically; the review DECISION stays human, only the MECHANICS get cheap. Additive/opt-in, read-only by default, zero-dep; `1.0.0` contracts unchanged. Motivated by the first external end-to-end run (a backend dev enriched a full wiki; the maintainer then had no ergonomic way to review + bless the `needs_review` backlog). DRAFTED for human acceptance. See "Review Workflow Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -776,6 +777,61 @@ heuristic stays strictly conservative.
 
 - `src/detector.js#symbol:detectEcosystems` — the Go/Python role heuristic extended with a
   guarded stdlib-server source signal.
+
+## Review Workflow Scope Decision (proposed — NOT yet accepted)
+
+**DRAFTED 2026-07-20; awaiting human acceptance.** Motivated by the first successful
+external end-to-end run: a backend developer ran the handoff prompt, enriched a full
+wiki, and sent it back — at which point the maintainer had no ergonomic way to review
+the `needs_review` backlog and promote the good docs to `verified`. Generation is now
+proven; the review→verify step is the weakest, most manual part of the loop, and it is
+the governance core of the tool ("make human verification cheap enough that people
+actually do it"). This gate proposes a command that supports that step WITHOUT
+weakening the human sign-off invariant.
+
+### Proposed scope
+
+- A new **read-only-by-default** `review` command that lists `needs_review` content
+  documents **risk-ranked** — never-enriched (`content.not_enriched`) / thin body /
+  missing `## Evidence` / broken related-or-markdown links first — each with a compact
+  per-doc summary (title, `doc_type`, evidence coverage, drift/staleness, top findings)
+  so a human can spot-check quickly instead of opening every file.
+- An explicit promotion path: `review --approve <path>…` (and optionally
+  `--approve-all` behind a confirmation) stamps ONLY `status: verified` +
+  `reviewed_by` (from git `user.name` / config) + `reviewed_at` (today) on the named
+  docs. It reuses the existing frontmatter-editing seam and touches nothing else.
+
+### Invariants (non-negotiable)
+
+- **NEVER auto-verify.** Promotion requires an explicit human action naming (or
+  confirming) the docs; the tool never blesses a doc on its own. This preserves the
+  Gate 2 model ("CLI-created/edited docs stay `needs_review` until human review").
+- Refuses to promote a doc that still has blocking/structural problems (e.g.
+  `frontmatter.required`, sensitive-info) — approval covers content judgment, not a
+  bypass of hard failures.
+- Never edits body content, `source_files`, `evidence`, or Tier B fields; only the
+  status/review-metadata stamp, mirroring the `drift --downgrade` discipline in reverse.
+- Additive/opt-in, read-only by default, zero-dep; `1.0.0` command/`--format json`/
+  frontmatter contracts unchanged (new command + additive JSON only).
+
+### Out of scope
+
+- Any automated quality judgment that would substitute for human review.
+- Multi-reviewer sign-off, approval history, or per-doc reviewer assignment (a possible
+  later governance gate).
+
+### Open questions (for acceptance)
+
+- Command name/shape: standalone `review` vs a `--approve` mode on an existing command.
+- Whether `--approve-all` should exist at all, or approval must always name docs.
+- How `reviewed_by` is sourced when git identity is unavailable (config vs required flag).
+
+### Evidence (planned, not yet implemented)
+
+- Would reuse `src/commands/scans.js` (enrichment/thin-body/evidence findings),
+  `src/commands/wiki-graph.js` (link health), and the frontmatter-stamping helpers in
+  `src/commands/fix-migrate.js`; register a `review` entry in the CLI `COMMANDS` map and
+  the frozen programmatic-API `commands` map.
 
 ## Release Caveats
 
