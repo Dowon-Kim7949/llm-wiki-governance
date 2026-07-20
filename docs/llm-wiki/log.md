@@ -24,6 +24,30 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-20 - release: prepare 1.14.2 (usability 다듬기) + Gate 20 draft
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — 첫 외부 end-to-end 성공 후 "사용성 극대화")
+- scope: src, tests, docs
+- changed:
+  - src/commands/references.js (`parseEvidenceReference` 콜론-라인 `파일:10` 수용), src/commands/wiki-graph.js (orphan에서 `/templates/` 제외), src/git.js (`isPathIgnored`), src/commands/findings.js (`structure.output_gitignored` 룰 등록), src/commands.js (`initWrite` gitignore 경고+안심 요약, `doctor` wiki_output 체크, `quickstartInitSummary` gitignore 라인)
+  - tests/verification.test.js (+5 테스트; 버전 assertion 1.14.1→1.14.2)
+  - package.json (1.14.1→1.14.2), CHANGELOG.md/CHANGELOG.ko.md, docs/llm-wiki/releases/v1.14.2.md(신규)
+  - doc-sync + re-verify: ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES (reviewed_at 2026-07-20 유지)
+  - GATE_REVIEW.md: Gate 20(review 워크플로) DRAFTED proposed_* (수락 전, 코드 없음)
+- summary:
+  - 첫 외부 end-to-end 성공(BE 개발자가 handoff 프롬프트로 위키 전체 추출) 이후의 사용성 다듬기 4건. 검토자가 보는 헛경고를 줄이고 사일런트 실패를 표면화. 계약·zero-dep 불변.
+  - (1) `evidence` 콜론-라인 표기(`파일:10`) 수용 — 에디터/grep 스타일 근거가 헛 `evidence.missing`을 내지 않음. (2) 생성 `templates/*`를 orphan 보고에서 제외. (3) `docs/llm-wiki`가 gitignore되면 `init --write`/`quickstart`·`doctor`가 `structure.output_gitignored` 경고(차단 아님). (4) `init --write` 안심 요약 라인.
+  - 별도: 사람 검토→verified 승인을 돕는 `review` 워크플로를 GATE_REVIEW Gate 20으로 초안만 작성(수락 대기, 코드 없음).
+  - 검증: node --test 226 통과(신규 5), validate result:pass 0 findings, strict pass. gitignore 경고·evidence 표기 실제 CLI 확인.
+- evidence:
+  - src/commands/references.js
+  - src/git.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기.
+  - Gate 20은 아직 수락 전 — review 워크플로는 코드 미구현(초안만).
+
 ## 2026-07-20 - feat: handoff Next Step 명료화 + skipped/브라운필드 안내 (1.14.1에 fold-in)
 
 - status: needs_review

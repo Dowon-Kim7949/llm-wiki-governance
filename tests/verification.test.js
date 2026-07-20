@@ -2533,7 +2533,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "@dowonk-7949/llm-wiki-standard");
-  assert.equal(packageJson.version, "1.14.1");
+  assert.equal(packageJson.version, "1.14.2");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
@@ -3546,5 +3546,58 @@ test("quickstart Next Step explains the prompt is for the agent, and brownfield 
   const second = await quickstartCommand({ cwd, dryRun: true, write: false, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: [], existing: "skip" });
   assert.match(second.text, /skipped: \d+ \(\d+ already exist, kept\)/, "skipped count is annotated with the reason");
   assert.ok(second.text.includes("LLM-WIKI가 이미 있어"), "brownfield note points to enrichment, not re-creation");
+});
+
+test("evidence accepts colon-line notation (file:10) equivalently to file#L10 (1.14.2)", async () => {
+  const { parseEvidenceReference } = await import("../src/commands/references.js");
+  assert.deepEqual(parseEvidenceReference("src/app.py:10"), { source: "src/app.py", locator: { kind: "line", start: 10, end: 10 }, external: false });
+  assert.deepEqual(parseEvidenceReference("src/app.py:10-20"), { source: "src/app.py", locator: { kind: "line", start: 10, end: 20 }, external: false });
+  // The hash form is unchanged, and a plain path still has no locator.
+  assert.deepEqual(parseEvidenceReference("src/app.py#L10"), { source: "src/app.py", locator: { kind: "line", start: 10, end: 10 }, external: false });
+  assert.deepEqual(parseEvidenceReference("src/app.py"), { source: "src/app.py", locator: null, external: false });
+  // No colon-line misfire on a symbol locator or a plain trailing colon.
+  assert.deepEqual(parseEvidenceReference("src/app.py#symbol:main"), { source: "src/app.py", locator: { kind: "symbol", value: "main" }, external: false });
+});
+
+test("colon-line evidence no longer produces a false evidence.missing (1.14.2)", async () => {
+  const cwd = await makeProject("evidence-colon-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "src.py"), "a\nb\nc\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"),
+    "---\ntitle: I\nstatus: needs_review\ndoc_type: index\nevidence:\n  - src.py:2\n---\n\n## Evidence\n\n- src.py:2\n", { encoding: "utf8" });
+  const result = await audit(api.normalizeOptions({ cwd }));
+  assert.ok(!result.findings.some((f) => f.rule === "evidence.missing"), "src.py:2 resolves to a real source, not missing");
+});
+
+test("orphan detection excludes generated templates/ scaffolds but still flags real orphans (1.14.2)", async () => {
+  const { collectWikiGraph } = await import("../src/commands/wiki-graph.js");
+  const cwd = await makeProject("orphan-tmpl-");
+  await mkdir(path.join(cwd, "docs", "llm-wiki", "templates"), { recursive: true });
+  await writeWikiDoc(cwd, "index.md", "Index", "Entry.");
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "templates", "FOO.template.md"),
+    "---\ntitle: T\nstatus: needs_review\ndoc_type: template\n---\n\nbody\n", { encoding: "utf8" });
+  await writeWikiDoc(cwd, "loose.md", "Loose", "Nothing links here.");
+
+  const graph = await collectWikiGraph(cwd);
+  assert.ok(!graph.orphanDocuments.some((p) => p.includes("/templates/")), "templates are not reported as orphans");
+  assert.ok(graph.orphanDocuments.includes("docs/llm-wiki/loose.md"), "a genuinely unlinked doc is still an orphan");
+});
+
+test("init --write warns (not blocks) when the wiki output path is gitignored (1.14.2)", async () => {
+  const cwd = await makeProject("gitignore-out-");
+  const git = gitAtDate(cwd, "2026-07-20T12:00:00");
+  git(["init"]);
+  await writeFile(path.join(cwd, ".gitignore"), "docs/\n", { encoding: "utf8" });
+
+  const result = await initCommand({ cwd, write: true, minimal: true, withAdapters: false, type: "library", profiles: [], agents: [], existing: "skip" });
+  assert.ok(result.findings.some((f) => f.rule === "structure.output_gitignored"), "gitignored output is flagged");
+  assert.equal(result.result, "warning", "it warns, never blocks");
+  assert.ok(result.text.includes("gitignored"), "surfaced in the report text");
+});
+
+test("init --write prints a reassurance summary line (1.14.2)", async () => {
+  const cwd = await makeProject("reassure-");
+  const result = await initCommand({ cwd, write: true, minimal: true, withAdapters: false, type: "library", profiles: [], agents: [], existing: "skip" });
+  assert.match(result.text, /\d+ created, \d+ overwritten, \d+ kept \(existing files preserved/, "summary reassures what was and wasn't touched");
 });
 

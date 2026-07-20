@@ -5,6 +5,32 @@
 All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
 project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
 
+## 1.14.2 — 2026-07-20
+
+Usability polish following the first successful external end-to-end run (a backend
+developer ran the handoff prompt and extracted a full wiki). Reduces the confusing
+noise a reviewer sees and surfaces one silent failure. No command, option,
+`--format json`, or frontmatter contract change; no runtime dependency added.
+
+### Fixed
+
+- **Colon-line evidence notation (`file:10`) is now accepted** alongside `file#L10`
+  (and `file:10-20` alongside `file#L10-L20`). An enriching agent that writes evidence
+  the way editors and grep emit it no longer trips a false `evidence.missing`; the
+  reference resolves to the source with a validated line range.
+- **Generated `templates/*.template.md` are no longer reported as orphans.** They are
+  intentional, expected-unlinked scaffolds, so a freshly created wiki stops showing
+  false-positive orphans in `graph`/`stats`. Genuinely unlinked docs are still flagged.
+
+### Added
+
+- **A warning when the wiki output path is gitignored.** If `docs/llm-wiki` is ignored
+  by git, `init --write`/`quickstart` now emit a `structure.output_gitignored` warning
+  (never a block) and `doctor` reports it — catching the silent case where generated
+  docs are created but never tracked by git.
+- **A reassurance summary on `init --write`.** A one-line `N created, N overwritten,
+  N kept (existing files preserved)` summary makes it clear what was and was not touched.
+
 ## 1.14.1 — 2026-07-20
 
 Bug-fix batch from the post-1.14 exposure test. On-ramp and brownfield-fit fixes; no

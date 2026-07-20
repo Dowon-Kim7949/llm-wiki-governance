@@ -13,7 +13,7 @@ import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { apiServiceInventoryChecklist, buildTaskPrompt } from "./task-prompts.js";
 import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
-import { fileChangedSince, lineRangeChangedSince, changedFiles } from "./git.js";
+import { fileChangedSince, lineRangeChangedSince, changedFiles, isPathIgnored } from "./git.js";
 import { buildDomainContext, emptyDomainContext } from "./commands/domains.js";
 import { docMetadata } from "./commands/doc-templates.js";
 import {
@@ -93,6 +93,7 @@ export async function doctor(options) {
   const packageManager = await detectPackageManager(cwd);
   const packageReadiness = await inspectPackageReadiness(cwd);
   const blockVersions = wikiExists ? await analyzeBlockVersions(cwd) : null;
+  const outputIgnored = isPathIgnored(cwd, "docs/llm-wiki");
 
   const checks = [
     `node: ${process.version}`,
@@ -100,6 +101,7 @@ export async function doctor(options) {
     `cwd: ${cwd}`,
     `package_manager: ${packageManager ?? "not detected"}`,
     `wiki_entry: ${wikiExists ? "present" : "missing"}`,
+    `wiki_output: ${outputIgnored ? "WARNING: docs/llm-wiki is gitignored — generated docs will not be tracked (git add -f docs/llm-wiki or edit .gitignore)" : "tracked (not gitignored)"}`,
     blockVersions
       ? `wiki_block_version: current=${blockVersions.current}, gap=${blockVersionGapDocs(blockVersions).length}/${blockVersions.docs.length} docs${blockVersionGapDocs(blockVersions).length ? " (run migrate --dry-run)" : ""}`
       : `wiki_block_version: current=${CURRENT_WIKI_BLOCK_VERSION}`,
@@ -1020,7 +1022,26 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     path: ".",
     message
   }));
-  const result = findings.length > 0 ? "blocked" : "pass";
+  // Warn (never block) when the just-written wiki path is gitignored: the files
+  // were created but git will never track them — a silent failure worth surfacing.
+  const outputIgnored = isPathIgnored(options.cwd, "docs/llm-wiki");
+  if (outputIgnored) {
+    findings.push({
+      severity: "warning",
+      rule: "structure.output_gitignored",
+      path: "docs/llm-wiki",
+      message: "docs/llm-wiki is ignored by git; generated documents were created but will not be tracked. Remove the ignore rule or run git add -f docs/llm-wiki."
+    });
+  }
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "warning")
+      ? "warning"
+      : "pass";
+  const reassurance = [
+    `${created.length} created, ${overwritten.length} overwritten, ${skipped.length} kept (existing files preserved${options.existing === "overwrite" ? "" : "; --existing skip"}).`,
+    ...(outputIgnored ? ["WARNING: docs/llm-wiki is gitignored — created docs will not be tracked by git (git add -f docs/llm-wiki or edit .gitignore)."] : [])
+  ];
 
   return withText({
     command: "init",
@@ -1037,6 +1058,7 @@ async function initWrite(options, detection, agents, candidates, domainContext =
   }, "LLM-WIKI Init Write", [
     { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
+    { title: "Summary", body: reassurance },
     { title: "Created", body: created },
     { title: "Overwritten", body: overwritten },
     { title: "Skipped Existing", body: skipped },
@@ -1521,6 +1543,9 @@ function quickstartInitSummary(initResult) {
   const existingSkips = initResult.skipped?.filter((line) => /\bexists\b/i.test(line)).length ?? 0;
   if (newDocs === 0 && existingSkips > 0) {
     lines.push("note: LLM-WIKI가 이미 있어 새로 만들 문서가 없습니다 — 아래 handoff 프롬프트로 기존 문서를 코드 근거로 보강하세요(스캐폴드를 다시 만들려면 --existing overwrite).");
+  }
+  if (initResult.findings?.some((finding) => finding.rule === "structure.output_gitignored")) {
+    lines.push("WARNING: docs/llm-wiki가 gitignore되어 생성 문서가 git에 추적되지 않습니다 — git add -f docs/llm-wiki 또는 .gitignore 수정.");
   }
   return lines;
 }

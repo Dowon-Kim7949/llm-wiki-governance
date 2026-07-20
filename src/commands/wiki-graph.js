@@ -125,7 +125,11 @@ export async function collectWikiGraph(cwd) {
     return byAlias || left.path.localeCompare(right.path);
   });
   const orphanDocuments = docs
-    .filter((doc) => doc.path !== "docs/llm-wiki/index.md" && !connectedPaths.has(doc.path))
+    // Generated scaffolds under templates/ are expected-unlinked; excluding them
+    // keeps a freshly-created wiki from reporting them as false-positive orphans.
+    .filter((doc) => doc.path !== "docs/llm-wiki/index.md"
+      && !doc.path.includes("/templates/")
+      && !connectedPaths.has(doc.path))
     .map((doc) => doc.path)
     .sort();
   const unresolvedConcepts = [...unresolvedByTarget.values()].sort((left, right) => left.target.localeCompare(right.target));

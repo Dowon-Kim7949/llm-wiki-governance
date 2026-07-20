@@ -43,7 +43,19 @@ export function parseEvidenceReference(reference) {
 
   if (!source || source.startsWith("#")) return null;
   if (locatorText === "") return null;
-  if (locatorText === null) return { source, locator: null, external: false };
+  if (locatorText === null) {
+    // Also accept a colon-line locator — `path:10` or `path:10-20`, the notation
+    // editors and grep emit — as equivalent to `path#L10` / `path#L10-L20`, so an
+    // agent that writes evidence that way is not falsely flagged evidence.missing.
+    // (External refs like http://host:80/… were already returned above.)
+    const colonLine = source.match(/^(.+):([1-9]\d*)(?:-([1-9]\d*))?$/);
+    if (colonLine) {
+      const start = Number(colonLine[2]);
+      const end = Number(colonLine[3] ?? colonLine[2]);
+      if (end >= start) return { source: colonLine[1].trim(), locator: { kind: "line", start, end }, external: false };
+    }
+    return { source, locator: null, external: false };
+  }
 
   const lineMatch = locatorText.match(/^L([1-9]\d*)(?:-(?:L)?([1-9]\d*))?$/i);
   if (lineMatch) {

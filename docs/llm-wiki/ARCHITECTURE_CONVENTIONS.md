@@ -113,6 +113,8 @@ contains_sensitive_info: false
 - `src/encoding.js#symbol:readTextAuto` — detector 매니페스트/소스 읽기용 BOM 인식 리더(UTF-16LE/BE·UTF-8 BOM 디코드; BOM 없는 파일은 byte-identical). 위키 문서용 `readUtf8`는 raw UTF-8 보존으로 불변(1.14.1).
 - `src/commands.js#symbol:buildHandoff` — handoff 진입점을 명시적으로 선택된 에이전트의 어댑터 파일로만 한정(미선택 시 `docs/llm-wiki/index.md`), 생성되지 않은 `AGENTS.md`/`CLAUDE.md`를 가리키지 않음(1.14.1).
 - `src/commands/fix-migrate.js#symbol:needsWriteFlag` — 모드 플래그 없는 `init`/`quickstart`을 `Ready (needs --write)`(result `ready`, exit 0)로 안내; 충돌 플래그는 여전히 `blockedApply`(1.14.1).
+- `src/git.js#symbol:isPathIgnored` — `git check-ignore` 기반 gitignore 탐지(best-effort; 비-git·미무시는 false). `initWrite`·`doctor`가 위키 출력(`docs/llm-wiki`)이 gitignore되면 `structure.output_gitignored` 경고를 낸다(차단 아님)(1.14.2).
+- `src/commands/references.js#symbol:parseEvidenceReference` — evidence 참조 파서. 1.14.2부터 콜론-라인 표기(`파일:10`·`파일:10-20`)를 `#L` 형과 동등한 line locator로 수용(external 우선 처리 뒤).
 
 ## Open Questions
 
@@ -135,3 +137,4 @@ contains_sensitive_info: false
 - 2026-07-16에 1.13.0 infra/DevOps profile(Gate 18, accepted)을 반영했다: `src/detector.js`에 `detectInfra`(Docker/Compose/Kubernetes/Helm/Terraform)와 `decideType`의 infra fallback 분기(앱 신호 없을 때만)를 Module Layout·Evidence에 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.14.0 stdlib-server detection(Gate 19, accepted)을 반영했다: `detectGoStdlibServer`/`detectPythonStdlibServer`(bounded 소스 스캔; Go `net/http`·Python stdlib HTTP 서버 → role `library`→`backend` 단방향 승격)를 Module Layout·Evidence에 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-20에 1.14.1 노출-테스트 fix 배치를 반영했다: (A) `src/encoding.js`의 BOM 인식 리더(`readTextAuto`/`decodeWithBom`)와 이를 쓰는 detector 매니페스트/소스 읽기 — UTF-16/UTF-8-BOM 매니페스트 오분류 교정 — 를 Module Layout·Evidence에 추가하고 `src/encoding.js`를 source_files에 넣었다. (B) `buildHandoff`가 진입점에 명시적 선택 에이전트의 어댑터 파일만 넣도록, (C) `needsWriteFlag`로 모드 플래그 없는 `init`/`quickstart`이 `Ready (needs --write)`(exit 0)로 안내하도록 한 변경을 Evidence에 기술했다. (D) BE 개발자 추가 보고서를 반영해 `handoffNextStep`(handoff `Next Step`을 "프롬프트는 CLI가 아니라 에이전트에 붙여넣는 지시문"임을 명시하는 3단계 안내)과 `quickstartInitSummary`의 skip 사유 주석·브라운필드 안내를 commands.js에 추가했다(출력 명료화, 계약·동작 불변). 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
+- 2026-07-20에 1.14.2 사용성 다듬기를 반영했다: `parseEvidenceReference`의 콜론-라인 수용(`파일:10`→line locator), `collectWikiGraph` orphan에서 `/templates/` 제외, `src/git.js#isPathIgnored` + `structure.output_gitignored` 경고(initWrite·doctor에서 gitignore된 위키 출력 탐지), `initWrite` 안심 요약 라인을 Evidence·Module Layout에 기술했다(출력 명료화, 계약·동작 불변; git 호출은 best-effort). 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.

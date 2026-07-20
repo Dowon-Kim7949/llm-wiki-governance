@@ -33,6 +33,20 @@ export function lineRangeChangedSince(cwd, file, start, end, sinceDate) {
   return out.length > 0;
 }
 
+// True when <relPath> is ignored by git (via `git check-ignore`). Catches the
+// silent failure where the wiki output path is gitignored, so generated docs are
+// created but never tracked. Best-effort: returns false when the path is not
+// ignored, git is unavailable, or cwd is not a repository (check-ignore exits
+// non-zero in every one of those cases, which execFileSync surfaces as a throw).
+export function isPathIgnored(cwd, relPath) {
+  try {
+    runGit(cwd, ["check-ignore", "-q", relPath]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Repo-relative paths (posix, relative to the git root) that differ from the
 // baseline. With <sinceRef>, every change from that ref to the working tree;
 // without it, uncommitted tracked changes plus untracked files (the pre-commit

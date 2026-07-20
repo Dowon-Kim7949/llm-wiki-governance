@@ -5,6 +5,29 @@
 `@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.14.2 — 2026-07-20
+
+첫 외부 end-to-end 성공(백엔드 개발자가 handoff 프롬프트를 실행해 위키 전체를 추출) 이후의 사용성
+다듬기. 검토자가 보는 헛경고를 줄이고 사일런트 실패 하나를 표면화한다. 명령·옵션·`--format json`·
+frontmatter 계약 불변, 런타임 의존성 추가 없음.
+
+### Fixed
+
+- **콜론-라인 evidence 표기(`file:10`)를 수용한다** — `file#L10`과 함께(그리고 `file:10-20`을
+  `file#L10-L20`과 함께). 보강 에이전트가 에디터/grep 스타일로 evidence를 써도 더 이상 헛
+  `evidence.missing`이 뜨지 않고, 참조가 소스+라인 범위로 정상 해석된다.
+- **생성된 `templates/*.template.md`를 orphan으로 보고하지 않는다.** 의도적으로 링크되지 않는
+  스캐폴드이므로, 갓 만든 위키가 `graph`/`stats`에서 false-positive orphan을 표시하던 문제를 없앤다.
+  실제로 링크 안 된 문서는 여전히 표시한다.
+
+### Added
+
+- **위키 출력 경로가 gitignore될 때 경고.** `docs/llm-wiki`가 git에서 무시되면
+  `init --write`/`quickstart`가 `structure.output_gitignored` 경고(차단 아님)를 내고 `doctor`도
+  보고한다 — 생성 문서가 만들어졌지만 git에 추적되지 않던 사일런트 케이스를 잡는다.
+- **`init --write` 안심 요약.** `N created, N overwritten, N kept (existing files preserved)`
+  한 줄로 무엇을 건드렸고 안 건드렸는지 명확히 보여준다.
+
 ## 1.14.1 — 2026-07-20
 
 1.14 이후 노출 테스트에서 나온 버그 수정 배치. 온램프·브라운필드 적합성 수정이며, 새 명령·옵션·
