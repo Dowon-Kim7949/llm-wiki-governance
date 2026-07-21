@@ -338,7 +338,8 @@ that matters most — code and its doc changing in **separate** places/PRs. Buil
 index from `source_files`/`evidence` so a change that touches referenced code flags the affected
 `verified` docs (commit-SHA baseline; working-tree / PR-base aware), with a strict-governance
 preset that can fail CI on drift. Makes "the wiki keeps up with the code" real and CI-enforceable.
-Additive/opt-in, zero-dep. (New gate before code.)
+Additive/opt-in, zero-dep. Scope: `GATE_REVIEW.md` (Gate 23, **drafted — proposed, not yet
+accepted**; reuses the existing `changedFiles`/`driftTargets` primitives, so it is mostly wiring).
 
 ### Gate 24 — Read-only retrieval (search/get) over MCP + API
 

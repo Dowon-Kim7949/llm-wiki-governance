@@ -61,6 +61,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 20 Review Workflow Scope Approval | `proposed_for_next` (DRAFT — not yet accepted) | Add a read-only `review` command that supports the human review→`verified` step (the weakest, most manual part of the loop, and the governance core): list `needs_review` content docs risk-ranked (thin / no-evidence / broken-link / never-enriched first) with a per-doc quality + evidence summary for fast spot-checking. Promotion to `verified` (stamping `reviewed_by`/`reviewed_at`) happens ONLY on an explicit, per-doc/confirmed `--approve <path>…` (or `--approve-all` with a confirmation) — NEVER automatically; the review DECISION stays human, only the MECHANICS get cheap. Additive/opt-in, read-only by default, zero-dep; `1.0.0` contracts unchanged. Motivated by the first external end-to-end run (a backend dev enriched a full wiki; the maintainer then had no ergonomic way to review + bless the `needs_review` backlog). DRAFTED for human acceptance. See "Review Workflow Scope Decision" below. |
 | Gate 21 Skill Generation Scope Approval | `accepted_for_1.15.0` | Generate invocable, wiki-grounded automation prompts for the feature/fix/docs-sync workflows already encoded in `src/task-prompts.js`, in each agent's native shape — Claude skill (`.claude/skills/llm-wiki-<task>/SKILL.md`), Cursor rule (`.cursor/rules/llm-wiki-<task>.mdc`), and an agent-neutral prompt doc (`docs/llm-wiki/prompts/llm-wiki-<task>.prompt.md`, for Codex/others) — so a user can invoke `/llm-wiki-feature "…"` to run "read the wiki → ground the change → update docs (needs_review) → log", closing the value loop (#8). Each body embeds a generation-time snapshot of the project's domain map so the agent knows which docs to read. Opt-in (per `--agent`/`--skills`), preview-first, existing files never overwritten, recognize-don't-run, needs_review discipline embedded. Additive, zero-dep; `1.0.0` contracts unchanged. Accepted by Dowon-Kim on 2026-07-20 with two additions over the draft (domain-map injection + multi-agent formats). MINOR (`1.15.0`). See "Skill Generation Scope Decision" below. |
 | Gate 22 Impact Measurement Scope Approval | `accepted` | Pull impact measurement to the FRONT of the post-1.16 line (before the feature gates). A reproducible, opt-in, zero-dep benchmark harness (repo-internal, e.g. `bench/`) runs a representative task with vs. without the governed wiki and records input tokens, source files opened, task success/quality, and wall-clock, plus an honest methodology that counts wiki read + maintenance cost (not just repo-scan tokens) and a recorded baseline. Primarily a VALIDATION track — no `1.0.0` contract change; any shipped `bench` helper is a later minor; zero-dep preserved. Results reported honestly INCLUDING unfavorable ones (an "overhead > benefit" result reshapes the roadmap, it is not hidden); no token/speed/productivity claim ships in README/launch until a measured result supports it. Re-run at each later gate for its delta. Motivated by the product-identity audit (`outputs/audits/product-identity-audit.md`): the governance core is real but the value chain is unproven. Accepted by Dowon-Kim on 2026-07-21. See "Impact Measurement Scope Decision" below. |
+| Gate 23 Reverse-Impact (Changed-Source → Wiki) Scope Approval | `proposed_for_next` (DRAFT — not yet accepted) | Add a read-only reverse-impact check that builds a git-diff reverse index from every `verified` doc's `source_files`/`evidence` and flags a `verified` doc when its referenced code is in the current change set (working tree, or a `--since <ref>` PR/CI baseline) while the doc itself is NOT changed — the pre-merge, diff-anchored complement to the existing date-anchored `evidence.stale`. Defaults to warning (NEVER default error/blocked, preserving the additive `1.0.0` invariant); an opt-in `--strict` (for CI) escalates it to a failing error so a PR that changes governed code without updating its doc fails. Read-only, additive/opt-in, zero-dep — reuses `changedFiles` (`src/git.js`), `driftTargets`, and the reference parsers. Motivated by the product-identity audit's biggest vision-vs-reality gap: today drift is date-based and misses code + its doc changing in separate PRs, and cannot answer the pre-merge CI question. DRAFTED for human acceptance. See "Reverse-Impact (Changed-Source → Wiki) Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -928,6 +929,102 @@ surface, not a patch).
 - The methodology explicitly accounts for wiki maintenance/read cost, not just repo-scan tokens.
 
 Accepted by Dowon-Kim on 2026-07-21. Delivery: build the harness + baseline first (validation track); any shipped `bench` helper is a later minor.
+
+## Reverse-Impact (Changed-Source → Wiki) Scope Decision (proposed — NOT yet accepted)
+
+**DRAFTED 2026-07-21; awaiting human acceptance.** The product-identity audit
+(`outputs/audits/product-identity-audit.md`) named this the biggest vision-vs-reality
+gap: the tool promises docs that keep up with the code, but the only drift signal today
+is DATE-anchored. `scanEvidenceDrift` (`src/commands/scans.js`) fires `evidence.stale`
+when a referenced file has git history AFTER a doc's `reviewed_at`/`last_updated` date.
+That misses the case that matters most in real workflows — code and its doc changing in
+SEPARATE places/PRs — and it cannot answer the pre-merge question a CI check needs: "does
+THIS diff touch code that a `verified` doc depends on, without touching that doc?" This
+gate adds that diff-anchored, CI-native check as the complement to date-anchored
+staleness. It is also where the Gate 22 harness is re-run for its delta.
+
+### The distinction (why this is not the existing drift)
+
+- **Date-anchored `evidence.stale` (exists, Gate 9):** "the referenced code has commit
+  history newer than the doc's review date." History-anchored, always-on, reported by
+  `audit`/`drift`.
+- **Diff-anchored reverse-impact (this gate, new):** "the referenced code is IN THIS
+  CHANGE SET (working tree, or `<ref>..HEAD` for a PR) while the doc is NOT." Anchored to
+  a diff / commit range, not a calendar date — the pre-merge signal a CI gate enforces.
+
+They are complementary; neither subsumes the other.
+
+### Proposed scope
+
+- A new **read-only** check that:
+  1. Builds the change set with the existing `changedFiles(cwd, since)` (`src/git.js`):
+     no `--since` = the working tree (uncommitted tracked + untracked — the pre-commit
+     view); `--since <ref>` = `git diff --name-only <ref>` (a branch/SHA/merge-base — the
+     PR/CI baseline). This reuses the exact semantics `validate --changed [--since]`
+     already ships.
+  2. Builds a reverse index from every `verified` doc's `source_files` + `evidence` to the
+     source files they anchor (reusing the reference parsing in `driftTargets` /
+     `src/commands/references.js`; external `http(s)`/`repo:` refs excluded, as today).
+  3. Emits a finding (proposed rule `impact.source_changed`, a new toggleable `impact`
+     category) for each `verified` doc whose anchored source ∈ the change set while the
+     doc's OWN path ∉ the change set — if you edited the doc in the same diff, no finding.
+- **Command shape (decided at acceptance):** a standalone `llm-wiki impact [--since <ref>]
+  [--strict]`, OR a diff mode on the existing `drift` (`drift --since <ref>`). Both are
+  read-only in this scope; the recommendation is the standalone `impact` command
+  (single-responsibility, discoverable, and `drift`'s `--downgrade` write path stays out
+  of the diff signal).
+- **Strict-governance / CI enforcement:** the finding defaults to **warning** (never
+  default error/blocked — preserves the additive `1.0.0` invariant). An opt-in `--strict`
+  (mirroring `validate --strict`) escalates it to a failing error, so a PR that changes
+  governed code without updating its doc fails CI. Whether a shared `strict-governance`
+  posture should ALSO escalate the existing date-anchored `evidence.stale` is an open
+  question below (the audit flagged that `evidence.stale` warning + composite-action
+  `strict:false` lets drift pass CI today).
+
+### Invariants (non-negotiable)
+
+- **Read-only.** The check never writes; remediation stays human (re-review) or the
+  existing `drift --downgrade`. No new write surface.
+- **Additive/opt-in, default warning.** The `impact` rule can NEVER default to
+  error/blocked; strictness is opt-in per run/CI. No new required frontmatter field.
+- **Zero-dependency, best-effort git.** Reuses `changedFiles`/`driftTargets`; no repo (or
+  git unavailable) degrades to a single `impact.unavailable` finding, mirroring
+  `changed.unavailable` — never a crash.
+- `1.0.0` command / `--format json` / frontmatter contracts unchanged (a new command +
+  additive finding category + additive JSON only); zero-dep preserved.
+
+### Out of scope (v1)
+
+- **Line-level precision.** v1 is file-level (does the changed file back the doc). The
+  change set from `git diff --name-only` is file-granular; mapping a diff to the exact
+  cited line ranges (so an edit far from the cited lines is not impact) needs hunk parsing
+  and is deferred (honest limit — date-anchored drift already narrows to line ranges via
+  `git log -L`).
+- **A per-doc `reviewed_sha` anchor.** Pinning each doc to the commit it was verified
+  against (diffing `reviewed_sha..HEAD` per doc — more precise than a global `--since`)
+  needs an OPTIONAL new frontmatter field plus a verify/approve step to stamp it, which
+  does not exist yet (Gate 20 `review` is unaccepted). Deferred; if added later it is an
+  OPTIONAL additive field, never required.
+- **Any write / auto-downgrade in this command** (kept in `drift`), and **MCP exposure**
+  (optional later, matching `drift`'s current non-exposure).
+
+### Open questions (for acceptance)
+
+- Command name/shape: standalone `impact` vs a `drift --since <ref>` mode.
+- Finding rule name/category: `impact.source_changed` (new `impact` category) vs an
+  `evidence.*` rule.
+- Should `--strict` / a `strict-governance` preset ALSO escalate the existing
+  `evidence.stale`, closing the audit's "drift passes CI" gap in the same release?
+- The default change set when neither `--since` nor a dirty tree is present (an empty set
+  = no findings, i.e. a safe no-op, is the proposed default).
+
+### Evidence (planned, not yet implemented)
+
+- `src/git.js#symbol:changedFiles` — the change-set primitive (working-tree / `--since <ref>`), already used by `validate --changed`.
+- `src/commands/scans.js#symbol:driftTargets` — the `verified`-doc → source/evidence anchor extractor to reuse for the reverse index (generalized to not require a date baseline).
+- `src/commands/scans.js#symbol:scanEvidenceDrift` — the date-anchored sibling this gate complements.
+- `src/commands/references.js#symbol:parseEvidenceReference` — evidence locator parsing; `isExternalSourceReference` to exclude external/cross-repo refs.
+- `src/commands/findings.js#symbol:applyRuleConfig` — where the new `impact` category plugs into rule toggles/severity.
 
 ## Release Caveats
 

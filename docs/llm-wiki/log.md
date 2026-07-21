@@ -24,6 +24,19 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - gate: Gate 23 (변경소스 → 위키 reverse-impact) 초안
+
+- status: needs_review
+- actor: Claude Code (초안 작성; 수락은 사람 Dowon-Kim)
+- scope: docs (gate-review) — **코드 미변경**
+- changed:
+  - GATE_REVIEW.md: Gate 23 표 행 + "Reverse-Impact (Changed-Source → Wiki) Scope Decision" 섹션을 `proposed_for_next`(DRAFT — 미수락)로 추가.
+  - ROADMAP.md · ROADMAP.ko.md: Gate 23 섹션에 "drafted — proposed, not yet accepted" + 재사용 프리미티브 명시.
+- summary:
+  - 감사가 지목한 최대 비전-현실 간극(날짜 기반 drift가 코드·문서 별도 PR 케이스를 놓침)에 대응하는 **diff-앵커 reverse-impact** 초안. 기존 date-앵커 `evidence.stale`의 **pre-merge 보완**: 변경집합(working-tree 또는 `--since <ref>`)에 든 코드를 참조하는 `verified` 문서가 같은 diff에서 변경되지 않았으면 flag. 신규 read-only `impact` 명령(또는 `drift --since` 모드), 신규 toggleable `impact` 카테고리(기본 warning), opt-in `--strict`로 CI 실패. 기존 `changedFiles`(src/git.js)·`driftTargets`·참조 파서 재사용이라 대부분 배선.
+- caveats:
+  - **코드 전 초안**: 저장소 규율상 사람 수락 후 빌드. v1은 file-level(line-level·per-doc `reviewed_sha`·write/downgrade·MCP 노출은 out of scope). 부가적·opt-in·zero-dep·1.0.0 계약 불변. 수용 시 open questions(명령 형태·rule 이름·`evidence.stale`도 strict 승격할지) 결정.
+
 ## 2026-07-21 - feat: Gate 22 벤치마크 하니스 + 베이스라인 구축
 
 - status: needs_review

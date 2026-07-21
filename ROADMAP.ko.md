@@ -266,7 +266,7 @@ Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`f
 
 ### Gate 23 — 변경소스 → 위키 reverse-impact 게이트
 
-감사가 찾은 최대 비전-현실 간극: 현재 drift는 날짜 기반이라 가장 중요한 경우 — 코드와 문서가 **다른 곳/PR**에서 바뀌는 경우 — 를 놓친다. `source_files`/`evidence`의 git-diff 역색인을 만들어, 참조된 코드를 건드리는 변경이 관련 `verified` 문서를 flag하게 한다(commit-SHA 기준; working-tree/PR-base 인식), strict-governance preset은 drift에서 CI 실패 가능. "위키가 코드를 따라간다"를 실제·CI 강제로 만든다. 부가적·opt-in·zero-dep. (코드 전에 신규 게이트.)
+감사가 찾은 최대 비전-현실 간극: 현재 drift는 날짜 기반이라 가장 중요한 경우 — 코드와 문서가 **다른 곳/PR**에서 바뀌는 경우 — 를 놓친다. `source_files`/`evidence`의 git-diff 역색인을 만들어, 참조된 코드를 건드리는 변경이 관련 `verified` 문서를 flag하게 한다(commit-SHA 기준; working-tree/PR-base 인식), strict-governance preset은 drift에서 CI 실패 가능. "위키가 코드를 따라간다"를 실제·CI 강제로 만든다. 부가적·opt-in·zero-dep. 범위: `GATE_REVIEW.md`(Gate 23, **초안 — proposed, 아직 미수락**; 기존 `changedFiles`/`driftTargets` 프리미티브 재사용이라 대부분 배선 작업).
 
 ### Gate 24 — 읽기 전용 retrieval (search/get) MCP + API
 
