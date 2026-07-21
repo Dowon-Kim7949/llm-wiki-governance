@@ -331,6 +331,14 @@ on amortizing the orientation read across a multi-task session. A modest, honest
 predicted; the headline remains the before/after-retrieval delta (re-run each later gate with
 `node bench/run.js --against`).
 
+**Re-measured after Gate 24 (2026-07-21, honest/unfavorable):** a plain `--against` re-run moved
+`B vs A2` from 0.89× to **1.05×** (the token win over the conservative snippet-grep floor flipped
+negative) — but this tracks **corpus drift, not the retrieval mechanism**: strategy B reads full
+targeted *source*, and the harness does not invoke Gate 24's `get_doc`/`search_docs`. Producing the
+real before/after-retrieval delta needs a new retrieval-aware strategy (e.g. `B2_retrieval` — read
+the matched wiki *doc bodies* instead of re-reading source). **That harness extension is the next
+bench task**; until it lands, no token/speed claim ships. See `docs/llm-wiki/BENCHMARK.md`.
+
 ### Gate 23 — Changed-source → wiki reverse-impact gate
 
 The biggest vision-vs-reality gap the audit found: today drift is date-based and misses the case

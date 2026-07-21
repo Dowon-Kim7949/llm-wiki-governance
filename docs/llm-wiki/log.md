@@ -24,6 +24,21 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - bench: Gate 24 후 재측정 기록 (정직하게 불리 — 드리프트, 메커니즘 아님)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "벤치 재측정")
+- scope: docs (BENCHMARK·ROADMAP·log) — **코드 미변경**, 벤치 결과 파일 미변경(--against는 write 안 함)
+- changed:
+  - docs/llm-wiki/BENCHMARK.md: "Gate 24 재측정" 섹션 추가(baseline 대비 이동표 + 정직 해석).
+  - ROADMAP.md · ROADMAP.ko.md: Gate 22 status에 재측정 결과 + 후속(`B2_retrieval`) 문단.
+- summary:
+  - 1.18.0(Gate 24 retrieval) 배포 후 `node bench/run.js --against bench/results/baseline.json` 재측정. baseline.json(=Gate 22 "before")은 덮어쓰지 않음.
+  - **결과(정직·불리):** `B vs A2`가 0.89×(−11%)→**1.05×(+5.3%)**로 역전(보수적 snippet-grep 하한 대비 위키가 이제 더 비쌈). `B vs A1`은 0.59×→0.69×. 위키 코퍼스 성장(47→50문서)으로 전략 B의 대상 소스 통독이 늘어난 결과.
+  - **핵심:** 이 재측정은 retrieval **메커니즘이 아니라 코퍼스 드리프트**를 잰 것. harness의 전략 B는 대상 소스를 통독할 뿐 Gate 24의 `get_doc`/`search_docs`를 호출하지 않는다 → 로드맵이 원한 "retrieval 전/후 델타"를 아직 못 만든다. 진짜 델타는 retrieval-aware 전략(`B2_retrieval` — 소스 재독 대신 매칭 위키 문서 본문 읽기)을 모델링해야 하며, 그게 다음 bench 작업.
+- caveats:
+  - README/런치 token·속도 주장은 **여전히 금지**(보수적 하한 대비 현재 불리). 벤치 결과 파일(baseline.{json,md})은 불변 — "before" 기준 보존. 에이전트 편집이라 needs_review.
+
 ## 2026-07-21 - release: prepare 1.18.0 (Gate 24 read-only retrieval)
 
 - status: needs_review

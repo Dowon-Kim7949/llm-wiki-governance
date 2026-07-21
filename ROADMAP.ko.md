@@ -264,6 +264,8 @@ Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`f
 
 **상태: 하니스+베이스라인 완료.** `bench/` 하니스(zero-dep·repo-내부·npm `files` 밖이라 미배포)를 만들고 베이스라인을 기록했다 — `bench/README.md`·`bench/METHODOLOGY.md`·`bench/results/baseline.md`(거버넌스 기록: `docs/llm-wiki/BENCHMARK.md`). 이 레포 첫 측정(태스크 6개): 세션 단위로 거버넌스 위키는 whole-file grep(A1)의 **0.59×**, 보수적 snippet-grep(A2)의 **0.89×** 입력 토큰이지만, **단일 태스크 6개 중 3개**에서는 보수적 하한(A2)에 진다. 탐색 성공률은 **100%/100% 동률** — 즉 여기서 입증된 이점은 findability가 아니라 컨텍스트 크기이며, 오리엔테이션 읽기를 멀티-태스크 세션에 분할상환할 때만 성립한다. 예측대로 modest·정직한 베이스라인이고, 헤드라인은 여전히 retrieval 전후 delta다(이후 게이트마다 `node bench/run.js --against`로 재측정).
 
+**Gate 24 후 재측정(2026-07-21, 정직하게 불리):** 단순 `--against` 재실행은 `B vs A2`를 0.89×에서 **1.05×**로 이동시켰다(보수적 snippet-grep 하한 대비 토큰 이점이 역전). 그러나 이는 **retrieval 메커니즘이 아니라 코퍼스 드리프트**다 — 전략 B는 대상 **소스**를 통독할 뿐, harness가 Gate 24의 `get_doc`/`search_docs`를 호출하지 않는다. 진짜 retrieval 전/후 델타는 retrieval-aware 전략(예: `B2_retrieval` — 소스 재독 대신 매칭 위키 **문서 본문**을 읽기)이 필요하다. **이 harness 확장이 다음 bench 작업**이며, 그전까지 token/속도 주장은 금지. `docs/llm-wiki/BENCHMARK.md` 참조.
+
 ### Gate 23 — 변경소스 → 위키 reverse-impact 게이트
 
 감사가 찾은 최대 비전-현실 간극: 현재 drift는 날짜 기반이라 가장 중요한 경우 — 코드와 문서가 **다른 곳/PR**에서 바뀌는 경우 — 를 놓친다. `source_files`/`evidence`의 git-diff 역색인을 만들어, 참조된 코드를 건드리는 변경이 관련 `verified` 문서를 flag하게 한다(working-tree/PR-base 인식), strict-governance preset은 drift에서 CI 실패 가능. "위키가 코드를 따라간다"를 실제·CI 강제로 만든다. 부가적·opt-in·zero-dep. 범위: `GATE_REVIEW.md`(Gate 23, **accepted for 1.17.0**; 기존 `changedFiles`/`verifiedSourceAnchors` 프리미티브 재사용이라 대부분 배선 작업).
