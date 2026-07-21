@@ -264,7 +264,9 @@ Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`f
 
 **상태: 하니스+베이스라인 완료.** `bench/` 하니스(zero-dep·repo-내부·npm `files` 밖이라 미배포)를 만들고 베이스라인을 기록했다 — `bench/README.md`·`bench/METHODOLOGY.md`·`bench/results/baseline.md`(거버넌스 기록: `docs/llm-wiki/BENCHMARK.md`). 이 레포 첫 측정(태스크 6개): 세션 단위로 거버넌스 위키는 whole-file grep(A1)의 **0.59×**, 보수적 snippet-grep(A2)의 **0.89×** 입력 토큰이지만, **단일 태스크 6개 중 3개**에서는 보수적 하한(A2)에 진다. 탐색 성공률은 **100%/100% 동률** — 즉 여기서 입증된 이점은 findability가 아니라 컨텍스트 크기이며, 오리엔테이션 읽기를 멀티-태스크 세션에 분할상환할 때만 성립한다. 예측대로 modest·정직한 베이스라인이고, 헤드라인은 여전히 retrieval 전후 delta다(이후 게이트마다 `node bench/run.js --against`로 재측정).
 
-**Gate 24 후 재측정(2026-07-21, 정직하게 불리):** 단순 `--against` 재실행은 `B vs A2`를 0.89×에서 **1.05×**로 이동시켰다(보수적 snippet-grep 하한 대비 토큰 이점이 역전). 그러나 이는 **retrieval 메커니즘이 아니라 코퍼스 드리프트**다 — 전략 B는 대상 **소스**를 통독할 뿐, harness가 Gate 24의 `get_doc`/`search_docs`를 호출하지 않는다. 진짜 retrieval 전/후 델타는 retrieval-aware 전략(예: `B2_retrieval` — 소스 재독 대신 매칭 위키 **문서 본문**을 읽기)이 필요하다. **이 harness 확장이 다음 bench 작업**이며, 그전까지 token/속도 주장은 금지. `docs/llm-wiki/BENCHMARK.md` 참조.
+**Gate 24 후 재측정(2026-07-21, 정직하게 불리):** 단순 `--against` 재실행은 `B vs A2`를 0.89×에서 **1.05×**로 이동시켰다(보수적 snippet-grep 하한 대비 토큰 이점이 역전). 그러나 이는 **retrieval 메커니즘이 아니라 코퍼스 드리프트**다 — 전략 B는 대상 **소스**를 통독할 뿐, harness가 Gate 24의 `get_doc`/`search_docs`를 호출하지 않는다.
+
+**Retrieval 델타 측정 완료(2026-07-21):** Gate 24를 직접 모델링하는 다섯 번째 arm **`B2_retrieval`**을 추가했다 — 배포된 `search-docs`(동일 스코어링)를 돌리고 소스 재독 대신 상위 매칭 위키 **문서 본문**을 `get-doc`으로 읽는다. B2와 B는 **같은 코퍼스**에서 돌므로 `B2 vs B`가 드리프트를 상쇄하고 메커니즘만 분리한다: **B2는 B의 0.19×(−81.5%)**, **보수적 snippet-grep 하한 A2의 0.19×(−80.5%)** — pre-retrieval arm B가 A2 대비 갖지 못했던 이점 — 이며 **grounding success 100%**(K=1에서도 견고). 다만 이는 여전히 결정적 `chars/4` 프록시이지 실제 LLM 실측이 아니므로 **실측이 뒷받침하기 전까지 README token/속도 주장은 금지**다. `bench/results/current.md`·`docs/llm-wiki/BENCHMARK.md` 참조.
 
 ### Gate 23 — 변경소스 → 위키 reverse-impact 게이트
 

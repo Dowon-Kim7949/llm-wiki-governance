@@ -3,6 +3,7 @@
   "srcRoot": "src",
   "srcMatch": "\\.js$",
   "snippetWindow": 40,
+  "retrievalGetDocs": 2,
   "orientationDocs": [
     "docs/llm-wiki/index.md",
     "docs/llm-wiki/README.md",

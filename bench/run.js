@@ -47,7 +47,8 @@ function buildContext(cfg, matchRe) {
   const orientationDocs = readNamedFiles(REPO_ROOT, cfg.orientationDocs);
   const wikiCorpus = collectFiles(REPO_ROOT, "docs/llm-wiki", (rel) => rel.endsWith(".md"));
   const snippetWindow = cfg.snippetWindow ?? 40;
-  return { srcFiles, srcByPath, orientationDocs, wikiCorpus, snippetWindow };
+  const retrievalGetDocs = cfg.retrievalGetDocs ?? 2;
+  return { srcFiles, srcByPath, orientationDocs, wikiCorpus, snippetWindow, retrievalGetDocs };
 }
 
 function run() {
@@ -68,14 +69,18 @@ function run() {
 
   const T = cfg.tasks.length;
   // Session totals: A0/A1/A2 re-read per task; B pays orientation ONCE, then targeted per task.
+  // B2 (retrieval) queries per task (no shared orientation) — pessimistic (re-reads
+  // matched docs each task; de-duping across the session would only lower it).
   const sessionA0 = perTask.reduce((n, p) => n + p.byName.A0_whole_repo.inputTokens, 0);
   const sessionA1 = perTask.reduce((n, p) => n + p.byName.A1_grep_guided.inputTokens, 0);
   const sessionA2 = perTask.reduce((n, p) => n + p.byName.A2_grep_snippet.inputTokens, 0);
   const sessionBTargeted = perTask.reduce((n, p) => n + p.byName.B_wiki_grounded.targetedTokens, 0);
   const sessionB = orientationTokens + sessionBTargeted;
+  const sessionB2 = perTask.reduce((n, p) => n + p.byName.B2_retrieval.inputTokens, 0);
 
   const a1Success = perTask.filter((p) => p.byName.A1_grep_guided.success).length;
   const bSuccess = perTask.filter((p) => p.byName.B_wiki_grounded.success).length;
+  const b2Success = perTask.filter((p) => p.byName.B2_retrieval.success).length;
 
   const elapsedMs = Date.now() - startedAt;
 
@@ -85,6 +90,7 @@ function run() {
     repo: "llm-wiki-governance",
     tokenEstimator: "chars/4 (see bench/lib/tokens.js)",
     snippetWindowLines: ctx.snippetWindow,
+    retrievalGetDocs: ctx.retrievalGetDocs,
     corpus: {
       srcFiles: ctx.srcFiles.length,
       srcTokens: totalSrcTokens,
@@ -102,6 +108,7 @@ function run() {
       A1_grep_guided: sliceResult(p.byName.A1_grep_guided),
       A2_grep_snippet: sliceResult(p.byName.A2_grep_snippet),
       B_wiki_grounded: sliceResult(p.byName.B_wiki_grounded),
+      B2_retrieval: sliceResult(p.byName.B2_retrieval),
     })),
     session: {
       taskCount: T,
@@ -112,11 +119,18 @@ function run() {
       B_orientation_once_tokens: orientationTokens,
       B_targeted_tokens: sessionBTargeted,
       B_amortized_per_task_tokens: Math.round(orientationTokens / T + sessionBTargeted / T),
+      B2_retrieval_tokens: sessionB2,
+      B2_amortized_per_task_tokens: Math.round(sessionB2 / T),
       A1_success_rate: a1Success / T,
       B_success_rate: bSuccess / T,
+      B2_success_rate: b2Success / T,
       B_vs_A1_session: sessionB / sessionA1,
       B_vs_A2_session: sessionB / sessionA2,
       B_vs_A0_session: sessionB / sessionA0,
+      B2_vs_A1_session: sessionB2 / sessionA1,
+      B2_vs_A2_session: sessionB2 / sessionA2,
+      B2_vs_A0_session: sessionB2 / sessionA0,
+      B2_vs_B_session: sessionB2 / sessionB,
     },
     harnessComputeMs: elapsedMs,
   };
@@ -126,7 +140,7 @@ function run() {
 }
 
 function sliceResult(r) {
-  return {
+  const out = {
     inputTokens: r.inputTokens,
     filesOpened: r.filesOpened,
     success: r.success,
@@ -134,13 +148,17 @@ function sliceResult(r) {
     targetedTokens: r.targetedTokens,
     openedFiles: r.openedFiles,
   };
+  if (r.searchTokens !== undefined) out.searchTokens = r.searchTokens;
+  if (r.matchCount !== undefined) out.matchCount = r.matchCount;
+  if (r.docsRead !== undefined) out.docsRead = r.docsRead;
+  return out;
 }
 
 function printReport(s, perTask) {
   const L = [];
   L.push("");
-  L.push("LLM-WIKI Impact Measurement — Gate 22 baseline");
-  L.push("=".repeat(64));
+  L.push("LLM-WIKI Impact Measurement — current run (A0/A1/A2/B + B2 retrieval)");
+  L.push("=".repeat(70));
   L.push(`generated: ${s.generatedAt}`);
   L.push(`estimator: ${s.tokenEstimator}`);
   L.push("");
@@ -149,47 +167,52 @@ function printReport(s, perTask) {
   L.push(`  wiki orientation read (paid once/session): ${s.corpus.orientationDocs} docs, ${fmt(s.corpus.orientationTokens)} tokens`);
   L.push(`  full wiki corpus (author + maintain cost): ${s.corpus.wikiCorpusDocs} docs, ${fmt(s.corpus.wikiCorpusTokens)} tokens`);
   L.push("");
-  L.push(`Per-task input tokens (B charges FULL orientation to each task = pessimistic for wiki; A2 window +/-${s.snippetWindowLines} lines):`);
+  L.push(`Per-task input tokens (B charges FULL orientation each task = pessimistic; A2 window +/-${s.snippetWindowLines} lines; B2 = search + top-${s.retrievalGetDocs} matched doc bodies):`);
   L.push(
     "  " +
-      pad("task", 22) +
-      pad("A0 whole", 11) +
-      pad("A1 grepFull", 14) +
-      pad("A2 grepSnip", 14) +
-      pad("B wiki", 13) +
-      pad("A ok", 6) +
-      pad("B ok", 6) +
-      "B vs A2"
+      pad("task", 20) +
+      pad("A1 grepFull", 13) +
+      pad("A2 grepSnip", 13) +
+      pad("B wiki", 12) +
+      pad("B2 retr", 12) +
+      pad("Bok", 5) +
+      pad("B2ok", 5) +
+      pad("B2 vs B", 13) +
+      "B2 vs A2"
   );
   for (const p of perTask) {
-    const a0 = p.byName.A0_whole_repo;
     const a1 = p.byName.A1_grep_guided;
     const a2 = p.byName.A2_grep_snippet;
     const b = p.byName.B_wiki_grounded;
+    const b2 = p.byName.B2_retrieval;
     L.push(
       "  " +
-        pad(p.task.id, 22) +
-        pad(fmt(a0.inputTokens), 11) +
-        pad(`${fmt(a1.inputTokens)}(${a1.filesOpened})`, 14) +
-        pad(`${fmt(a2.inputTokens)}(${a2.filesOpened})`, 14) +
-        pad(`${fmt(b.inputTokens)}(${b.filesOpened})`, 13) +
-        pad(a1.success ? "yes" : "NO", 6) +
-        pad(b.success ? "yes" : "NO", 6) +
-        ratioNote(b.inputTokens, a2.inputTokens)
+        pad(p.task.id, 20) +
+        pad(`${fmt(a1.inputTokens)}(${a1.filesOpened})`, 13) +
+        pad(`${fmt(a2.inputTokens)}(${a2.filesOpened})`, 13) +
+        pad(`${fmt(b.inputTokens)}(${b.filesOpened})`, 12) +
+        pad(`${fmt(b2.inputTokens)}(${b2.filesOpened})`, 12) +
+        pad(b.success ? "yes" : "NO", 5) +
+        pad(b2.success ? "yes" : "NO", 5) +
+        pad(ratioNote(b2.inputTokens, b.inputTokens), 13) +
+        ratioNote(b2.inputTokens, a2.inputTokens)
     );
   }
   L.push("");
-  L.push("Session view (6 tasks; A0/A1/A2 re-read per task, B pays orientation ONCE):");
+  L.push("Session view (6 tasks; A0/A1/A2 re-read per task, B pays orientation ONCE, B2 queries per task):");
   L.push(`  A0 whole-repo total : ${fmt(s.session.A0_whole_repo_tokens)} tokens`);
   L.push(`  A1 grep-full total  : ${fmt(s.session.A1_grep_guided_tokens)} tokens   success ${pct(s.session.A1_success_rate)}`);
   L.push(`  A2 grep-snippet     : ${fmt(s.session.A2_grep_snippet_tokens)} tokens   (conservative code-only floor)`);
-  L.push(`  B  wiki-grounded    : ${fmt(s.session.B_wiki_grounded_tokens)} tokens   success ${pct(s.session.B_success_rate)}`);
+  L.push(`  B  wiki-grounded    : ${fmt(s.session.B_wiki_grounded_tokens)} tokens   success ${pct(s.session.B_success_rate)}   (full-source reads = pre-retrieval)`);
   L.push(`     = ${fmt(s.session.B_orientation_once_tokens)} orientation (once) + ${fmt(s.session.B_targeted_tokens)} targeted reads`);
-  L.push(`  B amortized / task  : ${fmt(s.session.B_amortized_per_task_tokens)} tokens`);
+  L.push(`  B2 wiki-retrieval   : ${fmt(s.session.B2_retrieval_tokens)} tokens   success ${pct(s.session.B2_success_rate)}   (Gate 24: search + doc bodies, no source)`);
+  L.push(`  B2 amortized / task : ${fmt(s.session.B2_amortized_per_task_tokens)} tokens`);
   L.push("");
-  L.push(`  B vs A1 (session)   : ${ratioNote(s.session.B_wiki_grounded_tokens, s.session.A1_grep_guided_tokens)}`);
-  L.push(`  B vs A2 (session)   : ${ratioNote(s.session.B_wiki_grounded_tokens, s.session.A2_grep_snippet_tokens)}  <- conservative test`);
-  L.push(`  B vs A0 (session)   : ${ratioNote(s.session.B_wiki_grounded_tokens, s.session.A0_whole_repo_tokens)}`);
+  L.push(`  B  vs A2 (session)  : ${ratioNote(s.session.B_wiki_grounded_tokens, s.session.A2_grep_snippet_tokens)}  (pre-retrieval wiki vs conservative floor)`);
+  L.push(`  B2 vs B  (session)  : ${ratioNote(s.session.B2_retrieval_tokens, s.session.B_wiki_grounded_tokens)}  <- RETRIEVAL delta (same corpus, drift cancelled)`);
+  L.push(`  B2 vs A2 (session)  : ${ratioNote(s.session.B2_retrieval_tokens, s.session.A2_grep_snippet_tokens)}  <- retrieval vs conservative code-only floor`);
+  L.push(`  B2 vs A1 (session)  : ${ratioNote(s.session.B2_retrieval_tokens, s.session.A1_grep_guided_tokens)}`);
+  L.push(`  B2 vs A0 (session)  : ${ratioNote(s.session.B2_retrieval_tokens, s.session.A0_whole_repo_tokens)}`);
   L.push("");
   L.push("Honest verdict (auto-computed):");
   for (const line of verdict(s)) L.push("  " + line);
@@ -224,8 +247,28 @@ function verdict(s) {
       `Locating success: wiki ${pct(sess.B_success_rate)} vs grep ${pct(sess.A1_success_rate)} — the wiki MISSED a ground-truth file (incomplete evidence pointer); a real, honest gap to fix.`
     );
   }
+
+  // B2 — the retrieval mechanism. B2-vs-B isolates it from corpus drift (same
+  // corpus, same tasks): the only honest before/after-retrieval delta.
+  const b2WinB = sess.B2_retrieval_tokens < sess.B_wiki_grounded_tokens;
   out.push(
-    "Caveat: token counts are a chars/4 proxy; wall-clock + answer-quality need the deferred LLM run. Wiki authoring/maintenance is a real cost not charged per-task (disclosed as the corpus figure). The rediscovery-reduction mechanism completes at retrieval (Gate 24) — the headline is the before/after-retrieval delta, not this raw baseline."
+    b2WinB
+      ? `RETRIEVAL delta (B2 vs B, same corpus — drift cancelled): querying the wiki (search + reading matched doc bodies) costs ${ratioNote(sess.B2_retrieval_tokens, sess.B_wiki_grounded_tokens)} of re-reading the full source the wiki points to. This is the retrieval mechanism's own effect, isolated from corpus growth.`
+      : `RETRIEVAL delta (B2 vs B, same corpus): reading matched wiki doc bodies costs MORE than re-reading the pointed-to source (${ratioNote(sess.B2_retrieval_tokens, sess.B_wiki_grounded_tokens)} of B) — UNFAVORABLE, reported as required.`
+  );
+  const b2WinA2 = sess.B2_retrieval_tokens < sess.A2_grep_snippet_tokens;
+  out.push(
+    b2WinA2
+      ? `Vs the conservative floor (B2 vs A2): retrieval costs ${ratioNote(sess.B2_retrieval_tokens, sess.A2_grep_snippet_tokens)} of a disciplined snippet-grep — the wiki win now survives against snippet-only code reading, which the pre-retrieval arm (B) did not.`
+      : `Vs the conservative floor (B2 vs A2): retrieval still costs MORE than a disciplined snippet-grep (${ratioNote(sess.B2_retrieval_tokens, sess.A2_grep_snippet_tokens)} of A2) — an HONEST limit reported as required.`
+  );
+  out.push(
+    sess.B2_success_rate >= 1
+      ? `B2 grounding success: ${pct(sess.B2_success_rate)} — for every task the top matched wiki doc bodies referenced all ground-truth source files, so retrieval pointed the agent at the right code without opening it.`
+      : `B2 grounding success: ${pct(sess.B2_success_rate)} — on some tasks the top matched doc bodies did NOT reference every ground-truth file (keyword ranking or evidence-pointer gap); a real, honest limit of zero-dep keyword retrieval.`
+  );
+  out.push(
+    "Caveat: token counts are a chars/4 proxy; wall-clock + answer-quality need the deferred LLM run. Wiki authoring/maintenance is a real cost not charged per-task (disclosed as the corpus figure). B2 models the shipped search-docs + get-doc (excludes the append-only log from get-doc reads; top-K disclosed); it measures the retrieval/orientation context cost, not the final-edit read. No token/speed claim ships in the README until a measured result supports it (METHODOLOGY §10)."
   );
   return out;
 }
@@ -238,16 +281,20 @@ function pad(s, n) {
 function writeResults(summary) {
   const dir = join(HERE, "results");
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "baseline.json"), JSON.stringify(summary, null, 2) + "\n", "utf8");
-  writeFileSync(join(dir, "baseline.md"), renderMarkdown(summary), "utf8");
-  console.log(`wrote bench/results/baseline.json and bench/results/baseline.md`);
+  // baseline.{json,md} is the FROZEN Gate 22 before-retrieval reference and is
+  // never overwritten here — the current run (with the B2 retrieval arm) writes
+  // to current.{json,md}. Compare across them with `--against results/baseline.json`.
+  writeFileSync(join(dir, "current.json"), JSON.stringify(summary, null, 2) + "\n", "utf8");
+  writeFileSync(join(dir, "current.md"), renderMarkdown(summary), "utf8");
+  console.log(`wrote bench/results/current.json and bench/results/current.md (baseline.* left frozen as the before-retrieval reference)`);
 }
 
 function renderMarkdown(s) {
   const M = [];
-  M.push("# LLM-WIKI Impact Measurement — Gate 22 baseline");
+  M.push("# LLM-WIKI Impact Measurement — current run (with B2 retrieval)");
   M.push("");
   M.push("> Auto-generated by `node bench/run.js`. Do not hand-edit; re-run to refresh.");
+  M.push("> The frozen Gate 22 **before-retrieval** reference is [`baseline.md`](baseline.md); this file is the current run and adds the **B2 retrieval** arm (Gate 24).");
   M.push("> See [`../METHODOLOGY.md`](../METHODOLOGY.md) for what is measured and the honesty caveats.");
   M.push("");
   M.push(`- generated: \`${s.generatedAt}\``);
@@ -261,38 +308,42 @@ function renderMarkdown(s) {
   M.push("- **A0 whole-repo** — read every source file (naive upper bound).");
   M.push("- **A1 grep-full** — code-only: grep src for the cold query terms, read each matching file in full.");
   M.push(`- **A2 grep-snippet** — code-only, conservative: same grep hits, but count only +/-${s.snippetWindowLines} lines around each match (a disciplined agent reading match context). This is the LEAST wiki-favorable code-only baseline.`);
-  M.push("- **B wiki-grounded** — read the wiki orientation docs, then follow the evidence pointers they surface for the query. Targeted files are DERIVED FROM WIKI CONTENT (not the answer key), so B can genuinely miss.");
+  M.push("- **B wiki-grounded** — read the wiki orientation docs, then follow the evidence pointers they surface for the query, reading the pointed-to **source** in full. This is the **pre-retrieval** wiki model.");
+  M.push("- **B2 wiki-retrieval** *(Gate 24)* — query the wiki: run the shipped `search-docs` (zero-dep keyword/AND-semantics, same scoring as `src/commands/retrieval.js`), then `get-doc` the top-" + s.retrievalGetDocs + " matched **doc bodies** — no source re-read. The append-only `log.md` is searched but never get-doc'd (a changelog, not a subsystem explanation). **B2-vs-B runs on the same corpus, so it isolates the retrieval mechanism from corpus drift.**");
   M.push("");
   M.push("## Per-task input tokens");
   M.push("");
-  M.push("B charges the full orientation read to each task (pessimistic for the wiki); see the session view for the amortized number. `B vs A2` compares against the conservative floor.");
+  M.push("B reads full pointed-to source; B2 reads matched wiki doc bodies. `B2 vs B` is the retrieval delta (same corpus); `B2 vs A2` is retrieval vs the conservative code-only floor.");
   M.push("");
-  M.push("| task | A0 whole | A1 grep-full (files) | A2 grep-snip (files) | B wiki (files) | A found | B found | B vs A2 |");
-  M.push("| --- | ---: | ---: | ---: | ---: | :---: | :---: | ---: |");
+  M.push("| task | A1 grep-full (files) | A2 grep-snip (files) | B wiki (files) | B2 retr (docs) | B found | B2 found | B2 vs B | B2 vs A2 |");
+  M.push("| --- | ---: | ---: | ---: | ---: | :---: | :---: | ---: | ---: |");
   for (const t of s.tasks) {
     M.push(
-      `| \`${t.id}\` | ${fmt(t.A0_whole_repo.inputTokens)} | ${fmt(t.A1_grep_guided.inputTokens)} (${t.A1_grep_guided.filesOpened}) | ${fmt(t.A2_grep_snippet.inputTokens)} (${t.A2_grep_snippet.filesOpened}) | ${fmt(t.B_wiki_grounded.inputTokens)} (${t.B_wiki_grounded.filesOpened}) | ${t.A1_grep_guided.success ? "yes" : "**NO**"} | ${t.B_wiki_grounded.success ? "yes" : "**NO**"} | ${ratioNote(t.B_wiki_grounded.inputTokens, t.A2_grep_snippet.inputTokens)} |`
+      `| \`${t.id}\` | ${fmt(t.A1_grep_guided.inputTokens)} (${t.A1_grep_guided.filesOpened}) | ${fmt(t.A2_grep_snippet.inputTokens)} (${t.A2_grep_snippet.filesOpened}) | ${fmt(t.B_wiki_grounded.inputTokens)} (${t.B_wiki_grounded.filesOpened}) | ${fmt(t.B2_retrieval.inputTokens)} (${t.B2_retrieval.filesOpened}) | ${t.B_wiki_grounded.success ? "yes" : "**NO**"} | ${t.B2_retrieval.success ? "yes" : "**NO**"} | ${ratioNote(t.B2_retrieval.inputTokens, t.B_wiki_grounded.inputTokens)} | ${ratioNote(t.B2_retrieval.inputTokens, t.A2_grep_snippet.inputTokens)} |`
     );
   }
   M.push("");
   M.push("## Session view (6 tasks)");
   M.push("");
-  M.push("A0/A1/A2 re-read source per task; B pays the orientation read once, then targeted reads per task.");
+  M.push("A0/A1/A2 re-read source per task; B pays the orientation read once, then targeted reads; B2 queries per task (no shared orientation — de-duping matched docs across the session would only lower B2).");
   M.push("");
   M.push("| metric | value |");
   M.push("| --- | ---: |");
   M.push(`| A0 whole-repo total | ${fmt(s.session.A0_whole_repo_tokens)} |`);
   M.push(`| A1 grep-full total | ${fmt(s.session.A1_grep_guided_tokens)} |`);
   M.push(`| A2 grep-snippet total (conservative floor) | ${fmt(s.session.A2_grep_snippet_tokens)} |`);
-  M.push(`| B wiki-grounded total | ${fmt(s.session.B_wiki_grounded_tokens)} |`);
+  M.push(`| B wiki-grounded total (pre-retrieval) | ${fmt(s.session.B_wiki_grounded_tokens)} |`);
   M.push(`| — orientation (once) | ${fmt(s.session.B_orientation_once_tokens)} |`);
   M.push(`| — targeted reads | ${fmt(s.session.B_targeted_tokens)} |`);
-  M.push(`| B amortized / task | ${fmt(s.session.B_amortized_per_task_tokens)} |`);
-  M.push(`| A1 locating success | ${pct(s.session.A1_success_rate)} |`);
+  M.push(`| **B2 wiki-retrieval total (Gate 24)** | **${fmt(s.session.B2_retrieval_tokens)}** |`);
+  M.push(`| B2 amortized / task | ${fmt(s.session.B2_amortized_per_task_tokens)} |`);
   M.push(`| B locating success | ${pct(s.session.B_success_rate)} |`);
-  M.push(`| **B vs A1 (session)** | **${ratioNote(s.session.B_wiki_grounded_tokens, s.session.A1_grep_guided_tokens)}** |`);
-  M.push(`| **B vs A2 (session, conservative)** | **${ratioNote(s.session.B_wiki_grounded_tokens, s.session.A2_grep_snippet_tokens)}** |`);
-  M.push(`| B vs A0 (session) | ${ratioNote(s.session.B_wiki_grounded_tokens, s.session.A0_whole_repo_tokens)} |`);
+  M.push(`| B2 grounding success | ${pct(s.session.B2_success_rate)} |`);
+  M.push(`| B vs A2 (session, pre-retrieval) | ${ratioNote(s.session.B_wiki_grounded_tokens, s.session.A2_grep_snippet_tokens)} |`);
+  M.push(`| **B2 vs B (session — RETRIEVAL delta, drift cancelled)** | **${ratioNote(s.session.B2_retrieval_tokens, s.session.B_wiki_grounded_tokens)}** |`);
+  M.push(`| **B2 vs A2 (session — vs conservative floor)** | **${ratioNote(s.session.B2_retrieval_tokens, s.session.A2_grep_snippet_tokens)}** |`);
+  M.push(`| B2 vs A1 (session) | ${ratioNote(s.session.B2_retrieval_tokens, s.session.A1_grep_guided_tokens)} |`);
+  M.push(`| B2 vs A0 (session) | ${ratioNote(s.session.B2_retrieval_tokens, s.session.A0_whole_repo_tokens)} |`);
   M.push("");
   M.push(`> Wiki authoring/maintenance cost (disclosed, not charged per-task): the full wiki corpus is ${fmt(s.corpus.wikiCorpusDocs)} docs / ${fmt(s.corpus.wikiCorpusTokens)} tokens.`);
   M.push("");
@@ -309,16 +360,20 @@ function compare(current, priorPath) {
   const p = prior.session;
   console.log("");
   console.log(`Delta vs ${priorPath}:`);
+  const show = (v) => (v === undefined ? "n/a" : v);
   const rows = [
     ["A1 grep-full", p.A1_grep_guided_tokens, c.A1_grep_guided_tokens],
     ["A2 grep-snippet", p.A2_grep_snippet_tokens, c.A2_grep_snippet_tokens],
     ["B wiki-grounded", p.B_wiki_grounded_tokens, c.B_wiki_grounded_tokens],
-    ["B vs A1 ratio", p.B_vs_A1_session, c.B_vs_A1_session],
+    ["B2 retrieval", p.B2_retrieval_tokens, c.B2_retrieval_tokens],
     ["B vs A2 ratio", p.B_vs_A2_session, c.B_vs_A2_session],
+    ["B2 vs B ratio", p.B2_vs_B_session, c.B2_vs_B_session],
+    ["B2 vs A2 ratio", p.B2_vs_A2_session, c.B2_vs_A2_session],
     ["B success rate", p.B_success_rate, c.B_success_rate],
+    ["B2 success rate", p.B2_success_rate, c.B2_success_rate],
   ];
   for (const [name, was, now] of rows) {
-    console.log(`  ${pad(name, 20)} ${was} -> ${now}`);
+    console.log(`  ${pad(name, 20)} ${show(was)} -> ${show(now)}`);
   }
   console.log("");
 }

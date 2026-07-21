@@ -24,6 +24,30 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - bench: B2_retrieval arm 추가 — retrieval 델타 측정(드리프트 상쇄)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업 진행")
+- scope: bench (코드+메타) + docs (BENCHMARK·ROADMAP·log) — src/·shipped 계약 미변경(bench는 npm files 밖)
+- changed:
+  - bench/lib/strategies.js: 다섯 번째 arm `strategyWikiRetrieval`(B2) 추가 — `search-docs`(retrieval.js와 동일 스코어링) + 상위 매칭 문서 본문 `get-doc`; append-only log는 검색은 되나 get-doc 제외; frontmatter 파서·occurrences·snippet 헬퍼.
+  - bench/run.js: B2를 세션 집계·per-task 표·세션 뷰·정직 verdict·markdown·`--against` 비교에 배선. 기본 write 대상을 `current.{json,md}`로 변경(`baseline.{json,md}`는 before-retrieval 기준으로 frozen).
+  - bench/tasks.json: 공개 파라미터 `retrievalGetDocs`(기본 2) 추가.
+  - bench/README.md · bench/METHODOLOGY.md: B2 arm·B2-vs-B(드리프트 상쇄)·log 제외·top-K·success=grounding 프록시·§9 재현(출력 파일명) 문서화.
+  - docs/llm-wiki/BENCHMARK.md: "B2 retrieval 델타" 절 추가(측정 완료); frontmatter source_files/evidence·Evidence 절 갱신.
+  - ROADMAP.md · ROADMAP.ko.md: Gate 22 status에 "Retrieval 델타 측정 완료" 문단.
+- summary:
+  - raw `--against` 재측정이 코퍼스 드리프트만 보여준 문제를 풀기 위해 Gate 24 메커니즘을 직접 모델링한 `B2_retrieval`을 추가했다: 소스 재독 대신 위키를 질의(search-docs)하고 상위 매칭 **문서 본문**을 get-doc.
+  - **B2와 B는 같은 코퍼스에서 돌아 `B2 vs B`가 드리프트를 상쇄하고 메커니즘만 분리**한다: **B2 = B의 0.19×(−81.5%)**, **A2(보수적 하한)의 0.19×(−80.5%)** — pre-retrieval B가 A2 대비 갖지 못했던 이점 — , **grounding success 100%**(민감도: K=1에서도 100%, 토큰 이점은 더 큼).
+  - 247 tests pass, validate --strict 0 findings, validate-frontmatter 0.
+- evidence:
+  - bench/lib/strategies.js#symbol:strategyWikiRetrieval
+  - bench/run.js
+  - bench/results/current.md
+- caveats:
+  - B2의 success는 **grounding 프록시**(위키가 올바른 코드를 가리킴)이지 소스를 안 열고 편집 완료한다는 뜻이 아니다. 결정적 `chars/4` 프록시·단일 자기참조 레포·top-K 순진 랭킹 한계는 METHODOLOGY §8 그대로.
+  - **README/런치 token·속도 주장은 여전히 금지** — 실제 LLM 실측 전까지. 에이전트 편집이라 needs_review.
+
 ## 2026-07-21 - bench: Gate 24 후 재측정 기록 (정직하게 불리 — 드리프트, 메커니즘 아님)
 
 - status: needs_review

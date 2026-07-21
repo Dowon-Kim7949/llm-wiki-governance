@@ -334,10 +334,16 @@ predicted; the headline remains the before/after-retrieval delta (re-run each la
 **Re-measured after Gate 24 (2026-07-21, honest/unfavorable):** a plain `--against` re-run moved
 `B vs A2` from 0.89× to **1.05×** (the token win over the conservative snippet-grep floor flipped
 negative) — but this tracks **corpus drift, not the retrieval mechanism**: strategy B reads full
-targeted *source*, and the harness does not invoke Gate 24's `get_doc`/`search_docs`. Producing the
-real before/after-retrieval delta needs a new retrieval-aware strategy (e.g. `B2_retrieval` — read
-the matched wiki *doc bodies* instead of re-reading source). **That harness extension is the next
-bench task**; until it lands, no token/speed claim ships. See `docs/llm-wiki/BENCHMARK.md`.
+targeted *source*, and the harness does not invoke Gate 24's `get_doc`/`search_docs`.
+
+**Retrieval delta measured (2026-07-21):** added a fifth arm, **`B2_retrieval`**, that models Gate 24
+directly — it runs the shipped `search-docs` (same scoring) and reads the top matched wiki *doc
+bodies* via `get-doc` instead of re-reading source. Because B2 and B run on the **same corpus**,
+`B2 vs B` cancels corpus drift and isolates the mechanism: **B2 costs 0.19× of B (−81.5%)** and
+**0.19× of the conservative snippet-grep floor A2 (−80.5%)** — the win the pre-retrieval arm B did
+*not* have against A2 — with **100% grounding success** (robust at K=1). This is still a deterministic
+`chars/4` proxy, not a real LLM run, so **no token/speed claim ships in the README until a real
+measurement supports it**. See `bench/results/current.md` and `docs/llm-wiki/BENCHMARK.md`.
 
 ### Gate 23 — Changed-source → wiki reverse-impact gate
 

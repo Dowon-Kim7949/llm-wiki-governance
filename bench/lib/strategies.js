@@ -21,18 +21,111 @@
 //                         from the answer key — so if the wiki's evidence pointers
 //                         are incomplete, B genuinely fails to find a ground-truth
 //                         file (success=false). This keeps the comparison honest.
+//   B2  wiki-retrieval   — the RETRIEVAL model (Gate 24). Instead of re-reading
+//                         source, the agent queries the wiki: it runs the shipped
+//                         search-docs (zero-dep keyword/substring, AND-semantics,
+//                         same scoring as src/commands/retrieval.js) and then
+//                         get-doc's the top matched wiki *doc bodies*. Its cost is
+//                         the search snippets + those doc bodies — NOT full source.
+//                         This is the arm that isolates the retrieval mechanism:
+//                         B2-vs-B (same corpus, same tasks) is the honest
+//                         before/after-retrieval delta with corpus drift cancelled.
 //
-// "success" = did the strategy's opened set contain ALL ground-truth files.
-// This is a LOCATING-success proxy; answer-quality needs the heavier LLM run
-// (documented as deferred follow-up in METHODOLOGY.md).
+// "success" = did the strategy's opened set contain ALL ground-truth files. For
+// B2 (which reads wiki docs, not source) "opened set" is the set of ground-truth
+// source files REFERENCED by the doc bodies it read — a grounding/locating proxy
+// (the wiki pointed the agent at the right code and explained it), not proof the
+// answer is complete. Answer-quality needs the heavier LLM run (deferred; see
+// METHODOLOGY.md).
 
 import { estimateTokens } from "./tokens.js";
 
 const SRC_PATH_RE = /src\/[A-Za-z0-9_./-]+\.js/g;
 const DEFAULT_SNIPPET_WINDOW = 40;
+// How many matched wiki doc bodies B2 actually get-doc's (reads in full). The
+// search returns snippets for all matches cheaply; a real agent then opens only
+// the few best hits. Disclosed, conservative parameter (like snippetWindow);
+// overridable via `retrievalGetDocs` in tasks.json.
+const DEFAULT_RETRIEVAL_GET_DOCS = 2;
+const SEARCH_LIMIT = 20; // mirrors DEFAULT_SEARCH_LIMIT in src/commands/retrieval.js
+const APPEND_ONLY_LOG = "docs/llm-wiki/log.md";
 
 function lc(s) {
   return s.toLowerCase();
+}
+
+// Count non-overlapping occurrences of `term` in `haystack` (mirrors the
+// occurrences() scorer in src/commands/retrieval.js).
+function occurrences(haystack, term) {
+  if (!term) return 0;
+  let count = 0;
+  let index = haystack.indexOf(term);
+  while (index !== -1) {
+    count += 1;
+    index = haystack.indexOf(term, index + term.length);
+  }
+  return count;
+}
+
+// Minimal, zero-dep frontmatter split for the retrieval model: pull title / tags
+// / visibility / contains_sensitive_info and return the body (what get-doc
+// returns). Not a full YAML parser — enough to mirror what search-docs matches
+// and get-doc reads on this repo's well-formed wiki docs.
+function parseWikiDoc(content) {
+  let title = "";
+  const tags = [];
+  let visibility = null;
+  let sensitive = false;
+  let body = content;
+  if (content.startsWith("---")) {
+    const close = content.indexOf("\n---", 3);
+    if (close !== -1) {
+      const fm = content.slice(3, close);
+      const afterClose = content.indexOf("\n", close + 1);
+      body = afterClose !== -1 ? content.slice(afterClose + 1) : "";
+      const tm = fm.match(/^title:\s*(.+)$/m);
+      if (tm) title = tm[1].trim().replace(/^["']|["']$/g, "");
+      const vm = fm.match(/^visibility:\s*(.+)$/m);
+      if (vm) visibility = vm[1].trim();
+      if (/^contains_sensitive_info:\s*true\b/m.test(fm)) sensitive = true;
+      const lines = fm.split(/\r?\n/);
+      for (let i = 0; i < lines.length; i++) {
+        if (/^tags:\s*$/.test(lines[i])) {
+          for (let j = i + 1; j < lines.length && /^\s*-\s+/.test(lines[j]); j++) {
+            tags.push(lines[j].replace(/^\s*-\s+/, "").trim());
+          }
+        }
+      }
+    }
+  }
+  return { title, tags, visibility, sensitive, body };
+}
+
+// A ~160-char snippet around the first matching term (mirrors buildSnippet in
+// src/commands/retrieval.js) — this is what search-docs returns per match.
+function retrievalSnippet(body, terms) {
+  const flat = body.replace(/\s+/g, " ").trim();
+  if (!flat) return "";
+  const lower = flat.toLowerCase();
+  let at = -1;
+  for (const term of terms) {
+    const found = lower.indexOf(term);
+    if (found !== -1 && (at === -1 || found < at)) at = found;
+  }
+  if (at === -1) return flat.length > 160 ? flat.slice(0, 160) : flat;
+  const start = Math.max(0, at - 60);
+  const end = Math.min(flat.length, at + 100);
+  return flat.slice(start, end);
+}
+
+// Extract local src/*.js references from wiki text (the wiki's evidence pointers),
+// keeping only paths that exist in the source tree.
+function srcRefsIn(text, srcByPath) {
+  const refs = new Set();
+  const found = text.match(SRC_PATH_RE);
+  if (!found) return refs;
+  for (const raw of found) if (srcByPath.has(raw)) refs.add(raw);
+  return refs;
 }
 
 // Count tokens of only the lines within +/- window of any keyword-matching line,
@@ -159,9 +252,79 @@ export function strategyWikiGrounded(task, ctx) {
   };
 }
 
+// B2 — wiki-retrieval: the Gate 24 mechanism. Query the wiki (search-docs) and
+// read the matched doc BODIES (get-doc) instead of re-reading source. Cost =
+// search snippets (all matches, cheap) + the top-K matched doc bodies. Because
+// B2 and B run on the SAME corpus, B2-vs-B isolates the retrieval mechanism from
+// corpus drift — the honest before/after-retrieval delta.
+export function strategyWikiRetrieval(task, ctx) {
+  const terms = task.keywords.map(lc);
+  const getDocs = ctx.retrievalGetDocs ?? DEFAULT_RETRIEVAL_GET_DOCS;
+
+  // Content docs = wiki corpus minus templates (mirrors listWikiContentDocs).
+  // The append-only log IS searched (it is a content doc) but is never get-doc'd
+  // for a code-comprehension task — an agent sees from the snippet it is a
+  // changelog, not a subsystem explanation. Disclosed in METHODOLOGY.
+  const docs = ctx.wikiCorpus
+    .filter((f) => !f.relPath.includes("/templates/"))
+    .map((f) => ({ relPath: f.relPath, ...parseWikiDoc(f.content) }));
+
+  const matches = [];
+  for (const d of docs) {
+    // search-docs excludes restricted/sensitive by default (no includeSensitive).
+    if (d.visibility === "restricted" || d.sensitive) continue;
+    const titleHay = lc(d.title);
+    const metaHay = lc(d.tags.join(" "));
+    const bodyHay = lc(d.body);
+    const allPresent =
+      terms.length > 0 &&
+      terms.every((t) => titleHay.includes(t) || metaHay.includes(t) || bodyHay.includes(t));
+    if (!allPresent) continue;
+    let score = 0;
+    for (const t of terms) {
+      if (titleHay.includes(t)) score += 10;
+      if (metaHay.includes(t)) score += 3;
+      score += occurrences(bodyHay, t);
+    }
+    matches.push({ relPath: d.relPath, body: d.body, score, isLog: d.relPath === APPEND_ONLY_LOG });
+  }
+  matches.sort((a, b) => b.score - a.score || a.relPath.localeCompare(b.relPath));
+  const capped = matches.slice(0, SEARCH_LIMIT);
+
+  // What search returns: a snippet per match (what the agent reads to triage).
+  const searchTokens = capped.reduce((n, m) => n + estimateTokens(retrievalSnippet(m.body, terms)), 0);
+
+  // What the agent then get-doc's: the top-K matched content docs (excluding the
+  // append-only log). Reading the doc body IS the retrieval answer — no source.
+  const read = capped.filter((m) => !m.isLog).slice(0, getDocs);
+  const bodyTokens = read.reduce((n, m) => n + estimateTokens(m.body), 0);
+
+  // Grounding proxy: do the read doc bodies collectively reference every
+  // ground-truth source file (so the agent knows exactly which code to touch)?
+  const refs = new Set();
+  for (const m of read) for (const r of srcRefsIn(m.body, ctx.srcByPath)) refs.add(r);
+
+  const targetedTokens = searchTokens + bodyTokens;
+  return {
+    strategy: "B2_retrieval",
+    // No orientation charge: search-docs replaces the "pre-read all orientation
+    // docs" step — the agent queries on demand. This is the retrieval premise.
+    inputTokens: targetedTokens,
+    filesOpened: read.length,
+    openedFiles: read.map((m) => m.relPath),
+    success: isSubset(task.groundTruth, refs),
+    orientationTokens: 0,
+    targetedTokens,
+    searchTokens,
+    matchCount: matches.length,
+    docsRead: read.length,
+  };
+}
+
 export const STRATEGIES = [
   strategyWholeRepo,
   strategyGrepGuided,
   strategyGrepSnippet,
   strategyWikiGrounded,
+  strategyWikiRetrieval,
 ];
