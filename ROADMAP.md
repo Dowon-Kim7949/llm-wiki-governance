@@ -380,12 +380,21 @@ returned bodies/snippets redact sensitive lines (raw values never returned). `sr
 Release notes: `docs/llm-wiki/releases/v1.18.0.md`. **Re-measure the Gate 22 bench here** for the
 headline before/after-retrieval delta (`node bench/run.js --against`).
 
-### Gate 25 — Evidence semantic tiers
+### Gate 25 — Evidence semantic tiers — **accepted + built (2026-07-21)**
 
 Close the credibility gap the audit demonstrated (a doc citing a non-existent symbol passes today).
-Distinguish `reference_checked` from `human_verified`, actually check symbol/route existence for
-supported languages, and let a strict preset fail an empty-evidence `verified` doc. Additive/opt-in,
-zero-dep. (New gate before code.)
+Distinguish `reference_checked` from `human_verified`, actually check symbol/section existence, and
+flag an empty-evidence `verified` doc. Additive/opt-in, zero-dep.
+
+**Built (ships in the next minor):** `scanEvidenceReferences` now checks `#symbol:`/`#section:`
+target existence conservatively (`evidence.symbol_unverified`/`evidence.section_unverified` — flagged
+only when the file mentions none of the name(s); `.md`-only sections; `--strict` escalates);
+`scanUngroundedVerified` flags a `verified` doc with no `source_files` and no `evidence`
+(`evidence.ungrounded`, warning, config-togglable); and a computed `evidenceTier`
+(`reference_checked` vs `human_verified`) is exposed additively in `stats` JSON — no new frontmatter
+field or `status` value. True AST/language-server symbol resolution and `route` existence stay out of
+scope v1 (would break zero-dep). 251 tests, `validate --strict` 0 findings (dogfood: 50/50
+reference_checked, 14/50 human_verified). Scope: `GATE_REVIEW.md` (Gate 25, accepted).
 
 ### Gate 26 — Agent update runner + completion contract
 

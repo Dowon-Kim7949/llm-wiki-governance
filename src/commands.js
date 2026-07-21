@@ -60,6 +60,8 @@ import {
   writeAdapterFiles
 } from "./commands/adapters.js";
 import {
+  EVIDENCE_REFERENCE_RULES,
+  evidenceTier,
   scanEncoding,
   scanEnrichment,
   scanEvidenceDrift,
@@ -72,6 +74,7 @@ import {
   scanSensitive,
   scanSourceFiles,
   scanThinBody,
+  scanUngroundedVerified,
   scanVisibilityConsistency
 } from "./commands/scans.js";
 import {
@@ -84,7 +87,7 @@ import {
 } from "./commands/fix-migrate.js";
 import { planSkillArtifacts, writeSkillArtifacts } from "./commands/skills.js";
 export { detectDomainDirectories, domainDisplayName, normalizeDomainSlug, planDomainDocs } from "./commands/domains.js";
-export { driftTargets } from "./commands/scans.js";
+export { driftTargets, evidenceTier, scanUngroundedVerified } from "./commands/scans.js";
 export { driftCommand, fixCommand } from "./commands/fix-migrate.js";
 export { getDocCommand, getRelatedCommand, listDocsCommand, searchDocsCommand } from "./commands/retrieval.js";
 
@@ -210,6 +213,7 @@ export async function statusCommand(options) {
   const enrichmentFindings = await scanEnrichment(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
+  const ungroundedFindings = await scanUngroundedVerified(options.cwd);
   const driftFindings = await scanEvidenceDrift(options.cwd);
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
@@ -231,6 +235,7 @@ export async function statusCommand(options) {
     ...enrichmentFindings,
     ...evidenceFindings,
     ...evidenceSectionFindings,
+    ...ungroundedFindings,
     ...driftFindings,
     ...okfFindings,
     ...linkFindings,
@@ -374,6 +379,7 @@ export async function audit(options) {
   const enrichmentFindings = await scanEnrichment(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
+  const ungroundedFindings = await scanUngroundedVerified(options.cwd);
   const driftFindings = await scanEvidenceDrift(options.cwd);
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
@@ -398,6 +404,7 @@ export async function audit(options) {
     ...enrichmentFindings,
     ...evidenceFindings,
     ...evidenceSectionFindings,
+    ...ungroundedFindings,
     ...driftFindings,
     ...okfFindings,
     ...linkFindings,
@@ -1218,13 +1225,23 @@ export async function statsCommand(options) {
 
   const statusCounts = {};
   let evidenceBacked = 0;
+  const docMeta = [];
   for (const file of files) {
     const parsed = parseFrontmatter(await readUtf8(file));
-    const status = typeof parsed.frontmatter?.status === "string" ? parsed.frontmatter.status : "unknown";
+    const frontmatter = parsed.frontmatter ?? {};
+    const status = typeof frontmatter.status === "string" ? frontmatter.status : "unknown";
     statusCounts[status] = (statusCounts[status] ?? 0) + 1;
-    const evidence = Array.isArray(parsed.frontmatter?.evidence) ? parsed.frontmatter.evidence.filter((item) => typeof item === "string" && item.trim()) : [];
-    const sourceFiles = Array.isArray(parsed.frontmatter?.source_files) ? parsed.frontmatter.source_files.filter((item) => typeof item === "string" && item.trim()) : [];
-    if (evidence.length > 0 || sourceFiles.length > 0) evidenceBacked += 1;
+    const evidence = Array.isArray(frontmatter.evidence) ? frontmatter.evidence.filter((item) => typeof item === "string" && item.trim()) : [];
+    const sourceFiles = Array.isArray(frontmatter.source_files) ? frontmatter.source_files.filter((item) => typeof item === "string" && item.trim()) : [];
+    const hasGrounding = evidence.length > 0 || sourceFiles.length > 0;
+    if (hasGrounding) evidenceBacked += 1;
+    docMeta.push({
+      rel: toPosix(path.relative(cwd, file)),
+      status,
+      hasGrounding,
+      reviewedBy: typeof frontmatter.reviewed_by === "string" && frontmatter.reviewed_by.trim() !== "",
+      reviewedAt: typeof frontmatter.reviewed_at === "string" && frontmatter.reviewed_at.trim() !== ""
+    });
   }
 
   const auditResult = await audit(options);
@@ -1233,6 +1250,26 @@ export async function statsCommand(options) {
   const notEnriched = uniquePathsFor("content.not_enriched");
   const staleVerified = uniquePathsFor("evidence.stale");
   const orphanDocuments = auditResult.wikiGraph?.summary?.orphanDocuments ?? 0;
+
+  // Gate 25: computed evidence tiers (additive, report-only). A doc is
+  // reference_checked when it has grounding and no unresolved-reference finding;
+  // human_verified when verified with reviewer metadata. Orthogonal axes.
+  const unresolvedRefPaths = new Set(findings.filter((finding) => EVIDENCE_REFERENCE_RULES.has(finding.rule)).map((finding) => finding.path));
+  let referenceChecked = 0;
+  let humanVerified = 0;
+  let bothTiers = 0;
+  for (const doc of docMeta) {
+    const tier = evidenceTier({
+      status: doc.status,
+      reviewedBy: doc.reviewedBy,
+      reviewedAt: doc.reviewedAt,
+      hasGrounding: doc.hasGrounding,
+      hasUnresolvedRefs: unresolvedRefPaths.has(doc.rel)
+    });
+    if (tier.referenceChecked) referenceChecked += 1;
+    if (tier.humanVerified) humanVerified += 1;
+    if (tier.referenceChecked && tier.humanVerified) bothTiers += 1;
+  }
 
   const verified = statusCounts.verified ?? 0;
   const enriched = Math.max(0, total - notEnriched);
@@ -1248,6 +1285,7 @@ export async function statsCommand(options) {
     `verified: ${verified} (${verifiedPct}%)`,
     `enriched: ${enriched} (${enrichedPct}%)`,
     `evidence_coverage: ${evidenceBacked} (${evidencePct}%)`,
+    `evidence_tiers: reference_checked ${referenceChecked}, human_verified ${humanVerified} (both ${bothTiers})`,
     `stale_verified: ${staleVerified}`,
     `orphan_documents: ${orphanDocuments}`
   ];
@@ -1268,6 +1306,11 @@ export async function statsCommand(options) {
       notEnriched,
       evidenceBacked,
       evidencePct,
+      evidenceTiers: {
+        referenceChecked,
+        humanVerified,
+        both: bothTiers
+      },
       staleVerified,
       orphanDocuments
     },
@@ -1275,7 +1318,7 @@ export async function statsCommand(options) {
   }, "LLM-WIKI Stats", [
     { title: "Summary", body: summaryLines },
     { title: "Document Status", body: statusLines.length ? statusLines : ["none"] },
-    { title: "Caveats", body: ["Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%."] }
+    { title: "Caveats", body: ["Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata."] }
   ]);
 }
 

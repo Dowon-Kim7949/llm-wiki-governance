@@ -280,9 +280,11 @@ Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`f
 
 **상태: 1.18.0에 shipped.** 읽기 전용 4개 연산 — `list-docs`, `search-docs`(**zero-dep 키워드/부분문자열, semantic 아님**), `get-doc`, `get-related`(MCP 툴 `list_docs`/`search_docs`/`get_doc`/`get_related`) — 이 프로그래매틱 API + MCP + CLI에서 문서 본문을 반환한다. `listWikiContentDocs`·frontmatter 파서·`collectWikiGraph`·sensitive-info 스캔 재사용. 읽기 전용, restricted/민감 문서는 list/search 기본 제외(opt-in `--include-sensitive`), 반환 본문/스니펫은 민감 라인 redact(raw 값 미반환). `src/commands/retrieval.js`. 릴리스 노트: `docs/llm-wiki/releases/v1.18.0.md`. **여기서 Gate 22 벤치를 재측정**해 헤드라인 before/after-retrieval delta를 낸다(`node bench/run.js --against`).
 
-### Gate 25 — Evidence 의미 단계화
+### Gate 25 — Evidence 의미 단계화 — **accepted + built (2026-07-21)**
 
-감사가 실증한 신뢰 갭 해소(존재하지 않는 symbol을 인용해도 지금은 통과). `reference_checked`와 `human_verified`를 구분하고, 지원 언어부터 symbol/route 존재를 실제 검사하며, strict preset은 근거 없는 `verified`를 실패시킨다. 부가적·opt-in·zero-dep. (코드 전에 신규 게이트.)
+감사가 실증한 신뢰 갭 해소(존재하지 않는 symbol을 인용해도 지금은 통과). `reference_checked`와 `human_verified`를 구분하고, symbol/section 존재를 실제 검사하며, 근거 없는 `verified`를 flag한다. 부가적·opt-in·zero-dep.
+
+**빌드 완료(다음 minor에 shipped):** `scanEvidenceReferences`가 `#symbol:`/`#section:` 타깃 실재를 보수적으로 검사(`evidence.symbol_unverified`/`evidence.section_unverified` — 파일이 이름을 전혀 언급 안 할 때만; 섹션은 `.md`만; `--strict` 승격), `scanUngroundedVerified`가 `source_files`도 `evidence`도 없는 `verified`를 flag(`evidence.ungrounded`, warning, config 토글), 계산된 `evidenceTier`(`reference_checked` vs `human_verified`)를 `stats` JSON에 additive 노출(신규 frontmatter 필드/status값 없음). 진짜 AST/언어서버 심볼 해석·`route` 실재는 v1 제외(zero-dep 유지). 251 tests·`validate --strict` 0(dogfood: 50/50 reference_checked, 14/50 human_verified). 범위: `GATE_REVIEW.md`(Gate 25, accepted).
 
 ### Gate 26 — Agent 실행 러너 + 완료 계약
 

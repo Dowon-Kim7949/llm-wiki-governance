@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, evidenceTier, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard, renderOutputFile, printResult } from "../src/report.js";
 import * as api from "../src/index.js";
@@ -1595,6 +1595,109 @@ test("audit and validate enforce body Evidence section alignment for frontmatter
   assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_unlisted" && finding.path.includes("unlisted.md")));
   assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_empty" && finding.path.includes("empty-section.md")));
   assert.equal(validateResult.findingSummary.byCategory.evidence, 3);
+});
+
+test("Gate 25: evidence symbol/section existence checks flag stale locators, not present ones", async () => {
+  const cwd = await makeProject("evidence-symbol-");
+  await writeJson(path.join(cwd, "package.json"), { name: "evidence-symbol" });
+  await mkdir(path.join(cwd, "src"), { recursive: true });
+  await writeFile(path.join(cwd, "src", "mod.js"), "export function realOne() {}\nexport function realTwo() {}\n", { encoding: "utf8" });
+  const evidence = [
+    "src/mod.js#symbol:realOne",                 // present -> no flag
+    "src/mod.js#symbol:missingSym",              // absent -> symbol_unverified
+    "src/mod.js#symbol:realTwo·alsoMissing",     // list, one present -> no flag (conservative)
+    "docs/llm-wiki/index.md#section:Evidence",   // heading present -> no flag
+    "docs/llm-wiki/index.md#section:Nope",       // heading absent -> section_unverified
+    "src/mod.js#section:Nope"                     // non-.md source -> section check skipped
+  ];
+  await writeWikiDocWithEvidence(cwd, "index.md", "LLM-WIKI Index", evidenceBody(evidence), ["package.json"], evidence);
+
+  const result = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const symbol = result.findings.filter((finding) => finding.rule === "evidence.symbol_unverified");
+  const section = result.findings.filter((finding) => finding.rule === "evidence.section_unverified");
+  assert.equal(symbol.length, 1);
+  assert.ok(symbol[0].message.includes("missingSym"));
+  assert.equal(symbol[0].severity, "warning");
+  assert.equal(section.length, 1);
+  assert.ok(section[0].message.includes("Nope"));
+  // present symbol, list-with-one-present, present section, and non-.md section are all NOT flagged
+  assert.equal(result.findings.some((finding) => finding.rule === "evidence.symbol_unverified" && finding.message.includes("realOne")), false);
+  assert.equal(result.findings.some((finding) => finding.rule === "evidence.symbol_unverified" && finding.message.includes("alsoMissing")), false);
+
+  // --strict escalates the *_unverified rules to errors (same as evidence.missing)
+  const strict = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: true });
+  assert.equal(strict.findings.find((finding) => finding.rule === "evidence.symbol_unverified")?.severity, "error");
+  assert.equal(strict.findings.find((finding) => finding.rule === "evidence.section_unverified")?.severity, "error");
+});
+
+test("Gate 25: evidence.ungrounded flags verified docs with no grounding (warning, not --strict-escalated, config-togglable)", async () => {
+  const cwd = await makeProject("evidence-ungrounded-");
+  await writeJson(path.join(cwd, "package.json"), { name: "ung" });
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  await mkdir(wikiRoot, { recursive: true });
+  const doc = (status, sourceFilesLine) => `---
+title: Doc
+tags:
+  - llm-wiki
+status: ${status}
+doc_type: reference
+project: fixture
+last_updated: 2026-07-02
+author: test
+last_edited_by: node-test
+wiki_block_version: v1
+reviewed_by: Tester
+reviewed_at: 2026-07-02
+source_files:${sourceFilesLine}
+related:
+  - docs/llm-wiki/log.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# Doc
+
+Body prose.
+`;
+  await writeFile(path.join(wikiRoot, "index.md"), doc("verified", "\n  - package.json"), { encoding: "utf8" });
+  await writeFile(path.join(wikiRoot, "ungrounded.md"), doc("verified", " []"), { encoding: "utf8" });
+  await writeFile(path.join(wikiRoot, "grounded.md"), doc("verified", "\n  - package.json"), { encoding: "utf8" });
+  await writeFile(path.join(wikiRoot, "draft.md"), doc("needs_review", " []"), { encoding: "utf8" });
+
+  const std = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const ungrounded = std.findings.filter((finding) => finding.rule === "evidence.ungrounded");
+  assert.equal(ungrounded.length, 1);
+  assert.ok(ungrounded[0].path.includes("ungrounded.md"));
+  assert.equal(ungrounded[0].severity, "warning");
+
+  // --strict does NOT auto-escalate ungrounded (config-only escalation)
+  const strict = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: true });
+  assert.equal(strict.findings.find((finding) => finding.rule === "evidence.ungrounded")?.severity, "warning");
+
+  // config rules can turn it off, or escalate it
+  const off = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false, rules: { "evidence.ungrounded": "off" } });
+  assert.equal(off.findings.some((finding) => finding.rule === "evidence.ungrounded"), false);
+  const escalated = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false, rules: { "evidence.ungrounded": "error" } });
+  assert.equal(escalated.findings.find((finding) => finding.rule === "evidence.ungrounded")?.severity, "error");
+});
+
+test("Gate 25: evidenceTier computes reference_checked and human_verified as independent axes", () => {
+  assert.deepEqual(evidenceTier({ status: "verified", reviewedBy: true, reviewedAt: true, hasGrounding: true, hasUnresolvedRefs: false }), { referenceChecked: true, humanVerified: true });
+  assert.deepEqual(evidenceTier({ status: "verified", reviewedBy: true, reviewedAt: true, hasGrounding: true, hasUnresolvedRefs: true }), { referenceChecked: false, humanVerified: true });
+  assert.deepEqual(evidenceTier({ status: "needs_review", reviewedBy: false, reviewedAt: false, hasGrounding: true, hasUnresolvedRefs: false }), { referenceChecked: true, humanVerified: false });
+  assert.deepEqual(evidenceTier({ status: "verified", reviewedBy: false, reviewedAt: false, hasGrounding: false, hasUnresolvedRefs: false }), { referenceChecked: false, humanVerified: false });
+});
+
+test("Gate 25: stats exposes computed evidence tiers", async () => {
+  const cwd = await makeProject("stats-tiers-");
+  await writeJson(path.join(cwd, "package.json"), { name: "stats-tiers" });
+  await writeWikiDocWithEvidence(cwd, "index.md", "Idx", evidenceBody(["package.json"]), ["package.json"], ["package.json"]);
+  const result = await statsCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text" });
+  assert.ok(result.stats.evidenceTiers);
+  assert.equal(typeof result.stats.evidenceTiers.referenceChecked, "number");
+  assert.equal(typeof result.stats.evidenceTiers.humanVerified, "number");
+  assert.equal(typeof result.stats.evidenceTiers.both, "number");
+  assert.ok(result.stats.evidenceTiers.referenceChecked >= 1);
 });
 
 test("driftTargets selects files and baseline only for verified documents", () => {

@@ -8,7 +8,7 @@
 // commands.js.
 import path from "node:path";
 import { listMarkdownFiles, pathExists, toPosix } from "../files.js";
-import { findMojibakeIndicators, hasUtf8Bom, readUtf8 } from "../encoding.js";
+import { findMojibakeIndicators, hasUtf8Bom, readTextAuto, readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
 import { fileChangedSince, lineRangeChangedSince } from "../git.js";
@@ -16,6 +16,7 @@ import { isAppendOnlyLog, listTargetMarkdown, listWikiContentDocs } from "./wiki
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
 import {
+  escapeRegex,
   extractMarkdownLinkTargets,
   extractMarkdownSection,
   getLineCount,
@@ -248,6 +249,7 @@ export async function scanVisibilityConsistency(cwd, options) {
 export async function scanEvidenceReferences(cwd, options = {}) {
   const findings = [];
   const lineCountByPath = new Map();
+  const contentByPath = new Map();
   const strictSeverity = evidenceStrictSeverity(options);
 
   for (const file of await listTargetMarkdown(cwd)) {
@@ -296,11 +298,88 @@ export async function scanEvidenceReferences(cwd, options = {}) {
             message: `Evidence line range is outside ${evidenceReference.source}: ${evidenceReference.locator.start}-${evidenceReference.locator.end} (file has ${lineCount} line${lineCount === 1 ? "" : "s"}).`
           });
         }
+      } else if (evidenceReference.locator?.kind === "symbol") {
+        // Gate 25: conservative target-existence check. Flag ONLY when the file
+        // mentions NONE of the referenced symbol name(s) (a `·`/`,`/`/`-joined
+        // value is a list) as a word-boundary token. If the file mentions any of
+        // them we do not flag — a floor ("the file does not even mention this
+        // symbol"), not an AST resolver, chosen to avoid false positives.
+        const content = await readSourceCached(absoluteSourcePath, contentByPath);
+        if (content !== null && !symbolPresent(content, evidenceReference.locator.value)) {
+          findings.push({
+            severity: strictSeverity,
+            rule: "evidence.symbol_unverified",
+            path: rel,
+            message: `Evidence symbol is not mentioned in ${evidenceReference.source}: ${evidenceReference.locator.value}.`
+          });
+        }
+      } else if (evidenceReference.locator?.kind === "section" && evidenceReference.source.toLowerCase().endsWith(".md")) {
+        // Gate 25: section existence for Markdown sources only (v1). Flag when no
+        // heading contains the section name (headings may carry extra suffixes).
+        const content = await readSourceCached(absoluteSourcePath, contentByPath);
+        if (content !== null && !sectionPresent(content, evidenceReference.locator.value)) {
+          findings.push({
+            severity: strictSeverity,
+            rule: "evidence.section_unverified",
+            path: rel,
+            message: `Evidence section heading is not found in ${evidenceReference.source}: ${evidenceReference.locator.value}.`
+          });
+        }
       }
     }
   }
 
   return findings;
+}
+
+// Read a source file once (BOM-aware), caching by path; null on any read error
+// so the evidence existence checks stay best-effort (never throw on a bad file).
+async function readSourceCached(absolutePath, cache) {
+  if (cache.has(absolutePath)) return cache.get(absolutePath);
+  let content = null;
+  try {
+    content = await readTextAuto(absolutePath);
+  } catch {
+    content = null;
+  }
+  cache.set(absolutePath, content);
+  return content;
+}
+
+// Split a `#symbol:` value into candidate names. Evidence commonly joins related
+// symbols with a middle dot (`A·B`) or comma/slash/plus; each part is a name.
+function splitSymbolNames(value) {
+  return value
+    .split(/[·,/+&()\s]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+// True if the file mentions ANY of the referenced symbol names as a word-boundary
+// token (conservative: presence, not definition). Empty name list → true (nothing
+// to check, so never flagged).
+function symbolPresent(content, value) {
+  const names = splitSymbolNames(value);
+  if (names.length === 0) return true;
+  return names.some((name) => {
+    try {
+      return new RegExp(`\\b${escapeRegex(name)}\\b`).test(content);
+    } catch {
+      return content.includes(name);
+    }
+  });
+}
+
+// True if any Markdown heading's text contains the section name (case-insensitive),
+// so a heading with a trailing suffix like "(accepted 2026-07-21)" still matches.
+function sectionPresent(content, value) {
+  const target = value.toLowerCase().trim();
+  if (!target) return true;
+  for (const line of content.split(/\r?\n/)) {
+    const heading = line.match(/^#{1,6}\s+(.*)$/);
+    if (heading && heading[1].toLowerCase().includes(target)) return true;
+  }
+  return false;
 }
 
 export async function scanEvidenceSections(cwd, options = {}) {
@@ -354,6 +433,59 @@ export async function scanEvidenceSections(cwd, options = {}) {
 
 export function evidenceStrictSeverity(options) {
   return options.strict ? "error" : "warning";
+}
+
+// Gate 25: a `verified` document that carries neither source_files nor evidence
+// is "verified" with no code grounding — the hole where the schema requires the
+// source_files KEY but allows an empty list and evidence is optional. Default
+// warning and NOT escalated by --strict (config `rules` can escalate); it must
+// never break existing validate on intentionally-ungrounded verified docs.
+export async function scanUngroundedVerified(cwd) {
+  const findings = [];
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    const parsed = parseFrontmatter(await readUtf8(file));
+    const frontmatter = parsed.frontmatter ?? {};
+    if (frontmatter.status !== "verified") continue;
+    const sourceFiles = Array.isArray(frontmatter.source_files)
+      ? frontmatter.source_files.filter((item) => typeof item === "string" && item.trim())
+      : [];
+    const evidence = Array.isArray(frontmatter.evidence)
+      ? frontmatter.evidence.filter((item) => typeof item === "string" && item.trim())
+      : [];
+    if (sourceFiles.length === 0 && evidence.length === 0) {
+      findings.push({
+        severity: "warning",
+        rule: "evidence.ungrounded",
+        path: rel,
+        message: "Verified document has no source_files and no evidence (grounding-free verified)."
+      });
+    }
+  }
+  return findings;
+}
+
+// Gate 25: finding rules that mean an evidence/source reference did NOT resolve.
+// Used to compute the reference_checked tier.
+export const EVIDENCE_REFERENCE_RULES = new Set([
+  "evidence.shape",
+  "evidence.missing",
+  "evidence.line_range",
+  "evidence.symbol_unverified",
+  "evidence.section_unverified",
+  "source_files.missing"
+]);
+
+// Gate 25: the computed evidence tier of a document (additive, report-only — NOT
+// a stored frontmatter field or status value). The two axes are orthogonal:
+// - referenceChecked: the doc has grounding refs AND all of them resolve
+//   (no EVIDENCE_REFERENCE_RULES finding on its path).
+// - humanVerified: status verified with reviewer metadata present.
+export function evidenceTier({ status, reviewedBy, reviewedAt, hasGrounding, hasUnresolvedRefs }) {
+  return {
+    referenceChecked: Boolean(hasGrounding) && !hasUnresolvedRefs,
+    humanVerified: status === "verified" && Boolean(reviewedBy) && Boolean(reviewedAt)
+  };
 }
 
 // Which local files a verified document's freshness depends on, and the

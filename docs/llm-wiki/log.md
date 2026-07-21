@@ -24,6 +24,28 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - feat: Gate 25 evidence 의미 단계화 (accepted[위임]+built)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "수용 + 지금 빌드"; 게이트 수용은 위임)
+- scope: code(src/commands/scans.js·findings.js·commands.js) + tests + docs(GATE_REVIEW·ARCHITECTURE·DOMAIN_FEATURES·ROADMAP·log)
+- changed:
+  - src/commands/scans.js: `scanEvidenceReferences`에 `#symbol:`/`#section:` 타깃 실재 보수적 검사 추가(`evidence.symbol_unverified`/`evidence.section_unverified`; `·`-결합 심볼 목록·`.md` 섹션만·`readTextAuto` BOM 인식) + 신규 `scanUngroundedVerified`(`evidence.ungrounded`) + 순수 `evidenceTier`·`EVIDENCE_REFERENCE_RULES`.
+  - src/commands/findings.js: 3개 rule 등록(FINDING_EXPLANATIONS; 모두 evidence 카테고리·warning).
+  - src/commands.js: audit·validate에 `scanUngroundedVerified` 배선, `statsCommand`에 `evidenceTiers` 계산·노출, 배럴 re-export(`evidenceTier`/`scanUngroundedVerified`).
+  - tests/verification.test.js: symbol/section flag-vs-not+`--strict`, `evidence.ungrounded`(warning·미승격·config off/escalate), `evidenceTier` 축, `stats` tier 표면(4개 신규 테스트).
+  - GATE_REVIEW.md: Gate 25 accepted + Resolved/Built 절. ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES: Module Layout/기능/Evidence/Review Notes. ROADMAP(.ko): Gate 25 accepted+built.
+- summary:
+  - product-identity 감사가 지목한 "evidence가 FORMAT만 검사(심볼/섹션 실재 미확인)·grounding 없는 verified 허용" 갭을 닫는다. 모두 additive·read-only·zero-dep·기본 error 아님, `1.0.0` 계약·frontmatter/status 불변.
+  - 수용 결정(위임): `evidence.ungrounded` 기본 warning, section `.md`만, tier 계산전용, `--strict`는 `*_unverified`만 승격.
+  - 251 tests pass, `validate --strict` 0 findings(청결 dogfood: 50/50 reference_checked, 14/50 human_verified).
+- evidence:
+  - src/commands/scans.js#symbol:scanEvidenceReferences
+  - src/commands/scans.js#symbol:scanUngroundedVerified
+  - src/commands/scans.js#symbol:evidenceTier
+- caveats:
+  - symbol/section 검사는 텍스트 존재 floor이지 AST 해석이 아니다(오탐 회피 위한 보수성). 진짜 심볼 해석·`route` 실재는 v1 제외. 릴리스(버전 bump·태그)는 별도 승인 단계. 에이전트 편집이라 needs_review.
+
 ## 2026-07-21 - bench: B2_retrieval arm 추가 — retrieval 델타 측정(드리프트 상쇄)
 
 - status: needs_review
