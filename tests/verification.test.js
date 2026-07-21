@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, evidenceTier, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, checkRunCommand, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, evidenceTier, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard, renderOutputFile, printResult } from "../src/report.js";
 import * as api from "../src/index.js";
@@ -1700,6 +1700,70 @@ test("Gate 25: stats exposes computed evidence tiers", async () => {
   assert.ok(result.stats.evidenceTiers.referenceChecked >= 1);
 });
 
+test("Gate 26: check-run reports no manifest as a warning (nothing to check)", async () => {
+  const cwd = await makeProject("checkrun-none-");
+  await writeJson(path.join(cwd, "package.json"), { name: "cr" });
+  const result = await checkRunCommand({ cwd, format: "text", strict: false });
+  assert.equal(result.command, "check-run");
+  assert.equal(result.result, "warning");
+  assert.ok(result.findings.some((finding) => finding.rule === "run.manifest_missing"));
+});
+
+test("Gate 26: check-run verifies a run manifest's pipeline (doc gap / log / validation)", async () => {
+  const cwd = await makeProject("checkrun-verify-");
+  await writeJson(path.join(cwd, "package.json"), { name: "cr" });
+  await mkdir(path.join(cwd, "src"), { recursive: true });
+  await writeFile(path.join(cwd, "src", "foo.js"), "export const foo = 1;\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "src", "bar.js"), "export const bar = 1;\n", { encoding: "utf8" });
+  await writeWikiDocWithEvidence(cwd, "domains/00_overview.md", "Overview", evidenceBody(["src/foo.js"]), ["src/foo.js"], ["src/foo.js"]);
+  const runsDir = path.join(cwd, ".llm-wiki", "runs");
+  await mkdir(runsDir, { recursive: true });
+
+  await writeFile(path.join(runsDir, "run-a.json"), JSON.stringify({
+    task: "feature",
+    changedSource: ["src/foo.js"],
+    touchedDocs: ["docs/llm-wiki/domains/00_overview.md"],
+    logAppended: true,
+    validated: { ran: true, result: "pass" }
+  }), { encoding: "utf8" });
+  const clean = await checkRunCommand({ cwd, format: "text", strict: false });
+  assert.equal(clean.result, "pass");
+  assert.equal(clean.findings.length, 0);
+
+  await writeFile(path.join(runsDir, "run-b.json"), JSON.stringify({
+    task: "feature",
+    changedSource: ["src/foo.js", "src/bar.js"],
+    touchedDocs: ["docs/llm-wiki/domains/00_overview.md"],
+    logAppended: false,
+    validated: { ran: false }
+  }), { encoding: "utf8" });
+  const dirty = await checkRunCommand({ cwd, format: "text", strict: false });
+  assert.ok(dirty.findings.some((finding) => finding.rule === "run.doc_gap" && finding.message.includes("src/bar.js")));
+  assert.equal(dirty.findings.some((finding) => finding.rule === "run.doc_gap" && finding.message.includes("src/foo.js")), false);
+  assert.ok(dirty.findings.some((finding) => finding.rule === "run.log_missing"));
+  assert.ok(dirty.findings.some((finding) => finding.rule === "run.unvalidated"));
+  assert.ok(dirty.findings.every((finding) => finding.severity === "warning"));
+
+  // --run targets a specific manifest even though run-b sorts newest
+  const targeted = await checkRunCommand({ cwd, format: "text", strict: false, run: ".llm-wiki/runs/run-a.json" });
+  assert.equal(targeted.result, "pass");
+
+  // config rules can escalate run.* to error (CI without --strict)
+  const escalated = await checkRunCommand({ cwd, format: "text", strict: false, rules: { "run.doc_gap": "error" } });
+  assert.equal(escalated.findings.find((finding) => finding.rule === "run.doc_gap")?.severity, "error");
+});
+
+test("Gate 26: check-run flags a malformed manifest as an error", async () => {
+  const cwd = await makeProject("checkrun-bad-");
+  await writeJson(path.join(cwd, "package.json"), { name: "cr" });
+  const runsDir = path.join(cwd, ".llm-wiki", "runs");
+  await mkdir(runsDir, { recursive: true });
+  await writeFile(path.join(runsDir, "run.json"), "{ not valid json", { encoding: "utf8" });
+  const result = await checkRunCommand({ cwd, format: "text", strict: false });
+  assert.equal(result.result, "fail");
+  assert.ok(result.findings.some((finding) => finding.rule === "run.manifest_invalid" && finding.severity === "error"));
+});
+
 test("driftTargets selects files and baseline only for verified documents", () => {
   assert.equal(driftTargets({ status: "needs_review", last_updated: "2026-01-01", source_files: ["a.ts"] }), null);
   assert.equal(driftTargets({ status: "verified", source_files: ["a.ts"] }), null);
@@ -3042,7 +3106,7 @@ test("programmatic API exposes a frozen command map mirroring the CLI surface", 
   const expected = [
     "doctor", "validate", "validate-frontmatter", "monorepo", "status", "next", "explain",
     "audit", "quickstart", "handoff", "prompt", "init", "migrate", "fix",
-    "drift", "impact", "graph", "stats", "list-docs", "search-docs", "get-doc",
+    "drift", "impact", "check-run", "graph", "stats", "list-docs", "search-docs", "get-doc",
     "get-related", "release-notes"
   ];
 

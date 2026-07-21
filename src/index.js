@@ -18,6 +18,7 @@
 import path from "node:path";
 import {
   audit,
+  checkRunCommand,
   doctor,
   driftCommand,
   explainCommand,
@@ -130,6 +131,7 @@ export const commands = Object.freeze({
   fix: fixCommand,
   drift: driftCommand,
   impact: impactCommand,
+  "check-run": checkRunCommand,
   graph: graphCommand,
   stats: statsCommand,
   "list-docs": listDocsCommand,
@@ -185,6 +187,7 @@ export async function resolveOptions(overrides = {}) {
 // import (e.g. `import { audit } from "llm-wiki-governance"`).
 export {
   audit,
+  checkRunCommand,
   doctor,
   driftCommand,
   explainCommand,

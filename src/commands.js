@@ -751,6 +751,179 @@ export async function impactCommand(options) {
   ]);
 }
 
+// Gate 26 (agent update runner + completion contract): read-only check of a
+// wiki-grounded skill run's manifest. A run manifest (.llm-wiki/runs/*.json)
+// records what a run claims it did — changed source, touched docs, log appended,
+// validation — and this verifies the claimed pipeline actually happened, so CI
+// can catch a code change whose wiki update was skipped. Read-only: the only
+// write is the manifest the agent authors during its own run (never here).
+// Default warning; --strict (via the shared exit-code rule) fails CI.
+export async function checkRunCommand(options) {
+  const cwd = options.cwd;
+  const runsDir = path.join(cwd, ".llm-wiki", "runs");
+
+  let manifestPath = null;
+  if (typeof options.run === "string" && options.run.trim()) {
+    manifestPath = path.isAbsolute(options.run) ? options.run : path.join(cwd, options.run);
+  } else {
+    let entries = [];
+    try {
+      entries = (await readdir(runsDir)).filter((name) => name.endsWith(".json")).sort();
+    } catch {
+      entries = [];
+    }
+    if (entries.length > 0) manifestPath = path.join(runsDir, entries[entries.length - 1]);
+  }
+
+  if (!manifestPath) {
+    const findings = applyRuleConfig([{
+      severity: "warning",
+      rule: "run.manifest_missing",
+      path: toPosix(path.relative(cwd, runsDir)),
+      message: "No run manifest found under .llm-wiki/runs/ (nothing to check)."
+    }], options);
+    return finishCheckRun(options, null, findings);
+  }
+
+  const relManifest = toPosix(path.relative(cwd, manifestPath));
+  let manifest = null;
+  try {
+    manifest = JSON.parse(await readUtf8(manifestPath));
+  } catch {
+    return finishCheckRun(options, relManifest, applyRuleConfig([{
+      severity: "error",
+      rule: "run.manifest_invalid",
+      path: relManifest,
+      message: "Run manifest is not valid JSON."
+    }], options));
+  }
+
+  const changedSource = Array.isArray(manifest.changedSource)
+    ? manifest.changedSource.filter((item) => typeof item === "string" && item.trim())
+    : null;
+  if (!changedSource) {
+    return finishCheckRun(options, relManifest, applyRuleConfig([{
+      severity: "error",
+      rule: "run.manifest_invalid",
+      path: relManifest,
+      message: "Run manifest is missing a changedSource array."
+    }], options));
+  }
+  const touchedDocs = Array.isArray(manifest.touchedDocs)
+    ? manifest.touchedDocs.filter((item) => typeof item === "string" && item.trim())
+    : [];
+
+  const findings = [];
+  const covered = new Set();
+  for (const docRel of touchedDocs) {
+    for (const base of await docSourceAnchors(cwd, docRel)) covered.add(base);
+  }
+  for (const src of changedSource) {
+    const norm = toPosix(src.split("#")[0].trim());
+    if (!norm || isExternalSourceReference(norm)) continue;
+    if (!covered.has(norm)) {
+      findings.push({
+        severity: "warning",
+        rule: "run.doc_gap",
+        path: relManifest,
+        message: `Changed source is not referenced by any touched wiki document: ${norm}.`
+      });
+    }
+  }
+  if (manifest.logAppended !== true) {
+    findings.push({
+      severity: "warning",
+      rule: "run.log_missing",
+      path: relManifest,
+      message: "Run manifest reports the change log was not appended (logAppended !== true)."
+    });
+  }
+  if (!checkRunValidated(manifest.validated)) {
+    findings.push({
+      severity: "warning",
+      rule: "run.unvalidated",
+      path: relManifest,
+      message: "Run manifest reports validation did not run or did not pass."
+    });
+  }
+
+  return finishCheckRun(options, relManifest, applyRuleConfig(findings, options), {
+    task: typeof manifest.task === "string" ? manifest.task : null,
+    changedSource: changedSource.length,
+    touchedDocs: touchedDocs.length
+  });
+}
+
+function checkRunValidated(validated) {
+  if (validated === true) return true;
+  if (validated && typeof validated === "object") {
+    return validated.ran === true && (validated.result === "pass" || validated.result === undefined);
+  }
+  return false;
+}
+
+// Local source-file anchors (source_files + non-external evidence bases) a touched
+// wiki document cites, regardless of its status. Missing/unreadable docs yield an
+// empty set (best-effort). Used to match a manifest's changedSource.
+async function docSourceAnchors(cwd, docRel) {
+  const anchors = new Set();
+  let content;
+  try {
+    content = await readUtf8(path.join(cwd, docRel));
+  } catch {
+    return anchors;
+  }
+  const frontmatter = parseFrontmatter(content).frontmatter ?? {};
+  for (const entry of Array.isArray(frontmatter.source_files) ? frontmatter.source_files : []) {
+    if (typeof entry !== "string") continue;
+    const base = entry.split("#")[0].trim();
+    if (base && !isExternalSourceReference(base)) anchors.add(toPosix(base));
+  }
+  for (const entry of Array.isArray(frontmatter.evidence) ? frontmatter.evidence : []) {
+    if (typeof entry !== "string") continue;
+    const ref = parseEvidenceReference(entry.trim());
+    if (ref && !ref.external && ref.source) anchors.add(toPosix(ref.source));
+  }
+  return anchors;
+}
+
+function finishCheckRun(options, relManifest, findings, extra = {}) {
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const findingSummary = summarizeFindings(findings);
+  const summary = [
+    `result: ${result}`,
+    `mode: ${options.strict ? "strict" : "standard"}`,
+    `manifest: ${relManifest ?? "(none)"}`
+  ];
+  if (extra.task) summary.push(`task: ${extra.task}`);
+  if (extra.changedSource !== undefined) {
+    summary.push(`changed_source: ${extra.changedSource}`, `touched_docs: ${extra.touchedDocs}`);
+  }
+  summary.push(`findings: ${findings.length}`);
+
+  return withText({
+    command: "check-run",
+    result,
+    manifest: relManifest,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Check-Run", [
+    { title: "Summary", body: summary },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
+    { title: "Caveats", body: [
+      "Read-only: check-run verifies a skill run's manifest under .llm-wiki/runs/; it never writes. The manifest is authored by the agent during its own run.",
+      "Default warning; use --strict (for CI) to fail, or set \"run.*\" in llm-wiki.config.json rules. File-level — it proves the pipeline ran, not that the prose is correct."
+    ] }
+  ]);
+}
+
 export async function quickstartCommand(options) {
   if (options.dryRun && options.write) {
     return blockedApply("quickstart", "Choose either quickstart --dry-run or quickstart --write. The two modes cannot be used together.");

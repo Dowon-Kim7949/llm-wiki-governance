@@ -1,7 +1,7 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { audit, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { startMcpServer } from "./mcp/server.js";
@@ -23,6 +23,7 @@ const COMMANDS = new Map([
   ["fix", fixCommand],
   ["drift", driftCommand],
   ["impact", impactCommand],
+  ["check-run", checkRunCommand],
   ["graph", graphCommand],
   ["stats", statsCommand],
   ["list-docs", listDocsCommand],
@@ -142,6 +143,7 @@ export function defaultOptions() {
     limit: null,
     version: null,
     since: null,
+    run: null,
     bodyOnly: false,
     changed: false,
     type: null,
@@ -205,6 +207,13 @@ export function parseArgs(argv) {
       const value = readOptionValue(rest, index, arg, errors);
       if (value) {
         options.since = value;
+        index += 1;
+      }
+    } else if (arg === "--run") {
+      usedOptions.add("run");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        options.run = value;
         index += 1;
       }
     } else if (arg === "--status") {
@@ -356,6 +365,7 @@ const COMMAND_OPTION_RULES = {
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
   drift: new Set(["cwd", "dry-run", "downgrade", "format", "out"]),
   impact: new Set(["cwd", "since", "strict", "format", "out"]),
+  "check-run": new Set(["cwd", "run", "strict", "format", "out"]),
   graph: new Set(["cwd", "format", "out"]),
   stats: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
   "list-docs": new Set(["cwd", "status", "visibility", "doc-type", "include-sensitive", "format", "out"]),
@@ -489,6 +499,7 @@ Usage:
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki impact [--since <git-ref>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki check-run [--run <path>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki graph [--format text|json|mermaid|dot] [--cwd <path>] [--out <path>]
   llm-wiki stats [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki list-docs [--status <s>] [--visibility <v>] [--doc-type <t>] [--include-sensitive] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
@@ -727,6 +738,29 @@ Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
   - Read-only: never writes. Remediation is human re-review or drift --downgrade.
   - Toggle/override per project via llm-wiki.config.json rules
     ("impact.source_changed": "off"|"error"|...). File-level in v1.
+`,
+  "check-run": `llm-wiki check-run
+
+Usage:
+  llm-wiki check-run [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki check-run --run <path> [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Agent update runner (read-only): verifies a wiki-grounded skill run's manifest
+  under .llm-wiki/runs/ (the newest, or --run <path>) — that the code change it
+  claims was reflected in the wiki. Checks that each changedSource file is
+  referenced by some touchedDocs document (source_files/evidence), that the change
+  log was appended, and that validation ran and passed. The intent-anchored
+  complement to impact (diff-anchored). Run it from the repo root.
+
+Strict / CI (see GATE_REVIEW.md "Agent Update Runner ... Scope Decision", Gate 26):
+  - Default warning; --strict makes run.* findings fail (exit 1) so CI catches a
+    code change whose wiki update was skipped.
+  - Read-only: check-run never writes. The manifest is authored by the agent
+    during its own run (see the generated /llm-wiki-<task> skill workflow).
+  - Toggle/override per project via llm-wiki.config.json rules
+    ("run.doc_gap": "off"|"error"|...). File-level; proves the pipeline ran, not
+    that the prose is correct.
 `,
   graph: `llm-wiki graph
 
