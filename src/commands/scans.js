@@ -358,17 +358,13 @@ export function evidenceStrictSeverity(options) {
 
 // Which local files a verified document's freshness depends on, and the
 // review baseline to compare against. Pure so it can be tested without git.
-export function driftTargets(frontmatter) {
+// Pure: the local source-file anchors a verified document depends on, or null
+// when the document is not verified. Shared by date-anchored drift
+// (driftTargets, which adds a review-date baseline) and diff-anchored
+// reverse-impact (scanReverseImpact, Gate 23), so both consume ONE anchor
+// extractor. External (http(s)/repo:) references are excluded.
+export function verifiedSourceAnchors(frontmatter) {
   if (frontmatter?.status !== "verified") return null;
-
-  const reviewedAt = typeof frontmatter.reviewed_at === "string" && /^\d{4}-\d{2}-\d{2}$/.test(frontmatter.reviewed_at)
-    ? frontmatter.reviewed_at
-    : null;
-  const lastUpdated = typeof frontmatter.last_updated === "string" && /^\d{4}-\d{2}-\d{2}$/.test(frontmatter.last_updated)
-    ? frontmatter.last_updated
-    : null;
-  const baseline = reviewedAt ?? lastUpdated;
-  if (!baseline) return null;
 
   // source_files are broad anchors (the whole file backs the document).
   const sources = [];
@@ -396,7 +392,23 @@ export function driftTargets(frontmatter) {
     if (!files.includes(base)) files.push(base);
   }
 
-  return { baseline, files, sources, evidenceRefs };
+  return { files, sources, evidenceRefs };
+}
+
+export function driftTargets(frontmatter) {
+  const anchors = verifiedSourceAnchors(frontmatter);
+  if (!anchors) return null;
+
+  const reviewedAt = typeof frontmatter.reviewed_at === "string" && /^\d{4}-\d{2}-\d{2}$/.test(frontmatter.reviewed_at)
+    ? frontmatter.reviewed_at
+    : null;
+  const lastUpdated = typeof frontmatter.last_updated === "string" && /^\d{4}-\d{2}-\d{2}$/.test(frontmatter.last_updated)
+    ? frontmatter.last_updated
+    : null;
+  const baseline = reviewedAt ?? lastUpdated;
+  if (!baseline) return null;
+
+  return { baseline, ...anchors };
 }
 
 // Flags verified documents whose referenced files changed in git after the
@@ -474,6 +486,34 @@ export function driftFinding(rel, reference, baseline) {
     path: rel,
     message: `Verified document references ${reference}, which changed after ${baseline}; re-review and update it or downgrade to needs_review.`
   };
+}
+
+// Gate 23 reverse-impact (diff-anchored). Given a set of repo-relative changed
+// paths (from git.js#changedFiles: the working tree, or a `--since <ref>` PR/CI
+// diff), flag each verified document whose referenced source files are IN the
+// change set while the document itself is NOT — the pre-merge complement to the
+// date-anchored scanEvidenceDrift. Paths align when the CLI runs from the repo
+// root (same assumption as validate --changed). File-level in v1 (a changed
+// referenced file counts; line-range narrowing is out of scope). A document
+// edited in the same change set is intentionally not flagged. Read-only.
+export async function scanReverseImpact(cwd, changedSet) {
+  const findings = [];
+  if (!changedSet || changedSet.size === 0) return findings;
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    if (changedSet.has(rel)) continue; // doc changed in the same diff → not drift
+    const anchors = verifiedSourceAnchors(parseFrontmatter(await readUtf8(file)).frontmatter);
+    if (!anchors) continue;
+    const changedSources = anchors.files.filter((base) => changedSet.has(base));
+    if (changedSources.length === 0) continue;
+    findings.push({
+      severity: "warning",
+      rule: "impact.source_changed",
+      path: rel,
+      message: `Verified document depends on ${changedSources.join(", ")}, which changed in this diff, but the document is unchanged; re-review and update it or downgrade to needs_review.`
+    });
+  }
+  return findings;
 }
 
 export async function scanOkfProfile(cwd, activeProfiles = []) {

@@ -68,6 +68,7 @@ import {
   scanMarkdownLinks,
   scanOkfProfile,
   scanRelatedReferences,
+  scanReverseImpact,
   scanSensitive,
   scanSourceFiles,
   scanThinBody,
@@ -661,6 +662,83 @@ export async function validateCommand(options) {
     { title: "Caveats", body: [
       "Validation reuses audit coverage for core, profile, selected-agent adapter, encoding, and sensitive-information checks.",
       ...(options.changed ? ["--changed reports only findings on files changed vs the baseline; cross-document checks still run over the whole wiki. Run it from the repo root."] : [])
+    ] }
+  ]);
+}
+
+// ---- impact command (Gate 23 reverse-impact, read-only) ----------------
+// Diff-anchored complement to the date-anchored drift: flags verified documents
+// whose referenced source changed in the current diff (working tree, or a
+// `--since <ref>` PR/CI baseline) while the document itself did not. Read-only;
+// remediation stays human or `drift --downgrade`. `--strict` fails CI on impact
+// (via the shared exitCodeFor warning-in-strict rule). Empty change set = no-op.
+// Scope: GATE_REVIEW.md ("Reverse-Impact (Changed-Source → Wiki) Scope Decision").
+export async function impactCommand(options) {
+  const cwd = options.cwd;
+
+  let changed = null;
+  try {
+    changed = changedFiles(cwd, options.since);
+  } catch {
+    changed = null;
+  }
+
+  if (!changed) {
+    const findings = applyRuleConfig([{
+      severity: "error",
+      rule: "impact.unavailable",
+      path: ".",
+      message: `impact requires a git repository; could not determine the changed-file set${options.since ? ` since ${options.since}` : ""}.`
+    }], options);
+    const findingSummary = summarizeFindings(findings);
+    return withText({
+      command: "impact",
+      result: findings.some((finding) => finding.severity === "error") ? "fail" : "pass",
+      since: options.since,
+      changedFiles: 0,
+      findingSummary,
+      findings
+    }, "LLM-WIKI Reverse-Impact", [
+      { title: "Summary", body: ["result: fail", "changed: unavailable (not a git repository, or a bad --since ref)"] },
+      { title: "Findings", body: findings.map(formatFinding) },
+      { title: "Caveats", body: ["Run inside a git repository from the repo root. Use --since <ref> to compare against a PR base ref."] }
+    ]);
+  }
+
+  const changedSet = new Set(changed);
+  const findings = applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
+
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const findingSummary = summarizeFindings(findings);
+  const summary = [
+    `result: ${result}`,
+    `mode: ${options.strict ? "strict" : "standard"}`,
+    `baseline: ${options.since ? `since ${options.since}` : "working tree"}`,
+    `changed_files: ${changed.length}`,
+    `impacted_verified_docs: ${findings.filter((finding) => finding.rule === "impact.source_changed").length}`,
+    `findings: ${findings.length}`
+  ];
+
+  return withText({
+    command: "impact",
+    result,
+    since: options.since,
+    changedFiles: changed.length,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Reverse-Impact", [
+    { title: "Summary", body: summary },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.map(formatFinding) },
+    { title: "Caveats", body: [
+      "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (file-level, git-diff based). Run it from the repo root.",
+      "Default warning; use --strict (for CI) to fail on impact, or set \"impact.source_changed\" in llm-wiki.config.json rules. This complements the date-anchored evidence.stale (drift), it does not replace it."
     ] }
   ]);
 }

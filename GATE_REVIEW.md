@@ -61,7 +61,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 20 Review Workflow Scope Approval | `proposed_for_next` (DRAFT — not yet accepted) | Add a read-only `review` command that supports the human review→`verified` step (the weakest, most manual part of the loop, and the governance core): list `needs_review` content docs risk-ranked (thin / no-evidence / broken-link / never-enriched first) with a per-doc quality + evidence summary for fast spot-checking. Promotion to `verified` (stamping `reviewed_by`/`reviewed_at`) happens ONLY on an explicit, per-doc/confirmed `--approve <path>…` (or `--approve-all` with a confirmation) — NEVER automatically; the review DECISION stays human, only the MECHANICS get cheap. Additive/opt-in, read-only by default, zero-dep; `1.0.0` contracts unchanged. Motivated by the first external end-to-end run (a backend dev enriched a full wiki; the maintainer then had no ergonomic way to review + bless the `needs_review` backlog). DRAFTED for human acceptance. See "Review Workflow Scope Decision" below. |
 | Gate 21 Skill Generation Scope Approval | `accepted_for_1.15.0` | Generate invocable, wiki-grounded automation prompts for the feature/fix/docs-sync workflows already encoded in `src/task-prompts.js`, in each agent's native shape — Claude skill (`.claude/skills/llm-wiki-<task>/SKILL.md`), Cursor rule (`.cursor/rules/llm-wiki-<task>.mdc`), and an agent-neutral prompt doc (`docs/llm-wiki/prompts/llm-wiki-<task>.prompt.md`, for Codex/others) — so a user can invoke `/llm-wiki-feature "…"` to run "read the wiki → ground the change → update docs (needs_review) → log", closing the value loop (#8). Each body embeds a generation-time snapshot of the project's domain map so the agent knows which docs to read. Opt-in (per `--agent`/`--skills`), preview-first, existing files never overwritten, recognize-don't-run, needs_review discipline embedded. Additive, zero-dep; `1.0.0` contracts unchanged. Accepted by Dowon-Kim on 2026-07-20 with two additions over the draft (domain-map injection + multi-agent formats). MINOR (`1.15.0`). See "Skill Generation Scope Decision" below. |
 | Gate 22 Impact Measurement Scope Approval | `accepted` | Pull impact measurement to the FRONT of the post-1.16 line (before the feature gates). A reproducible, opt-in, zero-dep benchmark harness (repo-internal, e.g. `bench/`) runs a representative task with vs. without the governed wiki and records input tokens, source files opened, task success/quality, and wall-clock, plus an honest methodology that counts wiki read + maintenance cost (not just repo-scan tokens) and a recorded baseline. Primarily a VALIDATION track — no `1.0.0` contract change; any shipped `bench` helper is a later minor; zero-dep preserved. Results reported honestly INCLUDING unfavorable ones (an "overhead > benefit" result reshapes the roadmap, it is not hidden); no token/speed/productivity claim ships in README/launch until a measured result supports it. Re-run at each later gate for its delta. Motivated by the product-identity audit (`outputs/audits/product-identity-audit.md`): the governance core is real but the value chain is unproven. Accepted by Dowon-Kim on 2026-07-21. See "Impact Measurement Scope Decision" below. |
-| Gate 23 Reverse-Impact (Changed-Source → Wiki) Scope Approval | `proposed_for_next` (DRAFT — not yet accepted) | Add a read-only reverse-impact check that builds a git-diff reverse index from every `verified` doc's `source_files`/`evidence` and flags a `verified` doc when its referenced code is in the current change set (working tree, or a `--since <ref>` PR/CI baseline) while the doc itself is NOT changed — the pre-merge, diff-anchored complement to the existing date-anchored `evidence.stale`. Defaults to warning (NEVER default error/blocked, preserving the additive `1.0.0` invariant); an opt-in `--strict` (for CI) escalates it to a failing error so a PR that changes governed code without updating its doc fails. Read-only, additive/opt-in, zero-dep — reuses `changedFiles` (`src/git.js`), `driftTargets`, and the reference parsers. Motivated by the product-identity audit's biggest vision-vs-reality gap: today drift is date-based and misses code + its doc changing in separate PRs, and cannot answer the pre-merge CI question. DRAFTED for human acceptance. See "Reverse-Impact (Changed-Source → Wiki) Scope Decision" below. |
+| Gate 23 Reverse-Impact (Changed-Source → Wiki) Scope Approval | `accepted_for_1.17.0` | Add a read-only reverse-impact check that builds a git-diff reverse index from every `verified` doc's `source_files`/`evidence` and flags a `verified` doc when its referenced code is in the current change set (working tree, or a `--since <ref>` PR/CI baseline) while the doc itself is NOT changed — the pre-merge, diff-anchored complement to the existing date-anchored `evidence.stale`. Defaults to warning (NEVER default error/blocked, preserving the additive `1.0.0` invariant); an opt-in `--strict` (for CI) escalates it to a failing error so a PR that changes governed code without updating its doc fails. Read-only, additive/opt-in, zero-dep — reuses `changedFiles` (`src/git.js`), `driftTargets`, and the reference parsers. Motivated by the product-identity audit's biggest vision-vs-reality gap: today drift is date-based and misses code + its doc changing in separate PRs, and cannot answer the pre-merge CI question. Accepted by Dowon-Kim on 2026-07-21 with: a standalone `impact` command, rule `impact.source_changed` (new toggleable `impact` category), `--strict` escalating impact findings ONLY (`evidence.stale` stays escalatable via config `rules`), and an empty change set treated as a no-op. See "Reverse-Impact (Changed-Source → Wiki) Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -930,9 +930,9 @@ surface, not a patch).
 
 Accepted by Dowon-Kim on 2026-07-21. Delivery: build the harness + baseline first (validation track); any shipped `bench` helper is a later minor.
 
-## Reverse-Impact (Changed-Source → Wiki) Scope Decision (proposed — NOT yet accepted)
+## Reverse-Impact (Changed-Source → Wiki) Scope Decision (accepted for 1.17.0)
 
-**DRAFTED 2026-07-21; awaiting human acceptance.** The product-identity audit
+**Accepted by Dowon-Kim on 2026-07-21** (resolutions in "Resolved at acceptance" below). The product-identity audit
 (`outputs/audits/product-identity-audit.md`) named this the biggest vision-vs-reality
 gap: the tool promises docs that keep up with the code, but the only drift signal today
 is DATE-anchored. `scanEvidenceDrift` (`src/commands/scans.js`) fires `evidence.stale`
@@ -1008,15 +1008,21 @@ They are complementary; neither subsumes the other.
 - **Any write / auto-downgrade in this command** (kept in `drift`), and **MCP exposure**
   (optional later, matching `drift`'s current non-exposure).
 
-### Open questions (for acceptance)
+### Resolved at acceptance (Dowon-Kim, 2026-07-21)
 
-- Command name/shape: standalone `impact` vs a `drift --since <ref>` mode.
-- Finding rule name/category: `impact.source_changed` (new `impact` category) vs an
-  `evidence.*` rule.
-- Should `--strict` / a `strict-governance` preset ALSO escalate the existing
-  `evidence.stale`, closing the audit's "drift passes CI" gap in the same release?
-- The default change set when neither `--since` nor a dirty tree is present (an empty set
-  = no findings, i.e. a safe no-op, is the proposed default).
+- **Command shape:** a standalone `llm-wiki impact [--since <ref>] [--strict]` command
+  (single-responsibility, discoverable; `drift`'s `--downgrade` write path stays out of
+  the diff signal), NOT a `drift --since` mode.
+- **Finding rule:** `impact.source_changed` under a new toggleable `impact` category
+  (default warning), plus `impact.unavailable` (error) when git is unavailable — mirroring
+  `changed.unavailable`.
+- **Strict scope:** `--strict` escalates the `impact.*` findings ONLY. The existing
+  date-anchored `evidence.stale` is deliberately NOT bundled here; it is already
+  escalatable per project via the 1.8 config `rules` toggle
+  (`"evidence.stale": "error"` + `validate --strict`), so no separate strict-governance
+  preset is introduced in this gate (keeps the surface minimal and additive).
+- **Empty change set:** when neither `--since` nor a dirty working tree yields changed
+  files, the result is a no-op (no findings, `pass`).
 
 ### Evidence (planned, not yet implemented)
 

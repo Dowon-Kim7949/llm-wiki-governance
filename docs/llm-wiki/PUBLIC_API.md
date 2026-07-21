@@ -2,8 +2,8 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs_review
+status: needs_review
 doc_type: public_api
 project: llm-wiki-governance
 last_updated: 2026-07-21
@@ -18,6 +18,7 @@ source_files:
   - src/release-notes.js
   - src/config-file.js
   - src/index.js
+  - src/git.js
   - src/report.js
   - src/mcp/tools.js
   - src/mcp/dispatch.js
@@ -27,6 +28,7 @@ evidence:
   - src/cli.js#symbol:parseArgs
   - src/cli.js#symbol:main
   - src/commands.js#symbol:migrateCommand
+  - src/commands.js#symbol:impactCommand
   - src/commands/fix-migrate.js#symbol:fixCommand
   - src/config-file.js#symbol:mergeConfigIntoOptions
   - src/index.js#symbol:commands
@@ -43,6 +45,7 @@ evidence:
   - src/report.js#symbol:dashboardDocHref
   - src/mcp/tools.js#symbol:TOOL_DEFS
   - src/mcp/dispatch.js#symbol:handleMessage
+  - src/git.js#symbol:changedFiles
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -74,6 +77,7 @@ contains_sensitive_info: false
 | `migrate [--apply]` | `wiki_block_version` 업그레이드 리포트 + 계획. `--apply`로 `fix` 범위 재사용해 문서를 현재 계약으로 올림(preview-first, `verified` 보존; GATE_REVIEW Gate 8) | `--apply` 시 |
 | `fix [--write]` | 승인된 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 섹션 보완, 깨진 related/링크 `needs_review` 스텁, 수정 문서 `last_updated` 갱신). 기본은 미리보기 | `--write` 시 |
 | `drift [--downgrade]` | `verified` 문서의 `evidence.stale` 드리프트 리포트. `--downgrade`로 드리프트 문서를 `needs_review`로 강등(GATE_REVIEW Gate 9) | `--downgrade` 시 |
+| `impact [--since <ref>] [--strict]` | (읽기전용, 1.17) diff 기준 reverse-impact: 참조 소스가 현재 diff(working tree, 또는 `--since <ref>` PR/CI 기준)에서 바뀌었는데 문서 자신은 안 바뀐 `verified` 문서를 flag. date 기준 `evidence.stale`(drift)의 pre-merge 보완. 기본 warning, `--strict`로 CI 실패(GATE_REVIEW Gate 23) | 없음 |
 | `graph` | 지식 그래프(문서 + 해소된 문서→문서 링크)를 출력. `--format text\|json\|mermaid\|dot`(graph 전용 토큰) | 없음 |
 | `stats` | wiki 헬스 스냅샷(verified%/enrichment%/evidence coverage/staleness/orphan) + 헬스 스코어 | 없음 |
 | `release-notes [--body-only]` | 마지막 `v*` 태그 이후 conventional commit으로 릴리스 노트 문서 생성. `--body-only`는 변경 섹션 본문만 출력(frontmatter/H1/스캐폴드 라인 제외, GitHub Release 본문용)하고 본문 민감정보 스캔에 매치 시 차단(exit 2, 본문 withhold) | `--out` 시 |
@@ -82,7 +86,7 @@ contains_sensitive_info: false
 
 - `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; 나머지는 명시 선택. writable: codex/claude/cursor/copilot/windsurf/gemini, candidate: jetbrains/antigravity)
 - `--format <text|json|markdown|html>`(대부분 명령), `graph`는 `--format <text|json|mermaid|dot>`(mermaid/dot는 graph 전용). `--out <path>`, `--strict`, `--minimal`
-- `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate), `--body-only` (release-notes), `--changed` (validate)
+- `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate/impact), `--body-only` (release-notes), `--changed` (validate). `--strict`는 warning을 exit 1로 승격한다(대부분의 명령; `impact --strict`는 reverse-impact를 CI 실패로 만든다).
 
 ## Exit Codes
 
@@ -210,6 +214,8 @@ MCP 클라이언트 등록 예시:
 - `src/report.js#symbol:dashboardDocHref` — HTML 대시보드 Document Index 링크를 `--out` 위치 기준 상대경로로 계산.
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — MCP로 노출하는 읽기 전용 툴 정의(commands 위 얇은 래퍼).
 - `src/mcp/dispatch.js#symbol:handleMessage` — MCP JSON-RPC 핸들러(initialize/tools.list/tools.call/ping; 프로토콜 준수).
+- `src/commands.js#symbol:impactCommand` — `impact` 명령: diff 기준 reverse-impact(read-only; Gate 23, 1.17).
+- `src/git.js#symbol:changedFiles` — 변경집합 프리미티브(working tree / `--since <ref>`); `impact`와 `validate --changed`가 공유.
 
 ## Review Notes
 
@@ -226,3 +232,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 공개 CLI/프로그래매틱 API 표면은 byte-identical(동결 `commands` 맵·re-export 불변)이며, Evidence의 구현 심볼 포인터만 이동 모듈로 갱신했다(`fixCommand`→fix-migrate, `applyRuleConfig`/`withText`→findings, `scanThinBody`→scans). 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
 - 2026-07-20에 1.14.1 노출-테스트 fix 배치를 검토했다: 공개 CLI/프로그래매틱 API 표면은 불변이다 — exit code 의미(`0`/`1`/`2`/`3`)와 `result` 필드 열거(개방형)가 그대로라 no-flag `init`/`quickstart`의 `ready`(exit 0) 리네임과 모순되지 않는다. 내용 불변으로 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20) 후 review baseline을 갱신해 `evidence.stale`을 해소했다.
 - 2026-07-20에 1.15.0 스킬 생성(Gate 21)을 반영했다: `init`/`quickstart`에 부가 옵션 `--skills`를 추가하고(위키-그라운디드 자동화 프롬프트 아티팩트 생성; `--agent claude\|cursor`로도 트리거) command 표에 기술했다. additive(옵션 미사용 시 표면·출력 불변), 동결 프로그래매틱 API 맵·`--format json` 형태 불변. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
+- 2026-07-21에 1.17.0 reverse-impact(Gate 23, accepted)를 반영했다: 신규 read-only `impact [--since <ref>] [--strict]` 명령을 Commands 표·Key Options·Evidence(동결 `commands` 맵에도 `impact` 추가)에 등재하고, 변경집합 프리미티브 `src/git.js#changedFiles`를 source_files/evidence에 넣었다. additive(옵션·명령 미사용 시 기존 표면 불변), `--format json`·frontmatter·zero-dep 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.

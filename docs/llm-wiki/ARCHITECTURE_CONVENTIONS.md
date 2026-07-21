@@ -2,8 +2,8 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs_review
+status: needs_review
 doc_type: architecture_conventions
 project: llm-wiki-governance
 last_updated: 2026-07-21
@@ -61,7 +61,7 @@ contains_sensitive_info: false
 - `src/commands/` — commands.js에서 추출한 동작 보존 서브모듈군(단방향 의존: leaf → wiki-graph/adapters → scans → fix-migrate → commands.js):
   - `references.js` — 링크/참조 파싱 헬퍼(`escapeRegex`/`parseEvidenceReference`/`isExternalSourceReference`/`isCrossRepoReference` + Markdown·wiki 링크 추출/정규화/해석).
   - `findings.js` — finding 레지스트리와 리포트 포매터: `FINDING_EXPLANATIONS`·`findingExplanation`·`applyRuleConfig`(+ `NON_TOGGLEABLE_CATEGORIES`)·`findingCategory`/`summarizeFindings`·`format*`·`withText`.
-  - `scans.js` — `scan*` 패밀리 전체(encoding/sensitive/source_files/related/enrichment/thin_body/visibility/evidence/okf/markdown_link/wiki_link)와 드리프트 로직(`scanEvidenceDrift` + 순수·export되는 `driftTargets`).
+  - `scans.js` — `scan*` 패밀리 전체(encoding/sensitive/source_files/related/enrichment/thin_body/visibility/evidence/okf/markdown_link/wiki_link)와 드리프트 로직: date-앵커 `scanEvidenceDrift`와 diff-앵커 `scanReverseImpact`(Gate 23, 1.17), 그리고 둘이 공유하는 순수·export되는 앵커 추출기 `verifiedSourceAnchors`(+ 그 위에 review-date baseline을 얹는 `driftTargets`).
   - `wiki-graph.js` — 지식 그래프 구성/렌더(`collectWikiGraph`·`buildWikiLinkTargetIndex`·`emptyWikiGraph`·`renderGraphMermaid`/`renderGraphDot`).
   - `adapters.js` — 어댑터 레지스트리 `ADAPTER_TARGETS`(+ `TEMPLATE_ROOT`)와 스캔/제안/쓰기/상태 헬퍼(`scanAdapters`·`planAdapterSuggestions`·`writeAdapterFiles`·`summarizeAdapterStatus`·`selectedAgents`).
   - `wiki-files.js` — 스캔·어댑터·fix/migrate가 공유하는 파일 열거/판별 유틸(`listTargetMarkdown`·`listWikiContentDocs`·`isAppendOnlyLog`).
@@ -118,6 +118,10 @@ contains_sensitive_info: false
 - `src/commands/references.js#symbol:parseEvidenceReference` — evidence 참조 파서. 1.14.2부터 콜론-라인 표기(`파일:10`·`파일:10-20`)를 `#L` 형과 동등한 line locator로 수용(external 우선 처리 뒤).
 - `src/cli.js#symbol:helpText` — bare 명령/`--help`의 이중언어(KO+EN) 오리엔테이션(무엇/왜/3단계) + 버전·`@latest` 팁을 담은 테스트 가능한 help 문자열; `packageVersion()`으로 stale npx 캐시를 표면화(1.14.3).
 - `src/commands/skills.js#symbol:writeSkillArtifacts` — feature/fix/docs-sync 위키-그라운디드 자동화 프롬프트를 Claude 스킬/Cursor 룰/중립 프롬프트로 생성; `task-prompts.js` 본문 재사용 + 도메인 맵 주입, `--skills`/`--agent claude|cursor` opt-in, 미덮어씀, recognize-don't-run(1.15, Gate 21).
+- `src/commands.js#symbol:impactCommand` — `impact` 명령(read-only, Gate 23): `changedFiles`로 변경집합을 구하고 `scanReverseImpact`로 diff-앵커 reverse-impact를 낸다. 기본 warning, `--strict`는 공유 `exitCodeFor`의 warning-in-strict 규칙으로 CI 실패, 빈 변경집합은 no-op(1.17).
+- `src/commands/scans.js#symbol:scanReverseImpact` — 변경집합에 든 소스를 참조하나 문서 자신은 안 바뀐 `verified` 문서를 `impact.source_changed`로 flag(file-level; date-앵커 `scanEvidenceDrift`의 pre-merge 보완; 같은 diff에서 바뀐 문서는 미flag)(1.17).
+- `src/commands/scans.js#symbol:verifiedSourceAnchors` — `verified` 문서의 로컬 소스 앵커 추출기(순수). date-앵커 drift와 diff-앵커 impact가 공유하는 단일 추출기(외부 `http(s)`/`repo:` 참조 제외)(1.17).
+- `src/git.js#symbol:changedFiles` — 변경집합 프리미티브(working tree, 또는 `--since <ref>`의 `git diff --name-only`); `impact`와 `validate --changed`가 공유(1.17).
 
 ## Open Questions
 
@@ -145,3 +149,4 @@ contains_sensitive_info: false
 - 2026-07-20에 1.14.4 도메인 감지 수정을 반영했다: `src/commands/domains.js`의 순회 제외를 강화했다 — `pyvenv.cfg` 마커를 가진 디렉터리(=virtualenv)는 `scanForDomainParents`에서 통째 스킵하고, `site-packages`/`dist-packages`와 버전형 `venv*`/`env<N>` 이름을 제외 목록/`isSkippedTraversalDir`에 추가했다. `venv3.10/Lib/site-packages/`의 서드파티(passlib `handlers/`·boto3 `resources/`)가 파일-도메인으로 오탐되던 버그를 교정(venv 없는 레포는 byte-identical). 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-20에 1.15.0 스킬 생성(Gate 21, accepted)을 반영했다: 신규 `src/commands/skills.js`(위키-그라운디드 자동화 프롬프트를 Claude 스킬·Cursor 룰·중립 프롬프트로 생성, 도메인 맵 주입, recognize-don't-run)를 Module Layout·Evidence에 추가하고, `src/cli.js`의 `--skills` 플래그와 `initDryRun`/`initWrite`의 skill plan/write 배선(어댑터 쓰기와 나란히)을 기술했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-21에 1.16.0 English-first 출력 전환 + rename을 반영했다: `src/cli.js`의 `helpText()`를 EN-first로 재정렬하고, `src/commands.js`의 `buildHandoff`에서 에이전트에 붙여넣는 handoff 프롬프트를 **완전 영어**로, 주변 message/Next Step(`handoffNextStep`)·quickstart `About`·brownfield/gitignore/`SKILL_RELOAD_NOTE` 안내를 EN-first 이중언어로 재정렬했다. `handoffLabel`(`또는`→`or`)·`handoffEntrypoints`(`와/를`→`and`)도 영어화. 프레젠테이션 변경으로 CLI 명령·`--format json`·동결 프로그래매틱 API·zero-dep은 불변. 함께 패키지명 `@dowonk-7949/llm-wiki-standard`→`llm-wiki-governance` 개명·저장소 rename도 반영했다. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
+- 2026-07-21에 1.17.0 reverse-impact(Gate 23, accepted)를 반영했다: `src/commands/scans.js`에 diff-앵커 `scanReverseImpact`와, date-앵커 drift와 공유하는 순수 앵커 추출기 `verifiedSourceAnchors`(driftTargets는 이제 여기에 baseline을 얹는 델리게이트 — 동작 보존)를 추가하고, `src/commands.js`에 read-only `impactCommand`(`changedFiles` 변경집합 + `scanReverseImpact`; `--strict` CI 실패; 빈 집합 no-op)를 추가했다. `src/cli.js`/`src/index.js`에 `impact` 명령을 등록하고 `impact.source_changed`(toggleable, 기본 warning)·`impact.unavailable`(error)를 finding 레지스트리에 등록했다. Module Layout·Evidence를 갱신했다. additive·zero-dep(기존 git 프리미티브 재사용)·1.0.0 계약 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.

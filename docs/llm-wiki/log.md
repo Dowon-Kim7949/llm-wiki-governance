@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - feat: Gate 23 reverse-impact (`impact` 명령, 1.17.0) 구현
+
+- status: needs_review
+- actor: Claude Code (사용자 승인·수락 위임; 게이트 수락자 Dowon-Kim)
+- scope: src + tests + docs
+- changed:
+  - GATE_REVIEW.md: Gate 23 `proposed_for_next`→`accepted_for_1.17.0`(open questions 해소: 독립 `impact` 명령·`impact.source_changed`·`--strict`는 impact만·빈 집합 no-op).
+  - src/commands/scans.js: 순수 `verifiedSourceAnchors` 추출(driftTargets가 델리게이트 — 동작 보존) + diff-앵커 `scanReverseImpact`.
+  - src/commands.js: read-only `impactCommand`(`changedFiles` 변경집합 + `scanReverseImpact`).
+  - src/commands/findings.js: `impact.source_changed`(warning, toggleable)·`impact.unavailable`(error) 레지스트리 등록.
+  - src/cli.js: `impact` COMMANDS/옵션 규칙(`--since`/`--strict`)/usage/COMMAND_HELP. src/index.js: 동결 commands 맵 + 개별 export.
+  - tests/verification.test.js: impact 7종(working-tree flag/미변경 제외/같은 diff 미flag/`--since`/no-op/config escalation/no-git unavailable/parseArgs) + 명령셋 기대값 갱신.
+  - docs/llm-wiki: PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES 동기화(→needs_review).
+- summary:
+  - date-앵커 `evidence.stale`(drift)이 놓치는 "코드·문서 별도 PR" 케이스를 잡는 **diff-앵커 pre-merge** 체크. 변경집합(working tree 또는 `--since <ref>`)에 든 소스를 참조하나 문서 자신은 안 바뀐 `verified` 문서를 flag. 기존 `changedFiles`(`validate --changed` 재사용)·`verifiedSourceAnchors`(drift와 공유) 재사용이라 대부분 배선.
+  - **229→239 tests(+10) pass, validate 0 findings.** 이 커밋 자체에 `impact`를 돌려 변경 소스를 참조하는 verified 문서 9개가 flag됐고, 그중 실질 3개(PUBLIC_API/ARCHITECTURE/DOMAIN_FEATURES)를 동기화했다(나머지는 broad `src/cli.js` 앵커의 file-level 오버플래그로 판단, 내용 불변).
+- caveats:
+  - v1은 file-level(line-level·per-doc `reviewed_sha`·write/downgrade·MCP 노출은 out of scope). read-only·additive·zero-dep·1.0.0 계약 불변. 에이전트 편집이라 needs_review — 사람 검토 후 verified. 배포는 별도 승인 후.
+
 ## 2026-07-21 - gate: Gate 23 (변경소스 → 위키 reverse-impact) 초안
 
 - status: needs_review

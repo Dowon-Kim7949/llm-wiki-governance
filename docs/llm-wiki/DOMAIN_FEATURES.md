@@ -2,8 +2,8 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs_review
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-governance
 last_updated: 2026-07-21
@@ -77,6 +77,7 @@ contains_sensitive_info: false
 - **mobile profile(1.12)** — 부가적 `mobile` 프로젝트 유형. `detectMobile`이 Android(`build.gradle`(.kts)/`settings.gradle`의 Android Gradle 플러그인·AndroidX, 또는 중첩 `AndroidManifest.xml`)·Flutter(`pubspec.yaml`의 flutter 섹션/`sdk: flutter`)·Apple/iOS(Podfile·`*.xcodeproj`/`*.xcworkspace`·Apple-플랫폼 `Package.swift`)·React Native(`package.json`의 `react-native` 의존성)를 감지하고, `decideType`에서 최우선 순위를 가진다. 이로써 지금까지 `jvm`+`library`로 잘못 분류되던 Android `build.gradle`이 교정된다. `init`이 mobile 문서셋(`profiles/mobile.md`·`PLATFORM_MATRIX.md`·`SCREENS.md`·`BUILD_RELEASE.md`)을 생성한다. **빌드 도구(Gradle/Xcode/CocoaPods) 미호출·의존성 그래프 미파싱**(recognize-don't-build, zero-dep), bounded·exclusion-guarded 스캔(Gate 10 규율). additive: `--type`에 `mobile` 추가, 신호 없는 레포는 byte-identical(plain JVM/Dart 미재분류). 근거: `src/detector.js#symbol:detectMobile`, 범위는 `GATE_REVIEW.md`(Gate 17, accepted).
 - **infra/DevOps profile(1.13)** — 부가적 `infra` 프로젝트 유형. `detectInfra`가 Docker(`Dockerfile`)·Compose(`docker-compose.y*ml`/`compose.y*ml`)·Kubernetes(`apiVersion`+`kind` YAML, top-level/k8s·kubernetes·manifests 등)·Helm(`Chart.yaml`)·Terraform(`*.tf`)를 감지한다. **`infra`는 fallback** — `decideType`에서 앱 신호(frontend/backend/library/mobile)가 없을 때만 선택되므로, `Dockerfile`을 가진 백엔드 레포는 여전히 `backend`로 남고 기존 출력은 byte-identical(infra 신호는 `infra`로 확정될 때만 표면화). `init`이 infra 문서셋(`profiles/infra.md`·`DEPLOYMENT.md`·`RUNBOOK.md`·`SERVICE_TOPOLOGY.md`)을 생성한다. **클러스터/레지스트리 접근 없음·배포 없음**(recognize-don't-deploy, zero-dep), bounded 스캔. 근거: `src/detector.js#symbol:detectInfra`, 범위는 `GATE_REVIEW.md`(Gate 18, accepted).
 - **stdlib-server 감지(1.14)** — 프레임워크 없이 표준 라이브러리만 쓰는 서버를 소스에서 감지해 role을 교정한다: Go `net/http`(비-test `.go`가 `net/http` import + `ListenAndServe`/`http.Serve` 호출)와 Python stdlib HTTP(`.py`가 `http.server`/`socketserver` import + `serve_forever`/`HTTPServer(...)`)를 만나면 해당 생태계를 `library`→`backend`로 승격한다. **단방향·보수적** — 강한 import+시작-호출 쌍에만 반응하고, `http.client`만 쓰는 라이브러리는 `library`로 남으며, 기존 `backend`를 강등하지 않는다. bounded·exclusion-guarded 소스 스캔(vendored/test/example 제외, maxFiles 캡), zero-dep. 근거: `src/detector.js#symbol:detectGoStdlibServer`, 범위는 `GATE_REVIEW.md`(Gate 19, accepted).
+- **reverse-impact 감지(1.17)** — read-only `impact` 명령이 현재 diff(working tree, 또는 `--since <ref>` PR/CI 기준)에 든 소스를 참조하는데 **문서 자신은 같은 diff에서 안 바뀐** `verified` 문서를 `impact.source_changed`로 flag한다. date 기준 `evidence.stale`(drift)이 놓치는 "코드와 문서가 **다른 PR**에서 바뀌는" 경우를 잡는 **diff 기준·pre-merge 보완**이다(대체 아님). 기본 warning, `--strict`로 CI 실패(governed 코드를 바꾸고 그 verified 문서를 안 고친 PR을 fail)—또는 config `rules`로 `impact.source_changed`를 조정. 변경집합은 `changedFiles`(=`validate --changed`가 쓰는 프리미티브), 역색인은 date drift와 공유하는 `verifiedSourceAnchors`에서 파생하므로 대부분 **배선**이다. read-only(수정은 사람 재검토 또는 `drift --downgrade`), file-level(v1), 빈 변경집합 no-op, zero-dep, git 없으면 `impact.unavailable`. 근거: `src/commands.js#symbol:impactCommand`·`src/commands/scans.js#symbol:scanReverseImpact`, 범위는 `GATE_REVIEW.md`(Gate 23, accepted).
 
 ## Evidence
 
@@ -105,6 +106,7 @@ contains_sensitive_info: false
 - `src/encoding.js#symbol:readTextAuto` — detector 매니페스트/소스 읽기용 BOM 인식 리더(UTF-16/UTF-8-BOM 디코드, BOM 없는 파일 byte-identical); 위키 문서 `readUtf8`는 불변(1.14.1).
 - `src/commands.js#symbol:buildHandoff` — handoff 진입점을 명시적 선택 에이전트의 어댑터 파일로만 한정(1.14.1).
 - `src/commands/skills.js#symbol:writeSkillArtifacts` — feature/fix/docs-sync 위키-그라운디드 자동화 프롬프트를 Claude 스킬/Cursor 룰/중립 프롬프트로 생성(도메인 맵 주입, opt-in, recognize-don't-run, 미덮어씀)(1.15).
+- `src/commands.js#symbol:impactCommand`·`src/commands/scans.js#symbol:scanReverseImpact` — diff 기준 reverse-impact: 변경집합(`changedFiles`)에 든 소스를 참조하나 문서 자신은 안 바뀐 `verified` 문서를 `impact.source_changed`로 flag(read-only; date drift와 앵커 추출기 `verifiedSourceAnchors` 공유; 기본 warning, `--strict` CI 실패)(1.17, Gate 23).
 
 ## Open Questions
 
@@ -135,3 +137,4 @@ contains_sensitive_info: false
 - 2026-07-20에 1.15.0 스킬 생성(Gate 21, accepted)을 반영했다: `init`/`quickstart`이 feature/fix/docs-sync 위키-그라운디드 자동화 프롬프트를 Claude 스킬·Cursor 룰·중립 프롬프트로 생성하고 도메인 맵을 주입하는 \"스킬 생성\" 기능과 Evidence(`writeSkillArtifacts`)를 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-21에 `/llm-wiki-feature` 스킬(에이전트 실행)로 "스킬 생성 후 재시작 요건 안내" 기능 작업을 하며 이 "스킬 생성" 설명을 갱신했다(재시작 요건 추가). 에이전트가 편집한 직후엔 `status`를 `needs_review`로 강등했으나(에이전트는 verified 승격 불가), 이후 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-21)를 거쳐 `verified`로 재승인했다 — 이 재검토·재승인은 1.15.1 릴리스의 일부다.
 - 2026-07-21에 1.16.0 English-first 출력 전환 + rename+reposition을 반영했다: "에이전트 인수인계" 기능의 handoff 프롬프트를 **완전 영어**로, help/About/Next Step 안내를 EN-first 이중언어로 재정렬했다(전역 사용성). 함께 패키지명을 `@dowonk-7949/llm-wiki-standard`→`llm-wiki-governance`(unscoped)로 개명하고 포지셔닝을 거버넌스(OKF-compatible)로 옮겼다. 프레젠테이션·additive라 기능 목록·계약·zero-dep은 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
+- 2026-07-21에 1.17.0 reverse-impact(Gate 23, accepted)를 반영했다: diff 기준 `impact` 명령(참조 소스가 현재 diff에서 바뀌었는데 문서 자신은 안 바뀐 `verified` 문서를 flag; date 기준 `evidence.stale`의 pre-merge 보완)을 기능·Evidence로 추가했다. 기존 `changedFiles`·`verifiedSourceAnchors`(date drift와 공유) 재사용이라 대부분 배선, read-only·additive·zero-dep·1.0.0 계약 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.

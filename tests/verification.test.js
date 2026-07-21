@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, explainCommand, fixCommand, graphCommand, handoffCommand, impactCommand, initCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard, renderOutputFile, printResult } from "../src/report.js";
 import * as api from "../src/index.js";
@@ -1793,6 +1793,112 @@ test("drift on an uninitialized wiki passes with nothing to do", async () => {
   assert.equal(result.driftFindings.length, 0);
 });
 
+// ---- impact command (Gate 23 reverse-impact) ---------------------------
+const IMPACT_BASE = { type: "unknown", profiles: [], agents: [], strict: false, format: "text" };
+const onImpact = (rel) => (finding) => finding.rule === "impact.source_changed" && finding.path === rel;
+
+async function makeImpactRepo(prefix) {
+  const cwd = await makeProject(prefix);
+  const git = gitAtDate(cwd, "2026-07-10T10:00:00");
+  await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "impact" }, null, 2)}\n`, { encoding: "utf8" });
+  await writeFile(path.join(cwd, "a.ts"), "one\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "b.ts"), "one\n", { encoding: "utf8" });
+  await writeVerifiedSourceDoc(cwd, "api.md", "a.ts", "2026-07-11");
+  await writeVerifiedSourceDoc(cwd, "other.md", "b.ts", "2026-07-11");
+  git(["init"]);
+  git(["add", "-A"]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "init"]);
+  return { cwd, git };
+}
+
+test("impact flags a verified doc whose source changed in the working tree, not one whose source is unchanged", async (t) => {
+  let hasGit = true;
+  try { execFileSync("git", ["--version"], { stdio: "ignore" }); } catch { hasGit = false; }
+  if (!hasGit) { t.skip("git not available"); return; }
+
+  const { cwd } = await makeImpactRepo("impact-wt-");
+  await writeFile(path.join(cwd, "a.ts"), "one\ntwo\n", { encoding: "utf8" }); // uncommitted change
+
+  const result = await impactCommand({ ...IMPACT_BASE, cwd });
+  assert.equal(result.command, "impact");
+  assert.equal(result.result, "warning");
+  assert.ok(result.findings.some(onImpact("docs/llm-wiki/api.md")), "api.md flagged (a.ts changed)");
+  assert.equal(result.findings.some(onImpact("docs/llm-wiki/other.md")), false, "other.md not flagged (b.ts unchanged)");
+});
+
+test("impact does not flag a verified doc that changed in the same diff", async (t) => {
+  let hasGit = true;
+  try { execFileSync("git", ["--version"], { stdio: "ignore" }); } catch { hasGit = false; }
+  if (!hasGit) { t.skip("git not available"); return; }
+
+  const { cwd } = await makeImpactRepo("impact-samediff-");
+  await writeFile(path.join(cwd, "a.ts"), "one\ntwo\n", { encoding: "utf8" });
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "api.md"), "\nedited in the same diff\n", { encoding: "utf8", flag: "a" });
+
+  const result = await impactCommand({ ...IMPACT_BASE, cwd });
+  assert.equal(result.findings.some(onImpact("docs/llm-wiki/api.md")), false, "api.md not flagged: it changed in the same diff");
+});
+
+test("impact --since <ref> uses a PR/CI baseline", async (t) => {
+  let hasGit = true;
+  try { execFileSync("git", ["--version"], { stdio: "ignore" }); } catch { hasGit = false; }
+  if (!hasGit) { t.skip("git not available"); return; }
+
+  const { cwd, git } = await makeImpactRepo("impact-since-");
+  await writeFile(path.join(cwd, "a.ts"), "one\ntwo\n", { encoding: "utf8" });
+  git(["add", "a.ts"]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "edit a"]);
+
+  const result = await impactCommand({ ...IMPACT_BASE, cwd, since: "HEAD~1" });
+  assert.ok(result.changedFiles >= 1, "diff since HEAD~1 has at least one changed file");
+  assert.ok(result.findings.some(onImpact("docs/llm-wiki/api.md")), "api.md flagged for a.ts changed since HEAD~1");
+});
+
+test("impact is a no-op pass on a clean tree", async (t) => {
+  let hasGit = true;
+  try { execFileSync("git", ["--version"], { stdio: "ignore" }); } catch { hasGit = false; }
+  if (!hasGit) { t.skip("git not available"); return; }
+
+  const { cwd } = await makeImpactRepo("impact-clean-");
+  const result = await impactCommand({ ...IMPACT_BASE, cwd });
+  assert.equal(result.result, "pass");
+  assert.equal(result.findings.length, 0);
+  assert.equal(result.changedFiles, 0);
+});
+
+test("impact.source_changed can be escalated to error via config rules", async (t) => {
+  let hasGit = true;
+  try { execFileSync("git", ["--version"], { stdio: "ignore" }); } catch { hasGit = false; }
+  if (!hasGit) { t.skip("git not available"); return; }
+
+  const { cwd } = await makeImpactRepo("impact-strict-");
+  await writeFile(path.join(cwd, "a.ts"), "one\ntwo\n", { encoding: "utf8" });
+
+  const result = await impactCommand({ ...IMPACT_BASE, cwd, rules: { "impact.source_changed": "error" } });
+  assert.equal(result.result, "fail");
+  assert.ok(result.findings.some((finding) => finding.rule === "impact.source_changed" && finding.severity === "error"));
+});
+
+test("impact reports impact.unavailable when not in a git repository", async () => {
+  const cwd = await makeProject("impact-nogit-");
+  await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "impact" }, null, 2)}\n`, { encoding: "utf8" });
+  await writeVerifiedSourceDoc(cwd, "api.md", "a.ts", "2026-07-11");
+
+  const result = await impactCommand({ ...IMPACT_BASE, cwd });
+  assert.equal(result.result, "fail");
+  assert.ok(result.findings.some((finding) => finding.rule === "impact.unavailable" && finding.severity === "error"));
+});
+
+test("parseArgs accepts impact options and rejects unsupported ones", () => {
+  const ok = parseArgs(["impact", "--since", "main", "--strict"]);
+  assert.equal(ok.command, "impact");
+  assert.equal(ok.errors.length, 0);
+  assert.equal(ok.options.since, "main");
+  assert.equal(ok.options.strict, true);
+  const bad = parseArgs(["impact", "--downgrade"]);
+  assert.ok(bad.errors.some((error) => error.includes("--downgrade")));
+});
+
 test("parseArgs supports drift downgrade and rejects dry-run+downgrade", () => {
   const ok = parseArgs(["drift", "--downgrade"]);
   assert.equal(ok.command, "drift");
@@ -2706,7 +2812,7 @@ test("programmatic API exposes a frozen command map mirroring the CLI surface", 
   const expected = [
     "doctor", "validate", "validate-frontmatter", "monorepo", "status", "next", "explain",
     "audit", "quickstart", "handoff", "prompt", "init", "migrate", "fix",
-    "drift", "graph", "stats", "release-notes"
+    "drift", "impact", "graph", "stats", "release-notes"
   ];
 
   assert.ok(Object.isFrozen(api.commands));

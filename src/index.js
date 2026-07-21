@@ -24,6 +24,7 @@ import {
   fixCommand,
   graphCommand,
   handoffCommand,
+  impactCommand,
   initCommand,
   migrateCommand,
   monorepoCommand,
@@ -117,6 +118,7 @@ export const commands = Object.freeze({
   migrate: migrateCommand,
   fix: fixCommand,
   drift: driftCommand,
+  impact: impactCommand,
   graph: graphCommand,
   stats: statsCommand,
   "release-notes": releaseNotesCommand
@@ -174,6 +176,7 @@ export {
   fixCommand,
   graphCommand,
   handoffCommand,
+  impactCommand,
   initCommand,
   migrateCommand,
   monorepoCommand,

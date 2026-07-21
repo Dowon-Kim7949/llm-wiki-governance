@@ -1,7 +1,7 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { audit, doctor, driftCommand, explainCommand, fixCommand, graphCommand, handoffCommand, initCommand, migrateCommand, monorepoCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, doctor, driftCommand, explainCommand, fixCommand, graphCommand, handoffCommand, impactCommand, initCommand, migrateCommand, monorepoCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { startMcpServer } from "./mcp/server.js";
@@ -22,6 +22,7 @@ const COMMANDS = new Map([
   ["migrate", migrateCommand],
   ["fix", fixCommand],
   ["drift", driftCommand],
+  ["impact", impactCommand],
   ["graph", graphCommand],
   ["stats", statsCommand],
   ["release-notes", releaseNotesCommand]
@@ -300,6 +301,7 @@ const COMMAND_OPTION_RULES = {
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
   drift: new Set(["cwd", "dry-run", "downgrade", "format", "out"]),
+  impact: new Set(["cwd", "since", "strict", "format", "out"]),
   graph: new Set(["cwd", "format", "out"]),
   stats: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
   "release-notes": new Set(["cwd", "version", "since", "body-only", "format", "out"]),
@@ -428,6 +430,7 @@ Usage:
   llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki impact [--since <git-ref>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki graph [--format text|json|mermaid|dot] [--cwd <path>] [--out <path>]
   llm-wiki stats [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--body-only] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
@@ -640,6 +643,27 @@ Scope (see GATE_REVIEW.md "Drift Downgrade Scope Decision", Gate 9):
   - Never promotes to verified, never edits body/reviewed_at/source_files/evidence
     or any other field, and never writes outside docs/llm-wiki. Mojibake and
     sensitive-looking results are skipped. Idempotent.
+`,
+  impact: `llm-wiki impact
+
+Usage:
+  llm-wiki impact [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki impact --since <git-ref> [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Reverse-impact (read-only): flags verified documents whose referenced source
+  (source_files/evidence) changed in the current diff while the document itself
+  did NOT — the pre-merge, diff-anchored complement to the date-anchored
+  evidence.stale (drift). Without --since it uses the working tree (uncommitted +
+  untracked); with --since <ref> it diffs <ref>..working-tree (a PR/CI baseline).
+  An empty change set is a no-op. Run it from the repo root.
+
+Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
+  - Default warning; --strict makes impact findings fail (exit 1) so a PR that
+    changes governed code without updating its verified doc fails CI.
+  - Read-only: never writes. Remediation is human re-review or drift --downgrade.
+  - Toggle/override per project via llm-wiki.config.json rules
+    ("impact.source_changed": "off"|"error"|...). File-level in v1.
 `,
   graph: `llm-wiki graph
 
