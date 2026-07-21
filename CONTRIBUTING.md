@@ -2,8 +2,9 @@
 
 # Contributing to llm-wiki-governance
 
-Thanks for your interest in improving `llm-wiki-governance` — a
-stable, cross-platform CLI for the common LLM-WIKI standard. This guide covers
+Thanks for your interest in improving `llm-wiki-governance` — a stable,
+zero-dependency CLI that governs AI-written project docs (verify, catch drift,
+keep them code-grounded; OKF-compatible). This guide covers
 how to set up, make changes, and open a pull request.
 
 By participating, you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.md).

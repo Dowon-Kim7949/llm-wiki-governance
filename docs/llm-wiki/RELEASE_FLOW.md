@@ -5,7 +5,7 @@ tags:
   - verified
 status: verified
 doc_type: release_flow
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
 last_edited_by: Claude Code

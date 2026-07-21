@@ -1,6 +1,6 @@
 > Language: [English](./README.md) | [한국어](./README.ko.md)
 
-# LLM-WIKI Standard
+# LLM-WIKI Governance
 
 **Governance for AI-written project docs.** `llm-wiki-governance` is a zero-dependency CLI that keeps an AI coding agent's project knowledge (`docs/llm-wiki/`) **trustworthy and current**: it ties every claim to real code, flags docs when that code moves on, keeps AI-written content behind human review, and enforces all of it in CI. Works on any stack, with any agent, and is **OKF-compatible**.
 

@@ -4,6 +4,28 @@
   "private": false,
   "type": "module",
   "description": "Governance for AI-written project docs: verify, catch drift, keep them code-grounded, enforce in CI. OKF-compatible, zero-dependency.",
+  "keywords": [
+    "llm",
+    "ai",
+    "documentation",
+    "docs-as-code",
+    "knowledge-base",
+    "wiki",
+    "governance",
+    "drift-detection",
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "cursor",
+    "codex",
+    "okf",
+    "open-knowledge-format",
+    "ci",
+    "cli",
+    "zero-dependency",
+    "frontmatter"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git"

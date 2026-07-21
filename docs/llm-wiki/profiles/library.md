@@ -5,10 +5,10 @@ tags:
   - verified
 status: verified
 doc_type: profile
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
-last_edited_by: Codex
+last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
 reviewed_at: 2026-07-21
 wiki_block_version: v1

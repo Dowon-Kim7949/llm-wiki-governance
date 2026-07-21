@@ -1,6 +1,6 @@
 export const FRONTMATTER_SCHEMA = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://llm-wiki-standard.local/schemas/frontmatter.schema.json",
+  $id: "https://llm-wiki-governance.local/schemas/frontmatter.schema.json",
   title: "LLM-WIKI Frontmatter",
   type: "object",
   additionalProperties: true,

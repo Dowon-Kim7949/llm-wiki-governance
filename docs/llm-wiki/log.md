@@ -24,6 +24,34 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - review: 1.16.0 rename+flip 문서 13개 사람 검토 → verified 재승인
+
+- status: verified
+- actor: Dowon-Kim (사람 검토·승인) · 편집 Claude Code
+- scope: docs (frontmatter status)
+- changed:
+  - needs_review→verified 재승인(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-21): index, project-profile, PUBLIC_API, GLOSSARY, domains/00_overview, docs/llm-wiki/README, ARCHITECTURE_CONVENTIONS, DOMAIN_FEATURES, EXAMPLES, VERSIONING, VISIBILITY, RELEASE_FLOW, profiles/library (13개). EXAMPLES·VISIBILITY는 reviewed_at도 오늘로 refresh.
+- summary:
+  - 1.16.0 개명 + English-first flip + docs-sync로 needs_review로 강등됐던 13개 문서를 사람이 diff 요약 검토 후 전부 승인 → verified 재승인. 개명 이후 위키 전체가 `llm-wiki-governance`로 정합·verified 상태가 됐다.
+- caveats:
+  - `log.md`·`releases/v1.16.0.md`는 관례상 `needs_review` 유지(승격 대상 아님).
+
+## 2026-07-21 - docs-sync: /llm-wiki-docs-sync (rename 완결 — 잔여 verified 4문서 project: 라벨)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim이 `/llm-wiki-docs-sync` 스킬로 실행 — 1.16.0 dogfood)
+- scope: docs (frontmatter only)
+- changed:
+  - docs/llm-wiki/VERSIONING.md · VISIBILITY.md · RELEASE_FLOW.md · profiles/library.md: `project: llm-wiki-standard`→`llm-wiki-governance` + `status: verified`→`needs_review`(LLM 편집 규율). 본문 불변(메타데이터 라벨만; VISIBILITY는 last_updated도 07-16→07-21, library는 last_edited_by Codex→Claude Code).
+- summary:
+  - 1.16.0 개명 후 잔여 정합성 점검. 도구 자신의 `drift`(0 drifted) + `validate`(0 findings)로 의미적·구조적 staleness 없음 확인. 남은 불일치는 위 4개 verified 문서의 `project:` frontmatter 라벨뿐(내부 메타·validate 비검사)이라 새 이름으로 통일 → 위키 전체가 `llm-wiki-governance`로 코히런트해짐.
+  - 의도적 유지(역사/비대상): releases/v0.1.7·v0.1.8(과거 릴리스 기록, verified), templates/*(`project: project` 플레이스홀더), releases/** 및 log 본문(옛 이름은 당시 사실이므로 보존).
+- evidence:
+  - package.json (name: llm-wiki-governance)
+  - src/commands.js#symbol:initWrite (project frontmatter = 스코프 뗀 packageJson.name → 신규 문서는 자동으로 llm-wiki-governance)
+- caveats:
+  - 4개 문서는 내용 변화 없는 라벨 갱신이라 사람 재검토는 빠르다. 전체 재검토 대상: 1.16.0 강등 9 + 이번 4 = 13문서(+ 상시 needs_review인 release notes).
+
 ## 2026-07-21 - release: prepare 1.16.0 (rename @dowonk-7949/llm-wiki-standard → llm-wiki-governance + governance reposition + English-first output)
 
 - status: needs_review

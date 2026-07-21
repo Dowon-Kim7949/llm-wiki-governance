@@ -5,12 +5,12 @@ tags:
   - verified
 status: verified
 doc_type: policy
-project: llm-wiki-standard
-last_updated: 2026-07-16
+project: llm-wiki-governance
+last_updated: 2026-07-21
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-16
+reviewed_at: 2026-07-21
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js

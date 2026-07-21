@@ -1,6 +1,6 @@
 > Language: [English](./README.md) | [한국어](./README.ko.md)
 
-# LLM-WIKI Standard
+# LLM-WIKI Governance
 
 **AI가 쓴 프로젝트 문서를 위한 거버넌스.** `llm-wiki-governance`는 AI 코딩 에이전트의 프로젝트 지식(`docs/llm-wiki/`)을 **신뢰 가능·최신**으로 유지하는 **무의존성 CLI**입니다: 모든 설명을 실제 코드에 묶고, 코드가 바뀌면 해당 문서를 표시하고, AI가 쓴 내용은 사람 검토 뒤에만 확정하며, 이 모든 것을 CI로 강제합니다. 아무 스택·아무 에이전트에서 동작하고 **OKF 호환**입니다.
 

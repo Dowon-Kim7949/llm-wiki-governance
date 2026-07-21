@@ -3,7 +3,7 @@ title: Architecture Conventions
 tags:
   - llm-wiki
   - verified
-status: needs_review
+status: verified
 doc_type: architecture_conventions
 project: llm-wiki-governance
 last_updated: 2026-07-21

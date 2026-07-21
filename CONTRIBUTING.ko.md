@@ -2,8 +2,8 @@
 
 # llm-wiki-governance 기여 가이드
 
-`llm-wiki-governance`(크로스플랫폼 공통 LLM-WIKI 표준을 위한 안정판
-CLI) 개선에 관심 가져주셔서 감사합니다. 이 문서는 개발 환경 구성, 변경 방법,
+`llm-wiki-governance`(AI가 쓴 프로젝트 문서를 검증·드리프트 감지·코드 그라운딩하는
+무의존성 거버넌스 CLI, OKF-compatible) 개선에 관심 가져주셔서 감사합니다. 이 문서는 개발 환경 구성, 변경 방법,
 PR 여는 방법을 안내합니다.
 
 기여에 참여하면 [행동 강령](./CODE_OF_CONDUCT.md)을 준수하는 데 동의하는 것으로
