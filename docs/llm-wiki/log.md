@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - release: prepare 1.17.0 (Gate 23 reverse-impact)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 추천작업 진행")
+- scope: release, docs
+- changed:
+  - package.json (1.16.1→1.17.0), tests/verification.test.js(버전 assertion 1.16.1→1.17.0)
+  - CHANGELOG.md / CHANGELOG.ko.md (1.17.0 항목: `impact` 명령 Added + Internal `verifiedSourceAnchors`)
+  - docs/llm-wiki/releases/v1.17.0.md (신규 이중언어 릴리스 노트)
+  - ROADMAP.md / ROADMAP.ko.md (Gate 23 `drafted`→`accepted for 1.17.0` + "**Status: shipped in 1.17.0**" 문단)
+- summary:
+  - 직전 feat 커밋(07d4383)이 버전 미범프 순수 기능 커밋이라, 저장소 리듬(feat → release-prep → 배포)의 release-prep 단계를 채웠다. Gate 23 reverse-impact(`impact` 명령)를 1.17.0으로 준비. 코드 동작 불변 — feat 커밋에서 이미 구현/테스트됨.
+  - **239 tests pass, validate result:pass 0 findings, validate-frontmatter --strict pass.** `impact`(clean tree=no-op) / `impact --since HEAD~1`(변경 소스 참조 verified 문서 flag, result:warning) CLI 스모크 확인.
+- evidence:
+  - package.json
+  - CHANGELOG.md
+- caveats:
+  - 실제 배포(태그 `v1.17.0` push → CI Trusted Publishing)는 사용자의 명시적 "배포" 지시 대기. main 커밋/푸시는 준비 단계.
+  - feat 커밋에서 doc-sync로 needs_review로 강등된 PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES는 배포 후 사람 재검토로 verified 재승인 필요.
+
 ## 2026-07-21 - feat: Gate 23 reverse-impact (`impact` 명령, 1.17.0) 구현
 
 - status: needs_review

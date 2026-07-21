@@ -5,6 +5,37 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.17.0 — 2026-07-21
+
+reverse-impact 게이트(Gate 23). 날짜 기반 drift가 놓치는 경우 — 코드와 그 `verified` 문서가
+**다른 PR**에서 바뀌는 경우 — 를 잡는 읽기 전용 `impact` 명령을 추가한다. 부가적·opt-in이라
+`llm-wiki` 명령 표면은 하위호환이며 `--format json`·프로그래매틱 API·frontmatter 계약 불변,
+런타임 의존성 추가 없음.
+
+### Added
+
+- **`llm-wiki impact` — diff 기준 reverse-impact 체크(읽기 전용).** 모든 `verified` 문서의 로컬
+  `source_files`/`evidence`에서 역색인을 만들어, 참조한 소스가 현재 변경집합에 들어 있는데
+  **문서 자신은 같은 diff에서 바뀌지 않은** `verified` 문서를 flag한다. 날짜 기준 `evidence.stale`
+  (drift)의 **pre-merge·diff 기준 보완**으로, "이 PR이 governed 코드를 바꾸면서 그 문서를 안 고쳤다"는
+  날짜 baseline이 답할 수 없는 질문에 답한다.
+  - 기준은 기본 **working tree**, 또는 PR/CI 베이스용 `--since <ref>`(`git diff --name-only
+    <ref>`) — `validate --changed`가 쓰는 `changedFiles` 프리미티브 재사용.
+  - 신규 finding `impact.source_changed`(신규 **toggleable** `impact` 카테고리, 기본 **warning**),
+    git이 없으면 `impact.unavailable`(error).
+  - `--strict`는 impact findings를 실패 error로 승격해, governed 코드를 바꾸면서 `verified` 문서를
+    안 고친 PR을 CI에서 fail시킨다. severity는 config `rules` 맵으로도 조정 가능. **빈 변경집합은
+    no-op**(result `pass`).
+  - 읽기 전용: 수정은 사람 몫(재검토, 또는 `drift --downgrade`). v1은 file-level(line-level /
+    문서별 `reviewed_sha` / write-back / MCP 노출은 범위 밖). 외부 `http(s)://`·`repo:<name>/<path>`
+    참조는 무시.
+
+### Internal
+
+- `scans.js`가 순수·공유 앵커 추출기 `verifiedSourceAnchors`를 분리해, 날짜 기준 drift
+  (`driftTargets`는 이제 여기에 델리게이트 — 동작 보존)와 신규 diff 기준 `scanReverseImpact`가
+  함께 쓴다. 기존 git 프리미티브 재사용이라 대부분 배선, zero-dep.
+
 ## 1.16.1 — 2026-07-21
 
 1.16.0 개명 후속 정리. 코드 동작 변화 없음 — `llm-wiki` 명령·`--format json`·프로그래매틱

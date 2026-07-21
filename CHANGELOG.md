@@ -6,6 +6,41 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.17.0 — 2026-07-21
+
+Reverse-impact gate (Gate 23). Adds a read-only `impact` command that catches the case
+date-based drift misses — code and its `verified` doc changing in **separate** PRs. It is
+additive and opt-in: the `llm-wiki` command surface stays backward-compatible, `--format
+json`, the programmatic API, and the frontmatter contract are unchanged, and no runtime
+dependency is added.
+
+### Added
+
+- **`llm-wiki impact` — diff-anchored reverse-impact check (read-only).** Builds a reverse
+  index from every `verified` doc's local `source_files`/`evidence`, then flags a `verified`
+  doc whose referenced source is in the current change set **but the doc itself is not
+  changed in the same diff**. This is the pre-merge, diff-anchored complement to the
+  date-anchored `evidence.stale` (drift): it answers "this PR touches governed code without
+  updating its doc," which a date baseline cannot.
+  - Baseline is the **working tree** by default, or `--since <ref>` for a PR/CI base
+    (`git diff --name-only <ref>`), reusing the same `changedFiles` primitive as
+    `validate --changed`.
+  - New finding `impact.source_changed` (new **toggleable** `impact` category, default
+    **warning**); `impact.unavailable` (error) when git is not available.
+  - `--strict` escalates impact findings to a failing error so CI fails a PR that changes
+    governed code without updating its `verified` doc; the severity is also adjustable via
+    the config `rules` map. An **empty change set is a no-op** (result `pass`).
+  - Read-only: remediation stays human (re-review, or `drift --downgrade`). v1 is
+    file-level (line-level / per-doc `reviewed_sha` / write-back / MCP exposure are out of
+    scope). External `http(s)://` and `repo:<name>/<path>` references are ignored.
+
+### Internal
+
+- `scans.js` factors a pure, shared anchor extractor `verifiedSourceAnchors` used by both
+  the date-anchored drift (`driftTargets` now delegates to it — behavior-preserving) and
+  the new diff-anchored `scanReverseImpact`. Reuses existing git primitives; mostly wiring,
+  zero-dep.
+
 ## 1.16.1 — 2026-07-21
 
 Follow-up polish for the 1.16.0 rename. No code behavior change: the `llm-wiki`

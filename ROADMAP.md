@@ -336,10 +336,18 @@ predicted; the headline remains the before/after-retrieval delta (re-run each la
 The biggest vision-vs-reality gap the audit found: today drift is date-based and misses the case
 that matters most — code and its doc changing in **separate** places/PRs. Build a git-diff reverse
 index from `source_files`/`evidence` so a change that touches referenced code flags the affected
-`verified` docs (commit-SHA baseline; working-tree / PR-base aware), with a strict-governance
-preset that can fail CI on drift. Makes "the wiki keeps up with the code" real and CI-enforceable.
-Additive/opt-in, zero-dep. Scope: `GATE_REVIEW.md` (Gate 23, **drafted — proposed, not yet
-accepted**; reuses the existing `changedFiles`/`driftTargets` primitives, so it is mostly wiring).
+`verified` docs (working-tree / PR-base aware), with a strict-governance preset that can fail
+CI on drift. Makes "the wiki keeps up with the code" real and CI-enforceable. Additive/opt-in,
+zero-dep. Scope: `GATE_REVIEW.md` (Gate 23, **accepted for 1.17.0**; reuses the existing
+`changedFiles`/`verifiedSourceAnchors` primitives, so it is mostly wiring).
+
+**Status: shipped in 1.17.0.** The read-only `impact` command flags a `verified` doc whose
+referenced `source_files`/`evidence` is in the current change set (working tree, or `--since
+<ref>`) while the doc itself is unchanged in the same diff — the diff-anchored, pre-merge
+complement to the date-anchored `evidence.stale`. New toggleable `impact.source_changed`
+(default warning); `--strict` escalates it to a failing error for CI; an empty change set is a
+no-op. `driftTargets` and `scanReverseImpact` now share a pure `verifiedSourceAnchors`
+extractor (behavior-preserving). Release notes: `docs/llm-wiki/releases/v1.17.0.md`.
 
 ### Gate 24 — Read-only retrieval (search/get) over MCP + API
 
