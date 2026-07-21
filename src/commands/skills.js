@@ -76,8 +76,9 @@ function domainMapSection(domains) {
   return ["Project domain map (read the relevant one(s) FIRST before editing):", ...domains.map((d) => `- ${d.title} — ${d.rel}`)].join("\n");
 }
 
-// The shared artifact body: the project domain-map snapshot followed by the reusable
-// wiki-grounded workflow from task-prompts.js.
+// The shared artifact body: the project domain-map snapshot, the reusable
+// wiki-grounded workflow from task-prompts.js, then the Gate 26 completion contract
+// (a run manifest the agent writes so `llm-wiki check-run` can verify the pipeline).
 async function artifactBody(cwd, task, detection) {
   const domains = await readDomainMap(cwd);
   const built = buildTaskPrompt({
@@ -90,7 +91,24 @@ async function artifactBody(cwd, task, detection) {
     profiles: detection?.activeProfiles ?? [],
     agents: []
   });
-  return `${domainMapSection(domains)}\n\n${forArtifact(built.prompt)}\n`;
+  return `${domainMapSection(domains)}\n\n${forArtifact(built.prompt)}\n\n${manifestContractSection(task)}\n`;
+}
+
+// Gate 26 completion contract embedded in each skill body: after the run, the agent
+// writes a small run manifest so a read-only `llm-wiki check-run` can confirm the
+// code change was reflected in the wiki (no backticks in the body — the artifact is
+// plain Markdown pasted into an agent). Records intent; never replaces human review.
+function manifestContractSection(task) {
+  return `Completion contract (Gate 26 — enables 'llm-wiki check-run'):
+After finishing, write a run manifest to .llm-wiki/runs/run-${task}-<timestamp>.json recording what this run did, so CI can confirm the wiki stayed in sync with the code. JSON shape:
+{
+  "task": "${task}",
+  "changedSource": ["<source files you edited>"],
+  "touchedDocs": ["<docs/llm-wiki/... documents you updated>"],
+  "logAppended": true,
+  "validated": { "ran": true, "result": "pass" }
+}
+Then run 'llm-wiki check-run': it flags any changed source not referenced by a touched wiki doc, a missing log entry, or an unvalidated state. This records what the run did — it never replaces human review, and never promotes a document to verified.`;
 }
 
 // task-prompts.js is written for one-shot terminal output; strip the two bits that

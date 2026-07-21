@@ -4062,6 +4062,8 @@ test("skill generation: --skills emits Claude/Cursor/neutral artifacts with an i
   assert.ok(!skill.includes(cwd) && !/[A-Za-z]:\\Users\\/.test(skill), "no absolute machine path leaked into the artifact");
   // Terminal-only bits of the reused prompt are trimmed from the committed artifact.
   assert.ok(!skill.includes("Workspace:") && !skill.includes("Target agent context"), "ephemeral Workspace/agent-context lines are trimmed");
+  // Gate 26: the completion contract (run manifest + check-run) is embedded in the skill body.
+  assert.ok(skill.includes("llm-wiki check-run") && skill.includes("changedSource") && skill.includes(".llm-wiki/runs/"), "Gate 26 completion contract embedded");
 });
 
 test("skill generation: off unless requested, and never overwrites (1.15.0)", async () => {

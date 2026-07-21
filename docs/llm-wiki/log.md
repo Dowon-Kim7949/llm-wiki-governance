@@ -24,6 +24,27 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - feat: Gate 26 agent update runner + 완성 계약 (accepted[위임, 야간 자율]+built)
+
+- status: needs_review
+- actor: Claude Code (야간 자율 루프; 게이트 수용은 Dowon-Kim 위임)
+- scope: code(src/commands.js·findings.js·cli.js·index.js·commands/skills.js) + tests + docs(GATE_REVIEW·ARCHITECTURE·DOMAIN_FEATURES·log)
+- changed:
+  - src/commands.js: read-only `checkRunCommand`(+ docSourceAnchors/checkRunValidated/finishCheckRun) — `.llm-wiki/runs/`의 최신/`--run` manifest로 스킬 실행 파이프라인 검증.
+  - src/commands/findings.js: `run.*` 5개 rule 등록(doc_gap/log_missing/unvalidated warning, manifest_missing warning, manifest_invalid error).
+  - src/cli.js·src/index.js: `check-run` 명령·`--run` 옵션·help·동결 API 맵 배선(command-set 단언 갱신).
+  - src/commands/skills.js: `artifactBody`에 Gate 26 완성 계약 섹션(run manifest 작성→check-run) 내장(backtick-free).
+  - GATE_REVIEW.md: Gate 26 accepted + Resolved/Built 절. ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES: Evidence/기능/Review Notes.
+- summary:
+  - Gate 21 스킬 워크플로를 감사 가능하게: 실행이 run manifest를 남기고 `check-run`이 changedSource↔touchedDocs 참조·로그 append·validate를 검증 → CI가 "코드 바꾸고 위키 안 고친" 실행을 잡는다. Gate 23 `impact`(diff-앵커)의 intent-앵커 보완.
+  - 수용 결정(위임): 독립 `check-run`, 에이전트가 매니페스트 작성(도구는 read-only), `.llm-wiki/runs/` git-ignore, file-level 매칭, `impact`와 분리, `--strict` CI 실패.
+  - 254 tests pass, `validate --strict` 0 findings.
+- evidence:
+  - src/commands.js#symbol:checkRunCommand
+  - src/commands/skills.js#symbol:artifactBody
+- caveats:
+  - **커밋된 dogfood 스킬 아티팩트(.claude/.cursor/.llm-wiki)는 미덮어씀 규율상 자동 갱신 안 됨** — 아침에 `init --write --skills --existing overwrite`(또는 삭제 후 재생성)로 완성 계약을 반영할 것. v1은 스킬 주도 실행만; 매니페스트는 에이전트가 작성. 릴리스(버전 bump·태그)는 별도 승인. 에이전트 편집이라 needs_review.
+
 ## 2026-07-21 - feat: Gate 25 evidence 의미 단계화 (accepted[위임]+built)
 
 - status: needs_review
