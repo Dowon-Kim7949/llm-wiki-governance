@@ -318,7 +318,18 @@ a validation track (no shipped contract change; any `bench` helper is a later mi
 reported honestly, **including unfavorable ones**. No token/speed claim ships until a number
 supports it. Caveat: the rediscovery-reduction mechanism is completed by retrieval (Gate 24), so
 the headline figure is the before/after-retrieval **delta**, not the raw baseline. Scope:
-`GATE_REVIEW.md` (Gate 22, proposed).
+`GATE_REVIEW.md` (Gate 22, accepted).
+
+**Status: harness + baseline shipped.** The `bench/` harness (zero-dep, repo-internal, outside the
+npm `files` allowlist) is built and a baseline recorded — see `bench/README.md`,
+`bench/METHODOLOGY.md`, and `bench/results/baseline.md` (governance record:
+`docs/llm-wiki/BENCHMARK.md`). First read on this repo (6 tasks): across a session the governed wiki
+costs **0.59×** the input tokens of whole-file grep (A1) and **0.89×** a conservative snippet-grep
+(A2), but **loses on 3 of 6 single tasks** against the conservative floor, and locating success is a
+**100%/100% tie** — so the demonstrated benefit here is context size, not findability, and it depends
+on amortizing the orientation read across a multi-task session. A modest, honest baseline exactly as
+predicted; the headline remains the before/after-retrieval delta (re-run each later gate with
+`node bench/run.js --against`).
 
 ### Gate 23 — Changed-source → wiki reverse-impact gate
 

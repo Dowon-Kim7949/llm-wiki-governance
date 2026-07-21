@@ -1,0 +1,52 @@
+{
+  "$comment": "Representative code-comprehension tasks for the Gate 22 impact-measurement harness. Each is a question a developer/agent must answer (by locating + reading source) before making a change. `keywords` are COLD search terms taken from the QUESTION ONLY — the domain words someone who has NOT yet read the code would grep. We deliberately EXCLUDE internal symbol names (detectMobile, applyRuleConfig, TOOL_DEFS, ...): those are the very things the wiki hands you, so putting them in the query would give the answer to the code-only arm and rig the test. This choice is conservative — it can even UNDERSTATE the wiki, since a cold grep may miss code the wiki names outright. See METHODOLOGY.md. `groundTruth` are the source files that must be read to answer. This file dogfoods the harness on this repo itself.",
+  "srcRoot": "src",
+  "srcMatch": "\\.js$",
+  "snippetWindow": 40,
+  "orientationDocs": [
+    "docs/llm-wiki/index.md",
+    "docs/llm-wiki/README.md",
+    "docs/llm-wiki/project-profile.md",
+    "docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md",
+    "docs/llm-wiki/DOMAIN_FEATURES.md",
+    "docs/llm-wiki/domains/00_overview.md"
+  ],
+  "tasks": [
+    {
+      "id": "type-detection-mobile",
+      "question": "How does project-type detection decide a project is `mobile`, and where is the Android build.gradle -> library misclassification corrected?",
+      "keywords": ["mobile", "android", "flutter", "detect"],
+      "groundTruth": ["src/detector.js"]
+    },
+    {
+      "id": "audit-pipeline",
+      "question": "How does the `audit` command compose the scan family into findings, and how is severity graded?",
+      "keywords": ["audit", "scan", "findings", "severity"],
+      "groundTruth": ["src/commands.js", "src/commands/scans.js"]
+    },
+    {
+      "id": "config-merge",
+      "question": "How is llm-wiki.config.json merged consistently across the CLI, the programmatic API, and MCP?",
+      "keywords": ["config", "merge", "options"],
+      "groundTruth": ["src/cli.js", "src/index.js", "src/config-file.js"]
+    },
+    {
+      "id": "rule-toggle",
+      "question": "How do config rule toggles turn a finding off or override its severity, and why can't sensitive.* be toggled?",
+      "keywords": ["rule", "toggle", "severity"],
+      "groundTruth": ["src/commands/findings.js"]
+    },
+    {
+      "id": "skill-generation",
+      "question": "Where are the wiki-grounded skill artifacts (Claude skill / Cursor rule / neutral prompt) generated, and what is the never-overwrite guarantee?",
+      "keywords": ["skill", "cursor", "prompt"],
+      "groundTruth": ["src/commands/skills.js"]
+    },
+    {
+      "id": "mcp-tools",
+      "question": "Which commands are exposed as MCP tools, and how is the read-only (no write command) guarantee enforced?",
+      "keywords": ["mcp", "tool", "server"],
+      "groundTruth": ["src/mcp/tools.js", "src/mcp/dispatch.js"]
+    }
+  ]
+}

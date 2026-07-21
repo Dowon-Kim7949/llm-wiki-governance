@@ -260,7 +260,9 @@ Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`f
 
 ### Gate 22 — Impact 측정 (앞으로 당김)
 
-더 만들기 전에 코어 가치를 증명(또는 반증)한다. 재현 가능·opt-in·zero-dep 벤치마크 하니스가 대표 태스크를 **위키 있음/없음**으로 실행해 input tokens·열어본 파일 수·task 성공·소요시간을 기록하고, 위키 읽기+유지 비용까지 세는 정직한 방법론과 baseline을 남긴다. 주로 검증 트랙(shipped 계약 변경 없음; `bench` 헬퍼는 후속 minor). 불리한 결과 포함 정직하게 보고. **숫자가 뒷받침하기 전까지 token/속도 주장은 안 싣는다.** 주의: 재탐색 감소 메커니즘은 retrieval(Gate 24)이 완성하므로, 헤드라인은 raw baseline이 아니라 retrieval 전후 **delta**다. 범위: `GATE_REVIEW.md`(Gate 22, proposed).
+더 만들기 전에 코어 가치를 증명(또는 반증)한다. 재현 가능·opt-in·zero-dep 벤치마크 하니스가 대표 태스크를 **위키 있음/없음**으로 실행해 input tokens·열어본 파일 수·task 성공·소요시간을 기록하고, 위키 읽기+유지 비용까지 세는 정직한 방법론과 baseline을 남긴다. 주로 검증 트랙(shipped 계약 변경 없음; `bench` 헬퍼는 후속 minor). 불리한 결과 포함 정직하게 보고. **숫자가 뒷받침하기 전까지 token/속도 주장은 안 싣는다.** 주의: 재탐색 감소 메커니즘은 retrieval(Gate 24)이 완성하므로, 헤드라인은 raw baseline이 아니라 retrieval 전후 **delta**다. 범위: `GATE_REVIEW.md`(Gate 22, accepted).
+
+**상태: 하니스+베이스라인 완료.** `bench/` 하니스(zero-dep·repo-내부·npm `files` 밖이라 미배포)를 만들고 베이스라인을 기록했다 — `bench/README.md`·`bench/METHODOLOGY.md`·`bench/results/baseline.md`(거버넌스 기록: `docs/llm-wiki/BENCHMARK.md`). 이 레포 첫 측정(태스크 6개): 세션 단위로 거버넌스 위키는 whole-file grep(A1)의 **0.59×**, 보수적 snippet-grep(A2)의 **0.89×** 입력 토큰이지만, **단일 태스크 6개 중 3개**에서는 보수적 하한(A2)에 진다. 탐색 성공률은 **100%/100% 동률** — 즉 여기서 입증된 이점은 findability가 아니라 컨텍스트 크기이며, 오리엔테이션 읽기를 멀티-태스크 세션에 분할상환할 때만 성립한다. 예측대로 modest·정직한 베이스라인이고, 헤드라인은 여전히 retrieval 전후 delta다(이후 게이트마다 `node bench/run.js --against`로 재측정).
 
 ### Gate 23 — 변경소스 → 위키 reverse-impact 게이트
 

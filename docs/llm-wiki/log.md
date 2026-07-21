@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - feat: Gate 22 벤치마크 하니스 + 베이스라인 구축
+
+- status: needs_review
+- actor: Claude Code (사용자 승인 작업)
+- scope: bench (repo-내부 검증 트랙) + docs
+- changed:
+  - bench/: zero-dep·repo-내부 harness 신설(npm `files` allowlist 밖이라 미배포). `run.js`(오케스트레이터·4 arm·세션 집계·자동 verdict·베이스라인 기록), `lib/{tokens,fs-walk,strategies}.js`, `tasks.json`(대표 태스크 6개, cold 키워드), `README.md`·`METHODOLOGY.md`, `results/baseline.{json,md}`.
+  - docs/llm-wiki/BENCHMARK.md: 신규 거버넌스 기록(needs_review) — 베이스라인 헤드라인·한계·규율.
+  - ROADMAP.md · ROADMAP.ko.md: Gate 22 `proposed`→`accepted` + 베이스라인 링크·헤드라인 반영.
+- summary:
+  - 대표 질문 6개에 답하는 데 필요한 입력 컨텍스트를 4방식(A0 whole-repo·A1 grep-full·A2 grep-snippet 보수적 하한·B wiki-grounded)으로 측정. B의 대상 파일은 위키 본문에서 파생(비순환). 세션 단위 B는 A1의 0.59×(−41%)·A2의 0.89×(−11%)·A0의 0.46×.
+  - **정직한 불리 결과 보고:** 보수적 A2 대비 단일 태스크 3/6에서 위키가 더 비싸고(오리엔테이션 오버헤드), 탐색 성공률은 100%/100% 동률 — 즉 입증된 이점은 findability가 아니라 컨텍스트 크기이며 멀티-태스크 분할상환에 의존.
+- evidence:
+  - bench/run.js
+  - bench/results/baseline.md
+- caveats:
+  - chars/4 프록시(절대값 근사·비율 견고), 벽시계·답변 품질·위키 유지비용 미모델링. 단일 자기참조 레포. 헤드라인은 retrieval(Gate 24) 전후 delta. 에이전트 작성이라 needs_review — 사람 검토 후 verified. README token/속도 주장은 측정 뒷받침 전까지 금지.
+
 ## 2026-07-21 - gate: Gate 22 (Impact Measurement) 수락
 
 - status: needs_review
