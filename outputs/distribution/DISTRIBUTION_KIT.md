@@ -51,11 +51,14 @@ The repo ships `.claude/skills/llm-wiki-{feature,fix,docs-sync,bootstrap}` (dogf
 
 ## 6. Submission checklist
 
-- [ ] npm page reads well (README H1 = "LLM-WIKI Governance", governance headline, OKF-compatible row). ✅ done
-- [ ] `keywords` published (ships with next version bump). ⏳ effective on next publish
-- [ ] GitHub repo: topics set (`llm`, `mcp`, `ai`, `documentation`, `governance`, `okf`, `cli`, `claude`) — add via repo → About → ⚙️.
-- [ ] GitHub repo: short description matches the one-liner.
-- [ ] Submit MCP registry entry (section 3).
-- [ ] Submit 1–2 awesome-list PRs (section 5).
-- [ ] Post the launch post (see `launch-post.md`) to ONE channel first (Show HN or r/ClaudeAI), gather feedback, then iterate.
+**Done (automated):**
+- [x] npm page correct — 1.16.1 live, README H1 "LLM-WIKI Governance", keywords published (`npm view llm-wiki-governance`).
+- [x] GitHub repo description = the one-liner; homepage → npm; **18 topics** set (`llm, ai, documentation, docs-as-code, knowledge-base, governance, drift-detection, mcp, model-context-protocol, claude, claude-code, cursor, codex, okf, ci, cli, zero-dependency, agents`).
+
+**Your turn (outward-facing — needs your accounts / voice):**
+- [ ] Submit MCP registry entry (section 3) — start with `github.com/punkpeye/awesome-mcp-servers` (PR) and a directory like glama.ai / mcp.so / pulsemcp.com (verify each site's current submit flow).
+- [ ] Submit 1–2 awesome-list PRs (section 5) — confirm each list's CONTRIBUTING format before opening the PR.
+- [ ] Post the launch post (`launch-post.md`) to ONE channel first (Show HN or r/ClaudeAI), gather feedback, then iterate.
 - [ ] After posting: watch npm downloads (new name), GitHub stars, and JTBD replies. Record the numbers — that is the only real signal.
+
+> I can draft the exact PR entry (or open the PR via `gh`) for a specific target once you pick it. Community posts (HN/Reddit) go out under your account — I'll refine copy, you post.
