@@ -5,6 +5,18 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.16.1 — 2026-07-21
+
+1.16.0 개명 후속 정리. 코드 동작 변화 없음 — `llm-wiki` 명령·`--format json`·프로그래매틱
+API·frontmatter 계약 불변, 런타임 의존성 추가 없음.
+
+### Changed
+
+- **README 제목 교정** — "LLM-WIKI Standard" → "LLM-WIKI Governance"(거버넌스 포지션·패키지명 일치).
+- **CONTRIBUTING** 문구를 거버넌스 프레이밍으로, 내부 frontmatter schema `$id`(검증에 쓰이지 않는 로컬
+  플레이스홀더 식별자)를 새 이름으로 정렬.
+- **`package.json` `keywords` 추가** — npm 검색성.
+
 ## 1.16.0 — 2026-07-21
 
 개명 + 리포지셔닝. 패키지를 `@dowonk-7949/llm-wiki-standard` → **`llm-wiki-governance`**(unscoped)로

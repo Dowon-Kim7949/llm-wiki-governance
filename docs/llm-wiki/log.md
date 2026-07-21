@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - release: prepare 1.16.1 (1.16.0 개명 후속 정리 + 첫 TP 자동배포)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "1.16.1 릴리스 준비 진행")
+- scope: docs, config, tests
+- changed:
+  - package.json (1.16.0→1.16.1), tests/verification.test.js(버전 assertion), CHANGELOG.md/CHANGELOG.ko.md(1.16.1 항목), docs/llm-wiki/releases/v1.16.1.md(신규)
+  - (앞선 커밋 55b283f의 README H1·CONTRIBUTING·schema `$id`·keywords 정리를 스토어프론트에 반영하기 위한 릴리스)
+- summary:
+  - 1.16.0을 새 이름 첫 배포로 수동 publish한 뒤, npm 페이지(README)가 여전히 옛 "LLM-WIKI Standard" 제목을 보여줘 이를 교정하고 정체성/포지셔닝 잔여 정리를 스토어프론트에 반영하기 위해 1.16.1로 릴리스. 코드 동작 불변.
+  - 태그 `v1.16.1` push 시 CI가 Trusted Publishing으로 자동 배포(+provenance)하는 **첫 정상 자동배포** — 1.16.0의 수동 publish 절차 불필요.
+- evidence:
+  - package.json
+  - README.md
+- caveats:
+  - 실제 배포(태그 `v1.16.1` push)는 사용자 "배포" 시 진행. main 커밋/푸시는 준비 단계.
+
 ## 2026-07-21 - review: 1.16.0 rename+flip 문서 13개 사람 검토 → verified 재승인
 
 - status: verified

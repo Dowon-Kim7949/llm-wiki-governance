@@ -6,6 +6,21 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.16.1 — 2026-07-21
+
+Follow-up polish for the 1.16.0 rename. No code behavior change: the `llm-wiki`
+command, `--format json`, the programmatic API, and the frontmatter contract are
+unchanged, and no runtime dependency is added.
+
+### Changed
+
+- **README title corrected** to "LLM-WIKI Governance" (was "LLM-WIKI Standard"),
+  matching the governance positioning and the package name.
+- **CONTRIBUTING** wording updated to the governance framing; the internal frontmatter
+  schema `$id` (a local placeholder identifier, not used for validation) aligned to the
+  new name.
+- **Added `keywords`** to `package.json` for npm discoverability.
+
 ## 1.16.0 — 2026-07-21
 
 Rename + reposition. The package is renamed `@dowonk-7949/llm-wiki-standard` →
