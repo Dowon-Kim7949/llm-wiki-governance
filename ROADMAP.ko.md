@@ -274,7 +274,7 @@ Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`f
 
 "프로젝트 메모리 / 에이전트가 위키를 query" 스토리를 참으로 만든다(런치에서 철회한 부분). status/visibility 필터가 있는 읽기 전용 `list_docs`/`search_docs`/`get_doc`/`get_related`를 MCP·프로그래매틱 API로 추가 — 거버넌스 보고가 아니라 **문서 본문**을 반환. **여기서 재측정** — 재탐색/토큰 delta가 나타날 지점. 부가적·opt-in·zero-dep.
 
-**상태: 초안 — proposed, 아직 미수락.** 범위는 `GATE_REVIEW.md`(Gate 24): 읽기 전용 4개 연산 — `list_docs`, `search_docs`(**zero-dep 키워드/부분문자열, 정직하게 semantic 아님**), `get_doc`, `get_related` — 이며 `listWikiContentDocs`·frontmatter 파서·`collectWikiGraph`를 재사용한다. `visibility` 필터 + sensitive-info 스캔 재사용(raw 민감값 미반환), 쓰기 표면 없음. MINOR(`1.18.0`) 예상. 코드 전 사람 수락 대기.
+**상태: 1.18.0로 수락됨** (Dowon-Kim, 2026-07-21) — 다음 빌드 단계는 구현. 범위는 `GATE_REVIEW.md`(Gate 24): 읽기 전용 4개 연산 — `list_docs`, `search_docs`(**zero-dep 키워드/부분문자열, 정직하게 semantic 아님**), `get_doc`, `get_related` — 이며 `listWikiContentDocs`·frontmatter 파서·`collectWikiGraph`를 재사용한다. `visibility` 필터 + sensitive-info 스캔 재사용(raw 민감값 미반환), 쓰기 표면 없음. 프로그래매틱 API + MCP + CLI 세 표면에 제공, restricted/민감 문서는 list/search 기본 제외(opt-in 포함).
 
 ### Gate 25 — Evidence 의미 단계화
 

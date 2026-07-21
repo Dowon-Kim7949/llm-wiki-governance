@@ -62,7 +62,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 21 Skill Generation Scope Approval | `accepted_for_1.15.0` | Generate invocable, wiki-grounded automation prompts for the feature/fix/docs-sync workflows already encoded in `src/task-prompts.js`, in each agent's native shape — Claude skill (`.claude/skills/llm-wiki-<task>/SKILL.md`), Cursor rule (`.cursor/rules/llm-wiki-<task>.mdc`), and an agent-neutral prompt doc (`docs/llm-wiki/prompts/llm-wiki-<task>.prompt.md`, for Codex/others) — so a user can invoke `/llm-wiki-feature "…"` to run "read the wiki → ground the change → update docs (needs_review) → log", closing the value loop (#8). Each body embeds a generation-time snapshot of the project's domain map so the agent knows which docs to read. Opt-in (per `--agent`/`--skills`), preview-first, existing files never overwritten, recognize-don't-run, needs_review discipline embedded. Additive, zero-dep; `1.0.0` contracts unchanged. Accepted by Dowon-Kim on 2026-07-20 with two additions over the draft (domain-map injection + multi-agent formats). MINOR (`1.15.0`). See "Skill Generation Scope Decision" below. |
 | Gate 22 Impact Measurement Scope Approval | `accepted` | Pull impact measurement to the FRONT of the post-1.16 line (before the feature gates). A reproducible, opt-in, zero-dep benchmark harness (repo-internal, e.g. `bench/`) runs a representative task with vs. without the governed wiki and records input tokens, source files opened, task success/quality, and wall-clock, plus an honest methodology that counts wiki read + maintenance cost (not just repo-scan tokens) and a recorded baseline. Primarily a VALIDATION track — no `1.0.0` contract change; any shipped `bench` helper is a later minor; zero-dep preserved. Results reported honestly INCLUDING unfavorable ones (an "overhead > benefit" result reshapes the roadmap, it is not hidden); no token/speed/productivity claim ships in README/launch until a measured result supports it. Re-run at each later gate for its delta. Motivated by the product-identity audit (`outputs/audits/product-identity-audit.md`): the governance core is real but the value chain is unproven. Accepted by Dowon-Kim on 2026-07-21. See "Impact Measurement Scope Decision" below. |
 | Gate 23 Reverse-Impact (Changed-Source → Wiki) Scope Approval | `accepted_for_1.17.0` | Add a read-only reverse-impact check that builds a git-diff reverse index from every `verified` doc's `source_files`/`evidence` and flags a `verified` doc when its referenced code is in the current change set (working tree, or a `--since <ref>` PR/CI baseline) while the doc itself is NOT changed — the pre-merge, diff-anchored complement to the existing date-anchored `evidence.stale`. Defaults to warning (NEVER default error/blocked, preserving the additive `1.0.0` invariant); an opt-in `--strict` (for CI) escalates it to a failing error so a PR that changes governed code without updating its doc fails. Read-only, additive/opt-in, zero-dep — reuses `changedFiles` (`src/git.js`), `driftTargets`, and the reference parsers. Motivated by the product-identity audit's biggest vision-vs-reality gap: today drift is date-based and misses code + its doc changing in separate PRs, and cannot answer the pre-merge CI question. Accepted by Dowon-Kim on 2026-07-21 with: a standalone `impact` command, rule `impact.source_changed` (new toggleable `impact` category), `--strict` escalating impact findings ONLY (`evidence.stale` stays escalatable via config `rules`), and an empty change set treated as a no-op. See "Reverse-Impact (Changed-Source → Wiki) Scope Decision" below. |
-| Gate 24 Read-Only Retrieval (Search/Get) Scope Approval | `proposed_for_next` (DRAFT — not yet accepted) | Add read-only retrieval over the programmatic API + MCP (and CLI) that returns document CONTENT, not just governance reports: `list_docs` (enumerate with status/visibility/type filters), `search_docs` (zero-dep keyword/substring over titles + bodies + frontmatter — NOT semantic/vector search), `get_doc` (a doc's frontmatter + body by path), and `get_related` (a doc's resolved graph neighbors). Reuses `listWikiContentDocs`, the frontmatter parser, and `collectWikiGraph`; today every MCP/API tool returns governance REPORTS only, so this is the "the agent queries the wiki instead of re-deriving from the code" story that was walked back at launch. **The Gate 22 harness is RE-MEASURED here** — this is where the rediscovery/token delta should show (the headline is the before/after-retrieval delta). Read-only, additive/opt-in, zero-dep; honors `visibility` + reuses the sensitive-info scan so raw sensitive values are NEVER returned. No write/mutating surface (mirrors the MCP read-only ethos). `1.0.0` command/`--format json`/frontmatter contracts unchanged (new commands + new MCP tools + additive JSON only); likely a MINOR (`1.18.0`). DRAFTED for human acceptance. See "Read-Only Retrieval (Search/Get) Scope Decision" below. |
+| Gate 24 Read-Only Retrieval (Search/Get) Scope Approval | `accepted_for_1.18.0` | Add read-only retrieval over the programmatic API + MCP (and CLI) that returns document CONTENT, not just governance reports: `list_docs` (enumerate with status/visibility/type filters), `search_docs` (zero-dep keyword/substring over titles + bodies + frontmatter — NOT semantic/vector search), `get_doc` (a doc's frontmatter + body by path), and `get_related` (a doc's resolved graph neighbors). Reuses `listWikiContentDocs`, the frontmatter parser, and `collectWikiGraph`; today every MCP/API tool returns governance REPORTS only, so this is the "the agent queries the wiki instead of re-deriving from the code" story that was walked back at launch. **The Gate 22 harness is RE-MEASURED here** — this is where the rediscovery/token delta should show (the headline is the before/after-retrieval delta). Read-only, additive/opt-in, zero-dep; honors `visibility` + reuses the sensitive-info scan so raw sensitive values are NEVER returned. No write/mutating surface (mirrors the MCP read-only ethos). `1.0.0` command/`--format json`/frontmatter contracts unchanged (new commands + new MCP tools + additive JSON only); likely a MINOR (`1.18.0`). Accepted by Dowon-Kim on 2026-07-21 (resolutions in the scope decision below). See "Read-Only Retrieval (Search/Get) Scope Decision" below. |
 
 ## 1.0.0 Stability Milestone
 
@@ -1033,10 +1033,10 @@ They are complementary; neither subsumes the other.
 - `src/commands/references.js#symbol:parseEvidenceReference` — evidence locator parsing; `isExternalSourceReference` to exclude external/cross-repo refs.
 - `src/commands/findings.js#symbol:applyRuleConfig` — where the new `impact` category plugs into rule toggles/severity.
 
-## Read-Only Retrieval (Search/Get) Scope Decision (proposed — NOT yet accepted)
+## Read-Only Retrieval (Search/Get) Scope Decision (accepted for 1.18.0)
 
-**DRAFT — proposed for the next minor, not yet accepted.** This is the post-1.16
-measure-first line's Gate 24 (ROADMAP: measurement → reverse-impact → retrieval). The
+**Accepted by Dowon-Kim on 2026-07-21** (resolutions in "Resolved at acceptance" below).
+This is the post-1.16 measure-first line's Gate 24 (ROADMAP: measurement → reverse-impact → retrieval). The
 product-identity audit (`outputs/audits/product-identity-audit.md`) required walking back
 a launch claim: the "the agent QUERIES the wiki" / "project memory" story is not true
 today, because every command and every MCP tool returns a governance REPORT
@@ -1100,15 +1100,20 @@ equivalents. Results reuse the 1.5 result shape (`schemaVersion`) as MCP
 - **Caching / a persistent index** — each call reads the wiki fresh (bounded; the wiki is
   small). An index is a later optimization if measurement shows it matters.
 
-### Open questions (to resolve at acceptance)
+### Resolved at acceptance (Dowon-Kim, 2026-07-21)
 
-- Exact tool/command names (`search_docs` vs `search`, `get_doc` vs `read_doc`), and
-  whether CLI parity is required in v1 or MCP+API is enough for the retrieval measurement.
-- Default handling of `visibility: restricted` / `contains_sensitive_info: true` docs in
-  `search_docs`/`list_docs`: excluded by default with an opt-in include flag, vs included
-  with bodies gated. (Leaning excluded-by-default — safest, matches conservative ethos.)
-- Whether `search_docs` returns ranked snippets only, or optionally full bodies (token
-  cost vs. round-trips — informed by the Gate 22 re-measurement).
+- **Names & surfaces:** ship `list_docs` / `search_docs` / `get_doc` / `get_related` as
+  named, on all three surfaces (programmatic API + MCP tools + CLI), mirroring how existing
+  commands span CLI/API/MCP. No shorter aliases.
+- **Restricted/sensitive docs:** EXCLUDED by default from `list_docs`/`search_docs`, with an
+  opt-in include flag; `get_doc` on such a path still redacts raw sensitive values via the
+  sensitive-info scan. Safest default, matches the conservative ethos.
+- **Result bodies:** `search_docs` returns ranked matches + a short snippet per hit by
+  default (full bodies via an opt-in flag or a follow-up `get_doc`); `get_doc` returns the
+  full frontmatter + body. The snippet-vs-body default is revisited with the Gate 22
+  re-measurement.
+- **Keyword only:** deterministic keyword/substring ranking; NO semantic/vector search
+  (would break zero-dep). The surface is named "keyword search," never "semantic."
 
 ### Evidence (planned, not yet implemented)
 

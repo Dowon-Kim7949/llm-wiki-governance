@@ -24,6 +24,20 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - gate: Gate 24 (읽기 전용 retrieval search/get) 수락 (accepted_for_1.18.0)
+
+- status: needs_review
+- actor: Dowon-Kim (게이트 수락) · 기록 Claude Code
+- scope: docs (gate-review, roadmap) — **코드 미변경**
+- changed:
+  - GATE_REVIEW.md: Gate 24 표 행 `proposed_for_next`→`accepted_for_1.18.0` + Scope Decision 헤더/오프닝을 accepted로, "Open questions"→"Resolved at acceptance"(4개 결정).
+  - ROADMAP.md · ROADMAP.ko.md: Gate 24 상태 문단을 "accepted for 1.18.0"로 갱신.
+- summary:
+  - Dowon-Kim이 Gate 24(읽기 전용 retrieval)를 `accepted_for_1.18.0`으로 수락했다. 수락 시 오픈 질문을 제안 기본값으로 확정: (1) `list_docs`/`search_docs`/`get_doc`/`get_related`를 그 이름 그대로 API+MCP+CLI 3표면에 제공, (2) restricted/민감 문서는 list/search 기본 제외(opt-in 포함), `get_doc`은 민감값 redact, (3) `search_docs`는 기본 스니펫(전체 본문은 opt-in/`get_doc`), (4) 키워드/부분문자열만 — semantic/vector 없음(zero-dep).
+  - 다음 단계: 코드 구현(1.18.0). 단, 준비된 1.17.0을 먼저 배포한 뒤 착수.
+- caveats:
+  - 수락 단계까지만 — 아직 코드/테스트 변경 없음. 1.0.0 계약·zero-dep 불변. 구현은 1.17.0 배포 후.
+
 ## 2026-07-21 - gate: Gate 24 (읽기 전용 retrieval search/get) 초안 — proposed, 미수락
 
 - status: needs_review
