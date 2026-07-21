@@ -6,6 +6,44 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.18.0 — 2026-07-21
+
+Read-only retrieval (Gate 24). Adds four commands that return document **content**,
+not governance reports — the "the agent queries the wiki instead of re-deriving from the
+code" surface. Additive and opt-in: the existing `llm-wiki` command surface stays
+backward-compatible, `--format json`, the programmatic API, and the frontmatter contract
+are unchanged, and no runtime dependency is added.
+
+### Added
+
+- **`llm-wiki list-docs` — enumerate documents with metadata (read-only).** Lists content
+  docs with their path, title, status, doc_type, visibility, last_updated, and tags (no
+  bodies). Filter with `--status`, `--visibility`, `--doc-type`.
+- **`llm-wiki search-docs <query>` — keyword search (read-only).** Deterministic
+  keyword/substring match over titles, bodies, and frontmatter — **NOT semantic/vector
+  search**. Every whitespace-separated term must appear (AND); results are ranked (title
+  hits weighted highest) with a short snippet per match. `--limit` caps results (default 20).
+- **`llm-wiki get-doc <path>` — read one document (read-only).** Returns a document's
+  frontmatter and body. `<path>` may be repo-relative (`docs/llm-wiki/GLOSSARY.md`),
+  wiki-relative (`GLOSSARY.md`), or a bare name (`GLOSSARY`).
+- **`llm-wiki get-related <path>` — resolved graph neighbors (read-only).** Returns a
+  document's outbound and inbound neighbors over wiki links, related frontmatter, and local
+  markdown links.
+- **MCP retrieval tools.** The four commands are exposed over MCP as `list_docs`,
+  `search_docs`, `get_doc`, and `get_related` (read-only, like every other MCP tool), and
+  over the programmatic API under their kebab-case command names.
+
+### Safety
+
+- **Read-only.** No command in this set writes, edits, or downgrades anything.
+- **Visibility + sensitive-info honored.** Restricted/sensitive documents (visibility
+  `restricted`, `contains_sensitive_info: true`, or a sensitive-info scan match) are
+  **excluded** from `list-docs`/`search-docs` unless `--include-sensitive` is passed; every
+  returned body/snippet **redacts** sensitive-looking lines, so a raw secret is never
+  returned (`get-doc` still returns the document, with those lines redacted).
+- **Zero-dependency.** Keyword/substring matching and the existing wiki graph only — no
+  embeddings, index, or network.
+
 ## 1.17.0 — 2026-07-21
 
 Reverse-impact gate (Gate 23). Adds a read-only `impact` command that catches the case

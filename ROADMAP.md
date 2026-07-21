@@ -357,12 +357,14 @@ status/visibility filters, over MCP and the programmatic API — returning docum
 governance reports. **Re-measure here** — this is where the rediscovery/token delta should show.
 Additive/opt-in, zero-dep.
 
-**Status: accepted for 1.18.0** (Dowon-Kim, 2026-07-21) — implementation is the next build step.
-Scope in `GATE_REVIEW.md` (Gate 24): four read-only ops — `list_docs`, `search_docs` (**zero-dep
-keyword/substring, honestly NOT semantic**), `get_doc`, `get_related` — reusing `listWikiContentDocs`,
-the frontmatter parser, and `collectWikiGraph`; honors `visibility` + reuses the sensitive-info scan
-(raw sensitive values never returned); no write surface. Shipped on the programmatic API + MCP + CLI;
-restricted/sensitive docs excluded from list/search by default (opt-in include).
+**Status: shipped in 1.18.0.** Four read-only ops — `list-docs`, `search-docs` (**zero-dep
+keyword/substring, NOT semantic**), `get-doc`, `get-related` (MCP tools `list_docs`/`search_docs`/
+`get_doc`/`get_related`) — return document content on the programmatic API + MCP + CLI, reusing
+`listWikiContentDocs`, the frontmatter parser, `collectWikiGraph`, and the sensitive-info scan. Read-only;
+restricted/sensitive docs are excluded from list/search by default (opt-in `--include-sensitive`) and
+returned bodies/snippets redact sensitive lines (raw values never returned). `src/commands/retrieval.js`.
+Release notes: `docs/llm-wiki/releases/v1.18.0.md`. **Re-measure the Gate 22 bench here** for the
+headline before/after-retrieval delta (`node bench/run.js --against`).
 
 ### Gate 25 — Evidence semantic tiers
 

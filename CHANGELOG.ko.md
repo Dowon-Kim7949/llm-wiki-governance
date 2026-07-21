@@ -5,6 +5,38 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.18.0 — 2026-07-21
+
+읽기 전용 retrieval(Gate 24). 거버넌스 리포트가 아니라 문서 **본문**을 반환하는 4개 명령을
+추가한다 — "에이전트가 매번 코드를 다시 읽는 대신 위키를 query한다"는 표면. 부가적·opt-in이라
+기존 `llm-wiki` 명령 표면은 하위호환이며 `--format json`·프로그래매틱 API·frontmatter 계약 불변,
+런타임 의존성 추가 없음.
+
+### Added
+
+- **`llm-wiki list-docs` — 메타데이터로 문서 열거(읽기 전용).** content 문서를 path·title·
+  status·doc_type·visibility·last_updated·tags와 함께 나열(본문 없음). `--status`·
+  `--visibility`·`--doc-type`로 필터.
+- **`llm-wiki search-docs <query>` — 키워드 검색(읽기 전용).** 제목·본문·frontmatter에 대한
+  결정적 키워드/부분문자열 매치 — **semantic/vector 아님**. 모든 term이 있어야 매치(AND), 점수순
+  랭크(제목 히트 가중) + 매치별 스니펫. `--limit`으로 결과 수 제한(기본 20).
+- **`llm-wiki get-doc <path>` — 문서 하나 읽기(읽기 전용).** frontmatter + 본문 반환. `<path>`는
+  repo-relative(`docs/llm-wiki/GLOSSARY.md`)·wiki-relative(`GLOSSARY.md`)·bare name
+  (`GLOSSARY`) 허용.
+- **`llm-wiki get-related <path>` — 해소된 그래프 이웃(읽기 전용).** wiki 링크·related·markdown
+  링크 기준 outbound/inbound 이웃 반환.
+- **MCP retrieval 툴.** 4개 명령을 MCP에 `list_docs`·`search_docs`·`get_doc`·`get_related`로
+  노출(다른 MCP 툴과 동일하게 읽기 전용), 프로그래매틱 API에는 kebab-case 명령 이름으로 노출.
+
+### Safety
+
+- **읽기 전용.** 이 명령들은 아무것도 쓰거나 편집·강등하지 않는다.
+- **visibility + 민감정보 존중.** restricted/민감 문서(visibility `restricted`,
+  `contains_sensitive_info: true`, 또는 민감정보 스캔 매치)는 `--include-sensitive` 없으면
+  `list-docs`/`search-docs`에서 **제외**되고, 반환하는 모든 본문/스니펫은 민감 라인을 **redact**해
+  raw 값을 반환하지 않는다(`get-doc`은 문서를 반환하되 해당 라인을 redact).
+- **zero-dependency.** 키워드/부분문자열 매칭과 기존 위키 그래프만 — 임베딩·인덱스·네트워크 없음.
+
 ## 1.17.0 — 2026-07-21
 
 reverse-impact 게이트(Gate 23). 날짜 기반 drift가 놓치는 경우 — 코드와 그 `verified` 문서가

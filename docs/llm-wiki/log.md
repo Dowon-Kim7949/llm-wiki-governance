@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-21 - release: prepare 1.18.0 (Gate 24 read-only retrieval)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업 진행")
+- scope: release, docs
+- changed:
+  - package.json (1.17.0→1.18.0), tests/verification.test.js(버전 assertion 1.17.0→1.18.0)
+  - CHANGELOG.md / CHANGELOG.ko.md (1.18.0 항목: retrieval 4개 명령 Added + Safety)
+  - docs/llm-wiki/releases/v1.18.0.md (신규 이중언어 릴리스 노트)
+  - ROADMAP.md / ROADMAP.ko.md (Gate 24 `accepted`→"**Status: shipped in 1.18.0**")
+- summary:
+  - 직전 feat 커밋(5ef75a7)이 버전 미범프 순수 기능 커밋이라, feat→release-prep→배포 리듬의 release-prep 단계를 채웠다. Gate 24 read-only retrieval(`list-docs`/`search-docs`/`get-doc`/`get-related`)를 1.18.0으로 준비. 코드 동작 불변 — feat 커밋에서 이미 구현/테스트됨.
+  - **247 tests pass, validate result:pass 0 findings, validate-frontmatter --strict pass.**
+- caveats:
+  - 실제 배포(태그 `v1.18.0` push → CI Trusted Publishing)는 사용자의 명시적 "배포" 지시 대기. main 커밋/푸시는 준비 단계.
+  - 배포 후: (1) Gate 22 벤치 재측정(`node bench/run.js --against`)으로 헤드라인 before/after-retrieval delta 산출, (2) doc-sync로 needs_review인 PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES 사람 재검토→verified.
+
 ## 2026-07-21 - feat: Gate 24 read-only retrieval (list/search/get-doc/get-related, 1.18.0) 구현
 
 - status: needs_review
