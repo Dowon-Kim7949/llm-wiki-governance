@@ -7,7 +7,7 @@ tags:
   - stable
 status: needs_review
 doc_type: verification_report
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-15
 author: ai-generated
 last_edited_by: Claude Code
@@ -67,11 +67,11 @@ npm pack --dry-run
 
 ## Expected Repository Result
 
-- package: `@dowonk-7949/llm-wiki-standard`
+- package: `llm-wiki-governance`
 - version: the value in `package.json` (single source; matched against the release tag)
 - publish registry: `https://registry.npmjs.org`
 - package-level `.npmrc`: not required
-- public source repository: `https://github.com/Dowon-Kim7949/llm-wiki-standard`
+- public source repository: `https://github.com/Dowon-Kim7949/llm-wiki-governance`
 - migration apply: applies the accepted `fix`-engine scope, preserving `verified` docs (GATE_REVIEW Gate 8)
 - report output: UTF-8 Markdown with `needs_review` frontmatter
 

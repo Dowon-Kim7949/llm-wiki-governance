@@ -3,12 +3,12 @@ title: LLM-WIKI Index
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: wiki_index
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
-last_edited_by: Codex
+last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
 reviewed_at: 2026-07-21
 wiki_block_version: v1
@@ -29,7 +29,7 @@ contains_sensitive_info: false
 
 # LLM-WIKI Index
 
-이 문서는 `@dowonk-7949/llm-wiki-standard` 저장소 자체의 LLM-WIKI 진입점입니다. 이 패키지는 여러 개발 도구(Codex, Claude Code 등)와 CI에서 공통 LLM-WIKI 운영 규칙을 점검·생성하는 안정판 CLI이며, 이 wiki는 그 도구를 **자기 자신에게 적용(dogfooding)** 한 결과입니다.
+이 문서는 `llm-wiki-governance` 저장소 자체의 LLM-WIKI 진입점입니다. 이 패키지는 여러 개발 도구(Codex, Claude Code 등)와 CI에서 **AI가 쓴 프로젝트 문서를 검증·드리프트 감지·CI 강제**하는 거버넌스 CLI(OKF-compatible)이며, 이 wiki는 그 도구를 **자기 자신에게 적용(dogfooding)** 한 결과입니다. (1.16.0에서 `@dowonk-7949/llm-wiki-standard`에서 개명; CLI 명령은 `llm-wiki` 유지.)
 
 ## Status
 

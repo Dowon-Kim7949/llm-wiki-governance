@@ -1,8 +1,8 @@
 > Language: [English](./CONTRIBUTING.md) | [한국어](./CONTRIBUTING.ko.md)
 
-# Contributing to llm-wiki-standard
+# Contributing to llm-wiki-governance
 
-Thanks for your interest in improving `@dowonk-7949/llm-wiki-standard` — a
+Thanks for your interest in improving `llm-wiki-governance` — a
 stable, cross-platform CLI for the common LLM-WIKI standard. This guide covers
 how to set up, make changes, and open a pull request.
 
@@ -10,8 +10,8 @@ By participating, you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.
 
 ## Ways to contribute
 
-- **Report a bug** — open a [bug report](https://github.com/Dowon-Kim7949/llm-wiki-standard/issues/new?template=bug_report.md).
-- **Request a feature** — open a [feature request](https://github.com/Dowon-Kim7949/llm-wiki-standard/issues/new?template=feature_request.md). Check [ROADMAP.md](./ROADMAP.md) first to see if it is already planned.
+- **Report a bug** — open a [bug report](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues/new?template=bug_report.md).
+- **Request a feature** — open a [feature request](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues/new?template=feature_request.md). Check [ROADMAP.md](./ROADMAP.md) first to see if it is already planned.
 - **Improve docs** — README/CHANGELOG/ROADMAP and the LLM-WIKI under `docs/llm-wiki/`.
 - **Report a vulnerability** — do **not** open a public issue; follow the [Security Policy](./SECURITY.md).
 
@@ -24,8 +24,8 @@ By participating, you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.
 ## Getting started
 
 ```bash
-git clone https://github.com/Dowon-Kim7949/llm-wiki-standard.git
-cd llm-wiki-standard
+git clone https://github.com/Dowon-Kim7949/llm-wiki-governance.git
+cd llm-wiki-governance
 npm install
 npm test             # node --test tests/*.test.js
 ```
@@ -92,5 +92,5 @@ for the gate and decision record.
 
 ## Questions
 
-Open an [issue](https://github.com/Dowon-Kim7949/llm-wiki-standard/issues) — but
+Open an [issue](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues) — but
 please read the README and `docs/llm-wiki/` first; many answers are already there.

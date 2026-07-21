@@ -6,7 +6,7 @@ tags:
   - needs-review
 status: needs_review
 doc_type: adapter_template_index
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-02
 author: ai-generated
 last_edited_by: Codex

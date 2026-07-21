@@ -44,7 +44,7 @@ jobs:
 
       - name: Verify package identity
         run: |
-          node -e "const p=require('./package.json'); if (p.name !== '@dowonk-7949/llm-wiki-standard') { console.error('Unexpected package name:', p.name); process.exit(1); }"
+          node -e "const p=require('./package.json'); if (p.name !== 'llm-wiki-governance') { console.error('Unexpected package name:', p.name); process.exit(1); }"
 
       - name: Run tests
         run: node --test tests/*.test.js
@@ -81,7 +81,7 @@ jobs:
       - name: Pack, install, and run Quick Start commands against the tarball
         run: |
           npm pack
-          TARBALL="$(ls dowonk-7949-llm-wiki-standard-*.tgz | head -n 1)"
+          TARBALL="$(ls llm-wiki-governance-*.tgz | head -n 1)"
           echo "Packed tarball: $TARBALL"
           mkdir consumer
           cd consumer

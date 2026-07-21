@@ -1,12 +1,12 @@
 {
-  "name": "@dowonk-7949/llm-wiki-standard",
-  "version": "1.15.1",
+  "name": "llm-wiki-governance",
+  "version": "1.16.0",
   "private": false,
   "type": "module",
-  "description": "Stable CLI for the cross-platform LLM-WIKI common standard.",
+  "description": "Governance for AI-written project docs: verify, catch drift, keep them code-grounded, enforce in CI. OKF-compatible, zero-dependency.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git"
+    "url": "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git"
   },
   "files": [
     "bin",

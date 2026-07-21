@@ -4,7 +4,7 @@
 
 ## Supported versions
 
-`@dowonk-7949/llm-wiki-standard` follows a rolling release model: security fixes
+`llm-wiki-governance` follows a rolling release model: security fixes
 land on the **latest published version** on npm. Please upgrade to the latest
 release before reporting, and pin to a recent version in your projects.
 

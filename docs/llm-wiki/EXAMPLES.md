@@ -3,12 +3,12 @@ title: Examples
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: examples
-project: llm-wiki-standard
-last_updated: 2026-07-20
+project: llm-wiki-governance
+last_updated: 2026-07-21
 author: cli-generated
-last_edited_by: Codex
+last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
 reviewed_at: 2026-07-20
 wiki_block_version: v1

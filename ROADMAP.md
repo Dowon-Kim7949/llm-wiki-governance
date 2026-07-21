@@ -7,7 +7,7 @@ tags:
   - cli
 status: needs_review
 doc_type: roadmap
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-16
 author: ai-generated
 last_edited_by: Claude Code

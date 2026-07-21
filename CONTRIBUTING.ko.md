@@ -1,8 +1,8 @@
 > Language: [English](./CONTRIBUTING.md) | [한국어](./CONTRIBUTING.ko.md)
 
-# llm-wiki-standard 기여 가이드
+# llm-wiki-governance 기여 가이드
 
-`@dowonk-7949/llm-wiki-standard`(크로스플랫폼 공통 LLM-WIKI 표준을 위한 안정판
+`llm-wiki-governance`(크로스플랫폼 공통 LLM-WIKI 표준을 위한 안정판
 CLI) 개선에 관심 가져주셔서 감사합니다. 이 문서는 개발 환경 구성, 변경 방법,
 PR 여는 방법을 안내합니다.
 
@@ -11,8 +11,8 @@ PR 여는 방법을 안내합니다.
 
 ## 기여 방법
 
-- **버그 신고** — [버그 리포트](https://github.com/Dowon-Kim7949/llm-wiki-standard/issues/new?template=bug_report.md)를 열어 주세요.
-- **기능 제안** — [기능 요청](https://github.com/Dowon-Kim7949/llm-wiki-standard/issues/new?template=feature_request.md)을 열어 주세요. 먼저 [ROADMAP.md](./ROADMAP.md)에서 이미 계획된 항목인지 확인해 주세요.
+- **버그 신고** — [버그 리포트](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues/new?template=bug_report.md)를 열어 주세요.
+- **기능 제안** — [기능 요청](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues/new?template=feature_request.md)을 열어 주세요. 먼저 [ROADMAP.md](./ROADMAP.md)에서 이미 계획된 항목인지 확인해 주세요.
 - **문서 개선** — README/CHANGELOG/ROADMAP 및 `docs/llm-wiki/`의 LLM-WIKI.
 - **취약점 신고** — 공개 이슈로 열지 **마시고** [보안 정책](./SECURITY.md)을 따라 주세요.
 
@@ -25,8 +25,8 @@ PR 여는 방법을 안내합니다.
 ## 시작하기
 
 ```bash
-git clone https://github.com/Dowon-Kim7949/llm-wiki-standard.git
-cd llm-wiki-standard
+git clone https://github.com/Dowon-Kim7949/llm-wiki-governance.git
+cd llm-wiki-governance
 npm install
 npm test             # node --test tests/*.test.js
 ```
@@ -94,6 +94,6 @@ PR은 작고 범위를 좁게 유지하세요. 관련 없는 변경은 별도 PR
 
 ## 질문
 
-[이슈](https://github.com/Dowon-Kim7949/llm-wiki-standard/issues)를 열어 주세요 —
+[이슈](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues)를 열어 주세요 —
 다만 README와 `docs/llm-wiki/`를 먼저 확인해 주세요. 많은 답이 이미 거기에
 있습니다.

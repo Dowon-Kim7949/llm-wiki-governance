@@ -388,26 +388,26 @@ export function packageVersion() {
 export function helpText() {
   return `llm-wiki v${packageVersion()}
 
-LLM-WIKI — AI 에이전트가 읽는, 코드 근거로 검증되는 프로젝트 지식베이스.
-A governed, code-grounded knowledge base your AI coding agent reads.
+LLM-WIKI — a governed, code-grounded knowledge base your AI coding agent reads.
+AI 에이전트가 읽는, 코드 근거로 검증되는 프로젝트 지식베이스.
 
-무엇을 하나 / What it does:
-  1) init/quickstart --write 로 문서 뼈대를 만들고 · scaffold the wiki docs
-  2) 출력되는 handoff 프롬프트를 Claude Code/Codex에 붙여넣어 실제 코드로 채우고
-     · paste the printed handoff prompt into your coding agent to fill them from real code
-  3) 사람이 검토해 verified로 승인합니다 · a human reviews and marks them verified
+What it does / 무엇을 하나:
+  1) scaffold the wiki docs with init/quickstart --write · 문서 뼈대를 만들고
+  2) paste the printed handoff prompt into your coding agent to fill them from real code
+     · 출력되는 handoff 프롬프트를 Claude Code/Codex에 붙여넣어 실제 코드로 채우고
+  3) a human reviews and marks them verified · 사람이 검토해 verified로 승인합니다
 
-왜 / Why:
+Why / 왜:
+  Your agent grounds on a verified wiki instead of re-deriving from the code each time — fewer tokens, fewer errors.
   에이전트가 매번 코드를 다시 읽는 대신 '검증된 위키'를 근거로 삼아 토큰·오류를 줄입니다.
-  Your agent grounds on a verified wiki instead of re-deriving from the code each time.
-  이후 기능 추가/수정 시 에이전트에게 docs/llm-wiki를 먼저 읽히세요.
   Point your agent at docs/llm-wiki first when adding or changing features.
+  이후 기능 추가/수정 시 에이전트에게 docs/llm-wiki를 먼저 읽히세요.
 
-빠른 시작 / Quick start:
-  npx @dowonk-7949/llm-wiki-standard@latest quickstart --dry-run   # 미리보기 · preview
-  npx @dowonk-7949/llm-wiki-standard@latest quickstart --write     # 생성 · create
-  항상 @latest 권장 — npx가 옛 버전을 캐시할 수 있습니다.
+Quick start / 빠른 시작:
+  npx llm-wiki-governance@latest quickstart --dry-run   # preview · 미리보기
+  npx llm-wiki-governance@latest quickstart --write     # create · 생성
   Always use @latest; npx may reuse an old cached version.
+  항상 @latest 권장 — npx가 옛 버전을 캐시할 수 있습니다.
 
 Usage:
   llm-wiki doctor [--cwd <path>] [--format text|json|markdown|html]
@@ -702,7 +702,7 @@ Purpose:
   Register it in an MCP client, for example:
     { "mcpServers": { "llm-wiki": {
         "command": "npx",
-        "args": ["-y", "@dowonk-7949/llm-wiki-standard", "mcp"] } } }
+        "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 
 Tools (all read-only — no MCP tool writes files):
   validate, audit, next, status, doctor, stats, graph, explain, handoff, prompt.

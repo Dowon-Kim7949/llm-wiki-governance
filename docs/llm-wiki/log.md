@@ -5,8 +5,8 @@ tags:
   - needs-review
 status: needs_review
 doc_type: change_log
-project: llm-wiki-standard
-last_updated: 2026-07-16
+project: llm-wiki-governance
+last_updated: 2026-07-21
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,29 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-21 - release: prepare 1.16.0 (rename @dowonk-7949/llm-wiki-standard → llm-wiki-governance + governance reposition + English-first output)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업[English-first flip] 진행 + 패키지 개명·repo 제자리 rename·옛 패키지 deprecate; 이름 llm-wiki-governance, 버전 1.16.0")
+- scope: src, tests, docs, config, CI
+- changed:
+  - src/cli.js (helpText EN-first 재정렬 + npx/mcp 예시를 `llm-wiki-governance`로), src/commands.js (`buildHandoff` 프롬프트 완전 영어 + message/`handoffNextStep`/quickstart `About`/brownfield·gitignore/`SKILL_RELOAD_NOTE` EN-first + `handoffLabel` "또는"→"or" + `handoffEntrypoints` "와/를"→"and"), src/index.js (주석 패키지명)
+  - package.json (name `@dowonk-7949/llm-wiki-standard`→`llm-wiki-governance`, version 1.15.1→1.16.0, repository.url, description 거버넌스로 갱신)
+  - CI: `.github/workflows/publish.yml`·`ci.yml`(identity 체크 + ci.yml tarball glob `llm-wiki-governance-*.tgz`), `.github/actions/validate/action.yml`, `.github/ISSUE_TEMPLATE/config.yml`
+  - 문서(개명·repo URL): README.md/README.ko.md, CONTRIBUTING(.ko), SECURITY(.ko), RELEASE_CHECKLIST.md, VERIFICATION.md, ROADMAP(.ko)·GATE_REVIEW·adapters/README·rules/README·templates/git-hooks/README frontmatter, CHANGELOG.md/CHANGELOG.ko.md(헤더+1.16.0)
+  - wiki(정체성/doc-sync, verified→needs_review): index.md, project-profile.md, PUBLIC_API.md, GLOSSARY.md, domains/00_overview.md, docs/llm-wiki/README.md, ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md, EXAMPLES.md; docs/llm-wiki/releases/v1.16.0.md(신규)
+  - tests/verification.test.js (package name/repo url assertion + helpText 헤딩 + handoff 프롬프트 영어 + entrypoint " and " assertion)
+- summary:
+  - global-reach P1 마무리(English-first 출력) + 전략 정합 개명. "standard"가 거버넌스/OKF-compatible 포지션과 충돌해 이름을 `llm-wiki-governance`로 바꾸고, repo는 제자리 rename(GitHub 리다이렉트 유지), 옛 스코프드 패키지는 deprecate(unpublish 불가 — 생성>72h·주 3,445 다운로드로 npm 정책 미충족).
+  - 프레젠테이션·additive: `llm-wiki` 명령·`--format json`·동결 프로그래매틱 API·frontmatter 계약·zero-dep 불변.
+- evidence:
+  - package.json
+  - src/cli.js
+  - src/commands.js
+- caveats:
+  - 개명·doc-sync로 verified 문서 다수를 `needs_review`로 강등 — 사람 검토 후 재승인 필요(릴리스 게이트).
+  - 계정 작업(사용자): GitHub repo rename, npm Trusted Publisher 재설정(새 이름 + rename된 repo), 필요 시 새 이름 첫 수동 publish, `npm deprecate` 옛 패키지. "배포" 시 태그 push.
 
 ## 2026-07-21 - release: prepare 1.15.1 (스킬 생성 재시작 안내, dogfood) + doc-sync
 

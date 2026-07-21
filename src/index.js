@@ -1,4 +1,4 @@
-// Public programmatic API for @dowonk-7949/llm-wiki-standard.
+// Public programmatic API for llm-wiki-governance.
 //
 // This module is the package's importable entry point (package.json "exports").
 // It lets CI wrappers, editors, and tests run LLM-WIKI in-process instead of
@@ -165,7 +165,7 @@ export async function resolveOptions(overrides = {}) {
 }
 
 // Individual command functions, exported under their source names for direct
-// import (e.g. `import { audit } from "@dowonk-7949/llm-wiki-standard"`).
+// import (e.g. `import { audit } from "llm-wiki-governance"`).
 export {
   audit,
   doctor,

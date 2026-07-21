@@ -3,9 +3,9 @@ title: Domain Overview
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: domain_overview
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
 last_edited_by: Claude Code
@@ -33,7 +33,7 @@ contains_sensitive_info: false
 
 # Domain Overview
 
-이 문서는 `llm-wiki-standard`의 "도메인" 지도입니다. 여기서 도메인은 UI가 아니라 **명령어군/서브시스템**을 의미합니다.
+이 문서는 `llm-wiki-governance`의 "도메인" 지도입니다. 여기서 도메인은 UI가 아니라 **명령어군/서브시스템**을 의미합니다.
 
 ## Domains
 

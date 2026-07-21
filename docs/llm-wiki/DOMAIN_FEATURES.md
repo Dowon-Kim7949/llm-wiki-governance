@@ -3,9 +3,9 @@ title: Domain Features
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: domain_overview
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
 last_edited_by: Claude Code
@@ -134,3 +134,4 @@ contains_sensitive_info: false
 - 2026-07-20에 1.14.4 도메인 감지 수정을 반영했다: virtualenv/site-packages를 도메인 스캔에서 확실히 배제(`pyvenv.cfg` 마커 디렉터리 통째 스킵 + `site-packages`/`dist-packages` + 버전형 `venv*`/`env<N>` 이름)한 것을 "초기 문서 생성" 기능에 기술했다 — 설치 의존성(passlib `handlers/`, boto3 `resources/`)이 도메인으로 오탐되어 빈 문서를 대량 생성하던 버그 교정. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-20에 1.15.0 스킬 생성(Gate 21, accepted)을 반영했다: `init`/`quickstart`이 feature/fix/docs-sync 위키-그라운디드 자동화 프롬프트를 Claude 스킬·Cursor 룰·중립 프롬프트로 생성하고 도메인 맵을 주입하는 \"스킬 생성\" 기능과 Evidence(`writeSkillArtifacts`)를 추가했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-21에 `/llm-wiki-feature` 스킬(에이전트 실행)로 "스킬 생성 후 재시작 요건 안내" 기능 작업을 하며 이 "스킬 생성" 설명을 갱신했다(재시작 요건 추가). 에이전트가 편집한 직후엔 `status`를 `needs_review`로 강등했으나(에이전트는 verified 승격 불가), 이후 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-21)를 거쳐 `verified`로 재승인했다 — 이 재검토·재승인은 1.15.1 릴리스의 일부다.
+- 2026-07-21에 1.16.0 English-first 출력 전환 + rename+reposition을 반영했다: "에이전트 인수인계" 기능의 handoff 프롬프트를 **완전 영어**로, help/About/Next Step 안내를 EN-first 이중언어로 재정렬했다(전역 사용성). 함께 패키지명을 `@dowonk-7949/llm-wiki-standard`→`llm-wiki-governance`(unscoped)로 개명하고 포지셔닝을 거버넌스(OKF-compatible)로 옮겼다. 프레젠테이션·additive라 기능 목록·계약·zero-dep은 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.

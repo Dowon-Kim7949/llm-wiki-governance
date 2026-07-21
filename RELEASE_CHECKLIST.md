@@ -7,7 +7,7 @@ tags:
   - stable
 status: needs_review
 doc_type: release_checklist
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-15
 author: ai-generated
 last_edited_by: Claude Code
@@ -26,7 +26,7 @@ contains_sensitive_info: false
 
 # LLM-WIKI Standard Package Release Checklist
 
-Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@<version>` (the version in `package.json`, matched against the release tag). It is version-agnostic — the steps apply to every `1.x` release.
+Use this checklist before publishing `llm-wiki-governance@<version>` (the version in `package.json`, matched against the release tag). It is version-agnostic — the steps apply to every `1.x` release.
 
 ## Local Verification
 
@@ -74,12 +74,12 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@<version>` 
 
 ## Release Metadata
 
-- [ ] Confirm package name is `@dowonk-7949/llm-wiki-standard`.
+- [ ] Confirm package name is `llm-wiki-governance`.
 - [ ] Confirm `package.json` version matches the release tag.
 - [ ] Confirm `CHANGELOG.md` records the release version at the top.
 - [ ] Confirm package has no `publishConfig` override.
 - [ ] Confirm package-level `.npmrc` is absent.
-- [ ] Confirm `repository.url` points to `https://github.com/Dowon-Kim7949/llm-wiki-standard.git`.
+- [ ] Confirm `repository.url` points to `https://github.com/Dowon-Kim7949/llm-wiki-governance.git`.
 - [ ] Confirm `README.md`, `README.ko.md`, `GATE_REVIEW.md`, `VERIFICATION.md`, and `RELEASE_CHECKLIST.md` mention stable release behavior.
 - [ ] Confirm `README.md` starts with language links to English and Korean.
 - [ ] Confirm `README.ko.md` is included in `package.json` files.
@@ -102,9 +102,9 @@ Use this checklist before publishing `@dowonk-7949/llm-wiki-standard@<version>` 
 - [ ] Push only the release tag to start publish: `git push origin vX.Y.Z`.
 - [ ] Confirm the publish workflow validates the tag version against `package.json`.
 - [ ] Confirm the isolated `contents: write` Release job creates a GitHub Release from `release-notes --body-only` after npm publish (GATE_REVIEW Gate 12).
-- [ ] Verify `npm install -D @dowonk-7949/llm-wiki-standard@<version>`.
-- [ ] Verify `npx @dowonk-7949/llm-wiki-standard@<version> doctor`.
-- [ ] Verify `yarn add -D @dowonk-7949/llm-wiki-standard@<version>`.
+- [ ] Verify `npm install -D llm-wiki-governance@<version>`.
+- [ ] Verify `npx llm-wiki-governance@<version> doctor`.
+- [ ] Verify `yarn add -D llm-wiki-governance@<version>`.
 
 ## Team Materials (internal — not shipped to npm)
 

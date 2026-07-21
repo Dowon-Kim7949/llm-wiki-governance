@@ -3,9 +3,9 @@ title: Public Api
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: public_api
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
 last_edited_by: Claude Code
@@ -101,7 +101,7 @@ contains_sensitive_info: false
 CLI 표면과 별개로, 패키지를 in-process로 import해 쓸 수 있는 프로그래매틱 API를 `package.json` `exports`(`.` → `src/index.js`)로 공개한다. CI 래퍼·에디터·테스트가 `llm-wiki` 바이너리를 spawn하지 않고 명령을 실행할 때 쓴다.
 
 ```js
-import { commands, normalizeOptions, resolveOptions, parseArgs, run, SCHEMA_VERSION } from "@dowonk-7949/llm-wiki-standard";
+import { commands, normalizeOptions, resolveOptions, parseArgs, run, SCHEMA_VERSION } from "llm-wiki-governance";
 
 // 1) 부분 옵션으로 직접 호출
 const result = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
@@ -159,7 +159,7 @@ MCP 클라이언트 등록 예시:
 
 ```json
 { "mcpServers": {
-  "llm-wiki": { "command": "npx", "args": ["-y", "@dowonk-7949/llm-wiki-standard", "mcp"] }
+  "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] }
 }}
 ```
 

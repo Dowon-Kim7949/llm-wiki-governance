@@ -2,8 +2,30 @@
 
 # Changelog
 
-All notable changes to `@dowonk-7949/llm-wiki-standard` are documented here. This
-project follows [Semantic Versioning](https://semver.org/). Entries are newest-first.
+All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-standard`)
+are documented here. This project follows [Semantic Versioning](https://semver.org/).
+Entries are newest-first.
+
+## 1.16.0 — 2026-07-21
+
+Rename + reposition. The package is renamed `@dowonk-7949/llm-wiki-standard` →
+**`llm-wiki-governance`** (unscoped) and repositioned as **governance for AI-written
+project docs (OKF-compatible)**. CLI output is now English-first. Additive and
+presentational: the `llm-wiki` command, `--format json`, the frozen programmatic API,
+and the frontmatter contract are unchanged, and no runtime dependency is added. The old
+scoped package is deprecated and points here.
+
+### Changed
+
+- **Package renamed to `llm-wiki-governance`** (was `@dowonk-7949/llm-wiki-standard`).
+  The `llm-wiki` command name is unchanged; install / `npx` targets and the programmatic
+  import specifier use the new name. The old package is deprecated with a pointer here.
+- **Repositioned as a governance layer** — verify, catch drift, keep AI-written docs
+  code-grounded, enforce in CI — positioned OKF-compatible. README (EN/KO) reframed.
+- **English-first CLI output.** The handoff prompt you paste into a coding agent is now
+  fully English; `help`, the quickstart `About` section, and the handoff `Next Step`
+  guidance lead with English (a short Korean note is retained). No finding IDs, command
+  names, or JSON fields changed.
 
 ## 1.15.1 — 2026-07-21
 

@@ -3,9 +3,9 @@ title: Architecture Conventions
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: architecture_conventions
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
 last_edited_by: Claude Code
@@ -144,3 +144,4 @@ contains_sensitive_info: false
 - 2026-07-20에 1.14.3 온보딩 오리엔테이션을 반영했다: `src/cli.js`에 `helpText()`(테스트 가능한 help 문자열 — 이중언어 KO+EN 오리엔테이션 + 버전 + `@latest` 팁)와 `packageVersion()`을 추가하고 `printHelp`가 이를 출력하도록 리팩터했으며, `quickstartCommand`에 이중언어 `About · 소개` 섹션을 추가했다(프레젠테이션 변경; CLI 명령·`--format json`·동결 프로그래매틱 API 불변). Evidence에 `helpText` 포인터를 추가했다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-20에 1.14.4 도메인 감지 수정을 반영했다: `src/commands/domains.js`의 순회 제외를 강화했다 — `pyvenv.cfg` 마커를 가진 디렉터리(=virtualenv)는 `scanForDomainParents`에서 통째 스킵하고, `site-packages`/`dist-packages`와 버전형 `venv*`/`env<N>` 이름을 제외 목록/`isSkippedTraversalDir`에 추가했다. `venv3.10/Lib/site-packages/`의 서드파티(passlib `handlers/`·boto3 `resources/`)가 파일-도메인으로 오탐되던 버그를 교정(venv 없는 레포는 byte-identical). 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-20에 1.15.0 스킬 생성(Gate 21, accepted)을 반영했다: 신규 `src/commands/skills.js`(위키-그라운디드 자동화 프롬프트를 Claude 스킬·Cursor 룰·중립 프롬프트로 생성, 도메인 맵 주입, recognize-don't-run)를 Module Layout·Evidence에 추가하고, `src/cli.js`의 `--skills` 플래그와 `initDryRun`/`initWrite`의 skill plan/write 배선(어댑터 쓰기와 나란히)을 기술했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
+- 2026-07-21에 1.16.0 English-first 출력 전환 + rename을 반영했다: `src/cli.js`의 `helpText()`를 EN-first로 재정렬하고, `src/commands.js`의 `buildHandoff`에서 에이전트에 붙여넣는 handoff 프롬프트를 **완전 영어**로, 주변 message/Next Step(`handoffNextStep`)·quickstart `About`·brownfield/gitignore/`SKILL_RELOAD_NOTE` 안내를 EN-first 이중언어로 재정렬했다. `handoffLabel`(`또는`→`or`)·`handoffEntrypoints`(`와/를`→`and`)도 영어화. 프레젠테이션 변경으로 CLI 명령·`--format json`·동결 프로그래매틱 API·zero-dep은 불변. 함께 패키지명 `@dowonk-7949/llm-wiki-standard`→`llm-wiki-governance` 개명·저장소 rename도 반영했다. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.

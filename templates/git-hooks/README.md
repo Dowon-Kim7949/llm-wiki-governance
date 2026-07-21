@@ -10,7 +10,7 @@ Install one of:
 - Point git at this directory:
   `git config core.hooksPath templates/git-hooks`
 
-The hook uses `npx --no-install`, so add `@dowonk-7949/llm-wiki-standard` as a
+The hook uses `npx --no-install`, so add `llm-wiki-governance` as a
 devDependency in the consuming project. Errors block the commit; warnings do
 not — add `--strict` to the hook command to block on warnings too.
 

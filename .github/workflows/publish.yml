@@ -27,7 +27,7 @@ jobs:
 
       - name: Verify package identity
         run: |
-          node -e "const p=require('./package.json'); if (p.name !== '@dowonk-7949/llm-wiki-standard') { console.error('Unexpected package name:', p.name); process.exit(1); }"
+          node -e "const p=require('./package.json'); if (p.name !== 'llm-wiki-governance') { console.error('Unexpected package name:', p.name); process.exit(1); }"
 
       - name: Verify tag matches package version
         run: |

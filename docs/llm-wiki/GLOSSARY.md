@@ -3,12 +3,12 @@ title: Glossary
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: glossary
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
-last_edited_by: Codex
+last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
 reviewed_at: 2026-07-21
 wiki_block_version: v1
@@ -28,7 +28,7 @@ contains_sensitive_info: false
 
 # Glossary
 
-`llm-wiki-standard`에서 쓰는 핵심 용어입니다.
+`llm-wiki-governance`에서 쓰는 핵심 용어입니다.
 
 ## Terms
 

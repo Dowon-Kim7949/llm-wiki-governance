@@ -6,7 +6,7 @@ branding:
 
 inputs:
   version:
-    description: "npm version or dist-tag of @dowonk-7949/llm-wiki-standard to run."
+    description: "npm version or dist-tag of llm-wiki-governance to run."
     required: false
     default: "latest"
   cwd:
@@ -64,4 +64,4 @@ runs:
         if [ -n "$LW_PROFILE" ]; then args+=(--profile "$LW_PROFILE"); fi
         if [ -n "$LW_SINCE" ]; then args+=(--since "$LW_SINCE"); fi
         if [ -n "$LW_OUT" ]; then args+=(--out "$LW_OUT"); fi
-        npx -y "@dowonk-7949/llm-wiki-standard@$LW_VERSION" "${args[@]}"
+        npx -y "llm-wiki-governance@$LW_VERSION" "${args[@]}"

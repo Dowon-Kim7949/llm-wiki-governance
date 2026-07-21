@@ -2,8 +2,26 @@
 
 # 변경 이력 (Changelog)
 
-`@dowonk-7949/llm-wiki-standard`의 주요 변경 사항을 기록합니다. 이 프로젝트는
-[유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
+`llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
+프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
+
+## 1.16.0 — 2026-07-21
+
+개명 + 리포지셔닝. 패키지를 `@dowonk-7949/llm-wiki-standard` → **`llm-wiki-governance`**(unscoped)로
+개명하고 **AI가 쓴 프로젝트 문서를 위한 거버넌스(OKF-compatible)**로 포지셔닝을 옮겼다. CLI 출력은
+English-first로 전환. 부가적·프레젠테이션 변경이라 `llm-wiki` 명령·`--format json`·동결 프로그래매틱
+API·frontmatter 계약 불변, 런타임 의존성 추가 없음. 옛 스코프드 패키지는 deprecate되어 새 이름을 가리킨다.
+
+### Changed
+
+- **패키지명 `llm-wiki-governance`로 개명**(옛 `@dowonk-7949/llm-wiki-standard`). `llm-wiki` 명령
+  이름은 그대로이며, 설치/`npx` 타깃과 프로그래매틱 import 지정자가 새 이름을 쓴다. 옛 패키지는 새 이름을
+  가리키며 deprecate.
+- **거버넌스 레이어로 리포지셔닝** — 검증·드리프트 감지·코드 그라운딩·CI 강제 — OKF-compatible 포지션.
+  README(EN/KO)를 이에 맞춰 재구성.
+- **English-first CLI 출력.** 코딩 에이전트에 붙여넣는 handoff 프롬프트를 완전 영어로 전환하고,
+  `help`·quickstart `About`·handoff `Next Step` 안내를 영어 우선으로(짧은 한국어 병기 유지) 재정렬.
+  finding ID·명령명·JSON 필드는 불변.
 
 ## 1.15.1 — 2026-07-21
 

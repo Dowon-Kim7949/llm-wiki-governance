@@ -433,7 +433,7 @@ test("handoff command prints Claude Code entrypoint without writing files", asyn
   assert.equal(result.handoff.label, "Claude Code");
   assert.ok(result.text.includes("Claude Code에게 넘어가서 아래 프롬프트를 실행하세요."));
   assert.ok(result.handoff.prompt.includes("CLAUDE.md"));
-  assert.ok(result.handoff.prompt.includes("verified 승인은 하지 말고"));
+  assert.ok(result.handoff.prompt.includes("Do not promote anything to verified"));
 });
 
 test("handoff command blocks Antigravity until adapter contract is confirmed", async () => {
@@ -503,7 +503,7 @@ test("handoff report can be written for reviewable prompt storage", async () => 
   const content = await readFile(out, { encoding: "utf8" });
 
   assert.ok(content.includes("# LLM-WIKI Handoff"));
-  assert.ok(content.includes("AGENTS.md와 docs/llm-wiki/index.md"));
+  assert.ok(content.includes("AGENTS.md and docs/llm-wiki/index.md"));
   assert.ok(content.includes("status: needs_review"));
 });
 
@@ -2532,11 +2532,11 @@ test("doctor reports package release readiness for package roots", async () => {
 test("package metadata targets npmjs public publish without committed tokens", async () => {
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
-  assert.equal(packageJson.name, "@dowonk-7949/llm-wiki-standard");
-  assert.equal(packageJson.version, "1.15.1");
+  assert.equal(packageJson.name, "llm-wiki-governance");
+  assert.equal(packageJson.version, "1.16.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
-  assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-standard.git");
+  assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");
   assert.ok(packageJson.files.includes("README.ko.md"));
   assert.ok(packageJson.files.includes("ROADMAP.md"));
 });
@@ -3605,7 +3605,7 @@ test("help leads with a bilingual what/why/how orientation + version and @latest
   const { helpText, packageVersion } = await import("../src/cli.js");
   const text = helpText();
   assert.match(text, /llm-wiki v\d+\.\d+\.\d+/, "shows the package version so a stale npx cache is noticeable");
-  assert.ok(text.includes("무엇을 하나 / What it does"), "bilingual what-it-does heading");
+  assert.ok(text.includes("What it does / 무엇을 하나"), "bilingual what-it-does heading (EN-first)");
   assert.ok(text.includes("AI 에이전트가 읽는") && text.includes("your AI coding agent reads"), "KO+EN one-liner");
   assert.ok(text.includes("@latest"), "recommends @latest (the npx-cache caveat)");
   assert.ok(text.includes("Usage:"), "still lists usage below the orientation");

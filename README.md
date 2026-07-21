@@ -2,14 +2,32 @@
 
 # LLM-WIKI Standard
 
-`@dowonk-7949/llm-wiki-standard` is a zero-dependency CLI that builds and validates a standardized, source-backed knowledge base (`docs/llm-wiki/`) for AI coding agents — so an agent starts from one index instead of re-reading your whole codebase on every task.
+**Governance for AI-written project docs.** `llm-wiki-governance` is a zero-dependency CLI that keeps an AI coding agent's project knowledge (`docs/llm-wiki/`) **trustworthy and current**: it ties every claim to real code, flags docs when that code moves on, keeps AI-written content behind human review, and enforces all of it in CI. Works on any stack, with any agent, and is **OKF-compatible**.
+
+## Why a governance layer?
+
+An *LLM wiki* — a distilled, interlinked knowledge base an agent reads instead of re-deriving your codebase on every task — is a proven pattern (popularized in 2026, and formalized by Google's Open Knowledge Format). The hard part was never *making* one. It's keeping it honest.
+
+| Approach | How the agent gets context | The catch |
+| --- | --- | --- |
+| **RAG** | Re-retrieves and re-derives from source on every query | Repetitive, costly, no shared source of truth |
+| **Plain LLM wiki** (a Markdown folder, e.g. an OKF project) | Reads a hand-written knowledge base | Goes stale silently → a doc that *lies* |
+| **Governed LLM wiki** (this tool) | Reads the same wiki — but **verified, drift-checked, CI-enforced** | — |
+
+**What "governed" means here:**
+
+- **Trust states** — AI-written docs stay `needs_review`; only a human promotes to `verified`. The CLI can *never* self-approve.
+- **Evidence + drift** — each claim links to a real file/line/symbol; when that source changes, `evidence.stale` / `drift` flags the doc for re-review.
+- **CI-enforced** — `validate` runs in pre-commit / GitHub Actions, so an unreviewed or drifted wiki fails the build instead of rotting quietly.
+- **Agent-queryable** — a read-only MCP server lets agents *ask* the wiki instead of re-scanning the code.
+- **Safe by construction** — preview-first writes, append-only change log, sensitive-value redaction, and **zero runtime dependencies**.
 
 ```text
-Without LLM-WIKI:  task -> re-scan the codebase -> re-derive structure & rules -> work
-With LLM-WIKI:     task -> read index.md -> read the relevant wiki docs -> inspect only the needed source -> work
+Without:  task -> re-scan the codebase -> re-derive structure & rules -> work
+With:     task -> read index.md -> read the relevant (verified) wiki docs -> inspect only the source you need -> work
 ```
 
-The CLI creates the safe structure and guardrails; an agent (Codex, Claude Code, …) enriches the docs from real code; a human reviews and approves `verified`; CI keeps it honest. Useful for legacy maintenance, feature work, incident response, onboarding, handovers, and sharing project knowledge across agents.
+The CLI builds the structure and guardrails; an agent enriches the docs from real code; a human approves `verified`; CI keeps it honest. Useful for legacy maintenance, feature work, incident response, onboarding, handovers, and sharing project knowledge across agents.
 
 ## Supported environments
 
@@ -18,19 +36,22 @@ The CLI creates the safe structure and guardrails; an agent (Codex, Claude Code,
 | **Runtime** | Node.js ≥ 18.18.0 · Windows, macOS, Linux |
 | **Dependencies** | none — no runtime third-party dependencies |
 | **Detects** | Node · Python · Go · Rust · JVM · PHP · Ruby · .NET · mobile (Android / Flutter / iOS / React Native) · infra (Docker / Compose / Kubernetes / Helm / Terraform) |
+| **Standards** | **OKF-compatible** — `--profile okf-v0.1` validates Open Knowledge Format `type`/`aliases`/`tags`; the core validator accepts OKF `type` as an alias for `doc_type` |
 | **Agents / editors** | Codex (`AGENTS.md`), Claude Code (`CLAUDE.md`), Cursor, GitHub Copilot, Windsurf, Gemini CLI — plus any MCP client via `llm-wiki mcp` |
 | **Standalone** | the CLI (init / validate / audit / graph / stats / CI) works fully **without any agent** |
 
 ## Quick start
 
 ```bash
-npm install -D @dowonk-7949/llm-wiki-standard
+npm install -D llm-wiki-governance
 npx llm-wiki quickstart --write --type frontend --agent claude   # or --agent codex
 ```
 
 `quickstart --write` detects the project, creates the wiki + adapter files, and prints a handoff prompt. Paste that prompt into your agent: it reads `docs/llm-wiki/index.md`, enriches the docs from real source files, and leaves everything `needs_review` for you to approve. Preview first with `quickstart --dry-run`.
 
 Add `--skills` (or `--agent claude|cursor`) to also generate invocable, wiki-grounded automation prompts — a Claude skill (`/llm-wiki-feature`), a Cursor rule, and an agent-neutral prompt — for ongoing feature/fix/docs-sync work, each carrying a snapshot of your project's domain map.
+
+**Already have an OKF (or plain Markdown) knowledge folder?** Point the CLI at it to add verification, drift detection, and CI *without changing the format* — `--profile okf-v0.1` treats it as first-class.
 
 ## Recommended agent & model
 
@@ -48,40 +69,41 @@ The `llm-wiki mcp` server is deterministic (no model); the agent *calling* its t
 
 | Command | What it does |
 | --- | --- |
-| `quickstart --write` | Set up the wiki + adapter and print the agent handoff prompt. |
+| `quickstart --write` | Set up the wiki + adapter, print the agent handoff prompt (`--skills` also generates automation skills). |
 | `validate` | Structure & safety validation for local checks / CI (`--strict`, `--changed`). |
 | `audit` · `status` | Full findings report · current wiki state. |
-| `graph` · `stats` | Knowledge graph (text/JSON/Mermaid/DOT) · health snapshot. |
-| `fix` · `migrate` · `drift` | Scoped safe autofix · contract upgrade · drift downgrade (all preview-first). |
+| `graph` · `stats` | Knowledge graph (text/JSON/Mermaid/DOT) · health snapshot (verified % / enrichment % / evidence coverage). |
+| `drift` · `fix` · `migrate` | Drift detection & downgrade · scoped safe autofix · contract upgrade (all preview-first). |
 | `handoff` · `prompt` | Agent handoff prompt · repeatable task prompts (feature/fix/refactor/docs-sync/okf-extract). |
 | `mcp` | Run the read-only MCP server (see below). |
 
-Full command, option, exit-code, and programmatic-API reference: run `npx llm-wiki help <command>` (offline), or see [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-standard/blob/main/docs/llm-wiki/PUBLIC_API.md).
+Full command, option, exit-code, and programmatic-API reference: run `npx llm-wiki help <command>` (offline), or see [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md).
 
-## Getting the most out of it
+## Governance in practice
 
-- **Keep it current.** Update the wiki in the same change as the code (`prompt --task docs-sync`), and run `validate --changed` in pre-commit / CI so drift is caught early.
-- **Trust, but verify.** Agent-written docs stay `needs_review`; a human promotes to `verified`. Use `drift` to catch verified docs whose sources moved.
+- **Verify deliberately.** Agent-written docs stay `needs_review`; a human promotes to `verified` after reading them. Nothing the CLI does can bypass that.
+- **Catch drift early.** Every doc cites `source_files` / precise `evidence`; when those change, `evidence.stale` and `drift` flag the doc. Run `drift --downgrade` to flip stale `verified` docs back to `needs_review`.
+- **Keep it current in the same change.** Update the wiki alongside the code (`prompt --task docs-sync`, or the `docs-sync` skill), and run `validate --changed` in pre-commit / CI.
 - **Let agents self-serve.** Point your agent at the `mcp` server so it queries the wiki as tools instead of re-scanning the code.
-- **Make it readable.** `graph --format mermaid`, `stats`, and `audit --format html` help humans see the corpus; it renders natively on GitHub/GitLab, Obsidian, or MkDocs (it stays Markdown-in-git, not a static-site generator).
-- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-standard/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-standard/.github/actions/validate@v1.7.0` (pin an exact tag).
+- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.7.0` (pin an exact tag).
+- **Make it readable.** `graph --format mermaid`, `stats`, and `audit --format html` help humans see the corpus; it stays Markdown-in-git (renders on GitHub/GitLab, Obsidian, MkDocs — not a static-site generator).
 
 ## Agent-native (MCP)
 
 `llm-wiki mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio (newline-delimited JSON-RPC 2.0, Node built-ins only — no third-party SDK). Register it in an MCP client:
 
 ```json
-{ "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "@dowonk-7949/llm-wiki-standard", "mcp"] } } }
+{ "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-It exposes **read-only** tools — `validate`, `audit`, `next`, `status`, `doctor`, `stats`, `graph`, `explain`, `handoff`, `prompt` — so an agent can inspect the wiki but never write it. Details: [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-standard/blob/main/docs/llm-wiki/PUBLIC_API.md) · [GATE_REVIEW.md](./GATE_REVIEW.md) (Gate 11).
+It exposes **read-only** tools — `validate`, `audit`, `next`, `status`, `doctor`, `stats`, `graph`, `explain`, `handoff`, `prompt` — so an agent can inspect the wiki but never write it. Details: [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · [GATE_REVIEW.md](./GATE_REVIEW.md) (Gate 11).
 
 ## Use it from code
 
 Import the package instead of shelling out — handy for CI wrappers, editor integrations, and tests:
 
 ```js
-import { commands, normalizeOptions, run } from "@dowonk-7949/llm-wiki-standard";
+import { commands, normalizeOptions, run } from "llm-wiki-governance";
 
 const r = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
 // r.command, r.result, r.findings, r.schemaVersion
@@ -89,7 +111,7 @@ const r = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
 const code = await run(["validate", "--strict"]); // 0 pass / 1 error / 2 blocked / 3 usage
 ```
 
-`--format json` output carries a top-level `schemaVersion` so wrappers can pin the contract. Full API in [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-standard/blob/main/docs/llm-wiki/PUBLIC_API.md).
+`--format json` output carries a top-level `schemaVersion` so wrappers can pin the contract. Full API in [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md).
 
 ## Safety at a glance
 
@@ -97,8 +119,8 @@ Preview-first everywhere (writes only with `--write` / `--apply`); `verified` is
 
 ## Learn more
 
-- [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-standard/blob/main/docs/llm-wiki/PUBLIC_API.md) — full command / option / exit-code / configuration / programmatic-API / MCP reference.
-- [GATE_REVIEW.md](./GATE_REVIEW.md) — accepted safety scopes (fix / migrate / drift / MCP) and release gates.
+- [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) — full command / option / exit-code / configuration / programmatic-API / MCP reference.
+- [GATE_REVIEW.md](./GATE_REVIEW.md) — accepted safety scopes (fix / migrate / drift / MCP / skills) and release gates.
 - [ROADMAP.md](./ROADMAP.md) — direction and shipped history.
-- [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-standard/blob/main/docs/llm-wiki/EXAMPLES.md) — worked examples · [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) — maintainer release steps.
+- [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) — worked examples · [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) — maintainer release steps.
 - Community: [CONTRIBUTING.md](./CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) · [SECURITY.md](./SECURITY.md).

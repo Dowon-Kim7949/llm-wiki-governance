@@ -3,9 +3,9 @@ title: LLM-WIKI README
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: wiki_readme
-project: llm-wiki-standard
+project: llm-wiki-governance
 last_updated: 2026-07-21
 author: cli-generated
 last_edited_by: Claude Code
@@ -26,7 +26,7 @@ contains_sensitive_info: false
 
 # LLM-WIKI README
 
-이 디렉터리는 `llm-wiki-standard` 저장소의 지식·의사결정·작업 규칙을 LLM과 개발자가 함께 참조하기 위한 공간입니다. 이 wiki는 패키지가 제공하는 CLI를 저장소 자신에게 적용한 dogfooding 결과입니다.
+이 디렉터리는 `llm-wiki-governance` 저장소의 지식·의사결정·작업 규칙을 LLM과 개발자가 함께 참조하기 위한 공간입니다. 이 wiki는 패키지가 제공하는 CLI를 저장소 자신에게 적용한 dogfooding 결과입니다.
 
 ## Entry Point
 
