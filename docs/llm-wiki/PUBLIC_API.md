@@ -75,7 +75,7 @@ contains_sensitive_info: false
 | `quickstart --dry-run\|--write` | doctor+init+frontmatter+handoff 프롬프트 | `--write` 시 |
 | `handoff` | Codex/Claude Code 인수인계 프롬프트 출력 | `--out` 시 |
 | `prompt --task <name>` | 반복 작업 프롬프트(feature/fix/refactor/docs-sync/okf-extract) | `--out` 시 |
-| `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성. backend/fullstack은 도메인별 문서(`domains/NN_<name>.md`)도 생성. 1.15부터 `--skills`(또는 `--agent claude\|cursor`)로 위키-그라운디드 자동화 프롬프트 아티팩트(Claude 스킬·Cursor 룰·중립 프롬프트, 도메인 맵 주입; opt-in·미덮어씀) 생성 | `--write` 시 |
+| `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성. backend/fullstack(디렉터리/파일 도메인)·frontend/mobile(SPA `pages`/`views`/... 폴더 + vue/react-router 라우트 그룹)은 도메인별 문서(`domains/NN_<name>.md`)도 생성 — 도메인 미탐지 시 침묵하지 않고 명시 안내, `--domains a,b,c`로 수동 지정 가능. 1.15부터 `--skills`(또는 `--agent claude\|cursor`)로 위키-그라운디드 자동화 프롬프트 아티팩트(Claude 스킬·Cursor 룰·중립 프롬프트, 도메인 맵 주입; opt-in·미덮어씀) 생성 | `--write` 시 |
 | `migrate [--apply]` | `wiki_block_version` 업그레이드 리포트 + 계획. `--apply`로 `fix` 범위 재사용해 문서를 현재 계약으로 올림(preview-first, `verified` 보존; GATE_REVIEW Gate 8) | `--apply` 시 |
 | `fix [--write]` | 승인된 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 섹션 보완, 깨진 related/링크 `needs_review` 스텁, 수정 문서 `last_updated` 갱신). 기본은 미리보기 | `--write` 시 |
 | `drift [--downgrade]` | `verified` 문서의 `evidence.stale` 드리프트 리포트. `--downgrade`로 드리프트 문서를 `needs_review`로 강등(GATE_REVIEW Gate 9) | `--downgrade` 시 |
@@ -93,7 +93,7 @@ contains_sensitive_info: false
 
 - `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; 나머지는 명시 선택. writable: codex/claude/cursor/copilot/windsurf/gemini, candidate: jetbrains/antigravity)
 - `--format <text|json|markdown|html>`(대부분 명령), `graph`는 `--format <text|json|mermaid|dot>`(mermaid/dot는 graph 전용). `--out <path>`, `--strict`, `--minimal`
-- `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate/impact), `--body-only` (release-notes), `--changed` (validate), `--run <path>` (check-run — 특정 run manifest 지정; 생략 시 `.llm-wiki/runs/`의 최신). `--strict`는 warning을 exit 1로 승격한다(대부분의 명령; `impact --strict`·`check-run --strict`는 CI 실패로 만든다).
+- `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate/impact), `--body-only` (release-notes), `--changed` (validate), `--run <path>` (check-run — 특정 run manifest 지정; 생략 시 `.llm-wiki/runs/`의 최신), `--domains <a,b,c>` (init/quickstart — 도메인 수동 지정). `--strict`는 warning을 exit 1로 승격한다(대부분의 명령; `impact --strict`·`check-run --strict`는 CI 실패로 만든다).
 
 ## Exit Codes
 

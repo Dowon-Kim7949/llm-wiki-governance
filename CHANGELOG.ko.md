@@ -18,6 +18,9 @@ API·frontmatter 계약 불변, 백엔드/풀스택 도메인 탐지는 byte-ide
   하위 1-depth 폴더와, vue-router/react-router 라우트 파일의 최상위 라우트 그룹(정규식, 파서
   의존성 없음). SPA UI 배관 폴더(`components`/`layouts`/`composables` 등)는 제외하며,
   백엔드/풀스택 탐지는 불변.
+- **`--domains <a,b,c>` + 명시적 no-domains 안내.** `init`/`quickstart`이 도메인을 명시 지정할 수
+  있고(자동 탐지가 못 찾을 때 유용), 도메인 가능 유형인데 per-domain 문서를 0개 만드는 경우
+  **침묵하지 않고** `--domains` 또는 `docs/llm-wiki/domains/` 수동 생성을 안내하는 메시지를 출력한다.
 - **`llm-wiki get-doc --section <terms>` — 집중 읽기.** 문서 전문 대신 관련 `##` 섹션(+프리앰블)만
   반환하고, `##` 섹션이 없거나 매치가 없으면 full body로 fallback한다. 필터 시에만 additive
   `document.section` `{query, returned, total}`을 부가(기본 출력 불변). CLI·MCP(`get_doc.section`)·

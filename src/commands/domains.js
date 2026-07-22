@@ -275,7 +275,9 @@ export function planDomainDocs(detected) {
   for (const item of detected) {
     const slug = normalizeDomainSlug(item.rawName);
     if (!bySlug.has(slug)) bySlug.set(slug, new Set());
-    bySlug.get(slug).add(toPosix(item.sourceFile));
+    // Manually-specified domains (--domains) carry no source path; their doc is a
+    // needs_review scaffold with empty source_files for the agent to fill.
+    if (item.sourceFile) bySlug.get(slug).add(toPosix(item.sourceFile));
   }
   return [...bySlug.keys()]
     .sort((left, right) => left.localeCompare(right))
@@ -292,18 +294,25 @@ export function planDomainDocs(detected) {
 // SPA detector (folders + route groups). Other types get none.
 // relatedExtras links the backend contract docs only when they are themselves
 // part of this init's candidate set, so no broken links are introduced.
-export async function buildDomainContext(cwd, projectType, minimal, candidateSet) {
-  if (minimal) return emptyDomainContext();
-  let detected;
+export async function buildDomainContext(cwd, projectType, minimal, candidateSet, manualDomains = []) {
+  if (minimal) return { ...emptyDomainContext(), domainCapable: false };
+  const manual = (Array.isArray(manualDomains) ? manualDomains : [])
+    .map((name) => ({ rawName: name, sourceFile: null, kind: "manual" }));
+  // Domain docs are planned for domain-capable project types, or whenever the
+  // user explicitly names domains with --domains. `domainCapable` lets the caller
+  // surface an explicit "no domains detected" notice instead of a silent no-op.
+  const autoCapable = ["backend", "fullstack", "frontend", "mobile"].includes(projectType);
+  if (!autoCapable && manual.length === 0) {
+    return { ...emptyDomainContext(), domainCapable: false };
+  }
+  let detected = [];
   if (projectType === "backend" || projectType === "fullstack") {
     detected = await detectDomainDirectories(cwd);
   } else if (projectType === "frontend" || projectType === "mobile") {
     detected = await detectFrontendDomains(cwd);
-  } else {
-    return emptyDomainContext();
   }
-  const plans = planDomainDocs(detected);
+  const plans = planDomainDocs([...detected, ...manual]);
   const relatedExtras = ["docs/llm-wiki/API_CONTRACTS.md", "docs/llm-wiki/DATA_MODEL.md"]
     .filter((doc) => candidateSet.has(doc));
-  return { plans, relatedExtras };
+  return { plans, relatedExtras, domainCapable: true };
 }

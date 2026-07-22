@@ -21,6 +21,10 @@ contract are unchanged, and backend/fullstack domain detection is byte-identical
   (regex, no parser dependency) from vue-router/react-router files. SPA UI-plumbing folders
   (`components`/`layouts`/`composables`/…) are excluded, and backend/fullstack detection is
   unchanged.
+- **`--domains <a,b,c>` + an explicit no-domains notice.** `init`/`quickstart` can now name
+  domains explicitly (for when auto-detection can't find them), and — instead of silently
+  producing zero per-domain docs for a domain-capable project — print an explicit notice
+  pointing to `--domains` or manual creation under `docs/llm-wiki/domains/`.
 - **`llm-wiki get-doc --section <terms>` — focused read.** Returns only the most relevant
   `##` sections (plus the preamble) instead of the full document body, falling back to the
   full body when there is no `##` section or nothing matches. An additive `document.section`

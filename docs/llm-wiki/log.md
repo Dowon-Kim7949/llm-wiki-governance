@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-22 - feat(init): --domains 옵션 + no-domains 명시 안내 (외부 피드백 P3)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code(src/cli.js·commands.js·commands/domains.js) + tests + docs(PUBLIC_API·DOMAIN_FEATURES·CHANGELOG×2·log)
+- changed:
+  - src/cli.js: `--domains <a,b,c>` 옵션(defaultOptions·parseArgs 쉼표분해·COMMAND_OPTION_RULES init/quickstart·help 4곳).
+  - src/commands/domains.js: `buildDomainContext(cwd, type, minimal, candidateSet, manualDomains=[])`로 확장 — 수동 도메인을 `{kind:"manual", sourceFile:null}`로 병합하고 `domainCapable` 플래그 반환. `planDomainDocs`는 빈 sourceFile을 건너뜀(수동 도메인은 source_files 빈 스캐폴드).
+  - src/commands.js: `initCommand`이 `options.domains`를 전달하고, domainCapable인데 plans가 0이면 `domainNotice`(KO/EN)를 계산해 `initDryRun`/`initWrite`가 출력(silent no-op 제거).
+  - tests/verification.test.js: no-domains 안내 + --domains per-domain 계획 테스트.
+- summary:
+  - `--type` 강제(또는 프론트) 프로젝트에서 도메인 부모를 못 찾으면 침묵하던 문제(P3) 해소 + `--domains`로 수동 지정. 실측: 프론트 fixture에서 안내 출력, `--domains hazards,jobs`로 01/02 계획·`--write` 생성 확인.
+- evidence:
+  - src/commands/domains.js#symbol:buildDomainContext
+  - src/commands.js#symbol:initCommand
+- caveats:
+  - additive·zero-dep, 기존 backend/fullstack 동작 불변. 수동 도메인 문서는 source_files 빈 needs_review 스캐폴드(에이전트가 근거 채움). 미릴리스(1.20 후보).
+
 ## 2026-07-22 - fix(evidence): section 정렬 검사를 경로 기준으로 완화 (외부 피드백 P2)
 
 - status: needs_review

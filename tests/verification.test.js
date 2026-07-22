@@ -217,6 +217,22 @@ test("detectDomainDirectories ignores SPA feature folders (backend detection unc
   assert.deepEqual(await detectDomainDirectories(cwd), []);
 });
 
+test("init surfaces a no-domains notice for a domain-capable project, and --domains adds per-domain docs (P3)", async () => {
+  const cwd = await makeProject("p3-domains-");
+  await writeJson(path.join(cwd, "package.json"), { name: "p3", dependencies: { vue: "^3.0.0" } });
+
+  // Frontend project with no domain folders → explicit notice, no per-domain docs (no silent no-op).
+  const bare = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: "frontend" });
+  assert.ok(bare.skipped.some((line) => line.includes("No per-domain docs")), "explicit no-domains notice shown");
+  assert.ok(!bare.planned.some((line) => line.includes("domains/01_")), "no per-domain doc planned");
+
+  // --domains names them explicitly → per-domain docs planned, notice cleared.
+  const manual = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: "frontend", domains: ["hazards", "jobs"] });
+  assert.ok(manual.planned.some((line) => line.includes("domains/01_hazards.md")));
+  assert.ok(manual.planned.some((line) => line.includes("domains/02_jobs.md")));
+  assert.ok(!manual.skipped.some((line) => line.includes("No per-domain docs")), "notice cleared when domains are named");
+});
+
 test("backend with routes only in a single file yields no per-domain docs", async () => {
   const cwd = await makeProject("domain-single-file-");
   await mkdir(path.join(cwd, "app"), { recursive: true });

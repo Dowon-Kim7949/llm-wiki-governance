@@ -1136,23 +1136,28 @@ export async function initCommand(options) {
   const agents = selectedAgents(options);
   const baseDocs = plannedDocs(detection.projectType, options.minimal, options.profiles);
   const candidateSet = new Set(baseDocs);
-  const domainContext = await buildDomainContext(options.cwd, detection.projectType, options.minimal, candidateSet);
+  const domainContext = await buildDomainContext(options.cwd, detection.projectType, options.minimal, candidateSet, options.domains);
   const candidates = [...baseDocs, ...domainContext.plans.map((plan) => plan.rel)];
+  // Don't silently produce zero per-domain docs for a domain-capable project — say why.
+  const domainNotice = (!options.minimal && domainContext.domainCapable && domainContext.plans.length === 0)
+    ? `No per-domain docs: no domain source directories were detected for this ${detection.projectType} project. Name them with --domains <a,b,c>, or add docs/llm-wiki/domains/NN_<name>.md by hand. · 도메인 소스 폴더를 못 찾아 per-domain 문서를 만들지 않았습니다 — --domains <a,b,c>로 지정하거나 수동 추가하세요.`
+    : null;
 
   if (options.dryRun) {
-    return initDryRun(options, detection, agents, candidates);
+    return initDryRun(options, detection, agents, candidates, domainNotice);
   }
 
   if (options.write) {
-    return initWrite(options, detection, agents, candidates, domainContext);
+    return initWrite(options, detection, agents, candidates, domainContext, domainNotice);
   }
 
   return needsWriteFlag("init", "Preview the changes with init --dry-run, or run init --write to create the missing LLM-WIKI files. Existing wiki docs are kept (--existing skip by default).");
 }
 
-async function initDryRun(options, detection, agents, candidates) {
+async function initDryRun(options, detection, agents, candidates, domainNotice = null) {
   const planned = [];
   const skipped = [];
+  if (domainNotice) skipped.push(domainNotice);
 
   for (const rel of candidates) {
     if (await pathExists(path.join(options.cwd, rel))) {
@@ -1222,12 +1227,13 @@ async function findMissingDocs(cwd, projectType, profiles = [], customDocs = [])
   return findings;
 }
 
-async function initWrite(options, detection, agents, candidates, domainContext = emptyDomainContext()) {
+async function initWrite(options, detection, agents, candidates, domainContext = emptyDomainContext(), domainNotice = null) {
   const created = [];
   const overwritten = [];
   const skipped = [];
   const blocked = [];
   const lastUpdated = todayIsoDate();
+  if (domainNotice) skipped.push(domainNotice);
 
   for (const rel of candidates) {
     const absolutePath = path.join(options.cwd, rel);
