@@ -6,6 +6,19 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## Unreleased
+
+### Added
+
+- **Domain docs are pre-wired into the two top-level entry points (external feedback P6).**
+  When `init`/`quickstart` plans per-domain docs (auto-detected or via `--domains`), the
+  generated `index.md` now links the domain overview (in the read order and `related`) and
+  `DOMAIN_FEATURES.md` lists each per-domain doc under a `## Domains` section — complementing
+  the existing overview↔per-domain wiring so the domain map is reachable from the entry point,
+  and automating the linking a tester previously did by hand. Gated on domains being planned:
+  a domain-less scaffold is byte-identical. Scope is scaffold-time (`init`/`quickstart`);
+  `fix`-time re-wiring is a follow-up. Additive and zero-dependency.
+
 ## 1.20.0 — 2026-07-22
 
 Retrieval and frontend developer-experience improvements, most driven by external usage

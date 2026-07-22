@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,25 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-22 - feat: 도메인 문서 orphan/링크 사전 배선 (외부 피드백 P6)
+
+- status: needs_review
+- actor: Claude Code
+- scope: src, tests, docs
+- changed:
+  - src/commands/doc-templates.js
+  - tests/verification.test.js
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+  - CHANGELOG.md, CHANGELOG.ko.md
+- summary:
+  - `docMetadata`가 도메인이 계획될 때만 `index.md`(읽기 순서에 `domains/00_overview.md` 실제 링크 + `related` 추가)와 `DOMAIN_FEATURES.md`(`## Domains` 섹션으로 각 per-domain 문서 링크)를 사전 배선하도록 했다(공유 헬퍼 `domainLinkList`). overview↔per-domain 배선의 보완 — 진입점에서 도메인 지도로 가는 경로 제공, 테스터 수동 배선 자동화.
+  - 도메인이 없으면 두 문서 byte-identical(플래그 게이팅). 스코프는 스캐폴드(init/quickstart)만.
+- evidence:
+  - src/commands/doc-templates.js#symbol:domainLinkList
+  - src/commands/doc-templates.js#symbol:docMetadata
+- caveats:
+  - 265 tests·zero-dep·additive·1.0.0 계약 불변. 그래프 검증: index→overview·DOMAIN_FEATURES→per-domain inbound 확인, broken-link 0. `fix`-타임 재배선은 후속. 에이전트 편집이라 `needs_review` — 사람 검토 후 재승인 예정.
 
 ## 2026-07-22 - review: 1.20 누적분 코어 문서 verified 재승인 (human)
 

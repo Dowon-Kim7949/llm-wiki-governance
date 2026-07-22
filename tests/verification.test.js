@@ -296,6 +296,42 @@ test("init --write --type backend creates overview plus per-domain docs", async 
   assert.ok(overview.includes("[User](./02_user.md)"));
 });
 
+test("init --write wires domain docs into index and DOMAIN_FEATURES (P6)", async () => {
+  const cwd = await makeProject("domain-wire-");
+  await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
+  await mkdir(path.join(cwd, "src", "modules", "order"), { recursive: true });
+
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+
+  const wikiDir = path.join(cwd, "docs", "llm-wiki");
+  // Index links the domain overview (read order + related) so the entry point
+  // routes to the domain map, not only the domain docs' back-links.
+  const index = await readFile(path.join(wikiDir, "index.md"), "utf8");
+  assert.ok(index.includes("[Domain Overview](./domains/00_overview.md)"));
+  assert.ok(index.includes("- docs/llm-wiki/domains/00_overview.md"));
+
+  // DOMAIN_FEATURES lists each detected domain doc under a Domains section.
+  const domainFeatures = await readFile(path.join(wikiDir, "DOMAIN_FEATURES.md"), "utf8");
+  assert.ok(domainFeatures.includes("## Domains"));
+  assert.ok(domainFeatures.includes("[Order](./domains/01_order.md)"));
+  assert.ok(domainFeatures.includes("[User](./domains/02_user.md)"));
+});
+
+test("init --write leaves index/DOMAIN_FEATURES unwired when no domains (P6 byte-identical)", async () => {
+  const cwd = await makeProject("domain-nowire-");
+
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+
+  const wikiDir = path.join(cwd, "docs", "llm-wiki");
+  const index = await readFile(path.join(wikiDir, "index.md"), "utf8");
+  assert.ok(!index.includes("[Domain Overview]"));
+  assert.ok(index.includes("작업 대상 도메인 문서와 관련 source files"));
+  assert.ok(!index.includes("- docs/llm-wiki/domains/00_overview.md"));
+
+  const domainFeatures = await readFile(path.join(wikiDir, "DOMAIN_FEATURES.md"), "utf8");
+  assert.ok(!domainFeatures.includes("## Domains"));
+});
+
 test("init --write merges a duplicate domain across locations into one doc", async () => {
   const cwd = await makeProject("domain-merge-");
   await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });

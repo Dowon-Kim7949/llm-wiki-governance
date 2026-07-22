@@ -26,15 +26,30 @@ export function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domain
 
   // Dynamic Domains section for the overview: markdown links to each detected
   // domain doc (which also makes those docs non-orphan), or a review prompt.
-  const domainsSection = domainContext.plans.length > 0
-    ? domainContext.plans.map((plan) => `- [${plan.domainName}](./${plan.rel.split("/").pop()})`).join("\n")
+  const hasDomains = domainContext.plans.length > 0;
+  const domainsSection = hasDomains
+    ? domainLinkList(domainContext.plans, "./")
     : "- 자동 탐지된 domain이 없습니다. 프로젝트의 실제 업무 경계를 검토해 수동으로 추가하십시오.";
+
+  // P6 (orphan/link pre-wiring): when domain docs are planned, wire them into the
+  // two top-level entry points too — not only the overview. The index links the
+  // domain map, and DOMAIN_FEATURES lists each domain doc. Gated on hasDomains so
+  // a domain-less scaffold stays byte-identical.
+  const indexDomainRead = hasDomains
+    ? "[Domain Overview](./domains/00_overview.md) — 도메인 지도와 작업 대상 문서"
+    : "작업 대상 도메인 문서와 관련 source files";
+  const indexRelated = hasDomains
+    ? ["docs/llm-wiki/README.md", "docs/llm-wiki/domains/00_overview.md", "docs/llm-wiki/log.md"]
+    : ["docs/llm-wiki/README.md", "docs/llm-wiki/log.md"];
+  const domainFeaturesDomains = hasDomains
+    ? `\n## Domains\n\n${domainLinkList(domainContext.plans, "./domains/")}\n`
+    : "";
 
   const map = {
     "docs/llm-wiki/index.md": {
       title: "LLM-WIKI Index",
       docType: "wiki_index",
-      related: ["docs/llm-wiki/README.md", "docs/llm-wiki/log.md"],
+      related: indexRelated,
       body: `# LLM-WIKI Index
 
 이 문서는 프로젝트 LLM-WIKI의 공식 진입점입니다.
@@ -49,7 +64,7 @@ export function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domain
 1. \`docs/llm-wiki/index.md\`
 2. \`docs/llm-wiki/README.md\`
 3. \`docs/llm-wiki/project-profile.md\`
-4. 작업 대상 도메인 문서와 관련 source files
+4. ${indexDomainRead}
 `
     },
     "docs/llm-wiki/README.md": {
@@ -98,7 +113,7 @@ export function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domain
       body: `# Domain Features
 
 This document maps user-facing and business-domain features to source evidence.
-
+${domainFeaturesDomains}
 ## What To Inspect
 
 - Domain modules, services, stores, controllers, routes, components, and workflows.
@@ -459,6 +474,14 @@ Document each API service used by this domain. For every service, capture:
 
 ${apiServiceInventoryChecklist().join("\n")}
 `;
+}
+
+// Markdown link list to each planned domain doc, relative to the linking doc:
+// prefix "./" from the overview (same directory), "./domains/" from a wiki-root
+// doc like index or DOMAIN_FEATURES. Shared so the wired paths stay consistent
+// and resolvable by the graph. Pure.
+function domainLinkList(plans, prefix) {
+  return plans.map((plan) => `- [${plan.domainName}](${prefix}${plan.rel.split("/").pop()})`).join("\n");
 }
 
 // Body for a detected individual domain document. Directory-boundary detected;

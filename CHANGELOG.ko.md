@@ -5,6 +5,17 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## Unreleased
+
+### Added
+
+- **도메인 문서를 상위 두 진입점에 사전 배선 (외부 피드백 P6).** `init`/`quickstart`이 per-domain
+  문서를 계획하면(자동 탐지 또는 `--domains`), 생성된 `index.md`가 도메인 overview를 읽기 순서와
+  `related`로 링크하고 `DOMAIN_FEATURES.md`가 `## Domains` 섹션으로 각 per-domain 문서를 나열한다 —
+  기존 overview↔per-domain 배선을 보완해 진입점에서 도메인 지도로 가는 경로를 만들고, 테스터가 수동으로
+  하던 배선을 자동화한다. 도메인이 계획될 때만 배선하므로 도메인이 없는 스캐폴드는 byte-identical.
+  스코프는 스캐폴드(`init`/`quickstart`) — `fix`-타임 재배선은 후속. 부가적·zero-dependency.
+
 ## 1.20.0 — 2026-07-22
 
 retrieval·프론트엔드 개발자 경험(DX) 개선. 대부분 외부 실사용 피드백(Vue/Quasar SPA에 LLM-WIKI
