@@ -382,6 +382,29 @@ function sectionPresent(content, value) {
   return false;
 }
 
+// A frontmatter evidence entry counts as "mentioned" in the body ## Evidence
+// section if the section contains it verbatim OR — for a local reference — names
+// the same source PATH. This makes locator format irrelevant: an editor/grep
+// style `path:60-70` in the body satisfies a `path#L60-L70` frontmatter entry
+// (and vice versa), and a `#symbol:`/`#section:` locator matches a plain path
+// mention. External refs (http/repo:) still require a verbatim mention.
+function evidenceMentionedInSection(sectionText, reference) {
+  if (sectionText.includes(reference)) return true;
+  const parsed = parseEvidenceReference(reference);
+  if (!parsed || parsed.external || !parsed.source) return false;
+  return sectionMentionsPath(sectionText, parsed.source);
+}
+
+function sectionMentionsPath(sectionText, sourcePath) {
+  for (let idx = sectionText.indexOf(sourcePath); idx !== -1; idx = sectionText.indexOf(sourcePath, idx + 1)) {
+    const after = sectionText[idx + sourcePath.length] ?? "";
+    // Require a boundary after the path so `src/cli.js` doesn't match `src/cli.js.map`
+    // (an extension char like `.` is intentionally NOT a boundary).
+    if (after === "" || "#: \t\r\n,)]`'\"".includes(after)) return true;
+  }
+  return false;
+}
+
 export async function scanEvidenceSections(cwd, options = {}) {
   const findings = [];
   const strictSeverity = evidenceStrictSeverity(options);
@@ -417,7 +440,7 @@ export async function scanEvidenceSections(cwd, options = {}) {
     }
 
     for (const reference of frontmatterEvidence) {
-      if (!section.text.includes(reference)) {
+      if (!evidenceMentionedInSection(section.text, reference)) {
         findings.push({
           severity: strictSeverity,
           rule: "evidence.section_unlisted",

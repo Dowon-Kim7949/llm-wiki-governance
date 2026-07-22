@@ -24,6 +24,22 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-22 - fix(evidence): section 정렬 검사를 경로 기준으로 완화 (외부 피드백 P2)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code(src/commands/scans.js) + tests + docs(DOMAIN_FEATURES·log)
+- changed:
+  - src/commands/scans.js: `scanEvidenceSections`의 `evidence.section_unlisted` 매칭을 verbatim `section.text.includes(reference)`에서 경로 기준(`evidenceMentionedInSection`/`sectionMentionsPath`)으로 완화. frontmatter evidence를 `parseEvidenceReference`로 파싱해 로컬 참조는 본문이 같은 소스 경로를 언급하면 통과(경계 검사로 `.map` 등 오매칭 방지); 외부 `http(s)`/`repo:` 참조는 verbatim 유지.
+  - tests/verification.test.js: section-alignment 두 테스트를 새 의미(경로 미언급만 unlisted)로 갱신 + `파일:60-70` 본문이 `파일#L60-L70` frontmatter를 만족하는 완화 케이스 추가.
+- summary:
+  - 외부 프로젝트 구축에서 46개 `evidence.section_unlisted` 경고를 유발한 형식 이중성(`#L` vs `:line`) 페이퍼컷 해소. 스키마 pattern은 이미 콜론-라인을 통과(hash 없는 경로로 매칭)해 스키마 변경(옵션 A)은 불필요했다.
+- evidence:
+  - src/commands/scans.js#symbol:scanEvidenceSections
+  - src/commands/references.js#symbol:parseEvidenceReference
+- caveats:
+  - additive·zero-dep, 기존 `#L`/`#route:`/`#symbol:`/`#section:` 및 external 동작 유지. 미릴리스(main 한정).
+
 ## 2026-07-22 - feat(domains): frontend/mobile(SPA) 도메인 자동 탐지 (외부 피드백 P1)
 
 - status: needs_review

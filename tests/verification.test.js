@@ -1637,7 +1637,10 @@ test("audit and validate enforce body Evidence section alignment for frontmatter
   const cwd = await makeProject("evidence-section-");
   await writeJson(path.join(cwd, "package.json"), { name: "evidence-section" });
   await writeWikiDocWithEvidence(cwd, "missing-section.md", "Missing Evidence Section", "No evidence section here.", ["package.json"], ["package.json#L1"]);
-  await writeWikiDocWithEvidence(cwd, "unlisted.md", "Unlisted Evidence", "## Evidence\n\n- package.json\n", ["package.json"], ["package.json#L1"]);
+  // section_unlisted now fires only when the source PATH is not mentioned at all.
+  await writeWikiDocWithEvidence(cwd, "unlisted.md", "Unlisted Evidence", "## Evidence\n\n- (source not itemized here)\n", ["package.json"], ["package.json#L1"]);
+  // Locator-format difference (body `path:1` vs frontmatter `path#L1`) is tolerated (P2).
+  await writeWikiDocWithEvidence(cwd, "format-ok.md", "Format Tolerant Evidence", "## Evidence\n\n- package.json:1\n", ["package.json"], ["package.json#L1"]);
   await writeWikiDoc(cwd, "empty-section.md", "Empty Evidence Section", "## Evidence\n\n## Review Notes\n\n- Nothing yet.");
 
   const auditResult = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
@@ -1646,6 +1649,8 @@ test("audit and validate enforce body Evidence section alignment for frontmatter
   assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_missing" && finding.path.includes("missing-section.md")));
   assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_unlisted" && finding.path.includes("unlisted.md")));
   assert.ok(auditResult.findings.some((finding) => finding.rule === "evidence.section_empty" && finding.path.includes("empty-section.md")));
+  // The `path:1` body satisfies the `path#L1` frontmatter entry — no spurious warning.
+  assert.ok(!auditResult.findings.some((finding) => finding.rule === "evidence.section_unlisted" && finding.path.includes("format-ok.md")));
   assert.equal(validateResult.findingSummary.byCategory.evidence, 3);
 });
 
@@ -2511,7 +2516,7 @@ test("strict validate promotes evidence contract warnings to errors", async () =
     "package.json#L99",
     "missing/source.ts#symbol:loadUsers"
   ]);
-  await writeWikiDocWithEvidence(cwd, "unlisted.md", "Strict Unlisted Evidence", "## Evidence\n\n- package.json\n", ["package.json"], ["package.json#L1"]);
+  await writeWikiDocWithEvidence(cwd, "unlisted.md", "Strict Unlisted Evidence", "## Evidence\n\n- (source not itemized here)\n", ["package.json"], ["package.json#L1"]);
 
   const standardResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
   const strictResult = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: true });
