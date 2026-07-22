@@ -38,3 +38,14 @@ Expected final response:
 - Source evidence inspected.
 - Validation run and results.
 - Remaining stale areas or review items.
+
+Completion contract (Gate 26 — enables 'llm-wiki check-run'):
+After finishing, write a run manifest to .llm-wiki/runs/run-docs-sync-<timestamp>.json recording what this run did, so CI can confirm the wiki stayed in sync with the code. JSON shape:
+{
+  "task": "docs-sync",
+  "changedSource": ["<source files you edited>"],
+  "touchedDocs": ["<docs/llm-wiki/... documents you updated>"],
+  "logAppended": true,
+  "validated": { "ran": true, "result": "pass" }
+}
+Then run 'llm-wiki check-run': it flags any changed source not referenced by a touched wiki doc, a missing log entry, or an unvalidated state. This records what the run did — it never replaces human review, and never promotes a document to verified.
