@@ -1,60 +1,67 @@
-# Real-driver PILOT — Claude, behavioral-only (2026-07-22)
+# Real-driver PILOT — Claude subagent, real tokens + behavioral (2026-07-22)
 
-> **NOT the publishable measurement.** This is a protocol-validation pilot of the option-B
-> manual-driver path ([`../real/DRIVER_RUNBOOK.md`](../real/DRIVER_RUNBOOK.md)), run via
-> **isolated Claude Code Explore subagents** (one fresh context per task-arm). It captures the
-> **behavioral + correctness** axes only — tool-call count, files/docs opened, and rubric
-> correctness. It does **NOT** capture BPE tokens or wall-clock (subagent usage isn't surfaced
-> to the driver), so it **does not unblock any README token/speed claim**. N=1. Model: Claude
-> Code Explore subagent (Claude).
+> **NOT the publishable product measurement, but it DOES carry real token + wall-clock data.**
+> Protocol-validation pilot of the option-B driver path
+> ([`../real/DRIVER_RUNBOOK.md`](../real/DRIVER_RUNBOOK.md)), run via **isolated Claude Code
+> Explore subagents** (one fresh context per task-arm). The Agent framework reports each
+> subagent's **total token usage and wall-clock**, so this pilot captures real tokens + duration
+> **automatically** (no `/cost` needed) alongside tool-call count, files opened, and correctness.
+> Caveats: N=1; the arms are **Explore subagents** driving retrieval via the **CLI**
+> (`search-docs`/`get-doc`), and `get-doc` returns **full doc bodies** — so this measures that
+> specific setup, not the interactive Claude Code product (MCP tools) or the SDK path. Tokens
+> are a **single total** (not input/output split). **The result is UNFAVORABLE and does not
+> support any README token/speed claim.**
 
-## Per-task
+## Per-task (real tokens + duration + behavioral)
 
-| Task | B calls | B opened (src) | B correct | B2 calls | B2 opened | B2 source? | B2 correct |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| type-detection-mobile | 5 | 1 | ✓ | 8 | 2 docs | no | ✓ |
-| audit-pipeline | 6 | 3 | ✓ | 5 | 1 doc | no | ✓ |
-| config-merge | 8 | 2 | ✓ | 5 | 1 doc | no | ✓ |
-| rule-toggle | 7 | 1 | ✓ | 6 | 2 docs | no | ✓ |
-| skill-generation | 5 | 2 | ✓ | 8 | 1 doc + 1 src | **yes (fallback)** | ✓ |
-| mcp-tools | 5 | 3 | ✓ | 9 | 2 docs | no | ✓ |
-| **sum** | **36** | **12** | **6/6** | **41** | **10** | **1/6** | **6/6** |
-| **mean** | **6.0** | **2.0** | | **6.83** | **1.67** | | |
+| Task | B tokens | B2 tokens | B2/B tok | B ms | B2 ms | B calls | B2 calls | correct |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| type-detection-mobile | 22,599 | 29,244 | 1.29× | 28,798 | 49,663 | 5 | 8 | ✓/✓ |
+| audit-pipeline | 46,302 | 41,235 | **0.89×** | 42,905 | 37,440 | 6 | 5 | ✓/✓ |
+| config-merge | 23,767 | 37,256 | 1.57× | 47,302 | 35,257 | 8 | 5 | ✓/✓ |
+| rule-toggle | 21,086 | 28,072 | 1.33× | 37,958 | 57,672 | 7 | 6 | ✓/✓ |
+| skill-generation | 25,607 | 26,942 | 1.05× | 38,421 | 72,644 | 5 | 8 | ✓/✓ |
+| mcp-tools | 25,390 | 40,886 | 1.61× | 25,365 | 63,714 | 5 | 9 | ✓/✓ |
+| **sum** | **164,751** | **203,635** | **1.24×** | **220,749** | **316,390** | **36** | **41** | **6/6** |
 
-## Deltas (B2 relative to B)
+## Deltas (B2 retrieval relative to B source-only)
 
-- **Tool calls: 1.14× (B2 +14%, WORSE).** Wiki search + reading 1–2 docs took as many or more
-  calls than a targeted grep+read. Not a win on this axis.
-- **Files/docs opened: 0.83× (B2 −17%).** Marginal.
-- **Source files opened: B 6/6 → B2 1/6.** B2 reached correct, grounded answers from 1–2
-  targeted wiki docs WITHOUT opening source in 5 of 6 tasks.
-- **Correctness: 6/6 tie.** Both arms found and correctly answered every task (matches the
-  proxy's 100%/100% findability tie).
+- **Total tokens: 1.24× (B2 +24%, WORSE).** B2 was cheaper on only **1 of 6** tasks (audit).
+- **Wall-clock: 1.43× (B2 +43%, SLOWER).**
+- **Tool calls: 1.14× (B2 +14%, WORSE).**
+- **Source-avoidance: B2 answered correctly without opening source in 5/6** (read 1–2 wiki docs).
+- **Correctness: 6/6 tie.**
 
 ## Honest read
 
-1. **The behavioral proxy (tool-call count) does NOT show a retrieval win here — it is slightly
-   negative (+14%).** This is an unfavorable, honest result on that axis.
-2. **The real qualitative signal is source-avoidance:** B2 answered correctly by reading small
-   targeted wiki docs and never opening source in 5/6 — the rediscovery/orientation cost the
-   proxy's B2 arm was designed to model. But "opened a doc vs opened a source file" is a
-   **size** difference, not a **count** difference — and size (tokens) is exactly what this
-   run cannot measure.
-3. **The token headline is still unmeasured.** Only `/cost` from interactive sessions (or the
-   SDK path) can settle whether the smaller doc reads translate to fewer tokens. Until then the
-   README token/speed claim stays forbidden.
+1. **On this repo, retrieval did NOT save tokens — it cost ~24% MORE and ran ~43% slower.**
+   This is a real (not proxy) measurement and it is unfavorable to the retrieval arm.
+2. **Why:** `get-doc` returns the **full body** of a wiki doc, and this repo's reference docs
+   (`DOMAIN_FEATURES.md`, `ARCHITECTURE_CONVENTIONS.md`) are **very large**. Pulling one or two
+   whole large docs into context costs more tokens than B's targeted grep + partial source
+   reads. Source-avoidance (5/6) is genuine but does not translate to token savings when the
+   docs are big. This is consistent with the earlier corpus-drift finding (the `chars/4` proxy
+   `B vs A2` flipped to +5% as the corpus grew).
+3. **This does not settle the product question.** The interactive Claude Code path uses the MCP
+   `get_doc`/`search_docs` tools and an agent that may read more selectively; a smaller-doc
+   project would also differ. But for THIS repo with full-doc reads, retrieval was not cheaper.
 
-## Findings worth acting on
+## Findings acted on / worth acting on
 
-- **`search-docs` scorer noise:** `docs/llm-wiki/log.md` (append-only change log) ranks #1 for
-  most queries under the naive keyword scorer, forcing B2 to skip it and search again — this
-  inflated B2's tool-call count (e.g. mobile: 8 calls). A scorer fix (deprioritize/skip the
-  change log) would directly improve the retrieval arm. (Already noted in the B2-arm design.)
-- The protocol itself runs cleanly end-to-end: isolated fresh context per arm, read-only, no
-  repo mutation, all 12 arms produced gradeable answers.
+- **`search-docs` scorer noise — FIXED (commit `0cccb2e`).** `docs/llm-wiki/log.md` ranked #1
+  for most queries and forced B2 to re-search; `searchDocsCommand` now deprioritizes the
+  change log. A re-run should cut some B2 search calls, but the dominant B2 cost is reading
+  **large doc bodies**, which the scorer fix does not change — so it likely won't flip the
+  token result on this repo.
+- Protocol runs cleanly: isolated fresh context per arm, read-only, no repo mutation, all 12
+  arms produced gradeable answers, and token/duration are captured automatically.
 
-## To get the real number
+## Automated measurement paths (no manual `/cost`)
 
-Run the same 12 arms interactively in Claude Code (fresh session each), read `/cost` per run,
-record tokens + wall-clock. See [`../real/DRIVER_RUNBOOK.md`](../real/DRIVER_RUNBOOK.md). A Codex
-pass gives a second, separately-labeled data point.
+1. **This subagent path (already ran):** real TOTAL tokens + wall-clock, fully automated via
+   the Agent framework's usage report. Limitation: total (not input/output split); Explore
+   subagent + CLI `get-doc` full-body reads.
+2. **SDK path (`bench/real/agent.js` + Anthropic SDK):** per-call `response.usage`
+   (input/output split), fully automated, no `/cost`. Needs API access + budget.
+3. **Interactive `/cost` (manual):** only needed to measure the real Claude Code *product*
+   experience (MCP tools). Least automated.
