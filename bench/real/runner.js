@@ -81,7 +81,15 @@ export const ARMS = {
 };
 
 export function loadTasks() {
-  const cfg = JSON.parse(readFileSync(join(BENCH_ROOT, "tasks.json"), "utf8"));
+  // Default: this repo's tasks (bench/tasks.json). Override with BENCH_TASKS to
+  // run a different target's task set (e.g. bench/tasks-csap.json for the external
+  // csap-roadkeeper-frontend protocol) — absolute path, or relative to bench/.
+  const override = process.env.BENCH_TASKS;
+  const isAbs = (p) => p.startsWith("/") || /^[A-Za-z]:[\\/]/.test(p);
+  const path = override
+    ? (isAbs(override) ? override : join(process.cwd(), override)) // relative to where you run the command
+    : join(BENCH_ROOT, "tasks.json");
+  const cfg = JSON.parse(readFileSync(path, "utf8"));
   return cfg.tasks;
 }
 
@@ -171,7 +179,7 @@ function dryReport() {
   for (const task of tasks) {
     L.push(`# ${task.id}`);
     L.push(`  ground-truth: ${task.groundTruth.join(", ")}`);
-    L.push(`  rubric key-claims: ${(RUBRICS[task.id] ?? []).length}`);
+    L.push(`  rubric key-claims: ${(RUBRICS[task.id] ?? task.rubric ?? []).length}`);
     for (const arm of [ARMS.B, ARMS.B2]) {
       const p = buildPrompt(task, arm);
       L.push(`  [${arm.id}] tools=${arm.tools.join("/")}  prompt=${p.length} chars`);

@@ -193,5 +193,18 @@ tokens (no input/output split). csap repo never modified.
 ### Out of scope / caveats (unchanged)
 Total tokens (not input/output split); Explore-subagent + CLI `get-doc` path (not the product's
 MCP tools); 6 tasks, one repo, one model; the honest ceiling is "these tasks, this repo, this
-agent." A cross-agent run (e.g. a GPT-family agent) and the SDK path (input/output split) remain
-the further-rigor options.
+agent."
+
+### Further-rigor harness — SCAFFOLDED 2026-07-22 (not yet run)
+The **SDK-path driver** that yields a real **input/output token split** (this pilot has only a
+single total) is now built and dry-validated, pending API budget to run:
+- `bench/real/agent.js` — Anthropic SDK driver (tool_runner; read/grep + read-only `llm-wiki`
+  retrieval tools; target-agnostic via `BENCH_TARGET_REPO`/`BENCH_WIKI_CWD`/`BENCH_TASKS`/`BENCH_MODEL`;
+  read-only — never mutates the target repo). Git-ignored by design; `@anthropic-ai/sdk` is a
+  bench-local dep (`bench/real/package.json`), so the published package stays zero-dependency.
+- `bench/tasks-csap.json` — this run's 6 tasks (question + ground-truth + rubric), reproducible.
+- Run recipe + prerequisites: `bench/real/DRIVER_RUNBOOK.md` § SDK path. `--dry` validates wiring
+  with no model call.
+
+A **cross-agent (GPT-family) run** — to test whether the finding is Claude-specific — would need a
+sibling OpenAI-SDK driver (`agent-openai.js`, same `agentRunner` shape); **not built** (deferred).

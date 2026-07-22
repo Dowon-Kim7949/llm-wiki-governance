@@ -351,8 +351,11 @@ enrichment 린팅(→ 1.8, 토글 가능한 `content.thin_body` 규칙으로).
   chars/4 프록시를 대체했다. 최신 위키에서 에이전트는 **소스를 안 읽고 동일 정확도로** 답하며 토큰
   ~10% 절감(태스크 의존적), 반면 **오래된** 위키는 오답을 냈다 — 이득의 본질은 raw 속도가 아니라
   신선도에서 오는 정확도. 스코프 한정 결과(단일 에이전트/레포). `docs/llm-wiki/BENCHMARK.md` 참조.
-- **후보(미구현):** `fix`-타임 도메인 링크 재배선; 추가 벤치 엄밀성(교차 에이전트, input/output 분리
-  SDK 경로); 리포트 chrome/severity 단어 지역화 및 KO/EN 외 언어.
+- **벤치 엄밀성 하네스 — scaffolded 2026-07-22(미실행):** 파일럿의 단일 total과 달리 실제 input/output
+  토큰 분리를 내는 SDK 경로 드라이버(`bench/real/agent.js` + `bench/tasks-csap.json`). dry 검증 완료,
+  유료 실행은 API 예산 대기. Claude 특이성 검증용 교차 에이전트(GPT) 드라이버는 보류. `bench/real/DRIVER_RUNBOOK.md` 참조.
+- **후보(미구현):** `fix`-타임 도메인 링크 재배선; 유료 SDK 경로 실행과 교차 에이전트 벤치; 리포트
+  chrome/severity 단어 지역화 및 KO/EN 외 언어.
 
 ## 비목표 (Non-Goals — 안전 원칙 불변)
 

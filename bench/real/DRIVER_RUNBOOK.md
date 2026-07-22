@@ -154,3 +154,48 @@ The within-agent B2/B ratio cancels that shared overhead, so it *is* the portabl
   both a Claude agent and a GPT agent is far more defensible than a single-agent one — it
   answers "is this Claude-specific?". Just keep each run's two arms within the same agent and
   label the model.
+
+## SDK path (option 1) — wired driver `agent.js`
+
+The manual-driver path above captures a single **total** token count per run. The SDK driver
+`bench/real/agent.js` instead reports a real **input/output token split** (from the model's own
+`usage`), which the subagent path can't. It plugs into `runner.js` via the `agentRunner` seam and
+reuses the same `ARMS` / `buildPrompt` / tasks — so the protocol (symmetric prompts, cold
+keywords, N≥3, model-labeled) is identical; only the token accounting is finer.
+
+**READ-ONLY & safe on external repos.** The driver's tools only read/grep files under
+`BENCH_TARGET_REPO` and shell out to the read-only `llm-wiki` retrieval CLI
+(`search-docs`/`get-doc`/`get-related`) against `BENCH_WIKI_CWD`. No writes, no git, no network
+beyond the model call — pointing it at `csap-roadkeeper-frontend@aws-global` never mutates that
+repo (arm B additionally refuses to read `docs/llm-wiki`, and B2 reaches the wiki only via the CLI).
+
+**Prerequisites (a real run spends API budget — confirm before running):**
+1. `cd bench/real && npm install` — installs `@anthropic-ai/sdk` **here only** (bench is outside
+   the npm `files` allowlist, so the published package stays zero-dependency).
+2. Credentials: `export ANTHROPIC_API_KEY=...` (or `ant auth login`).
+3. Point at the target + wiki + tasks (env, all absolute):
+   - `BENCH_TARGET_REPO` — repo under test (its source is what arm B reads / arm B2 falls back to).
+   - `BENCH_WIKI_CWD` — dir holding `docs/llm-wiki` the B2 tools query (defaults to `BENCH_TARGET_REPO`;
+     for the fresh-wiki condition, point at a de-drifted copy).
+   - `BENCH_TASKS` — e.g. `bench/tasks-csap.json` for the external csap protocol (else this repo's tasks).
+   - `BENCH_MODEL` — default `claude-opus-4-8`; label it on every reported result.
+4. Run each arm at N≥3:
+   ```
+   node bench/real/runner.js --arm B  --repeats 3
+   node bench/real/runner.js --arm B2 --repeats 3
+   ```
+   Results (with per-run `inputTokens`/`outputTokens`/`wallMs`/`toolCalls`/`openedPaths`/`wikiDocs`)
+   land in `bench/results/real-<arm>-<stamp>.json`. Validate the wiring first with no model call:
+   `BENCH_TASKS=bench/tasks-csap.json node bench/real/runner.js --dry`.
+
+Grade the answers against each task's `rubric` (in `tasks-csap.json`) the same way as the manual
+path — blind if possible; the harness never self-grades.
+
+## Cross-agent track (GPT-family) — next step
+
+To answer "is the result Claude-specific?", run the **same** protocol through a GPT-family agent.
+That needs a sibling driver (e.g. `bench/real/agent-openai.js`) using the OpenAI SDK — a separate
+file with its own `OPENAI_API_KEY`, exposing the same `agentRunner` shape so `runner.js` is
+unchanged. Keep both arms within one agent and label the model on the result; never compare an arm
+across agents. (Not built yet — the Anthropic `agent.js` is the reference; mirror its tool set and
+usage accounting.)

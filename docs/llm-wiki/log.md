@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-22 - bench/docs: SDK-path 실측 하네스 scaffolded + 전체 문서 doc-sync
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: bench, docs
+- changed:
+  - bench/real/agent.js (신규, git-ignore: Anthropic SDK 드라이버 — input/output 토큰 분리; 읽기 전용; env로 target-agnostic)
+  - bench/tasks-csap.json (신규: csap 6 태스크 재현 — 질문+ground-truth+rubric)
+  - bench/real/package.json (신규: @anthropic-ai/sdk를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변)
+  - bench/real/runner.js (BENCH_TASKS 오버라이드 + --dry rubric 카운트)
+  - bench/real/DRIVER_RUNBOOK.md (§ SDK path 실행법·전제조건 + 교차 에이전트 트랙 계획)
+  - bench/results/real-driver-csap-aws-global-pilot-2026-07-22.md ("Further-rigor harness — SCAFFOLDED" 섹션)
+  - docs/llm-wiki/BENCHMARK.md (SDK-path 하네스 scaffolded 리뷰노트), ROADMAP.md/.ko.md (후보→scaffolded)
+- summary:
+  - (b) 추가 벤치 엄밀성의 SDK 경로(input/output 토큰 분리) 하네스를 scaffolded. `--dry`로 배선 검증(모델 호출·비용 0), csap 저장소 무변경(드라이버 읽기 전용).
+  - 유료 SDK 런과 교차 에이전트(GPT) 드라이버는 유저 지시로 **보류**.
+  - 전체 문서(결과 아티팩트·BENCHMARK·ROADMAP)를 현 상태로 doc-sync.
+- verification:
+  - BENCH_TASKS=bench/tasks-csap.json node bench/real/runner.js --dry → 6 태스크·양쪽 arm 프롬프트 OK; agent.js node --check OK; validate --strict 0
+
 ## 2026-07-22 - docs: real-LLM N=3 벤치(csap 외부 프로젝트) 결과 반영 + README/포지셔닝 정직 문구
 
 - status: needs_review

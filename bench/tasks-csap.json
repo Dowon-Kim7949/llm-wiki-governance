@@ -1,0 +1,90 @@
+{
+  "about": "Cold-keyword code-comprehension tasks for the EXTERNAL target csap-roadkeeper-frontend@aws-global (Vue3/Quasar). Ground-truth + rubric captured from the 2026-07-22 real-LLM N=3 run so the SDK-path driver (bench/real/agent.js) reproduces the same protocol. Point runner.js at this file with BENCH_TASKS; point agent.js at the repo with BENCH_TARGET_REPO and the (current) wiki with BENCH_WIKI_CWD. Questions deliberately avoid internal symbol names so arm B is not rigged.",
+  "tasks": [
+    {
+      "id": "auth-signin",
+      "question": "How does a user sign in to this web app — what happens from submitting the login form to being authenticated, and where is the login request sent?",
+      "groundTruth": [
+        "src/pages/LoginPage.vue",
+        "src/stores/UserStore.ts",
+        "src/utils/api/index.ts",
+        "src/utils/api/axiosInstance.ts",
+        "src/utils/common/crypto.ts"
+      ],
+      "rubric": [
+        "password is RSA-OAEP encrypted client-side (encryptRSA / crypto.subtle) before sending — NOT plaintext",
+        "two-step: getPublicKey POST /api/v2/auth/enc/session (public key + session_id), then login POST /api/v2/auth/login",
+        "auth is cookie/session based (axios withCredentials: true, no client-held bearer token)",
+        "optional TOTP MFA path (mfa_challenge_token -> MfaDialog)",
+        "session continuity via 419+201403 token refresh interceptor"
+      ]
+    },
+    {
+      "id": "routing-map",
+      "question": "How does this app decide which page component to render for a given browser URL, and where is that URL-to-page mapping defined?",
+      "groundTruth": ["src/router/routes.ts", "src/router/index.ts"],
+      "rubric": [
+        "the URL-to-page mapping is the RouteRecordRaw[] table in src/router/routes.ts",
+        "router created with createWebHistory (HTML5 history mode) in src/router/index.ts",
+        "a global beforeEach guard applies auth/role redirects (can override the raw match)",
+        "unmatched URLs fall through to a catch-all NotFoundPage"
+      ]
+    },
+    {
+      "id": "api-layer",
+      "question": "How does the frontend talk to its backend — where is the server base URL configured, and how are requests authenticated across calls?",
+      "groundTruth": ["src/utils/api/index.ts", "src/utils/api/axiosInstance.ts"],
+      "rubric": [
+        "single axios instance (ApiWrapper) with baseURL from VITE_APP_BACKEND_URL",
+        "authentication is cookie-session via withCredentials: true (no Authorization/bearer header)",
+        "response interceptor: 419+201403 single-flight token refresh, 401/403 clear session + redirect"
+      ]
+    },
+    {
+      "id": "hazard-domain",
+      "question": "On the hazard-management screen, how does the page obtain its list of hazards from the server and hold that data for display?",
+      "groundTruth": [
+        "src/pages/HazardManagement/OverallHazardsListPage.vue",
+        "src/stores/HazardStore.ts",
+        "src/utils/api/index.ts",
+        "src/stores/SearchStore.ts"
+      ],
+      "rubric": [
+        "page fetchAllHazards -> hazardStore.fetchAllHazards -> ApiService.getAllHazards GET /api/v2/hazards/all",
+        "returned rows held in a page-local tableRows ref (store does not cache the list)",
+        "pagination/count metadata flows through SearchStore",
+        "list screen is OverallHazardsListPage.vue at /hazards_list (map is OverallHazardsMapPage.vue)"
+      ]
+    },
+    {
+      "id": "session-timeout",
+      "question": "How does the app handle an idle user or an expired login session?",
+      "groundTruth": [
+        "src/composables/useSessionTimeout.ts",
+        "src/utils/api/axiosInstance.ts",
+        "src/layouts/MainLayout.vue",
+        "src/stores/UserStore.ts"
+      ],
+      "rubric": [
+        "client-side idle timer: 59-min warning / 60-min forced logout (useSessionTimeout), reset on each request",
+        "server-driven expiry in the axios response interceptor: 419+201403 single-flight refresh, replay queued requests",
+        "401/403 -> clear session and redirect to /"
+      ]
+    },
+    {
+      "id": "state-mgmt",
+      "question": "After a user logs in, where is their user, menu, and group information stored so that other pages can use it?",
+      "groundTruth": [
+        "src/stores/UserStore.ts",
+        "src/pages/LoginPage.vue",
+        "src/utils/sessionstorage/index.ts"
+      ],
+      "rubric": [
+        "sessionStorage under csap_rk_* keys (csap_rk_userInfo AES-encrypted via crypto-js)",
+        "in-memory Pinia UserStore mirror populated on login",
+        "router beforeEach guard rehydrates the store from sessionStorage on refresh",
+        "no client-held bearer token — auth is the HTTP-only cookie"
+      ]
+    }
+  ]
+}

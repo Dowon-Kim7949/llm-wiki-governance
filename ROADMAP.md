@@ -474,9 +474,12 @@ zero-dependency, backend/fullstack byte-identical.
   tokens (task-dependent); a **stale** wiki instead produced a wrong answer — the payoff is
   correctness-at-freshness, not raw speed. Scoped result (one agent/repo). See
   `docs/llm-wiki/BENCHMARK.md`.
-- **Candidates (not yet built):** `fix`-time re-wiring of domain links; further benchmark rigor
-  (cross-agent, and the SDK path for input/output token split); report-chrome/severity-word
-  localization and languages beyond KO/EN.
+- **Benchmark rigor harness — scaffolded 2026-07-22 (not yet run):** an SDK-path driver
+  (`bench/real/agent.js` + `bench/tasks-csap.json`) that yields a real input/output token split
+  (the pilot has only a total); dry-validated, pending API budget to run. A cross-agent
+  (GPT-family) driver to test Claude-specificity is deferred. See `bench/real/DRIVER_RUNBOOK.md`.
+- **Candidates (not yet built):** `fix`-time re-wiring of domain links; the paid SDK-path run and
+  a cross-agent benchmark; report-chrome/severity-word localization and languages beyond KO/EN.
 
 ## Non-Goals (unchanged safety ethos)
 
