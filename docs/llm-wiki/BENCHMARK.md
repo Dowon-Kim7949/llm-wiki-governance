@@ -3,13 +3,15 @@ title: Impact Measurement Baseline
 tags:
   - llm-wiki
   - benchmark
-  - needs_review
-status: needs_review
+  - verified
+status: verified
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 author: ai-generated
 last_edited_by: Claude Code
+reviewed_by: Dowon-Kim
+reviewed_at: 2026-07-22
 wiki_block_version: v1
 source_files:
   - bench/run.js
@@ -160,3 +162,7 @@ append-only `log.md`는 검색은 되지만 get-doc하지 않는다(체인지로
 - `bench/results/baseline.md` — frozen Gate 22 before-retrieval 결과표.
 - `bench/results/current.md` — 현재 실행(B2 포함) 자동 생성 결과표.
 - `GATE_REVIEW.md#section:Impact Measurement Scope Decision` — 수용된 Gate 22 범위·불변식·수용 기준.
+
+## Review Notes
+
+- 2026-07-22에 Gate 22 베이스라인 + Gate 24 재측정(정직/불리) + B2 retrieval 델타를 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 승인했다(최초 verified 승격). **핵심 불변 조건**: 이 문서의 모든 수치(특히 B2 −81.5%/−80.5%)는 `chars/4` **프록시**이지 실제 LLM 실행 결과가 아니다. 따라서 README·런치 카피에 토큰/속도/생산성 수치를 싣는 것은 **여전히 금지**이며, 실측(`bench/real/` 실행)이 뒷받침될 때까지 이 규율을 유지한다. 실측 방법은 `bench/REAL_LLM_METHODOLOGY.md` 참조.

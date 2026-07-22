@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-22 - review: 4개 코어 문서 verified 재승인 (human)
+
+- status: verified
+- actor: Dowon-Kim (사람 검토·승인) / 편집 적용 Claude Code
+- scope: docs (frontmatter status/tags/reviewed_at + Review Notes)
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md: needs_review → verified (1.16.0→1.19 명령 표면 누적분).
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md: needs_review → verified (1.16.0→1.19; dogfood 재생성 방법 정정 노트 포함).
+  - docs/llm-wiki/DOMAIN_FEATURES.md: needs_review → verified (1.16.0→1.19).
+  - docs/llm-wiki/BENCHMARK.md: needs_review → verified (최초 승격; Gate 22 베이스라인 + Gate 24 재측정 + B2 델타).
+- summary:
+  - 유지관리자 검토 결정에 따라 4개 코어 문서를 verified로 승격했다. 각 frontmatter를 status: verified·reviewed_by: Dowon-Kim·reviewed_at: 2026-07-22로 갱신하고 Review Notes에 재승인 근거를 남겼다.
+- evidence:
+  - src/commands.js
+  - src/cli.js
+  - bench/run.js
+- caveats:
+  - BENCHMARK.md의 모든 수치는 chars/4 프록시다 — README/런치 토큰·속도 수치 주장은 실측(`bench/real/`) 전까지 계속 금지.
+
 ## 2026-07-22 - release: 1.19.0 배포 + dogfood/PUBLIC_API 후속
 
 - status: needs_review

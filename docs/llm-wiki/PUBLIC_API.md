@@ -2,15 +2,15 @@
 title: Public Api
 tags:
   - llm-wiki
-  - needs_review
-status: needs_review
+  - verified
+status: verified
 doc_type: public_api
 project: llm-wiki-governance
 last_updated: 2026-07-22
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-21
+reviewed_at: 2026-07-22
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -243,4 +243,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-20에 1.15.0 스킬 생성(Gate 21)을 반영했다: `init`/`quickstart`에 부가 옵션 `--skills`를 추가하고(위키-그라운디드 자동화 프롬프트 아티팩트 생성; `--agent claude\|cursor`로도 트리거) command 표에 기술했다. additive(옵션 미사용 시 표면·출력 불변), 동결 프로그래매틱 API 맵·`--format json` 형태 불변. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-21에 1.17.0 reverse-impact(Gate 23, accepted)를 반영했다: 신규 read-only `impact [--since <ref>] [--strict]` 명령을 Commands 표·Key Options·Evidence(동결 `commands` 맵에도 `impact` 추가)에 등재하고, 변경집합 프리미티브 `src/git.js#changedFiles`를 source_files/evidence에 넣었다. additive(옵션·명령 미사용 시 기존 표면 불변), `--format json`·frontmatter·zero-dep 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-21에 1.18.0 read-only retrieval(Gate 24, accepted)를 반영했다: 신규 4개 명령 `list-docs`/`search-docs <query>`/`get-doc <path>`/`get-related <path>`을 Commands 표에, 대응 MCP 툴 `list_docs`/`search_docs`/`get_doc`/`get_related`(snake_case)을 노출 툴 목록에, `src/commands/retrieval.js`를 Evidence에 등재했다. 거버넌스 리포트가 아니라 문서 **본문**을 반환하는 첫 표면 — 프로그래매틱 API 동결 맵에도 4개 kebab 키를 additive로 추가. `search-docs`는 zero-dep 키워드/부분문자열(semantic 아님), restricted/민감 문서는 list/search 기본 제외(opt-in `--include-sensitive`)·반환 본문/스니펫은 민감 라인 redact, 쓰기 표면 없음. `1.0.0` 계약·`--format json`·frontmatter·zero-dep 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
-- 2026-07-22에 1.19 명령 표면 doc-sync 갭을 메웠다: 야간 자율 실행의 Gate 25/26 커밋이 ARCHITECTURE/DOMAIN_FEATURES만 갱신하고 PUBLIC_API는 놓쳐, 배포된 read-only `check-run [--run <path>] [--strict]` 명령(Gate 26)과 `stats --format json`의 계산된 `evidenceTiers`(Gate 25)가 누락돼 있었다. Commands 표에 `check-run` 행(intent-앵커 run manifest 검증; `run.*` findings; 쓰기 없음)을, Key Options에 `--run <path>`을, Evidence·frontmatter evidence에 `src/commands.js#symbol:checkRunCommand`를, `stats` 행에 `evidenceTiers` 부가 노출을 등재했다. check-run은 `impact`와 마찬가지로 CLI/API 전용(MCP 미노출). additive·read-only·`--format json`·frontmatter·zero-dep·`1.0.0` 계약 불변. 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정.
+- 2026-07-22에 1.19 명령 표면 doc-sync 갭을 메웠다: 야간 자율 실행의 Gate 25/26 커밋이 ARCHITECTURE/DOMAIN_FEATURES만 갱신하고 PUBLIC_API는 놓쳐, 배포된 read-only `check-run [--run <path>] [--strict]` 명령(Gate 26)과 `stats --format json`의 계산된 `evidenceTiers`(Gate 25)가 누락돼 있었다. Commands 표에 `check-run` 행(intent-앵커 run manifest 검증; `run.*` findings; 쓰기 없음)을, Key Options에 `--run <path>`을, Evidence·frontmatter evidence에 `src/commands.js#symbol:checkRunCommand`를, `stats` 행에 `evidenceTiers` 부가 노출을 등재했다. check-run은 `impact`와 마찬가지로 CLI/API 전용(MCP 미노출). additive·read-only·`--format json`·frontmatter·zero-dep·`1.0.0` 계약 불변. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 재승인했다(1.16.0→1.19 명령 표면 누적분 포함).

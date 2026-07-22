@@ -2,15 +2,15 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - needs_review
-status: needs_review
+  - verified
+status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-21
+reviewed_at: 2026-07-22
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -147,3 +147,4 @@ contains_sensitive_info: false
 - 2026-07-21에 1.18.0 read-only retrieval(Gate 24, accepted)를 반영했다: 문서 **본문**을 반환하는 4개 read-only 명령(`list-docs`/`search-docs`/`get-doc`/`get-related`, MCP 툴은 snake_case)을 "읽기 전용 retrieval" 기능·Evidence로 추가했다 — 런치에서 철회한 "에이전트가 위키를 query" 스토리의 실체이자 measure-first 라인의 헤드라인 delta 지점. zero-dep 키워드 검색(semantic 아님), restricted/민감 문서 list/search 기본 제외(opt-in)·반환 본문/스니펫 redact, 쓰기 표면 없음. `listWikiContentDocs`·`parseFrontmatter`·`collectWikiGraph`·`scanSensitiveInfo` 재사용, additive·zero-dep·1.0.0 계약 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-21에 1.19 agent update runner(Gate 26, accepted[Dowon-Kim 위임, 야간 자율])를 반영했다: "agent update runner + 완성 계약" 기능·Evidence를 추가했다 — read-only `check-run`이 `.llm-wiki/runs/` run manifest로 스킬 실행 파이프라인을 검증하고 스킬 본문에 완성 계약을 내장(`impact`의 intent-앵커 보완). 신규 `run.*` findings, 쓰기 없음(매니페스트는 에이전트 작성), additive·zero-dep·1.0.0 계약 불변. 254 tests·validate --strict 0. 커밋된 dogfood 스킬 아티팩트는 미덮어씀 규율상 재생성 필요. 에이전트 편집이라 `needs_review` — 사람 검토 후 재승인 예정.
 - 2026-07-21에 1.19 evidence 의미 단계화(Gate 25, accepted[Dowon-Kim 위임])를 반영했다: "evidence 의미 단계화" 기능·Evidence를 추가했다 — `#symbol:`/`#section:` 타깃 실재 보수적 검사(`evidence.symbol_unverified`/`evidence.section_unverified`), grounding 없는 verified flag(`evidence.ungrounded`), 계산된 tier(`reference_checked`/`human_verified`)의 `stats` 노출. product-identity 감사가 지목한 "format-only 검증·grounding 없는 verified" 갭을 닫는다. additive·read-only·zero-dep·1.0.0 계약·frontmatter/status 불변; `--strict`는 `*_unverified`만 승격. 251 tests·validate --strict 0(청결 dogfood). 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
+- 2026-07-22에 1.16.0→1.19 누적 기능(rename·reverse-impact·retrieval·Gate 25 evidence 의미 단계화·Gate 26 agent update runner)을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 재승인했다. 기능 서술과 Evidence 근거가 현재 소스와 일치함을 확인했다.

@@ -2,15 +2,15 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - needs_review
-status: needs_review
+  - verified
+status: verified
 doc_type: architecture_conventions
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-21
+reviewed_at: 2026-07-22
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -159,3 +159,4 @@ contains_sensitive_info: false
 - 2026-07-21에 1.18.0 read-only retrieval(Gate 24, accepted)를 반영했다: 신규 `src/commands/retrieval.js`(4개 핸들러 `listDocsCommand`/`searchDocsCommand`/`getDocCommand`/`getRelatedCommand`)를 Module Layout `src/commands/*` 목록·Evidence에 추가했다. 거버넌스 리포트가 아니라 문서 **본문**을 반환하는 유일 표면으로, `listWikiContentDocs`·`parseFrontmatter`·`collectWikiGraph`·`scanSensitiveInfo`를 재사용하는 leaf 모듈(commands.js가 배럴 re-export). `src/cli.js`(COMMANDS·parseArgs 플래그[`--status`/`--visibility`/`--doc-type`/`--include-sensitive`/`--limit`]·positional[search/get의 `<query>`/`<path>`]·COMMAND_OPTION_RULES·help/COMMAND_HELP), `src/index.js`(동결 commands 맵 4개 kebab 키 + Options typedef), `src/mcp/tools.js`(TOOL_DEFS 4개 + buildToolOptions 매핑), `src/mcp/dispatch.js`(instructions)에 배선했다. `search-docs`는 zero-dep 키워드/부분문자열(semantic 아님), restricted/민감 문서는 list/search 기본 제외(opt-in)·반환 본문/스니펫 redact, 쓰기 표면 없음. additive·zero-dep·1.0.0 계약 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-21에 1.19 evidence 의미 단계화(Gate 25, accepted[Dowon-Kim 위임])를 반영했다: `scans.js`에 (1) `scanEvidenceReferences`의 `#symbol:`/`#section:` 타깃 실재 보수적 검사(`evidence.symbol_unverified`/`evidence.section_unverified`; 파일이 이름/헤딩을 전혀 언급 안 할 때만, `·`-결합 목록·`.md` 섹션만·`readTextAuto` BOM 인식), (2) grounding 없는 verified를 flag하는 `scanUngroundedVerified`(`evidence.ungrounded`, warning·`--strict` 미승격), (3) 순수 `evidenceTier`(+ `EVIDENCE_REFERENCE_RULES`)를 추가하고 `stats` JSON에 `evidenceTiers` additive 노출했다. `findings.js`에 3개 rule 등록, `commands.js` audit/validate 배선. 251 tests·validate --strict 0(청결 dogfood: 50/50 reference_checked, 14/50 human_verified). additive·read-only·zero-dep·1.0.0 계약·frontmatter/status 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-21에 1.19 agent update runner(Gate 26, accepted[Dowon-Kim 위임, 야간 자율])를 반영했다: read-only `check-run` 명령(`src/commands.js#symbol:checkRunCommand`)이 `.llm-wiki/runs/`의 run manifest를 읽어 스킬 실행 파이프라인(changedSource↔touchedDocs 참조·로그 append·validate)을 검증한다. `findings.js`에 `run.*` 5개 rule 등록, `cli.js`/`index.js`에 `check-run`+`--run` 배선(command-set 단언 갱신), `skills.js#artifactBody`에 스킬 본문 완성 계약(매니페스트 작성→check-run) 내장. `impact`(diff-앵커)의 intent-앵커 보완, read-only(매니페스트는 에이전트가 작성), additive·zero-dep·1.0.0 계약 불변. 254 tests·validate --strict 0. 커밋된 dogfood 스킬 아티팩트는 미덮어씀 규율상 재생성 필요(`init --write --skills --existing overwrite`). 에이전트 편집이라 `needs_review` — 사람 검토 후 재승인 예정.
+- 2026-07-22에 1.16.0→1.19 누적분(rename·reverse-impact·retrieval·Gate 25 evidence 단계화·Gate 26 check-run)을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 재승인했다. 함께 커밋된 dogfood 스킬을 Gate 26 완성 계약이 담기도록 재생성했는데, `writeSkillArtifacts`는 `--existing overwrite`와 무관하게 기존 파일을 덮지 않으므로(그 플래그는 오히려 위키 문서를 덮으니 사용 금지) **기존 9개 삭제 후 `init --write --skills`**로 재생성하는 것이 올바른 방법이다(위 Gate 26 노트의 괄호 표기 정정).
