@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -453,15 +453,17 @@ need**:
 Driven by QA/DX feedback from building an LLM-WIKI on a real Vue/Quasar SPA. Additive,
 zero-dependency, backend/fullstack byte-identical.
 
-- **1.20 — Frontend DX + evidence DX + retrieval.** Shipped to main (pending npm publish):
-  frontend/mobile (SPA) domain detection (`pages`/`views`/`features`/`modules`/`screens`
-  folders + vue/react-router route groups, regex-only), `get-doc --section` focused read,
-  `search-docs` change-log deprioritization, and `evidence.section_unlisted` path-based
-  matching (locator-format tolerant).
-- **Candidates (not yet built):** an explicit message when a forced `--type` finds no domains
-  (plus an optional `--domains`); KO localization of findings messages; a per-document
-  enrichment checklist in `next`/`handoff`; auto-linking new domain docs to avoid orphans;
-  snapshot tests + documentation of the detection / `not_enriched` heuristics.
+- **1.20 — Frontend DX + evidence DX + retrieval (npm 1.20.0).** frontend/mobile (SPA) domain
+  detection (`pages`/`views`/`features`/`modules`/`screens` folders + vue/react-router route
+  groups, regex-only), an explicit no-domains notice plus `--domains`, `get-doc --section`
+  focused read, `search-docs` change-log deprioritization, and `evidence.section_unlisted`
+  path-based matching (locator-format tolerant).
+- **1.21 — Domain onboarding + enrichment DX (npm 1.21.0).** Domain docs pre-wired into the
+  `index` and `DOMAIN_FEATURES` entry points (P6), a per-document enrichment checklist in `next`
+  (P5), and detection / `not_enriched` heuristic transparency docs plus snapshot regression
+  tests (P7).
+- **Candidates (not yet built):** KO localization of findings messages (P4); `fix`-time
+  re-wiring of domain links; a real-LLM retrieval benchmark to replace the chars/4 proxy.
 
 ## Non-Goals (unchanged safety ethos)
 

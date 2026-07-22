@@ -153,11 +153,39 @@ export async function scanEnrichment(cwd) {
         severity: "warning",
         rule: "content.not_enriched",
         path: rel,
-        message: "Document still contains generated placeholder guidance and has not been enriched with source-backed content yet."
+        message: "Document still contains generated placeholder guidance and has not been enriched with source-backed content yet.",
+        // Additive per-doc checklist (P5): which sections still hold placeholder
+        // text, so `next` can tell an agent WHAT to fill and WHERE.
+        checklist: enrichmentChecklist(body)
       });
     }
   }
   return findings;
+}
+
+// P5: for a document body, list the `##` sections that still contain generated
+// placeholder guidance, so `next`/`handoff` can point an agent at WHAT to fill
+// and WHERE. Splits on level-2 headings; a section is "to fill" when it still
+// contains one of the ENRICHMENT_PLACEHOLDER_SENTINELS. Returns deduped (one per
+// section, in document order) { section, hint } items where hint is the trimmed
+// placeholder line. Pure; frontmatter is expected to be stripped by the caller.
+export function enrichmentChecklist(body) {
+  const items = [];
+  const seen = new Set();
+  let currentSection = "(intro)";
+  for (const line of String(body).split(/\r?\n/)) {
+    const heading = /^##\s+(.+?)\s*$/.exec(line);
+    if (heading) {
+      currentSection = heading[1].trim();
+      continue;
+    }
+    if (seen.has(currentSection)) continue;
+    if (!ENRICHMENT_PLACEHOLDER_SENTINELS.some((sentinel) => line.includes(sentinel))) continue;
+    seen.add(currentSection);
+    const hint = line.trim().replace(/^[-*]\s+/, "").slice(0, 100);
+    items.push({ section: currentSection, hint });
+  }
+  return items;
 }
 
 export const THIN_BODY_MIN_WORDS = 25;

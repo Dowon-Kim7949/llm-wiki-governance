@@ -4,6 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { detectFrontendDomains } from "../src/commands/domains.js";
+import { enrichmentChecklist } from "../src/commands/scans.js";
 import { audit, checkRunCommand, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, evidenceTier, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard, renderOutputFile, printResult } from "../src/report.js";
@@ -239,6 +240,40 @@ test("backend with routes only in a single file yields no per-domain docs", asyn
   await writeFile(path.join(cwd, "app", "main.py"), "# all routes defined here\n", { encoding: "utf8" });
 
   assert.equal((await detectDomainDirectories(cwd)).length, 0);
+});
+
+test("planDomainDocs is a deterministic snapshot: sorted ordinals, slugs, merged sources (P7)", async () => {
+  const cwd = await makeProject("domain-snapshot-");
+  // Mixed tree exercising every deterministic rule at once: a dir domain, file
+  // domains, a cross-kind duplicate (order), an excluded dir (shared), an excluded
+  // file name (index), and camelCase slug normalization (userAccount).
+  await mkdir(path.join(cwd, "src", "modules", "userAccount"), { recursive: true });
+  await mkdir(path.join(cwd, "src", "modules", "order"), { recursive: true });
+  await mkdir(path.join(cwd, "src", "modules", "shared"), { recursive: true });
+  await mkdir(path.join(cwd, "app", "endpoints"), { recursive: true });
+  for (const name of ["billing", "order", "index"]) {
+    await writeFile(path.join(cwd, "app", "endpoints", `${name}.py`), "# x\n", { encoding: "utf8" });
+  }
+
+  const plans = planDomainDocs(await detectDomainDirectories(cwd));
+  assert.deepEqual(
+    plans.map((plan) => ({ rel: plan.rel, slug: plan.slug, domainName: plan.domainName, sourceFiles: plan.sourceFiles })),
+    [
+      { rel: "docs/llm-wiki/domains/01_billing.md", slug: "billing", domainName: "Billing", sourceFiles: ["app/endpoints/billing.py"] },
+      { rel: "docs/llm-wiki/domains/02_order.md", slug: "order", domainName: "Order", sourceFiles: ["app/endpoints/order.py", "src/modules/order"] },
+      { rel: "docs/llm-wiki/domains/03_user_account.md", slug: "user_account", domainName: "User Account", sourceFiles: ["src/modules/userAccount"] }
+    ]
+  );
+});
+
+test("detectDomainDirectories excludes aggregator/infra file names, keeps real resources (P7)", async () => {
+  const cwd = await makeProject("domain-file-excl-");
+  await mkdir(path.join(cwd, "app", "routers"), { recursive: true });
+  for (const name of ["index", "main", "app", "base", "schemas", "models", "types", "constants", "settings", "invoice", "shipment"]) {
+    await writeFile(path.join(cwd, "app", "routers", `${name}.ts`), "// x\n", { encoding: "utf8" });
+  }
+  const names = (await detectDomainDirectories(cwd)).map((item) => item.rawName).sort();
+  assert.deepEqual(names, ["invoice", "shipment"]); // FILE_DOMAIN_EXCLUDE drops aggregators/infra
 });
 
 test("init --write on a FastAPI endpoints layout creates a doc per route module", async () => {
@@ -2728,6 +2763,48 @@ test("next command recommends prioritized actions from audit findings and wiki g
   assert.ok(result.text.includes("command: llm-wiki validate"));
 });
 
+test("enrichmentChecklist lists placeholder sections with hints (P5)", () => {
+  const body = [
+    "# Doc",
+    "",
+    "## Summary",
+    "",
+    "- Concise summary: describe the purpose of this document in one or two source-backed bullets.",
+    "",
+    "## Responsibility",
+    "",
+    "- The billing domain owns invoice creation via src/billing.ts.",
+    "",
+    "## Evidence",
+    "",
+    "- Add file paths, symbols, routes, commands, or test names inspected while completing this document.",
+    ""
+  ].join("\n");
+
+  const items = enrichmentChecklist(body);
+  // Only sections that still hold placeholder text are listed (Responsibility, which
+  // has real content, is skipped), one item per section, in document order.
+  assert.deepEqual(items.map((item) => item.section), ["Summary", "Evidence"]);
+  assert.ok(items[0].hint.includes("Concise summary"));
+  // A fully enriched body yields no checklist items.
+  assert.equal(enrichmentChecklist("## Summary\n\n- Billing owns invoices via src/billing.ts.").length, 0);
+});
+
+test("next surfaces an enrich action and per-doc enrichment checklist (P5)", async () => {
+  const cwd = await makeProject("next-enrich-");
+  await mkdir(path.join(cwd, "src", "modules", "billing"), { recursive: true });
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+
+  const result = await nextCommand({ cwd, type: "backend", profiles: [], agents: [], format: "text", strict: false });
+
+  assert.ok(result.actions.some((action) => action.id === "enrich-placeholder-docs" && action.priority === "medium"));
+  assert.ok(Array.isArray(result.enrichmentChecklist) && result.enrichmentChecklist.length > 0);
+  const overview = result.enrichmentChecklist.find((doc) => doc.path === "docs/llm-wiki/domains/00_overview.md");
+  assert.ok(overview && overview.items.some((item) => item.section === "Evidence"));
+  assert.ok(result.text.includes("## Enrichment Checklist"));
+  assert.ok(result.text.includes("documents_to_enrich:"));
+});
+
 test("explain command describes known finding rules and blocks unknown rules", async () => {
   const explained = await explainCommand({ findingRule: "wiki_link.missing", format: "text" });
   const unknown = await explainCommand({ findingRule: "made.up", format: "text" });
@@ -3167,7 +3244,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.20.0");
+  assert.equal(packageJson.version, "1.21.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");

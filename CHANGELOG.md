@@ -6,7 +6,11 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
-## Unreleased
+## 1.21.0 — 2026-07-22
+
+More external-usage developer-experience improvements, additive and zero-dependency: the
+`llm-wiki` command surface, `--format json`, the programmatic API, and the frontmatter
+contract are unchanged, and backend/fullstack domain detection stays byte-identical.
 
 ### Added
 
@@ -18,6 +22,16 @@ Entries are newest-first.
   and automating the linking a tester previously did by hand. Gated on domains being planned:
   a domain-less scaffold is byte-identical. Scope is scaffold-time (`init`/`quickstart`);
   `fix`-time re-wiring is a follow-up. Additive and zero-dependency.
+- **Per-document enrichment checklist in `next` (external feedback P5).** `next` now surfaces
+  an "Enrich placeholder documents" action and an **Enrichment Checklist** that lists, for each
+  not-yet-enriched document, which `##` sections still hold generated placeholder text (with a
+  hint). Backed by a pure `enrichmentChecklist` helper and an additive `checklist` field on the
+  `content.not_enriched` audit finding; an additive `enrichmentChecklist` field is added to the
+  `next` result, and `explain content.not_enriched` now points at it.
+- **Detection & `not_enriched` heuristic transparency + regression tests (external feedback P7).**
+  Documented the domain-detection and enrichment criteria (parent conventions, exclusion sets,
+  placeholder sentinels) in the wiki, and added a deterministic `planDomainDocs` snapshot test
+  plus broader `FILE_DOMAIN_EXCLUDE` coverage to lock the heuristics against regressions.
 
 ## 1.20.0 — 2026-07-22
 

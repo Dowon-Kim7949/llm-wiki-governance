@@ -44,7 +44,7 @@ export const FINDING_EXPLANATIONS = {
   "okf.type_shape": findingExplanation("okf", "error", "The OKF type field exists but is not a string.", "Tools need a stable scalar type value to classify OKF documents.", ["Change type to a single scalar string.", "Avoid list or object values for type.", "Run validate with the OKF profile again."], ["llm-wiki validate --profile okf-v0.1"], ["okf.type_required"]),
   "okf.array_shape": findingExplanation("okf", "error", "An OKF aliases or tags field is present but is not an array.", "OKF-compatible aliases and tags need stable array shapes for graph and search workflows.", ["Rewrite aliases or tags as YAML lists.", "Keep aliases reviewed and intentional.", "Run validate with the OKF profile again."], ["llm-wiki validate --profile okf-v0.1"], ["frontmatter.array"]),
   "content.thin_body": findingExplanation("content", "warning", "A wiki content document has very little body prose. Opt-in lint: off by default, enabled per project via config rules.", "A started-but-undeveloped stub passes structural validation yet carries little knowledge; teams that want to catch these can enable the rule for their project.", ["Enrich the document with source-backed content (summary, evidence, review notes).", "Run llm-wiki handoff to get an enrichment prompt.", "This rule is off by default; enable it by setting \"content.thin_body\" in llm-wiki.config.json rules (or omit it to keep it off)."], ["llm-wiki handoff --agent codex", "llm-wiki validate"], ["content.not_enriched"]),
-  "content.not_enriched": findingExplanation("content", "warning", "A generated wiki document still contains placeholder guidance and has not been enriched with source-backed content.", "Empty scaffolds pass structural validation but hold no real knowledge, so the token-saving and handoff-replacement goals are not met until an agent or human fills them in from source evidence.", ["Read the document and the files listed in source_files, then replace the placeholder bullets with source-backed content.", "Run llm-wiki handoff --agent codex or --agent claude to get an enrichment prompt.", "Keep the document as needs_review until human review is complete."], ["llm-wiki handoff --agent codex", "llm-wiki validate"], ["structure.required_doc", "source_files.missing"]),
+  "content.not_enriched": findingExplanation("content", "warning", "A generated wiki document still contains placeholder guidance and has not been enriched with source-backed content.", "Empty scaffolds pass structural validation but hold no real knowledge, so the token-saving and handoff-replacement goals are not met until an agent or human fills them in from source evidence.", ["Read the document and the files listed in source_files, then replace the placeholder bullets with source-backed content.", "Run llm-wiki next to see, per document, which ## sections still hold generated placeholder text (the Enrichment Checklist).", "Run llm-wiki handoff --agent codex or --agent claude to get an enrichment prompt.", "Keep the document as needs_review until human review is complete."], ["llm-wiki next", "llm-wiki handoff --agent codex", "llm-wiki validate"], ["structure.required_doc", "source_files.missing"]),
   "adapter.missing": findingExplanation("adapter", "warning", "A selected agent adapter file is missing.", "Adapter files tell Codex or Claude Code where the wiki entrypoint is and how to follow the project contract.", ["Run init --write with the selected agent.", "Review generated adapter text before relying on it.", "Existing adapter files are never overwritten."], ["llm-wiki init --write --agent codex", "llm-wiki init --write --agent claude"], ["adapter.entrypoint"]),
   "adapter.entrypoint": findingExplanation("adapter", "warning", "An adapter exists but does not point to docs/llm-wiki/index.md.", "Agents need a reliable entrypoint to find project knowledge before editing code.", ["Open the reported adapter file.", "Add or correct the docs/llm-wiki/index.md reference.", "Run audit again with the selected agent."], ["llm-wiki audit --agent codex", "llm-wiki audit --agent claude"], ["adapter.missing"]),
   "encoding.bom": findingExplanation("encoding", "info", "A UTF-8 BOM was detected.", "BOMs are usually harmless, but they can create noisy diffs or surprise simple parsers.", ["Leave it alone if your team accepts BOMs.", "Remove the BOM with an editor that preserves UTF-8 when you want cleaner diffs.", "Run audit again."], ["llm-wiki audit"], ["encoding.mojibake"]),
@@ -176,6 +176,23 @@ export function formatNextActions(actions) {
     if (action.targets.length > 0) details.push(`targets: ${action.targets.join(", ")}`);
     return details.join(" ");
   });
+}
+
+// P5: render the per-document enrichment checklist for `next`. Each entry is
+// { path, items: [{ section, hint }] } — the placeholder sections still to fill.
+export function formatEnrichmentChecklist(checklists) {
+  if (!checklists || checklists.length === 0) {
+    return ["No placeholder documents detected. Enrichment is complete or not yet started."];
+  }
+  const lines = [];
+  for (const doc of checklists) {
+    const items = doc.items ?? [];
+    lines.push(`${doc.path} — fill ${items.length} section(s):`);
+    for (const item of items) {
+      lines.push(`  ${item.section} → ${item.hint}`);
+    }
+  }
+  return lines;
 }
 
 export function formatCountMap(counts) {

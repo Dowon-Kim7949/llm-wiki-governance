@@ -24,6 +24,28 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-22 - feat: enrichment 체크리스트(P5) + 탐지/미완 휴리스틱 테스트·투명성(P7), release 1.21.0
+
+- status: needs_review
+- actor: Claude Code
+- scope: src, tests, docs, release
+- changed:
+  - src/commands/scans.js (enrichmentChecklist + finding checklist 필드)
+  - src/commands/findings.js (formatEnrichmentChecklist + explain content.not_enriched 보강)
+  - src/commands.js (nextCommand enrich 액션·체크리스트 섹션·payload)
+  - tests/verification.test.js (P5 2 + P7 2 신규 + 버전 assertion 1.21.0)
+  - docs/llm-wiki/DOMAIN_FEATURES.md (P5 문장 + Detection & Enrichment Heuristics 섹션 + 리뷰노트)
+  - package.json (1.20.0→1.21.0), CHANGELOG.md/.ko.md (1.21.0), ROADMAP.md/.ko.md (1.21 항목)
+- summary:
+  - P5: `next`가 미완(`content.not_enriched`) 문서별 Enrichment Checklist(placeholder가 남은 `##` 섹션+힌트)와 `enrich-placeholder-docs` 액션을 노출. 순수 `enrichmentChecklist` 헬퍼 + finding의 additive `checklist` 필드 + `next` payload additive `enrichmentChecklist`.
+  - P7: `planDomainDocs` 결정적 스냅샷 테스트 + `FILE_DOMAIN_EXCLUDE` 폭넓은 제외 테스트로 휴리스틱 회귀 잠금. DOMAIN_FEATURES에 "Detection & Enrichment Heuristics" 투명성 섹션 추가, `explain content.not_enriched`에 `next` 체크리스트 포인터.
+  - 1.21.0으로 P6(사전 배선)+P5+P7 묶어 릴리스.
+- evidence:
+  - src/commands/scans.js#symbol:enrichmentChecklist
+  - src/commands.js#symbol:nextCommand
+- caveats:
+  - 269 tests·validate --strict 0·additive·read-only·zero-dep·1.0.0 계약 불변. DOMAIN_FEATURES는 에이전트 편집이라 `needs_review` — 사람 재검토 후 재승인 예정.
+
 ## 2026-07-22 - feat: 도메인 문서 orphan/링크 사전 배선 (외부 피드백 P6)
 
 - status: needs_review

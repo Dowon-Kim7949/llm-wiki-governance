@@ -5,7 +5,11 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
-## Unreleased
+## 1.21.0 — 2026-07-22
+
+외부 실사용에서 나온 개발자 경험(DX) 개선 추가분. 부가적·zero-dependency: 기존 `llm-wiki`
+명령 표면·`--format json`·프로그래매틱 API·frontmatter 계약 불변, 백엔드/풀스택 도메인 탐지는
+byte-identical.
 
 ### Added
 
@@ -15,6 +19,14 @@
   기존 overview↔per-domain 배선을 보완해 진입점에서 도메인 지도로 가는 경로를 만들고, 테스터가 수동으로
   하던 배선을 자동화한다. 도메인이 계획될 때만 배선하므로 도메인이 없는 스캐폴드는 byte-identical.
   스코프는 스캐폴드(`init`/`quickstart`) — `fix`-타임 재배선은 후속. 부가적·zero-dependency.
+- **`next`의 문서별 enrichment 체크리스트 (외부 피드백 P5).** `next`가 "Enrich placeholder
+  documents" 액션과 **Enrichment Checklist**를 노출한다 — 아직 보강되지 않은 문서마다 어느 `##`
+  섹션에 생성 시 placeholder가 남았는지(힌트 포함) 나열한다. 순수 헬퍼 `enrichmentChecklist`와
+  `content.not_enriched` audit finding의 additive `checklist` 필드로 뒷받침되고, `next` 결과에
+  additive `enrichmentChecklist` 필드가 추가되며 `explain content.not_enriched`가 이를 가리킨다.
+- **탐지·`not_enriched` 휴리스틱 투명성 + 회귀 테스트 (외부 피드백 P7).** 도메인 탐지·미완 판정
+  기준(부모 컨벤션·제외 집합·placeholder 문구)을 위키에 문서화하고, 결정적 `planDomainDocs` 스냅샷
+  테스트와 폭넓은 `FILE_DOMAIN_EXCLUDE` 커버리지를 추가해 휴리스틱을 회귀로부터 잠갔다.
 
 ## 1.20.0 — 2026-07-22
 

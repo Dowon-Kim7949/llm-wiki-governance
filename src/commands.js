@@ -35,6 +35,7 @@ import {
   applyRuleConfig,
   FINDING_EXPLANATIONS,
   findingCategory,
+  formatEnrichmentChecklist,
   formatFinding,
   formatFindingSummary,
   formatNextActions,
@@ -293,6 +294,13 @@ export async function nextCommand(options) {
       : actions.length > 0
         ? "ready"
         : "pass";
+  // P5: per-document enrichment checklist — which placeholder sections each
+  // not-enriched doc still needs filled. Derived from the audit findings'
+  // additive `checklist` field (no file re-read); additive payload + section.
+  const enrichmentChecklist = (auditResult.findings ?? [])
+    .filter((finding) => finding.rule === "content.not_enriched")
+    .map((finding) => ({ path: finding.path, items: finding.checklist ?? [] }))
+    .sort((left, right) => left.path.localeCompare(right.path));
   const summary = [
     `result: ${result}`,
     `project_type: ${auditResult.detection.projectType}`,
@@ -300,7 +308,8 @@ export async function nextCommand(options) {
     `active_profiles: ${auditResult.detection.activeProfiles.join(", ")}`,
     `selected_agents: ${selectedAgents(options).join(", ") || "none"}`,
     `audit_findings: ${auditResult.findings.length}`,
-    `recommended_actions: ${actions.length}`
+    `recommended_actions: ${actions.length}`,
+    `documents_to_enrich: ${enrichmentChecklist.length}`
   ];
 
   return withText({
@@ -311,10 +320,12 @@ export async function nextCommand(options) {
     auditFindingSummary: auditResult.findingSummary,
     auditFindings: auditResult.findings,
     actions,
+    enrichmentChecklist,
     findings: []
   }, "LLM-WIKI Next Actions", [
     { title: "Summary", body: summary },
     { title: "Recommended Actions", body: formatNextActions(actions) },
+    { title: "Enrichment Checklist", body: formatEnrichmentChecklist(enrichmentChecklist) },
     { title: "Wiki Graph", body: formatWikiGraphSummary(auditResult.wikiGraph) },
     { title: "Caveats", body: ["This command is advisory and does not write files. Run validate or audit when you need pass/fail validation."] }
   ]);
@@ -1744,6 +1755,20 @@ function buildNextActions(auditResult, options) {
       command: "llm-wiki audit",
       findings: findings.filter((finding) => finding.rule?.startsWith("encoding."))
     }));
+  }
+
+  const notEnriched = findings.filter((finding) => finding.rule === "content.not_enriched");
+  if (notEnriched.length > 0) {
+    add({
+      id: "enrich-placeholder-docs",
+      priority: "medium",
+      category: "content",
+      title: "Enrich placeholder documents with source-backed content",
+      reason: `${notEnriched.length} document(s) still contain generated placeholder guidance. See the Enrichment Checklist below for the sections to fill per document.`,
+      command: "llm-wiki handoff",
+      paths: unique(notEnriched.map((finding) => finding.path)),
+      targets: []
+    });
   }
 
   if (wikiGraph.orphanDocuments.length > 0) {
