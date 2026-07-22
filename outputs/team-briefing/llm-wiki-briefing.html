@@ -1,4 +1,4 @@
-<title>llm-wiki-standard 팀 발표 (v1.0 → v1.11.1)</title>
+<title>llm-wiki-governance 팀 발표 (v1.0 → v1.19.0)</title>
 <style>
   :root{
     --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Segoe UI",system-ui,sans-serif;
@@ -260,13 +260,13 @@
     <div class="wrap">
       <p class="eyebrow anim">TEAM BRIEFING · 15–20 MIN · 전 인원</p>
       <h1 class="anim">AI를 위한<br>회사 지식 관리 도구</h1>
-      <p class="lead anim" style="color:var(--muted)">우리가 만들고 써 온 <strong>llm-wiki-standard</strong> 이야기 —<br>왜 필요하고, 어떻게 발전했고, 어떻게 잘 쓰는가.</p>
+      <p class="lead anim" style="color:var(--muted)">우리가 만들고 써 온 <strong>llm-wiki-governance</strong> 이야기 —<br>왜 필요하고, 어떻게 발전했고, 어떻게 잘 쓰는가.</p>
       <div class="titlemeta anim">
-        <span class="versionpill">v1.0.0 &nbsp;→&nbsp; v1.11.1</span>
+        <span class="versionpill">v1.0.0 &nbsp;→&nbsp; v1.19.0</span>
         <span class="metachip">방향키 ← → 로 넘기세요</span>
       </div>
     </div>
-    <div class="brand">@dowonk-7949/llm-wiki-standard</div>
+    <div class="brand">llm-wiki-governance &nbsp;·&nbsp; npm</div>
   </section>
 
   <!-- 2 · PROBLEM -->
@@ -488,27 +488,54 @@
         </div>
         <div class="row">
           <div class="cond">③ 성과를 숫자로 확인해라<span>MEASURE THE IMPACT</span></div>
-          <span class="verdict verdict--next"><b>◐</b> 앞으로 보강</span>
+          <span class="verdict verdict--next"><b>◐</b> 측정 착수</span>
         </div>
       </div>
-      <p class="callout anim" style="margin-top:1.4rem;color:var(--muted)">걱정거리가 아니라, <strong style="color:var(--ink)">“우리가 방향을 잘 잡았다”</strong>는 확인입니다. — <span style="font-family:var(--mono);font-size:.85em">BCG ‘AI 전환’ 다큐멘터리 참고</span></p>
+      <p class="callout anim" style="margin-top:1.4rem;color:var(--muted)">세 번째(측정)도 이제 <strong style="color:var(--ink)">측정 도구(벤치)를 만들어 델타를 재기 시작</strong>했습니다. — <span style="font-family:var(--mono);font-size:.85em">BCG ‘AI 전환’ 다큐멘터리 참고</span></p>
     </div>
   </section>
 
   <!-- 6 · TIMELINE -->
   <section class="slide">
     <div class="wrap">
-      <p class="eyebrow anim">발전 스토리 · 1.0 → 1.11.1</p>
+      <p class="eyebrow anim">발전 스토리 · 1.0 → 1.19.0</p>
       <h2 class="anim">한 번에 하나씩, 순서대로 쌓아온 기능</h2>
       <ul class="tl anim">
         <li><span class="ver">1.0</span><span class="desc">안정 선언<small>“사용법을 함부로 안 바꾸겠다”는 약속</small></span></li>
-        <li><span class="ver">1.1 – 1.2</span><span class="desc">일상 편의 &amp; 안전한 업그레이드<small>바뀐 것만 검사 · 낡은 문서 알림 · 지우지 않고 살살 고침</small></span></li>
-        <li><span class="ver">1.3 – 1.4</span><span class="desc">지원 확대 &amp; 보이는 지식<small>더 많은 언어/도구 · 지식 그래프 · 건강 점수 · 대시보드</small></span></li>
-        <li><span class="ver">1.5</span><span class="desc">프로그램 연동 &amp; 커뮤니티 표준</span></li>
-        <li><span class="ver">1.6 – 1.7</span><span class="desc">AI 연동(MCP) &amp; 자동화(CI/CD)<small>AI가 도구처럼 위키를 조회 · PR마다 자동 점검</small></span></li>
+        <li><span class="ver">1.1 – 1.4</span><span class="desc">일상 편의 &amp; 보이는 지식<small>바뀐 것만 검사 · 낡은 문서 알림 · 더 많은 언어/도구 · 지식 그래프 · 대시보드</small></span></li>
+        <li><span class="ver">1.5 – 1.7</span><span class="desc">프로그램·AI 연동 &amp; 자동화<small>API · MCP(AI가 도구처럼 위키 조회) · PR마다 자동 점검(CI/CD)</small></span></li>
         <li><span class="ver">1.8 – 1.11</span><span class="desc">팀·조직 규모 대응<small>프로젝트별 설정 · 공개범위 관리 · 여러 프로젝트 · 저장소 간 연결</small></span></li>
-        <li class="now"><span class="ver">1.11.1</span><span class="desc">내부 정리 &nbsp;— &nbsp;이번 작업<small>겉 동작은 그대로, 유지보수하기 쉽게 구조 재정비</small></span></li>
+        <li><span class="ver">1.12 – 1.14</span><span class="desc">더 넓은 지원<small>모바일 · 인프라(도커/쿠버네티스) · 표준 서버 자동 인식</small></span></li>
+        <li><span class="ver">1.15</span><span class="desc">스킬 생성<small>AI가 ‘우리 방식’ 워크플로를 직접 실행하도록 자동화 프롬프트 생성</small></span></li>
+        <li><span class="ver">1.16</span><span class="desc">표준 → 거버넌스 &amp; 새 이름<small>포지셔닝을 ‘거버넌스 도구’로 · 패키지명 <b>llm-wiki-governance</b></small></span></li>
+        <li class="now"><span class="ver">1.17 – 1.19</span><span class="desc">측정 · 검색 · 감사 &nbsp;— &nbsp;최근 작업<small>영향도 점검 · AI가 위키를 검색 · 근거 단계화 · 작업 실행 감사</small></span></li>
       </ul>
+    </div>
+  </section>
+
+  <!-- NEW · 표준 → 거버넌스 + 새 이름 (1.16) -->
+  <section class="slide">
+    <div class="wrap">
+      <p class="eyebrow anim">한 걸음 더 · 1.16 · 새 이름 &amp; 방향</p>
+      <h2 class="anim">‘공통 표준’에서 <span class="nb">‘거버넌스 도구’로</span> — 그리고 새 이름</h2>
+      <div class="grid g3 anim">
+        <div class="card">
+          <div class="idx">무엇이</div>
+          <h3>이름이 바뀌었다</h3>
+          <p>설치 이름이 <span class="mono">llm-wiki-governance</span>로. 옛 이름은 이걸 가리키도록 정리했고, <b>명령어는 그대로</b> <span class="mono">llm-wiki</span>.</p>
+        </div>
+        <div class="card">
+          <div class="idx">왜</div>
+          <h3>‘거버넌스’로 초점</h3>
+          <p>단순 문서 표준이 아니라, <b>AI가 쓴 문서를 검증·드리프트 감지·CI로 강제</b>하는 거버넌스 도구로 자리매김.</p>
+        </div>
+        <div class="card">
+          <div class="idx">덤</div>
+          <h3>영어 우선 출력</h3>
+          <p>전 세계 팀이 쓰도록 안내·프롬프트를 <b>영어 우선</b>으로 정렬. 기능·안전장치는 그대로.</p>
+        </div>
+      </div>
+      <p class="callout anim" style="margin-top:1.3rem;color:var(--muted)">여러분이 바꿀 건 <strong style="color:var(--ink)">설치할 때 쓰는 이름 하나</strong>뿐 — 나머지 사용법은 동일합니다.</p>
     </div>
   </section>
 
@@ -540,6 +567,32 @@
         <div class="card"><div class="idx">05</div><h3>사람 검토</h3><p style="margin-bottom:.6rem">통과하면 확정</p><span class="stamp stamp--ok">verified</span></div>
       </div>
       <p class="callout anim" style="margin-top:1.3rem;color:var(--muted)">↺ 그리고 다시 처음으로 — <strong style="color:var(--ink)">이 사이클이 계속 돌면 문서가 항상 최신으로 유지</strong>됩니다.</p>
+    </div>
+  </section>
+
+  <!-- NEW · AI가 쓰고·검색하고·검증받는다 (1.15·1.18·1.19) -->
+  <section class="slide">
+    <div class="wrap">
+      <p class="eyebrow anim">최근 능력 · 1.15 · 1.18 · 1.19</p>
+      <h2 class="anim">이제 AI가 <span class="nb">스스로 쓰고 · 검색하고 · 검증받는다</span></h2>
+      <div class="grid g3 anim">
+        <div class="card">
+          <div class="idx">① 스킬 · 1.15</div>
+          <h3>워크플로를 쥐여준다</h3>
+          <p>‘우리 방식’ 작업 절차를 AI가 <b>버튼처럼 실행</b>. 도구는 절차를 만들어 주고, 실행은 AI가 한다.</p>
+        </div>
+        <div class="card">
+          <div class="idx">② 검색 · 1.18</div>
+          <h3>위키를 찾아본다</h3>
+          <p>매번 코드를 통째로 다시 읽는 대신 <b>필요한 문서만 검색</b>해 가져온다 → 더 빠르고 저렴.</p>
+        </div>
+        <div class="card">
+          <div class="idx">③ 감사 · 1.19</div>
+          <h3>실행을 검증한다</h3>
+          <p>“코드는 바꿨는데 <b>위키는 안 고쳤다</b>”를 자동 점검. 근거도 ‘기계 확인 vs 사람 확인’ 단계로 구분.</p>
+        </div>
+      </div>
+      <p class="callout anim" style="margin-top:1.3rem;color:var(--muted)">앞의 작업 사이클을 <strong style="color:var(--ink)">더 빠르게 돌리고, 빠뜨리면 잡아내는</strong> 장치들입니다.</p>
     </div>
   </section>
 
@@ -591,7 +644,7 @@
         <p class="taglabel taglabel--good">이렇게 — 도구를 실제로 ‘실행’시키기</p>
         <pre class="prompt prompt--good">llm-wiki를 새로 구축해줘.
 1) 다음 명령을 실제로 실행:
-   npx @dowonk-7949/llm-wiki-standard quickstart --write --agent claude
+   npx llm-wiki-governance quickstart --write --agent claude
 2) 코드를 읽고 각 문서를 실제 근거로 채워줘.
 3) 채운 내용은 needs_review 로 남겨줘.</pre>
       </div>
@@ -648,7 +701,7 @@
       <p class="big anim">AI는 단순한 도구가 아니라,<br><em>일하는 방식</em>을 바꾸는 것입니다.</p>
       <p class="closeline anim">정답을 찾기보다 <strong>계속 배우고 시도하며</strong> 현장에서 임팩트를 만든다.<br>우리는 이미 그 길 위에 있습니다 — <strong>안전하게, 한 걸음씩.</strong></p>
       <div class="titlemeta anim">
-        <span class="versionpill">감사합니다 · v1.11.1</span>
+        <span class="versionpill">감사합니다 · v1.19.0</span>
       </div>
     </div>
   </section>
@@ -657,7 +710,7 @@
 
 <div class="nav">
   <button class="navbtn" id="prev" aria-label="이전 슬라이드">‹</button>
-  <span class="counter" id="counter">01 / 19</span>
+  <span class="counter" id="counter">01 / 21</span>
   <button class="navbtn" id="next" aria-label="다음 슬라이드">›</button>
 </div>
 <div class="hint" id="hint">← → · Space · 로 이동</div>
