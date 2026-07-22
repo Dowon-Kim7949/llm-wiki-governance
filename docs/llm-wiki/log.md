@@ -24,6 +24,22 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-22 - review: 1.20 누적분 코어 문서 verified 재승인 (human)
+
+- status: verified
+- actor: Dowon-Kim (사람 검토·승인) / 편집 적용 Claude Code
+- scope: docs (frontmatter status/tags/reviewed_at)
+- changed:
+  - 내용 편집분 needs_review → verified: PUBLIC_API.md, ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md (1.16→1.20 누적 + P1·P2·P3 + get-doc --section·check-run·evidence tiers).
+  - P1 드리프트 강등분 needs_review → verified(내용 불변, cli.js/mcp additive 변경): index.md, project-profile.md, EXAMPLES.md, domains/00_overview.md, profiles/library.md.
+  - 버전-bump/소스 드리프트 verified 유지 + reviewed_at 갱신(내용 불변): README.md, releases/v0.1.7.md, releases/v0.1.8.md, RELEASE_FLOW.md, templates/DECISION_LOG.template.md, templates/TASK_PROMPT.template.md, VERSIONING.md, GLOSSARY.md.
+- summary:
+  - 유지관리자 검토 결정에 따라 1.20 누적 작업으로 needs_review/드리프트된 코어 문서 16개를 verified로 재승인(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22). package.json 버전 bump·소스 변경發 evidence.stale 전부 해소 → validate --strict 0.
+- evidence:
+  - package.json
+- caveats:
+  - 재승인 = 같은 날 검토라 evidence.stale 미발생. 다음 소스/버전 변경 시 다시 드리프트될 수 있음(정상). BENCHMARK.md는 이미 verified 유지.
+
 ## 2026-07-22 - feat(init): --domains 옵션 + no-domains 명시 안내 (외부 피드백 P3)
 
 - status: needs_review
