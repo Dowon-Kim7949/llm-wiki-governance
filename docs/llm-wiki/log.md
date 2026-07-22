@@ -24,6 +24,22 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-22 - fix(retrieval): search-docs가 append-only change log를 후순위로 강등
+
+- status: needs_review
+- actor: Claude Code
+- scope: code(src/commands/retrieval.js) + tests
+- changed:
+  - src/commands/retrieval.js: `searchDocsCommand`이 append-only change log(`isAppendOnlyLog`=`docs/llm-wiki/log.md`, 또는 `doc_type: change_log`)를 다른 모든 매치보다 **후순위로 강등**하는 1차 정렬 키를 추가했다(제외 아님 — 여전히 반환). 순진한 출현-횟수 스코어러가 모든 키워드를 누적한 `log.md`를 대부분 질의에서 1위로 올리던 문제를 교정. 출력 형태 불변(내부 `deprioritized` 정렬 키는 반환 전 제거).
+  - tests/verification.test.js: 회귀 테스트 추가(change log가 raw score는 더 높아도 참조 문서 아래로 랭크됨).
+- summary:
+  - option-B 드라이버 파일럿에서 드러난 retrieval 품질 결함 수정: `log.md`가 search-docs를 독식해 retrieval arm이 1위 결과를 건너뛰게 만들었다. 이제 참조 문서가 change log 위에 온다. 실측: `search-docs "mobile android detect"`에서 log.md 1위→4위, DOMAIN_FEATURES가 1위.
+- evidence:
+  - src/commands/retrieval.js#symbol:searchDocsCommand
+  - src/commands/wiki-files.js#symbol:isAppendOnlyLog
+- caveats:
+  - 계약 불변(명령/인자/옵션/출력 형태 동일) — PUBLIC_API의 "점수순 랭크" 서술은 여전히 정확하므로 이 랭킹 정제만으로 verified 문서를 재강등하지 않았다.
+
 ## 2026-07-22 - review: 4개 코어 문서 verified 재승인 (human)
 
 - status: verified

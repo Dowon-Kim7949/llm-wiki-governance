@@ -18,7 +18,7 @@ import { readUtf8 } from "../encoding.js";
 import { toPosix } from "../files.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
-import { listWikiContentDocs } from "./wiki-files.js";
+import { isAppendOnlyLog, listWikiContentDocs } from "./wiki-files.js";
 import { collectWikiGraph } from "./wiki-graph.js";
 import { formatFinding, summarizeFindings, withText } from "./findings.js";
 
@@ -169,11 +169,19 @@ export async function searchDocsCommand(options) {
       title: title || null,
       status: typeof doc.frontmatter.status === "string" ? doc.frontmatter.status : null,
       score,
-      snippet: buildSnippet(bodyRedacted, terms)
+      snippet: buildSnippet(bodyRedacted, terms),
+      // Internal sort key (stripped before return). The append-only change log
+      // accumulates every keyword, so raw occurrence scoring lets it dominate the
+      // results; deprioritize change logs so reference docs rank above them. The
+      // log is still returned (demoted, not excluded).
+      deprioritized: isAppendOnlyLog(doc.path) || doc.frontmatter.doc_type === "change_log"
     });
   }
-  matches.sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
-  const limited = matches.slice(0, limit);
+  matches.sort((left, right) =>
+    Number(left.deprioritized) - Number(right.deprioritized)
+    || right.score - left.score
+    || left.path.localeCompare(right.path));
+  const limited = matches.slice(0, limit).map(({ deprioritized, ...rest }) => rest);
 
   const summary = [
     `query: ${query || "(empty)"}`,

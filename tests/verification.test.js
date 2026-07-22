@@ -2210,6 +2210,26 @@ test("retrieval: search-docs ranks keyword matches, excludes sensitive, and reda
   assert.equal(none.matchCount, 0);
 });
 
+test("retrieval: search-docs deprioritizes the change log below reference docs (log.md scorer fix)", async () => {
+  const cwd = await makeProject("retr-logrank-");
+  await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "retr" }, null, 2)}\n`, { encoding: "utf8" });
+  await writeVerifiedSourceDoc(cwd, "index.md", "package.json", "2026-07-11");
+  // Reference doc: the term appears ONCE (low raw score).
+  await writeWikiDoc(cwd, "guide.md", "Guide", "The subsystem uses a widget.");
+  // Change log at docs/llm-wiki/log.md: the term accumulates MANY times (high raw score).
+  await writeWikiDoc(cwd, "log.md", "Change Log", "widget widget widget widget widget widget widget widget widget widget");
+  const res = await searchDocsCommand({ ...RETR_BASE, cwd, query: "widget" });
+  const paths = res.matches.map((m) => m.path);
+  assert.ok(paths.includes("docs/llm-wiki/log.md"), "change log still returned (demoted, not excluded)");
+  assert.ok(paths.includes("docs/llm-wiki/guide.md"), "reference doc returned");
+  const guide = res.matches.find((m) => m.path === "docs/llm-wiki/guide.md");
+  const log = res.matches.find((m) => m.path === "docs/llm-wiki/log.md");
+  assert.ok(log.score > guide.score, "change log has the higher raw occurrence score");
+  assert.ok(paths.indexOf("docs/llm-wiki/guide.md") < paths.indexOf("docs/llm-wiki/log.md"),
+    "reference doc ranks above the change log despite the log's higher raw score (deprioritized)");
+  assert.equal("deprioritized" in log, false, "internal sort key is stripped from the output contract");
+});
+
 test("retrieval: get-doc returns content, redacts sensitive lines, and reports not_found", async () => {
   const cwd = await makeRetrievalWiki("retr-getdoc-");
   const doc = await getDocCommand({ ...RETR_BASE, cwd, docPath: "guide.md" });
