@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: public_api
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
@@ -30,6 +30,7 @@ evidence:
   - src/cli.js#symbol:main
   - src/commands.js#symbol:migrateCommand
   - src/commands.js#symbol:impactCommand
+  - src/commands.js#symbol:checkRunCommand
   - src/commands/fix-migrate.js#symbol:fixCommand
   - src/config-file.js#symbol:mergeConfigIntoOptions
   - src/index.js#symbol:commands
@@ -79,8 +80,9 @@ contains_sensitive_info: false
 | `fix [--write]` | 승인된 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 섹션 보완, 깨진 related/링크 `needs_review` 스텁, 수정 문서 `last_updated` 갱신). 기본은 미리보기 | `--write` 시 |
 | `drift [--downgrade]` | `verified` 문서의 `evidence.stale` 드리프트 리포트. `--downgrade`로 드리프트 문서를 `needs_review`로 강등(GATE_REVIEW Gate 9) | `--downgrade` 시 |
 | `impact [--since <ref>] [--strict]` | (읽기전용, 1.17) diff 기준 reverse-impact: 참조 소스가 현재 diff(working tree, 또는 `--since <ref>` PR/CI 기준)에서 바뀌었는데 문서 자신은 안 바뀐 `verified` 문서를 flag. date 기준 `evidence.stale`(drift)의 pre-merge 보완. 기본 warning, `--strict`로 CI 실패(GATE_REVIEW Gate 23) | 없음 |
+| `check-run [--run <path>] [--strict]` | (읽기전용, 1.19) `.llm-wiki/runs/`의 최신(또는 `--run <path>`) run manifest를 읽어 스킬(`/llm-wiki-<task>`) 실행이 주장한 파이프라인을 검증한다: 바뀐 소스마다 그걸 참조하는 위키 문서가 touch됐는지(`run.doc_gap`), 로그 append 여부(`run.log_missing`), validate 통과 여부(`run.unvalidated`). `impact`(diff-앵커)의 intent-앵커 보완. 기본 warning, `--strict`로 CI 실패. 쓰기 없음(매니페스트는 에이전트가 작성)(GATE_REVIEW Gate 26) | 없음 |
 | `graph` | 지식 그래프(문서 + 해소된 문서→문서 링크)를 출력. `--format text\|json\|mermaid\|dot`(graph 전용 토큰) | 없음 |
-| `stats` | wiki 헬스 스냅샷(verified%/enrichment%/evidence coverage/staleness/orphan) + 헬스 스코어 | 없음 |
+| `stats` | wiki 헬스 스냅샷(verified%/enrichment%/evidence coverage/staleness/orphan) + 헬스 스코어. 1.19부터 `--format json`에 계산된 `evidenceTiers`(`reference_checked`/`human_verified`)를 additive로 부가(신규 frontmatter 필드/status값 없음) | 없음 |
 | `list-docs` | (읽기전용 retrieval, 1.18) 문서 메타데이터(path/title/status/doc_type/visibility/last_updated/tags) 열거. `--status`/`--visibility`/`--doc-type` 필터. 본문 미반환. restricted/민감 문서는 `--include-sensitive` 없으면 제외 | 없음 |
 | `search-docs <query>` | (읽기전용 retrieval, 1.18) 제목/본문/frontmatter에 대한 **zero-dep 키워드/부분문자열** 검색(semantic 아님). 모든 term이 있어야 매치(AND), 점수순 랭크 + 스니펫. `--limit`(기본 20). restricted/민감 문서 제외(같은 `--include-sensitive`), 스니펫 redact | 없음 |
 | `get-doc <path>` | (읽기전용 retrieval, 1.18) 문서 하나의 frontmatter + 본문 반환. `<path>`는 repo-relative/wiki-relative/bare name 허용. 민감 라인 redact | 없음 |
@@ -91,7 +93,7 @@ contains_sensitive_info: false
 
 - `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; 나머지는 명시 선택. writable: codex/claude/cursor/copilot/windsurf/gemini, candidate: jetbrains/antigravity)
 - `--format <text|json|markdown|html>`(대부분 명령), `graph`는 `--format <text|json|mermaid|dot>`(mermaid/dot는 graph 전용). `--out <path>`, `--strict`, `--minimal`
-- `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate/impact), `--body-only` (release-notes), `--changed` (validate). `--strict`는 warning을 exit 1로 승격한다(대부분의 명령; `impact --strict`는 reverse-impact를 CI 실패로 만든다).
+- `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate/impact), `--body-only` (release-notes), `--changed` (validate), `--run <path>` (check-run — 특정 run manifest 지정; 생략 시 `.llm-wiki/runs/`의 최신). `--strict`는 warning을 exit 1로 승격한다(대부분의 명령; `impact --strict`·`check-run --strict`는 CI 실패로 만든다).
 
 ## Exit Codes
 
@@ -220,6 +222,7 @@ MCP 클라이언트 등록 예시:
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — MCP로 노출하는 읽기 전용 툴 정의(commands 위 얇은 래퍼).
 - `src/mcp/dispatch.js#symbol:handleMessage` — MCP JSON-RPC 핸들러(initialize/tools.list/tools.call/ping; 프로토콜 준수).
 - `src/commands.js#symbol:impactCommand` — `impact` 명령: diff 기준 reverse-impact(read-only; Gate 23, 1.17).
+- `src/commands.js#symbol:checkRunCommand` — `check-run` 명령: `.llm-wiki/runs/` run manifest로 스킬 실행 파이프라인(changedSource↔touchedDocs·log·validate)을 검증(read-only; `run.*` findings; Gate 26, 1.19).
 - `src/commands/retrieval.js` — read-only retrieval 4개 핸들러(`listDocsCommand`/`searchDocsCommand`/`getDocCommand`/`getRelatedCommand`): 문서 본문 반환, visibility 존중 + sensitive-info redaction, zero-dep 키워드 검색(Gate 24, 1.18).
 - `src/git.js#symbol:changedFiles` — 변경집합 프리미티브(working tree / `--since <ref>`); `impact`와 `validate --changed`가 공유.
 
@@ -240,3 +243,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-20에 1.15.0 스킬 생성(Gate 21)을 반영했다: `init`/`quickstart`에 부가 옵션 `--skills`를 추가하고(위키-그라운디드 자동화 프롬프트 아티팩트 생성; `--agent claude\|cursor`로도 트리거) command 표에 기술했다. additive(옵션 미사용 시 표면·출력 불변), 동결 프로그래매틱 API 맵·`--format json` 형태 불변. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)를 거쳐 `verified`로 재승인했다.
 - 2026-07-21에 1.17.0 reverse-impact(Gate 23, accepted)를 반영했다: 신규 read-only `impact [--since <ref>] [--strict]` 명령을 Commands 표·Key Options·Evidence(동결 `commands` 맵에도 `impact` 추가)에 등재하고, 변경집합 프리미티브 `src/git.js#changedFiles`를 source_files/evidence에 넣었다. additive(옵션·명령 미사용 시 기존 표면 불변), `--format json`·frontmatter·zero-dep 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-21에 1.18.0 read-only retrieval(Gate 24, accepted)를 반영했다: 신규 4개 명령 `list-docs`/`search-docs <query>`/`get-doc <path>`/`get-related <path>`을 Commands 표에, 대응 MCP 툴 `list_docs`/`search_docs`/`get_doc`/`get_related`(snake_case)을 노출 툴 목록에, `src/commands/retrieval.js`를 Evidence에 등재했다. 거버넌스 리포트가 아니라 문서 **본문**을 반환하는 첫 표면 — 프로그래매틱 API 동결 맵에도 4개 kebab 키를 additive로 추가. `search-docs`는 zero-dep 키워드/부분문자열(semantic 아님), restricted/민감 문서는 list/search 기본 제외(opt-in `--include-sensitive`)·반환 본문/스니펫은 민감 라인 redact, 쓰기 표면 없음. `1.0.0` 계약·`--format json`·frontmatter·zero-dep 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
+- 2026-07-22에 1.19 명령 표면 doc-sync 갭을 메웠다: 야간 자율 실행의 Gate 25/26 커밋이 ARCHITECTURE/DOMAIN_FEATURES만 갱신하고 PUBLIC_API는 놓쳐, 배포된 read-only `check-run [--run <path>] [--strict]` 명령(Gate 26)과 `stats --format json`의 계산된 `evidenceTiers`(Gate 25)가 누락돼 있었다. Commands 표에 `check-run` 행(intent-앵커 run manifest 검증; `run.*` findings; 쓰기 없음)을, Key Options에 `--run <path>`을, Evidence·frontmatter evidence에 `src/commands.js#symbol:checkRunCommand`를, `stats` 행에 `evidenceTiers` 부가 노출을 등재했다. check-run은 `impact`와 마찬가지로 CLI/API 전용(MCP 미노출). additive·read-only·`--format json`·frontmatter·zero-dep·`1.0.0` 계약 불변. 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정.

@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-22 - release: 1.19.0 배포 + dogfood/PUBLIC_API 후속
+
+- status: needs_review
+- actor: Claude Code
+- scope: release + code(dogfood skills) + repo hygiene + docs(PUBLIC_API·log)
+- changed:
+  - 배포: 야간 자율 10개 커밋 push + `v1.19.0` 태그 → CI Trusted Publishing로 npm 배포(latest=1.19.0) + GitHub Release. Gate 25(evidence 의미 단계화)+Gate 26(check-run) 번들.
+  - .claude/skills·.cursor/rules·.llm-wiki/prompts: 커밋된 dogfood 스킬 9개를 `init --write --skills`로 재생성 — Gate 26 완성 계약(run manifest→check-run)을 본문에 포함(과거 아티팩트는 Gate 21 시점이라 누락). writeSkillArtifacts가 미덮어씀이라 삭제 후 재생성; docs/llm-wiki 미변경.
+  - .gitignore(신규): node_modules·`.llm-wiki/runs/`(에이전트 작성 run manifest)·`bench/real/agent.js`(실-LLM 벤치 드라이버).
+  - docs/llm-wiki/PUBLIC_API.md: 야간 Gate 25/26 커밋이 놓친 명령 표면 갭 보강 — `check-run [--run <path>] [--strict]` 행, `--run` 옵션, `stats` JSON `evidenceTiers`, Evidence·frontmatter `checkRunCommand`.
+- summary:
+  - 1.19.0을 npm에 배포하고, 커밋된 dogfood 스킬이 Gate 26 계약을 담도록 재생성했으며, 저장소 위생(.gitignore)과 PUBLIC_API 문서 동기화 갭을 메웠다.
+- evidence:
+  - package.json
+  - src/commands.js#symbol:checkRunCommand
+  - src/commands/skills.js#symbol:artifactBody
+- caveats:
+  - PUBLIC_API.md는 에이전트 편집이라 needs_review 유지 — ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·BENCHMARK와 함께 사람 재검토(verified 승격)가 필요하다.
+  - README token/speed 수치 주장은 여전히 금지(−80% B2 델타는 chars/4 프록시이지 실제 LLM 실행이 아님).
+
 ## 2026-07-21 - feat: Gate 26 agent update runner + 완성 계약 (accepted[위임, 야간 자율]+built)
 
 - status: needs_review
