@@ -24,6 +24,20 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-23 - 팀 브리핑 덱 v1.22.0 → v1.23.0 갱신 (배포 후 정합)
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: outputs/team-briefing
+- changed:
+  - outputs/team-briefing/llm-wiki-briefing.html (버전 표기 v1.23.0; 타임라인에 1.23 항목[최초 위키 작성 `bootstrap` 스킬·Codex 네이티브 스킬] 추가·`now` 이동)
+  - outputs/team-briefing/SPEAKER_NOTES.md (대상 버전 v1.23.0; 타임라인 노트 11에 1.23 반영)
+  - outputs/team-briefing/README.md (대상 버전 v1.23.0)
+- summary:
+  - 1.23.0 npm 배포 후 팀 덱을 해당 버전으로 정합했다. 온라인 Artifact를 같은 링크(claude.ai/code/artifact/13dfc476…)로 재게시. 슬라이드 수 22 불변(타임라인 항목만 추가).
+- caveats:
+  - outputs/는 npm files allowlist 밖(사내 자료, 기본 비공개).
+
 ## 2026-07-23 - release-prep 1.23.0 + 재검증(bootstrap/Codex 반영분)
 
 - status: needs_review
