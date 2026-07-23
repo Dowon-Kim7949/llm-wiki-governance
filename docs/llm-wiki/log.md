@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-23 - 배포 킷(outputs/distribution/) 삭제
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: outputs/distribution
+- changed:
+  - outputs/distribution/{DISTRIBUTION_KIT,launch-post,reddit-r-claudeai-post,reply-kit}.md 삭제(디렉터리 소멸)
+- summary:
+  - 1.16.0 개명·런칭(P2) 때 만든 일회성 런칭 마케팅 카피 킷. 제품 기능 아님(npm 미포함·코드/문서 미참조), v1.16.x로 스테일이라 유지보수자 판단으로 제거. git 이력에 남아 복구 가능.
+- caveats:
+  - 향후 외부 배포(MCP 레지스트리·awesome-list 제출·커뮤니티 런칭)를 재개하면 git 이력에서 복원하거나 최신 버전 기준으로 다시 작성한다.
+
 ## 2026-07-23 - 팀 브리핑 덱 v1.22.0 → v1.23.0 갱신 (배포 후 정합)
 
 - status: needs_review
