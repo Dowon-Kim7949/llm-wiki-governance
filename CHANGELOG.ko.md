@@ -5,6 +5,46 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.24.0 — 2026-07-23
+
+두 가지 부가적·zero-dependency 변경을 함께 배포한다: **영어 우선 문서 언어 선택**(긴급 국제화 수정)과
+**guided 온보딩·작업 준비**. `1.0.0` 명령·`--format json` shape·frontmatter 계약은 불변이며 기본 영어 출력이 보존된다.
+
+### Fixed
+
+- **생성되는 LLM-WIKI 문서가 이제 기본적으로 영어다.** 이전에는 `init`/`quickstart`이 일부 생성 본문
+  (`index.md`, 위키 `README.md`, 초기 `log.md` 항목, 도메인 overview의 빈-도메인 안내, per-domain 문서)에
+  한국어를 하드코딩해, 영어 우선 제품을 실행한 해외 사용자가 일부 한국어 문서를 받았다. 이제 모든 생성 문서 본문은
+  기본이 영어이며, 본문·제목·placeholder·review note·초기 log 항목에 **한국어가 남지 않는다**.
+
+### Added
+
+- **`--doc-lang en|ko`(기본 `en`)와 config `docLanguage`.** 생성되는 *위키 문서 본문*과 *에이전트 문서 작성
+  지시*(handoff / bootstrap / feature / fix / docs-sync / okf-extract 프롬프트와 생성 스킬 본문)의 언어를 고르는
+  새 전역 옵션·config 키. findings/`explain`/CLI 메시지 언어를 고르는 `--lang`과 독립적이다. CLI `--doc-lang`이
+  config `docLanguage`보다 우선하며, 잘못된 값은 usage error(exit code 3)다. `--doc-lang ko`는 한국어 경험을
+  재현(및 완성)한다. 기술 식별자(경로·코드 심볼·JSON 키·frontmatter 필드·status 값·CLI 명령·evidence locator)는
+  두 언어 모두에서 번역하지 않는다. 단일 언어 선택 계층(`src/commands/doc-content.js`)이 지역화 산문을 담으며, 이미
+  영어였던 문서의 영어 출력은 이전과 byte-identical이다. `init`/`quickstart`은 선택된 문서 언어를 텍스트와
+  `--format json`(`docLanguage`)에 표시한다.
+- **`onboard [--domain <name>] [--goal <text>]`(읽기 전용).** 신입을 위한 도메인 학습 경로를 기존 위키에서
+  결정적으로 조립한다 — 읽을 문서·소스/테스트 진입점(문서의 `source_files`/`evidence`)·문서에 기록된
+  불변조건/위험·최신성/`needs_review` 경고·근거 앵커된 이해도 점검. 알 수 없는 `--domain`은 사용 가능 목록과
+  생성법을 안내한다(침묵 금지). CLI는 설명을 창작하지 않으며 `/llm-wiki-onboard` 스킬이 설명을 담당한다.
+- **`prepare --task <text>`(읽기 전용).** 구현 전 작업 범위를 조사한다: 관련 문서(`search-docs` 랭킹을 공유
+  `rankDocsByQuery`로 재사용)·그래프 이웃·후보 도메인/소스/테스트·관련 API/상태/화면/설정 문서·불변조건·범위
+  점검표. 모두 후보로 표현("수정 전 확인")하며 원인·안전을 단정하지 않는다.
+- CLI·프로그래매틱 API(동결 `commands` 맵)·MCP(읽기 전용 `onboard`/`prepare` 툴) 3표면. 신규
+  `llm-wiki-onboard`/`llm-wiki-prepare` 스킬(Claude/Codex/Cursor/중립); feature/fix 스킬은 계약 변경 없이
+  prepare 인지·충돌-시-중단만 추가.
+- `bench/whole-task/`에 분리된 전체 작업 실험 뼈대(방법론·태스크형식·루브릭·dry-run 러너·샘플·결과 템플릿만 —
+  모델 호출·수치 조작 없음).
+
+### Unchanged (동결 계약)
+
+- 읽기 전용; restricted/민감 문서 제외, 반환 텍스트 redact. zero-dependency; 동결 `commands` 맵 additive 확장;
+  옵션 미사용 시 기본 출력 byte-identical. AI 편집 위키 문서는 `needs_review` 유지.
+
 ## 1.23.0 — 2026-07-23
 
 최초 위키 작성 전용 `bootstrap` 스킬/태스크와 Codex 네이티브 스킬 생성을 추가합니다. 부가적·zero-dependency:

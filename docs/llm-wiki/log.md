@@ -24,6 +24,54 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-23 - 생성 문서 언어 선택 (--doc-lang / config docLanguage, 긴급 i18n, 1.24.0)
+
+- status: needs_review
+- actor: Claude Code (유저 지시 — 긴급 국제화 수정 태스크)
+- scope: src, tests, docs, GATE_REVIEW, CHANGELOG, README, package.json
+- summary:
+  - 버그: `init`/`quickstart`이 일부 생성 본문(`index.md`·위키 `README.md`·초기 `log.md`·도메인 overview 빈-도메인 안내·per-domain 문서)에 한국어를 하드코딩해 영어 우선 제품의 해외 사용자가 일부 한국어 문서를 받았다.
+  - 교정: 생성 문서 본문·에이전트 문서 작성 지시 언어를 고르는 전역 `--doc-lang en|ko`(기본 `en`)와 config `docLanguage`를 추가했다. 기본 실행은 완전한 영어(본문·제목·placeholder·review note·초기 log에 한국어 0), `--doc-lang ko`는 한국어 경험 재현·완성. `--lang`(findings 언어)과 독립. 잘못된 값은 usage error(exit 3). CLI가 config보다 우선.
+- changed:
+  - src/commands/doc-content.js (신규: 생성 문서 본문의 단일 언어 선택 계층 — index/readme/log/project-profile/DOMAIN_FEATURES/overview/default/domain 본문의 EN 기본·KO 변형; 헤딩·제목·코드·경로·식별자 미번역)
+  - src/commands/doc-templates.js (`docMetadata`에 `docLang` 스레드, 본문을 doc-content에 위임; 하드코딩 한국어 제거)
+  - src/task-prompts.js (`documentLanguageDirective`; `initialEnrichmentWorkflow`·bootstrap·feature/fix/docs-sync/okf-extract·`apiServiceInventoryChecklist`에 docLang 반영), src/commands/skills.js (스킬 본문에 언어 지시 주입)
+  - src/commands.js (init/quickstart/handoff/prompt 경로에 `normalizeLang(options.docLang)` 스레드; init 결과에 `docLanguage` 노출), src/cli.js (`--doc-lang` 파서·`defaultOptions.docLang`·GLOBAL_OPTIONS), src/config-file.js (`lang`/`docLanguage` 로드·검증·병합; CLI 우선), src/index.js (Options typedef)
+  - tests/verification.test.js (신규 14개: EN 기본 무-한국어 전수 스캔·KO 생성·mix·config·override·exit3·domain·bootstrap/handoff/skills 언어·미덮어씀·스킬 미요청 불변·절대경로/민감정보 부재·UTF-8 라운드트립; 기존 3개를 영어 기본값에 맞춰 갱신)
+  - GATE_REVIEW.md·CHANGELOG.md/.ko.md·README.md/.ko.md·docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,EXAMPLES}.md (기능 반영; 위키 문서는 needs_review 유지), package.json (1.24.0)
+- evidence:
+  - src/commands/doc-content.js
+  - src/commands/doc-templates.js#symbol:docMetadata
+  - src/task-prompts.js#symbol:documentLanguageDirective
+  - src/config-file.js#symbol:mergeConfigIntoOptions
+- caveats:
+  - AI 편집이라 관련 위키 문서는 `needs_review` 유지 — 사람 검토 후 재승인 예정(허위 verified/reviewed 금지).
+  - OKF profile/템플릿/변환 가이드는 이 릴리스에서 두 언어 모두 영어 유지(포맷-표준 아티팩트, 기본 경로 밖 opt-in `--profile okf-v0.1`) — 필요 시 후속.
+- verification: 307 tests pass · validate --strict 0 · audit 0 · validate-frontmatter 0 · npm pack에 doc-content.js 포함 · 스모크(EN 17문서 한국어 0 / KO 17문서 한국어) 통과.
+
+## 2026-07-23 - Guided Onboarding and Task Preparation (onboard·prepare, 1.24 대상)
+
+- status: needs_review
+- actor: Claude Code (유저 지시 — Codex 작성 태스크 프롬프트)
+- scope: src, tests, docs, bench, GATE_REVIEW
+- changed:
+  - GATE_REVIEW.md (신규 게이트 "Guided Onboarding and Task Preparation Scope Decision"; 방향 승인 기록, 허위 verified/reviewed 금지)
+  - src/commands/guided.js (신규: read-only `onboardCommand`/`prepareCommand`; retrieval 프리미티브·그래프·evidence 파서 재사용, 민감 제외·redact, EN/KO, 비단정 어법)
+  - src/commands/retrieval.js (`loadContentDocs`/`applyFilters`/`redactSensitive`/`docSummary` export; 검색 랭킹을 순수 `rankDocsByQuery`로 추출[`requireAll` 옵션], search-docs 동작 보존)
+  - src/commands.js (guided 배럴 re-export), src/cli.js (COMMANDS·COMMAND_OPTION_RULES·`--domain`/`--goal` 파서·prepare 필수 task·help), src/index.js (동결 commands 맵·exports·Options typedef), src/mcp/{tools.js,dispatch.js} (read-only onboard/prepare 툴·buildToolOptions·instructions)
+  - src/task-prompts.js (`onboard`/`prepare` 워크플로 + 공통 `guidedGroundingRules` 단일 소스; implementationPrompt에 prepare 인지·충돌-시-중단 스텝), src/commands/skills.js (SKILL_TASKS에 onboard/prepare; read-only 태스크는 매니페스트 대신 read-only 주석)
+  - bench/whole-task/{METHODOLOGY.md,tasks.sample.json,runner.js,RESULT_TEMPLATE.md} (전체 작업 실험 뼈대 — retrieval 벤치와 분리, dry-run 전용, 수치 미생성)
+  - tests/verification.test.js·tests/mcp.test.js (onboard/prepare/스킬/호환 테스트 + command-set·CODEX_SKILL_TASKS 단언 갱신)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,EXAMPLES}.md (기능·Evidence 반영 → verified에서 needs_review로 강등), README.md/.ko.md·ROADMAP.md/.ko.md·CHANGELOG.md/.ko.md (Unreleased/1.24 항목)
+- summary:
+  - 신입 → onboard(도메인 학습) → prepare(작업 범위 조사) → feature/fix(구현) → 사람 검토 흐름을 만드는 읽기 전용 guided 표면 2개를 추가했다. CLI는 기존 위키+evidence+그래프+검색에서 결정적으로 조립할 뿐 설명을 창작하지 않는다(코드가 최종 사실). 검색은 `rankDocsByQuery` 단일 소스 재사용(중복 엔진 없음).
+- tests:
+  - npm test 293/293 pass (신규 ~10). 검증(validate/audit/frontmatter)은 이 항목 뒤 단계에서 실행·기록.
+- caveats / review items:
+  - additive·read-only·zero-dep·1.0.0 계약 불변; 옵션 미사용 시 기본 출력 byte-identical. **미배포**(npm 1.23.0 유지) — 릴리스·태그·npm publish는 이번 범위 밖.
+  - 편집한 verified 위키 4종을 `needs_review`로 강등(허위 검토 메타 없음). 신규 소스가 참조되는 다른 verified 문서의 evidence.stale는 `drift --downgrade`로 정직하게 needs_review 처리한다(사람 재검토 필요).
+  - 보류(초안): guided feature/fix CLI 모드·사람 승인 `review` 명령·언어서버/AST 분석기.
+
 ## 2026-07-23 - 옛 PPTX(outputs/llm-wiki-team-introduction-v1.5.1.pptx) 삭제
 
 - status: needs_review

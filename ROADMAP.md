@@ -477,6 +477,26 @@ zero-dependency, backend/fullstack byte-identical.
   symmetrically (`--agent codex`/`claude`/`cursor` → that agent's format, `--skills` → all).
   Additive, zero-dependency, byte-identical when skills are not requested; the only behavior
   change is that `--agent codex` alone now emits Codex skills.
+- **1.24 (planned, on `main`, not yet released) — Guided onboarding & task preparation.** Two
+  read-only commands that put a human/agent workflow on top of the governance core: `onboard`
+  assembles a domain learning path (docs, source/test entrypoints, invariants, freshness
+  warnings, comprehension checks) for a newcomer; `prepare --task` scopes a change (relevant docs,
+  candidate source/tests, risks) before implementing, phrased as candidates not conclusions.
+  Reuses the retrieval ranking (`rankDocsByQuery`) and graph; CLI/API/MCP; new
+  `llm-wiki-onboard`/`llm-wiki-prepare` skills; feature/fix skills gain prepare-awareness. A
+  separate whole-task experiment scaffold (`bench/whole-task/`, dry-run only, no fabricated
+  numbers) is added. Additive/read-only/zero-dep. Deferred as drafts: a guided feature/fix CLI
+  mode, a human-approval `review` command, and language-server/AST analyzers. Scope:
+  `GATE_REVIEW.md` (Guided Onboarding and Task Preparation).
+- **1.24 (bundled) — Documentation language selection (urgent i18n).** Fixes generated wiki docs
+  leaking Korean in the English-first product: `init`/`quickstart` now default all generated
+  document prose to English (no Korean in bodies, titles, placeholders, review notes, or the
+  initial log), with a new global `--doc-lang en|ko` and config `docLanguage` to select the
+  generated-document (and agent doc-writing) language, independent of `--lang`. A single
+  language-selection layer (`src/commands/doc-content.js`); technical identifiers never
+  translated; English output byte-identical for docs already English. Deferred: automatic
+  translation of existing docs, a language-conversion command, and Korean OKF profile templates.
+  Scope: `GATE_REVIEW.md` (Documentation Language Selection).
 - **Measured (2026-07-22):** a real-LLM **N=3** benchmark on an external Vue/Quasar project
   (Claude Opus 4.8) replaced the chars/4 proxy. On a current wiki, an agent answered
   code-comprehension questions at **equal correctness while reading no source**, ~10% fewer

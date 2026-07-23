@@ -14,7 +14,7 @@ import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./temp
 import { buildTaskPrompt, evidenceFocus, initialEnrichmentWorkflow } from "./task-prompts.js";
 import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
 import { fileChangedSince, lineRangeChangedSince, changedFiles, isPathIgnored } from "./git.js";
-import { localizeExplanation } from "./i18n.js";
+import { localizeExplanation, normalizeLang } from "./i18n.js";
 import { buildDomainContext, emptyDomainContext } from "./commands/domains.js";
 import { docMetadata } from "./commands/doc-templates.js";
 import {
@@ -92,6 +92,7 @@ export { detectDomainDirectories, domainDisplayName, normalizeDomainSlug, planDo
 export { driftTargets, evidenceTier, scanUngroundedVerified } from "./commands/scans.js";
 export { driftCommand, fixCommand } from "./commands/fix-migrate.js";
 export { getDocCommand, getRelatedCommand, listDocsCommand, searchDocsCommand } from "./commands/retrieval.js";
+export { onboardCommand, prepareCommand } from "./commands/guided.js";
 
 export async function doctor(options) {
   const cwd = options.cwd;
@@ -1023,7 +1024,8 @@ export async function promptCommand(options) {
     cwd: options.cwd,
     projectType: detection.projectType,
     profiles: detection.activeProfiles,
-    agents: selectedAgents(options)
+    agents: selectedAgents(options),
+    docLang: normalizeLang(options.docLang)
   });
 
   if (taskPrompt.result === "blocked") {
@@ -1169,6 +1171,7 @@ export async function initCommand(options) {
 async function initDryRun(options, detection, agents, candidates, domainNotice = null) {
   const planned = [];
   const skipped = [];
+  const docLang = normalizeLang(options.docLang);
   if (domainNotice) skipped.push(domainNotice);
 
   for (const rel of candidates) {
@@ -1199,6 +1202,7 @@ async function initDryRun(options, detection, agents, candidates, domainNotice =
   return withText({
     command: "init",
     dryRun: true,
+    docLanguage: docLang,
     detection,
     agents,
     planned,
@@ -1206,6 +1210,7 @@ async function initDryRun(options, detection, agents, candidates, domainNotice =
   }, "LLM-WIKI Init Dry Run", [
     { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
+    { title: "Documentation Language", body: [`${docLang} (change with --doc-lang en|ko or config docLanguage).`] },
     { title: "Planned Creates", body: planned },
     { title: "Skipped Existing", body: skipped },
     { title: "Caveats", body: ["No files were written. Existing adapter files are not overwritten."] }
@@ -1245,6 +1250,7 @@ async function initWrite(options, detection, agents, candidates, domainContext =
   const skipped = [];
   const blocked = [];
   const lastUpdated = todayIsoDate();
+  const docLang = normalizeLang(options.docLang);
   if (domainNotice) skipped.push(domainNotice);
 
   for (const rel of candidates) {
@@ -1263,16 +1269,16 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     let content;
     let viaOverride = "";
     if (overridePath) {
-      const override = await renderOverriddenDoc(options.cwd, rel, overridePath, detection, lastUpdated, domainContext);
+      const override = await renderOverriddenDoc(options.cwd, rel, overridePath, detection, lastUpdated, domainContext, docLang);
       if (override.missing) {
-        content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext);
+        content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext, docLang);
         skipped.push(`${rel}: template override ${overridePath} not found; used the built-in template.`);
       } else {
         content = override.content;
         viaOverride = ` (via template override ${overridePath})`;
       }
     } else {
-      content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext);
+      content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext, docLang);
     }
     const sensitiveFindings = scanSensitiveInfo(content);
     if (sensitiveFindings.length > 0) {
@@ -1330,6 +1336,7 @@ async function initWrite(options, detection, agents, candidates, domainContext =
       : "pass";
   const reassurance = [
     `${created.length} created, ${overwritten.length} overwritten, ${skipped.length} kept (existing files preserved${options.existing === "overwrite" ? "" : "; --existing skip"}).`,
+    `Documentation language: ${docLang} (change with --doc-lang en|ko or config docLanguage).`,
     // Claude Code discovers skills at session start (not hot-reload), so a freshly
     // generated skill is invisible until the agent restarts — surface that only when
     // a skill was actually created, or users hit an "unknown command" surprise.
@@ -1342,6 +1349,7 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     dryRun: false,
     write: true,
     existing: options.existing,
+    docLanguage: docLang,
     result,
     detection,
     agents,
@@ -1513,8 +1521,8 @@ export async function statsCommand(options) {
   ]);
 }
 
-function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext()) {
-  const meta = docMetadata(rel, detection, lastUpdated, domainContext);
+function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext(), docLang = "en") {
+  const meta = docMetadata(rel, detection, lastUpdated, domainContext, docLang);
   const project = detection.projectName ?? "project";
 
   return renderWikiDocumentTemplate({
@@ -1534,10 +1542,10 @@ function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), do
 // renderWikiDocumentTemplate, so an override can NEVER produce status: verified
 // (any frontmatter in the override file is parsed off and discarded). Returns
 // { content, missing }; missing is true when the override file is absent.
-async function renderOverriddenDoc(cwd, rel, overridePath, detection, lastUpdated, domainContext) {
+async function renderOverriddenDoc(cwd, rel, overridePath, detection, lastUpdated, domainContext, docLang = "en") {
   const abs = path.join(cwd, overridePath);
   if (!(await pathExists(abs))) return { content: null, missing: true };
-  const meta = docMetadata(rel, detection, lastUpdated, domainContext);
+  const meta = docMetadata(rel, detection, lastUpdated, domainContext, docLang);
   const project = detection.projectName ?? "project";
   const rendered = renderTemplate(await readUtf8(abs), {
     title: meta.title,
@@ -1971,7 +1979,7 @@ function buildHandoff(options, detection = null) {
   // The handoff prompt IS the initial-enrichment workflow, sourced from the single
   // shared builder so it never drifts from the `bootstrap` task/skill. Handoff names
   // the selected adapter file(s) as the entrypoint; the workflow itself is identical.
-  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints });
+  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints, docLang: normalizeLang(options.docLang) });
 
   return {
     agents,

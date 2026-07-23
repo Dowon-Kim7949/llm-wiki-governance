@@ -153,6 +153,23 @@ test("buildToolOptions maps args and defaults handoff/prompt to a claude agent",
   assert.deepEqual(buildToolOptions(prompt, { task: "feature", agents: ["codex"] }).agents, ["codex"]);
 });
 
+test("onboard and prepare are exposed as read-only MCP tools and run", async () => {
+  const onboard = TOOL_DEFS.find((t) => t.name === "onboard");
+  const prepare = TOOL_DEFS.find((t) => t.name === "prepare");
+  assert.ok(onboard && prepare, "both tools registered");
+  assert.deepEqual(prepare.inputSchema.required, ["task"], "prepare requires task");
+  // buildToolOptions maps the guided args.
+  assert.deepEqual(buildToolOptions(onboard, { domain: "auth", goal: "learn login", lang: "ko" }), { domain: "auth", goal: "learn login", lang: "ko" });
+
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 61, method: "tools/call", params: { name: "prepare", arguments: { cwd: repoRoot, task: "add a read-only command" } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  assert.equal(res.result.structuredContent.command, "prepare");
+  assert.ok(Array.isArray(res.result.structuredContent.relevantDocs));
+});
+
 test("prompt tool exposes the bootstrap task over MCP and runs it", async () => {
   const prompt = TOOL_DEFS.find((t) => t.name === "prompt");
   assert.ok(prompt.inputSchema.properties.task.enum.includes("bootstrap"), "bootstrap is in the MCP prompt task enum");

@@ -354,6 +354,20 @@ enrichment 린팅(→ 1.8, 토글 가능한 `content.thin_body` 규칙으로).
   (`.agents/skills/llm-wiki-<task>/SKILL.md`)을 더하고, `selectedSkillFormats`가 형식을 대칭 선택한다
   (`--agent codex`/`claude`/`cursor` → 해당 형식, `--skills` → 전부). 부가적·zero-dependency, 스킬 미요청 시
   byte-identical이며, 유일한 동작 변경은 `--agent codex` 단독 선택 시 Codex 스킬이 생성되는 것.
+- **1.24 (계획, `main`에 있음, 미배포) — guided 온보딩·작업 준비.** 거버넌스 코어 위에 사람/에이전트
+  워크플로를 얹는 읽기 전용 명령 2개: `onboard`는 신입용 도메인 학습 경로(문서·소스/테스트 진입점·불변조건·
+  최신성 경고·이해도 점검)를, `prepare --task`는 구현 전 작업 범위(관련 문서·후보 소스/테스트·위험)를
+  조립하며 단정이 아닌 후보로 표현한다. retrieval 랭킹(`rankDocsByQuery`)·그래프 재사용, CLI/API/MCP, 신규
+  `llm-wiki-onboard`/`llm-wiki-prepare` 스킬, feature/fix 스킬에 prepare 인지 추가. 분리된 전체 작업 실험
+  뼈대(`bench/whole-task/`, dry-run 전용, 수치 조작 없음)도 추가. 부가적·읽기전용·zero-dep. 초안으로 보류:
+  별도 guided feature/fix CLI 모드·사람 승인용 `review` 명령·언어서버/AST 분석기. 범위:
+  `GATE_REVIEW.md`(Guided Onboarding and Task Preparation).
+- **1.24 (묶음) — 생성 문서 언어 선택(긴급 i18n).** 영어 우선 제품에서 생성 위키 문서가 한국어를 흘리던
+  버그 교정: `init`/`quickstart`이 이제 모든 생성 문서 본문을 기본 영어로(본문·제목·placeholder·review
+  note·초기 log에 한국어 0), 생성 문서(및 에이전트 문서 작성) 언어를 고르는 전역 `--doc-lang en|ko`와 config
+  `docLanguage`를 추가한다(`--lang`과 독립). 단일 언어 선택 계층(`src/commands/doc-content.js`); 기술 식별자
+  미번역; 이미 영어였던 문서는 byte-identical. 보류: 기존 문서 자동 번역·언어 변환 명령·한국어 OKF 템플릿.
+  범위: `GATE_REVIEW.md`(Documentation Language Selection).
 - **실측 완료(2026-07-22):** 외부 Vue/Quasar 프로젝트 대상 실제-LLM **N=3** 벤치(Claude Opus 4.8)로
   chars/4 프록시를 대체했다. 최신 위키에서 에이전트는 **소스를 안 읽고 동일 정확도로** 답하며 토큰
   ~10% 절감(태스크 의존적), 반면 **오래된** 위키는 오답을 냈다 — 이득의 본질은 raw 속도가 아니라

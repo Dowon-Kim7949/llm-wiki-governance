@@ -6,6 +6,58 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.24.0 — 2026-07-23
+
+Two additive, zero-dependency changes ship together: **English-first documentation language
+selection** (an urgent i18n fix) and **guided onboarding and task preparation**. `1.0.0`
+command / `--format json` shape / frontmatter contracts are unchanged; default English output
+is preserved.
+
+### Fixed
+
+- **Generated LLM-WIKI documents are now English by default.** `init`/`quickstart` previously
+  hardcoded Korean prose in several generated bodies (`index.md`, the wiki `README.md`, the
+  initial `log.md` entry, the domain overview's empty-domains note, and per-domain docs), so an
+  overseas user running the English-first product received partly-Korean documentation. All
+  generated document prose now defaults to English, with **no Korean** left in bodies, titles,
+  placeholders, review notes, or the initial log entry.
+
+### Added
+
+- **`--doc-lang en|ko` (default `en`) and config `docLanguage`.** New global option and config key
+  that select the language of *generated wiki document content* and the *agent doc-writing
+  instructions* (handoff / bootstrap / feature / fix / docs-sync / okf-extract prompts and the
+  generated skill bodies). This is independent of `--lang`, which continues to control
+  findings/`explain`/CLI-message prose. CLI `--doc-lang` overrides config `docLanguage`; an invalid
+  value is a usage error (exit code 3). `--doc-lang ko` reproduces (and completes) the Korean
+  experience. Technical identifiers — paths, code symbols, JSON keys, frontmatter fields, status
+  values, CLI commands, and evidence locators — are never translated in either language. A single
+  language-selection layer (`src/commands/doc-content.js`) holds the localized prose; English output
+  is byte-identical to before for docs that were already English. `init`/`quickstart` report the
+  selected documentation language in text and `--format json` (`docLanguage`).
+- **`onboard [--domain <name>] [--goal <text>]` (read-only).** Deterministically assembles a
+  domain learning path for a newcomer from the existing wiki — documents to read, source and
+  test entrypoints (from the docs' `source_files`/`evidence`), invariants/risks recorded in the
+  docs, freshness/`needs_review` warnings, and evidence-anchored comprehension checks. An unknown
+  `--domain` lists the available domains and how to generate them (never a silent empty result).
+  The CLI invents no explanation — the `/llm-wiki-onboard` skill does the teaching.
+- **`prepare --task <text>` (read-only).** Scopes a change before implementing: most-relevant
+  wiki docs (reusing the `search-docs` ranking via a shared `rankDocsByQuery`), graph neighbors,
+  candidate domains/source/test files, related API/state/screen/config docs, invariants, and a
+  scope checklist. Phrases everything as candidates ("verify before editing"), never concludes a
+  file is the cause or a change is safe.
+- Both on CLI, the programmatic API (frozen `commands` map), and MCP (read-only `onboard`/`prepare`
+  tools). New `llm-wiki-onboard`/`llm-wiki-prepare` skills (Claude/Codex/Cursor/neutral); the
+  feature/fix skills gain prepare-awareness and stop-on-conflict without changing their contract.
+- A separate whole-task experiment scaffold under `bench/whole-task/` (methodology, task format,
+  rubric, dry-run runner, sample fixture, result template only — no model calls, no fabricated numbers).
+
+### Unchanged (frozen contract)
+
+- Read-only; restricted/sensitive docs excluded from results, returned text redacted. Zero
+  dependency; frozen `commands` map grows additively; default output byte-identical when the new
+  surfaces are not used. AI-edited wiki docs stay `needs_review`.
+
 ## 1.23.0 — 2026-07-23
 
 Adds a first-time wiki-writing `bootstrap` skill/task and Codex-native skill generation.

@@ -1415,6 +1415,132 @@ Delivered, additive/read-only/zero-dep, `1.0.0` contracts unchanged:
 
 **Invariants.** Additive/opt-in/zero-dep; `1.0.0` command/`--format json`-shape/frontmatter contracts unchanged (new flag + new config key + additive localized strings only); EN-first default preserved; deterministic (no locale sniffing).
 
+## Documentation Language Selection Scope Decision (accepted for 1.24.0 — urgent i18n)
+
+**Status.** ACCEPTED by the maintainer (Dowon-Kim) on 2026-07-23 as an urgent
+internationalization fix, and directed to ship bundled with the Guided Onboarding work
+below as `1.24.0`. AI-authored/edited wiki docs stay `needs_review`; no `verified`/
+`reviewed_by`/`reviewed_at` is fabricated by this work.
+
+**Motivation.** The product is English-first (CLI help, findings, handoff prompt, and
+skills all flipped to English in 1.16.0), but `init`/`quickstart` still hardcoded Korean
+prose in several generated document bodies — `index.md`, the wiki `README.md`, the initial
+`log.md` entry, the domain overview's empty-domains note, and per-domain docs. An overseas
+user running the default therefore received partly-Korean documentation. This is a
+correctness bug in an English-first product.
+
+**Accepted scope (in).**
+
+- New global option `--doc-lang <en|ko>` (default `en`) and config key `docLanguage`,
+  selecting the language of GENERATED wiki document content and the agent doc-writing
+  instructions (handoff / bootstrap / feature / fix / docs-sync / okf-extract prompts and
+  generated skill bodies). Independent of `--lang` (findings/CLI-message prose). CLI wins
+  over config; an invalid value is a usage error (exit 3).
+- English is the default; a default run leaves **no Korean** in bodies, titles,
+  placeholders, review notes, or the initial log entry. `--doc-lang ko` reproduces (and
+  completes) the Korean experience.
+- A single language-selection layer (`src/commands/doc-content.js`) holds the localized
+  prose; the same `normalizeLang` decision function is reused across CLI/API/config. English
+  output is byte-identical to before for docs that were already English.
+- Only prose is localized; technical identifiers (paths, code symbols, JSON keys,
+  frontmatter fields, status values, CLI commands, evidence locators) and titles/headings
+  stay verbatim in both languages — this also protects the `## Evidence` alignment check,
+  `enrichmentChecklist` section splitting, and title-based link resolution.
+
+**Explicitly out (this release).** No automatic translation of existing docs; `migrate`/
+`docs-sync` never change an existing doc's language; no standalone language-conversion
+command. OKF v0.1 profile docs/templates/conversion guide stay English in both languages
+(format-standard artifacts, off the default path via opt-in `--profile okf-v0.1`) — a noted
+follow-up if Korean OKF output is later wanted.
+
+**Version.** New public option + config key = MINOR per `VERSIONING.md` (`--doc-lang` is a
+backward-compatible addition; `1.23.1` would violate policy). Smallest correct minor after
+`1.23.0` is `1.24.0`; shipped bundled with Guided Onboarding (they were entangled in the
+working tree and could not be split without damaging in-progress work).
+
+**Invariants.** Additive/opt-in/zero-dep; `1.0.0` command/`--format json`-shape/frontmatter
+contracts unchanged (new flag + new config key + additive localized prose only); EN-first
+default preserved and byte-identical for already-English docs; deterministic (no locale
+sniffing).
+
+## Guided Onboarding and Task Preparation Scope Decision (accepted for 1.24.0 — user-directed)
+
+**Status.** Direction ACCEPTED by the maintainer (Dowon-Kim) on 2026-07-23 as an
+implementation directive (a task prompt authored via Codex, pasted by the maintainer).
+This records that the *direction* is approved; it does NOT assert that any document has
+completed human review — AI-authored/edited wiki docs stay `needs_review`, and no
+`verified`/`reviewed_by`/`reviewed_at` is fabricated by this work.
+
+**Motivation.** The measure-first line proved the retrieval mechanism and the governance
+core; the open gap is the *human/agent workflow* on top of them. A newcomer still has no
+guided way to (a) understand a work domain from real code evidence before touching it, and
+(b) scope a first change (relevant docs/source/risks/tests) before implementing. This gate
+adds two read-only "guided" surfaces that assemble that context deterministically from the
+existing wiki + evidence + graph + retrieval — the CLI never invents explanation; the agent
+skills do the teaching. It closes the loop: newcomer → `onboard` (learn a domain) →
+`prepare` (scope a task) → `feature`/`fix` skills → tests/docs/log/manifest → human review.
+MINOR = `1.24.0` (additive/opt-in command + skill surface).
+
+### Accepted scope (in)
+
+- **Read-only `onboard`** — deterministically assemble a domain learning path from the
+  wiki: orientation, recommended read order, selected domain doc(s), related terms,
+  architecture/API/workflow docs, source & test entrypoints (from docs' `source_files`/
+  `evidence`), doc-recorded invariants/risks/open-questions, freshness/`needs_review`
+  warnings, evidence-anchored comprehension checks (generic checks, NOT invented meaning),
+  and a next step. `--domain`/`--goal`. Domain-missing → explicit guidance (available
+  domains, why none, `--domains`/init, manual entrypoints), never a silent empty result.
+- **Read-only `prepare --task <text>`** — scope a change before implementing: most-relevant
+  wiki docs (reusing the `search-docs` ranking — no duplicate search engine), resolved graph
+  neighbors, candidate domains/source/test files, related API/state/screen/config docs,
+  doc-recorded invariants/risks, freshness/review warnings, unknowns, a scope checklist, and
+  a next step. **Non-asserting phrasing** ("docs reference this file" / "search candidate" /
+  "verify the source before editing"), never "you must edit X" / "this is the cause" / "safe".
+- **Agent skills `llm-wiki-onboard` + `llm-wiki-prepare`** in the four native formats
+  (Claude `.claude/skills/`, Codex `.agents/skills/`, Cursor `.cursor/rules/`, agent-neutral
+  `.llm-wiki/prompts/`), sharing rules single-sourced in `task-prompts.js` (no duplication,
+  no `commands.js` cycle). Same format-selection as existing skills.
+- **Three-surface consistency** (CLI/API/MCP) via a shared core function so search/filter/
+  redaction policy is identical; MCP exposes read-only `onboard`/`prepare` tools with the
+  existing `readOnlyHint` convention.
+- **feature/fix connection** — the feature/fix skills become aware of `prepare` and, for a
+  guided/newcomer request, show the prepare result + current-behavior understanding first,
+  and stop before implementing on a doc/code conflict or a larger-than-expected scope. No
+  change to their default output/contract; the `--guided` public option is deferred (a
+  skill-internal optional step first).
+- **EN + KO** user-facing guidance messages; sensitive-info redaction, `visibility`, and
+  stale/`needs_review` status respected (never hidden).
+- **A reproducible whole-task experiment scaffold** — methodology, task format, rubric,
+  dry-run, sample fixture, and result format ONLY, kept clearly separate (name + docs) from
+  the retrieval bench. Measures (1) onboarding comprehension and (2) tech-add/fix
+  error/rework reduction, with arms source-only / wiki-retrieval-only / onboard+prepare+
+  feature|fix. No paid model calls, no fabricated numbers.
+
+### Out of scope (excluded)
+
+- Code auto-fix; automatic `verified` approval; vector search / embeddings; external LLM API
+  calls; a hosted docs portal; a bespoke static-analysis / AST engine; automatic human
+  evaluation; incompatible changes to existing feature/fix behavior; paid bench runs;
+  release/deploy/npm publish; a separate guided feature/fix CLI mode, a human-approval
+  `review` command, and language-server/AST optional analyzers (ROADMAP/Gate drafts only).
+
+### Invariants (non-negotiable)
+
+- Both commands are **read-only** (nothing written). Restricted/sensitive docs excluded from
+  default results (opt-in include), every returned body/snippet redacts sensitive lines.
+- Recognize-don't-run for skills; existing skill files never overwritten; no machine-absolute
+  paths/usernames in artifacts; preview-first.
+- Zero runtime dependency; frozen `commands` map key set grows additively; `--format json`
+  shape additive; default output byte-identical when the new surfaces are not used.
+- AI-authored/edited wiki docs stay `needs_review`; no fabricated review metadata.
+
+### Evidence (to be implemented)
+
+- Reuse `src/commands/retrieval.js` (ranking/filter/redaction primitives) + `wiki-graph.js`
+  (neighbors) + `domains.js` (domain detection) + `task-prompts.js` (shared skill bodies) +
+  `git.js`/`impact` (optional working-change hints). New module `src/commands/guided.js`
+  (`onboardCommand`/`prepareCommand`), CLI/API/MCP wiring, `SKILL_TASKS` entries.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { startMcpServer } from "./mcp/server.js";
@@ -31,6 +31,8 @@ const COMMANDS = new Map([
   ["search-docs", searchDocsCommand],
   ["get-doc", getDocCommand],
   ["get-related", getRelatedCommand],
+  ["onboard", onboardCommand],
+  ["prepare", prepareCommand],
   ["release-notes", releaseNotesCommand]
 ]);
 
@@ -134,6 +136,8 @@ export function defaultOptions() {
   return {
     cwd: process.cwd(),
     task: null,
+    domain: null,
+    goal: null,
     findingRule: null,
     query: null,
     docPath: null,
@@ -151,6 +155,7 @@ export function defaultOptions() {
     type: null,
     format: "text",
     lang: null,
+    docLang: null,
     dryRun: false,
     write: false,
     apply: false,
@@ -183,6 +188,20 @@ export function parseArgs(argv) {
       const value = readOptionValue(rest, index, arg, errors);
       if (value) {
         options.cwd = path.resolve(value);
+        index += 1;
+      }
+    } else if (arg === "--domain") {
+      usedOptions.add("domain");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        options.domain = value;
+        index += 1;
+      }
+    } else if (arg === "--goal") {
+      usedOptions.add("goal");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        options.goal = value;
         index += 1;
       }
     } else if (arg === "--task") {
@@ -293,6 +312,14 @@ export function parseArgs(argv) {
         else errors.push(`Unsupported language: ${value} (supported: ${SUPPORTED_LANGS.join(", ")}).`);
         index += 1;
       }
+    } else if (arg === "--doc-lang") {
+      usedOptions.add("doc-lang");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        if (SUPPORTED_LANGS.includes(value)) options.docLang = value;
+        else errors.push(`Unsupported documentation language: ${value} (supported: ${SUPPORTED_LANGS.join(", ")}).`);
+        index += 1;
+      }
     } else if (arg === "--out") {
       usedOptions.add("out");
       const value = readOptionValue(rest, index, arg, errors);
@@ -398,13 +425,17 @@ const COMMAND_OPTION_RULES = {
   "search-docs": new Set(["cwd", "status", "visibility", "doc-type", "include-sensitive", "limit", "format", "out"]),
   "get-doc": new Set(["cwd", "section", "format", "out"]),
   "get-related": new Set(["cwd", "format", "out"]),
+  onboard: new Set(["cwd", "domain", "goal", "type", "profile", "format", "out"]),
+  prepare: new Set(["cwd", "task", "type", "profile", "format", "out"]),
   "release-notes": new Set(["cwd", "version", "since", "body-only", "format", "out"]),
   mcp: new Set(["cwd"])
 };
 
 // Options accepted by every command (output-shaping, harmless where inert).
 // `--lang` selects the language for human-facing findings/explain prose (Gate 27).
-const GLOBAL_OPTIONS = new Set(["lang"]);
+// `--doc-lang` selects the language of GENERATED wiki document content and the
+// agent doc-writing instructions (init/quickstart/handoff/prompt); inert elsewhere.
+const GLOBAL_OPTIONS = new Set(["lang", "doc-lang"]);
 
 function validateCommandOptions(command, usedOptions, errors) {
   if (!command || command === "help" || command === "--help" || command === "-h") return;
@@ -426,6 +457,10 @@ function validateCommandOptions(command, usedOptions, errors) {
 
   if (command === "prompt" && !usedOptions.has("task")) {
     errors.push("Missing required option for prompt: --task.");
+  }
+
+  if (command === "prepare" && !usedOptions.has("task")) {
+    errors.push("Missing required option for prepare: --task.");
   }
 
 }
@@ -536,6 +571,8 @@ Usage:
   llm-wiki search-docs <query> [--status <s>] [--visibility <v>] [--doc-type <t>] [--include-sensitive] [--limit <n>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki get-doc <path> [--section <terms>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki get-related <path> [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki onboard [--domain <name>] [--goal <text>] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--lang ko|en] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prepare --task <text> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--lang ko|en] [--format text|json|markdown|html] [--out <path>]
   llm-wiki release-notes [--version <x.y.z>] [--since <git-ref>] [--body-only] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki mcp [--cwd <path>]
 
@@ -549,6 +586,7 @@ Safety:
   graph is read-only: it emits the wiki knowledge graph (documents + resolved doc-to-doc links) as text, JSON, Mermaid, or Graphviz DOT.
   stats is read-only: it reports a wiki health snapshot (verified %, enrichment %, evidence coverage, staleness, orphans).
   list-docs/search-docs/get-doc/get-related are read-only retrieval: they return document content (not governance reports). search-docs is keyword/substring only (not semantic). Restricted/sensitive docs are excluded from list/search unless --include-sensitive, and returned bodies/snippets redact sensitive-looking lines.
+  onboard/prepare are read-only guided surfaces: onboard assembles a domain learning path (docs, source/test entrypoints, invariants, freshness warnings, comprehension checks) for a newcomer; prepare scopes a change (relevant docs, candidate source/tests, risks) before implementing. Both assemble from the existing wiki + evidence + search — the CLI invents no explanation and concludes nothing; the /llm-wiki-onboard and /llm-wiki-prepare skills do the teaching. Restricted/sensitive docs excluded, text redacted.
   mcp starts a read-only Model Context Protocol server over stdio, exposing the read-only commands (validate/audit/next/status/doctor/stats/graph/explain/handoff/prompt/list_docs/search_docs/get_doc/get_related) as MCP tools. No MCP tool writes files.
   Adapter checks and suggestions are opt-in with --agent. ANTIGRAVITY.md remains an info-level candidate.
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
@@ -885,6 +923,43 @@ Purpose:
 
 JSON (--format json):
   Top-level keys: schemaVersion, command, result, document, related, findings[]. related carries outbound[] and inbound[] ({ path, kind }). A missing path yields result: fail and a retrieval.not_found finding.
+`,
+  onboard: `llm-wiki onboard
+
+Usage:
+  llm-wiki onboard [--domain <name>] [--goal <text>] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--lang ko|en] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Read-only guided onboarding for a newcomer. Deterministically assembles a domain
+  learning path from the EXISTING wiki — orientation, documents to read, source and
+  test entrypoints (from the docs' source_files/evidence), invariants/risks as
+  recorded in the docs, freshness/needs_review warnings, and evidence-anchored
+  comprehension checks. --domain selects a work area (docs/llm-wiki/domains/*); an
+  unknown domain prints the available domains and how to generate them, never a
+  silent empty result. The CLI invents no explanation — run the /llm-wiki-onboard
+  skill for a guided walkthrough. Nothing is written.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, initialized, projectType, domain, domainRequested, domainFound, goal, availableDomains[], documents[], sourceEntrypoints[], tests[], invariants[], freshnessWarnings[], comprehensionChecks[], findings[].
+`,
+  prepare: `llm-wiki prepare
+
+Usage:
+  llm-wiki prepare --task <text> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--lang ko|en] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Read-only task-preparation. For a described change (--task, required), scopes the
+  work before implementing: most-relevant wiki docs (reusing the search-docs
+  ranking), resolved graph neighbors, candidate domains/source/test files, related
+  API/state/screen/config docs, invariants/risks recorded in the docs, freshness/
+  review warnings, unknowns, and a scope checklist. It phrases candidates as
+  candidates ("docs reference this file", "verify before editing") and never
+  concludes a file is the cause or a change is safe — the code stays the source of
+  truth. Hand off to the /llm-wiki-feature or /llm-wiki-fix skill to implement.
+  Nothing is written.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, initialized, task, projectType, relevantDocs[], relatedDocs[], candidateDomains[], candidateSources[], candidateTests[], contextDocs[], invariants[], freshnessWarnings[], workingOverlap[], unknowns[], scopeChecklist[], findings[].
 `,
   "release-notes": `llm-wiki release-notes
 

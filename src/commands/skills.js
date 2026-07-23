@@ -16,14 +16,22 @@ import { pathExists, toPosix } from "../files.js";
 import { readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { buildTaskPrompt } from "../task-prompts.js";
+import { normalizeLang } from "../i18n.js";
 
 // The workflows exposed as skills, and their invocable slug/description.
 export const SKILL_TASKS = [
   { task: "bootstrap", slug: "llm-wiki-bootstrap", description: "Enrich a newly initialized LLM-WIKI from actual source evidence while keeping documents needs_review." },
+  { task: "onboard", slug: "llm-wiki-onboard", description: "Guide a newcomer through a work area from real code evidence, using the project's LLM-WIKI (read-only)." },
+  { task: "prepare", slug: "llm-wiki-prepare", description: "Scope a feature/fix from the LLM-WIKI (relevant docs, source, tests, risks) before implementing (read-only)." },
   { task: "feature", slug: "llm-wiki-feature", description: "Add or modify a feature grounded in the project's LLM-WIKI, then update the wiki (needs_review)." },
   { task: "fix", slug: "llm-wiki-fix", description: "Fix a bug grounded in the project's LLM-WIKI, then update the wiki (needs_review)." },
   { task: "docs-sync", slug: "llm-wiki-docs-sync", description: "Sync LLM-WIKI docs with recent code changes (needs_review)." }
 ];
+
+// Read-only guided tasks: they investigate/explain but never change files, so they
+// carry NO Gate 26 run manifest (nothing changed to record) — a read-only note
+// replaces the completion contract in their skill body.
+const READ_ONLY_TASKS = new Set(["onboard", "prepare"]);
 
 // Which artifact formats to emit for the given agents/options. Skills are opt-in:
 // active only when --skills is set or a native-skill agent (claude/codex/cursor) is
@@ -83,7 +91,7 @@ function domainMapSection(domains) {
 // The shared artifact body: the project domain-map snapshot, the reusable
 // wiki-grounded workflow from task-prompts.js, then the Gate 26 completion contract
 // (a run manifest the agent writes so `llm-wiki check-run` can verify the pipeline).
-async function artifactBody(cwd, task, detection) {
+async function artifactBody(cwd, task, detection, docLang = "en") {
   const domains = await readDomainMap(cwd);
   const built = buildTaskPrompt({
     // The artifact is committed to the repo and invoked from its root, so the body
@@ -93,9 +101,16 @@ async function artifactBody(cwd, task, detection) {
     cwd: ".",
     projectType: detection?.projectType ?? "unknown",
     profiles: detection?.activeProfiles ?? [],
-    agents: []
+    agents: [],
+    docLang
   });
-  return `${domainMapSection(domains)}\n\n${forArtifact(built.prompt)}\n\n${manifestContractSection(task)}\n`;
+  const closing = READ_ONLY_TASKS.has(task) ? readOnlyNote() : manifestContractSection(task);
+  return `${domainMapSection(domains)}\n\n${forArtifact(built.prompt)}\n\n${closing}\n`;
+}
+
+// Closing note for read-only skills (onboard/prepare): no run manifest, no writes.
+function readOnlyNote() {
+  return `Read-only workflow: this skill investigates and explains — it does not change files, and it writes no run manifest. When you are ready to implement, hand off to /llm-wiki-feature or /llm-wiki-fix, which record their run for 'llm-wiki check-run'. Never promote a document to verified; that is human-approved only.`;
 }
 
 // Gate 26 completion contract embedded in each skill body: after the run, the agent
@@ -159,8 +174,9 @@ export async function planSkillArtifacts(cwd, agents, detection, options) {
   const planned = [];
   const skipped = [];
   if (formats.size === 0) return { planned, skipped };
+  const docLang = normalizeLang(options && options.docLang);
   for (const entry of SKILL_TASKS) {
-    const body = await artifactBody(cwd, entry.task, detection);
+    const body = await artifactBody(cwd, entry.task, detection, docLang);
     for (const target of artifactTargets(formats, entry)) {
       if (await pathExists(path.join(cwd, target.path))) {
         skipped.push(`${target.path} exists; would not overwrite.`);
@@ -180,8 +196,9 @@ export async function writeSkillArtifacts(cwd, agents, detection, options) {
   const created = [];
   const skipped = [];
   if (formats.size === 0) return { created, skipped };
+  const docLang = normalizeLang(options && options.docLang);
   for (const entry of SKILL_TASKS) {
-    const body = await artifactBody(cwd, entry.task, detection);
+    const body = await artifactBody(cwd, entry.task, detection, docLang);
     for (const target of artifactTargets(formats, entry)) {
       const absolutePath = path.join(cwd, target.path);
       if (await pathExists(absolutePath)) {

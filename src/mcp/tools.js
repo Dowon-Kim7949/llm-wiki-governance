@@ -38,6 +38,10 @@ const visibilityFilterProp = { type: "string", enum: ["internal", "public", "res
 const docTypeFilterProp = { type: "string", description: "Filter by doc_type (or OKF type)." };
 const includeSensitiveProp = { type: "boolean", description: "Include restricted/sensitive documents (excluded from list/search by default)." };
 const docPathProp = { type: "string", description: "Document path: repo-relative (docs/llm-wiki/GLOSSARY.md), wiki-relative (GLOSSARY.md), or a bare name (GLOSSARY)." };
+const domainProp = { type: "string", description: "Work area (domain) to onboard into — a docs/llm-wiki/domains/* name. Omit for a project-wide orientation." };
+const goalProp = { type: "string", description: "Optional free-text learning goal to focus the onboarding." };
+const taskTextProp = { type: "string", description: "Free-text description of the change you intend to make (feature or fix)." };
+const langProp = { type: "string", enum: ["en", "ko"], description: "Language for human-facing guidance prose (default en)." };
 const sectionProp = { type: "string", description: "Optional focused read: return only the most relevant ## sections (plus the preamble) matching these terms instead of the full body. Falls back to the full body when nothing matches." };
 
 function schema(properties, required = []) {
@@ -173,6 +177,22 @@ export const TOOL_DEFS = [
       "Read-only retrieval. Return a document's resolved graph neighbors — outbound (documents it links to) and inbound (documents that link to it) — over wiki [[links]], related frontmatter, and local markdown links.",
     command: "get-related",
     inputSchema: schema({ path: docPathProp, cwd: cwdProp }, ["path"])
+  },
+  {
+    name: "onboard",
+    title: "Guided onboarding",
+    description:
+      "Read-only guided onboarding for a newcomer. Deterministically assembles a domain learning path from the existing wiki — documents to read, source/test entrypoints (from the docs' source_files/evidence), invariants/risks as recorded in the docs, freshness/needs_review warnings, and evidence-anchored comprehension checks. Assembles only; invents no explanation. Restricted/sensitive docs excluded; returned text redacted.",
+    command: "onboard",
+    inputSchema: schema({ cwd: cwdProp, domain: domainProp, goal: goalProp, type: typeProp, profiles: profilesProp, lang: langProp })
+  },
+  {
+    name: "prepare",
+    title: "Prepare a task",
+    description:
+      "Read-only task preparation. For a described change, scopes the work before implementing: most-relevant wiki docs (reusing the search ranking), graph neighbors, candidate domains/source/test files, related API/state/screen/config docs, invariants/risks, freshness warnings, unknowns, and a scope checklist. Phrases candidates as candidates and concludes nothing — the code stays the source of truth. Restricted/sensitive docs excluded; text redacted.",
+    command: "prepare",
+    inputSchema: schema({ task: taskTextProp, cwd: cwdProp, type: typeProp, profiles: profilesProp, lang: langProp }, ["task"])
   }
 ];
 
@@ -190,6 +210,9 @@ export function buildToolOptions(tool, args = {}) {
   if (typeof args.format === "string") options.format = args.format;
   if (typeof args.rule === "string") options.findingRule = args.rule;
   if (typeof args.task === "string") options.task = args.task;
+  if (typeof args.domain === "string") options.domain = args.domain;
+  if (typeof args.goal === "string") options.goal = args.goal;
+  if (typeof args.lang === "string") options.lang = args.lang;
   if (typeof args.query === "string") options.query = args.query;
   if (typeof args.path === "string") options.docPath = args.path;
   if (typeof args.section === "string") options.section = args.section;

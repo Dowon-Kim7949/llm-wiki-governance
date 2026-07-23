@@ -1,11 +1,11 @@
 ﻿import test from "node:test";
 import assert from "node:assert/strict";
-import { cp, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { detectFrontendDomains } from "../src/commands/domains.js";
 import { enrichmentChecklist } from "../src/commands/scans.js";
-import { audit, checkRunCommand, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, evidenceTier, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, planDomainDocs, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
+import { audit, checkRunCommand, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, evidenceTier, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, onboardCommand, planDomainDocs, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard, renderOutputFile, printResult } from "../src/report.js";
 import * as api from "../src/index.js";
@@ -17,6 +17,7 @@ import { localizeFinding, localizeMessage, normalizeLang } from "../src/i18n.js"
 import { buildTaskPrompt, initialEnrichmentWorkflow } from "../src/task-prompts.js";
 import { SKILL_TASKS, selectedSkillFormats } from "../src/commands/skills.js";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 test("init dry-run works for an empty zero-base project", async () => {
   const cwd = await makeProject("empty-");
@@ -363,7 +364,7 @@ test("init --write leaves index/DOMAIN_FEATURES unwired when no domains (P6 byte
   const wikiDir = path.join(cwd, "docs", "llm-wiki");
   const index = await readFile(path.join(wikiDir, "index.md"), "utf8");
   assert.ok(!index.includes("[Domain Overview]"));
-  assert.ok(index.includes("작업 대상 도메인 문서와 관련 source files"));
+  assert.ok(index.includes("The domain documents you will work in and their related source files"));
   assert.ok(!index.includes("- docs/llm-wiki/domains/00_overview.md"));
 
   const domainFeatures = await readFile(path.join(wikiDir, "DOMAIN_FEATURES.md"), "utf8");
@@ -394,7 +395,7 @@ test("init --type backend with no domain dirs creates only the overview with a r
   assert.ok(!(await fileExists(path.join(domainsDir, "01_user.md"))));
   assert.equal(result.result, "pass");
   const overview = await readFile(path.join(domainsDir, "00_overview.md"), "utf8");
-  assert.ok(overview.includes("자동 탐지된 domain이 없습니다"));
+  assert.ok(overview.includes("No domains were auto-detected"));
 });
 
 test("init --minimal does not create individual domain docs", async () => {
@@ -843,7 +844,7 @@ test("init write stamps generated documents with the current date", async () => 
 
   assert.ok(index.includes(`last_updated: ${today}`));
   assert.equal(index.includes("last_updated: 2026-07-02"), false);
-  assert.ok(log.includes(`## ${today} - LLM-WIKI 초기 문서 생성`));
+  assert.ok(log.includes(`## ${today} - LLM-WIKI initial documents created`));
 });
 
 test("init write sets the frontmatter project from package.json name", async () => {
@@ -3247,7 +3248,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.23.0");
+  assert.equal(packageJson.version, "1.24.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");
@@ -3421,7 +3422,7 @@ test("programmatic API exposes a frozen command map mirroring the CLI surface", 
     "doctor", "validate", "validate-frontmatter", "monorepo", "status", "next", "explain",
     "audit", "quickstart", "handoff", "prompt", "init", "migrate", "fix",
     "drift", "impact", "check-run", "graph", "stats", "list-docs", "search-docs", "get-doc",
-    "get-related", "release-notes"
+    "get-related", "onboard", "prepare", "release-notes"
   ];
 
   assert.ok(Object.isFrozen(api.commands));
@@ -4421,7 +4422,7 @@ test("skill generation surfaces a restart-required note only when skills are cre
 
 // --- Bootstrap skill + Codex native skill generation ---
 
-const CODEX_SKILL_TASKS = ["llm-wiki-bootstrap", "llm-wiki-feature", "llm-wiki-fix", "llm-wiki-docs-sync"];
+const CODEX_SKILL_TASKS = ["llm-wiki-bootstrap", "llm-wiki-onboard", "llm-wiki-prepare", "llm-wiki-feature", "llm-wiki-fix", "llm-wiki-docs-sync"];
 
 test("skill formats: --agent codex and --skills both select the codex native format", () => {
   assert.ok(selectedSkillFormats(["codex"], {}).has("codex"), "--agent codex selects codex skills");
@@ -4559,6 +4560,111 @@ test("bootstrap is accepted as a public prompt task on the CLI (13)", async () =
   assert.ok(result.taskPrompt.prompt.includes("bootstrapping an LLM-WIKI"), "renders the bootstrap workflow");
 });
 
+// --- Guided onboarding + task preparation (onboard / prepare) ---
+
+async function backendWikiFixture(prefix) {
+  const cwd = await makeProject(prefix);
+  await writeFile(path.join(cwd, "requirements.txt"), "fastapi==0.110.0\n", { encoding: "utf8" });
+  await mkdir(path.join(cwd, "app", "api", "v2", "endpoints"), { recursive: true });
+  await writeFile(path.join(cwd, "app", "api", "v2", "endpoints", "hazard.py"), "from fastapi import APIRouter\nrouter = APIRouter()\n", { encoding: "utf8" });
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", profiles: [], agents: [], existing: "skip" });
+  return cwd;
+}
+
+test("onboard assembles a read-only learning path on an initialized wiki", async () => {
+  const cwd = await backendWikiFixture("onboard-");
+  const indexBefore = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8");
+
+  const result = await onboardCommand({ cwd, type: "backend", profiles: [] });
+  assert.equal(result.command, "onboard");
+  assert.equal(result.initialized, true);
+  assert.ok(result.documents.length > 0, "documents to read");
+  assert.ok(result.comprehensionChecks.length >= 3, "comprehension checks");
+  assert.ok(Array.isArray(result.sourceEntrypoints), "source entrypoints array");
+  assert.ok(result.text.includes("Documents to read") && result.text.includes("Next step"), "sections rendered");
+  // Read-only: a known doc is byte-identical afterwards.
+  assert.equal(await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8"), indexBefore, "onboard writes nothing");
+});
+
+test("onboard on an uninitialized project guides to quickstart/init", async () => {
+  const cwd = await makeProject("onboard-empty-");
+  const result = await onboardCommand({ cwd, type: null, profiles: [] });
+  assert.equal(result.initialized, false);
+  assert.match(result.text, /quickstart|init/, "points at setup");
+});
+
+test("onboard --domain selects a work area; an unknown domain lists the available ones", async () => {
+  const cwd = await backendWikiFixture("onboard-domain-");
+  const hit = await onboardCommand({ cwd, type: "backend", profiles: [], domain: "hazard" });
+  assert.equal(hit.domainFound, true, "known domain matched");
+  assert.ok(hit.availableDomains.some((d) => /hazard/i.test(d.name)), "hazard is an available domain");
+
+  const miss = await onboardCommand({ cwd, type: "backend", profiles: [], domain: "nope-not-a-domain" });
+  assert.equal(miss.domainFound, false, "unknown domain not matched");
+  assert.equal(miss.domainRequested, "nope-not-a-domain");
+  assert.ok(miss.availableDomains.length >= 1, "still lists available domains");
+  assert.ok(miss.text.includes("Domain not found") || miss.text.includes("업무 영역 없음"), "explicit not-found notice, not silent");
+});
+
+test("onboard surfaces needs_review freshness warnings and honors --lang ko", async () => {
+  const cwd = await backendWikiFixture("onboard-fresh-");
+  const en = await onboardCommand({ cwd, type: "backend", profiles: [] });
+  // init-generated docs are needs_review, so the read path carries at least one.
+  assert.ok(en.freshnessWarnings.length >= 1, "needs_review warnings surfaced");
+  const ko = await onboardCommand({ cwd, type: "backend", profiles: [], lang: "ko" });
+  assert.ok(ko.text.includes("다음 단계") || ko.text.includes("읽을 문서"), "KO guidance prose");
+});
+
+test("prepare requires --task and scopes a change read-only, non-asserting", async () => {
+  const missing = parseArgs(["prepare"]);
+  assert.ok(missing.errors.some((e) => /Missing required option for prepare: --task/.test(e)));
+  const ok = parseArgs(["prepare", "--task", "fix the report severity"]);
+  assert.deepEqual(ok.errors, []);
+  assert.equal(ok.options.task, "fix the report severity");
+
+  const cwd = await backendWikiFixture("prepare-");
+  const overviewBefore = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8");
+  const result = await prepareCommand({ cwd, task: "add a hazard endpoint field", type: "backend", profiles: [] });
+  assert.equal(result.command, "prepare");
+  assert.equal(result.task, "add a hazard endpoint field");
+  assert.ok(Array.isArray(result.relevantDocs), "relevant docs array");
+  assert.ok(result.scopeChecklist.length >= 4, "scope checklist");
+  // Non-asserting phrasing: candidates, not conclusions.
+  assert.ok(/verify before editing|candidate|후보/i.test(result.text), "candidate phrasing present");
+  assert.ok(!/you must edit|this is the cause|this change is safe/i.test(result.text), "no asserting phrasing");
+  assert.equal(await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8"), overviewBefore, "prepare writes nothing");
+});
+
+test("prepare excludes restricted/sensitive docs from its candidates", async () => {
+  const cwd = await backendWikiFixture("prepare-restricted-");
+  const rel = path.join("docs", "llm-wiki", "restricted-area.md");
+  await writeFile(path.join(cwd, rel), "---\ntitle: Restricted Area\nstatus: needs_review\ndoc_type: reference\nvisibility: restricted\ncontains_sensitive_info: false\nlast_updated: 2026-07-23\n---\n# Restricted Area\nzuniquekeyword internals live here.\n", { encoding: "utf8" });
+  const result = await prepareCommand({ cwd, task: "zuniquekeyword", type: "backend", profiles: [] });
+  const paths = [...result.relevantDocs, ...result.relatedDocs].map((d) => d.path);
+  assert.ok(!paths.some((p) => p.includes("restricted-area.md")), "restricted doc excluded from candidates");
+});
+
+test("onboard/prepare are exposed on the programmatic API and MCP (read-only)", async () => {
+  assert.equal(typeof api.commands.onboard, "function");
+  assert.equal(typeof api.commands.prepare, "function");
+});
+
+test("onboard/prepare skills are read-only (no run-manifest contract in the body)", async () => {
+  const cwd = await makeProject("guided-skills-");
+  await writeJson(path.join(cwd, "package.json"), { dependencies: { fastify: "^4.0.0" } });
+  await initCommand({ cwd, write: true, minimal: true, withAdapters: false, skills: true, type: "backend", profiles: [], agents: [], existing: "skip" });
+  for (const slug of ["llm-wiki-onboard", "llm-wiki-prepare"]) {
+    const body = await readFile(path.join(cwd, ".claude", "skills", slug, "SKILL.md"), "utf8");
+    assert.ok(body.includes(`name: ${slug}`), `${slug} frontmatter`);
+    assert.ok(body.includes("Read-only workflow"), `${slug} read-only note`);
+    assert.ok(!body.includes("changedSource") && !body.includes(".llm-wiki/runs/"), `${slug} carries no run-manifest contract`);
+  }
+  // The change skills still carry the manifest contract.
+  const feature = await readFile(path.join(cwd, ".claude", "skills", "llm-wiki-feature", "SKILL.md"), "utf8");
+  assert.ok(feature.includes("changedSource"), "feature skill keeps its completion contract");
+  assert.ok(feature.includes("llm-wiki prepare") || feature.includes("llm-wiki-prepare"), "feature skill references prepare");
+});
+
 // --- Gate 27 (P4): findings message + explain KO localization ---
 
 test("parseArgs accepts --lang ko|en globally and rejects unsupported languages", () => {
@@ -4616,4 +4722,202 @@ test("config lang is honored via mergeConfigIntoOptions and the CLI flag wins", 
   assert.equal(mergeConfigIntoOptions({ lang: null }, { lang: "ko" }).lang, "ko", "config fills lang when unset");
   assert.equal(mergeConfigIntoOptions({ lang: "en" }, { lang: "ko" }).lang, "en", "explicit option wins over config");
   assert.equal(mergeConfigIntoOptions({ lang: null }, { lang: "fr" }).lang, null, "invalid config lang ignored");
+});
+
+// ---------------------------------------------------------------------------
+// Documentation language (--doc-lang / config docLanguage): generated wiki
+// content is English by default; Korean is opt-in. `--doc-lang` (generated docs)
+// is independent from `--lang` (findings/CLI prose).
+// ---------------------------------------------------------------------------
+
+const HANGUL = /[가-힣]/;
+const BIN_PATH = fileURLToPath(new URL("../bin/llm-wiki.js", import.meta.url));
+
+async function listWikiMarkdown(cwd) {
+  const root = path.join(cwd, "docs", "llm-wiki");
+  const out = [];
+  async function walk(dir) {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else if (entry.name.endsWith(".md")) out.push({ rel: path.relative(cwd, full), content: await readFile(full, "utf8") });
+    }
+  }
+  await walk(root);
+  return out;
+}
+
+async function setupBackendProject(prefix) {
+  const cwd = await makeProject(prefix);
+  await writeJson(path.join(cwd, "package.json"), { name: "doc-lang-fixture", dependencies: { express: "^4.0.0" } });
+  await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
+  await mkdir(path.join(cwd, "src", "modules", "billing"), { recursive: true });
+  return cwd;
+}
+
+test("doc-lang #1/#2: default init generates English wiki with no Hangul anywhere", async () => {
+  const cwd = await setupBackendProject("doclang-default-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", agents: ["claude"], profiles: ["okf-v0.1"], existing: "skip" });
+
+  const docs = await listWikiMarkdown(cwd);
+  assert.ok(docs.length >= 10, "a broad doc set was generated");
+  const index = docs.find((d) => d.rel.endsWith("index.md")).content;
+  assert.ok(index.includes("This document is the official entry point"), "index is English by default");
+
+  const leaks = docs.filter((d) => HANGUL.test(d.content)).map((d) => d.rel);
+  assert.deepEqual(leaks, [], `default generated docs must contain no Hangul; leaks: ${leaks.join(", ")}`);
+});
+
+test("doc-lang #3: --doc-lang ko generates Korean wiki documents", async () => {
+  const cwd = await setupBackendProject("doclang-ko-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", agents: ["claude"], existing: "skip", docLang: "ko" });
+
+  const docs = await listWikiMarkdown(cwd);
+  const index = docs.find((d) => d.rel.endsWith("index.md")).content;
+  assert.ok(index.includes("프로젝트 LLM-WIKI의 공식 진입점"), "index prose is Korean");
+  const korean = docs.filter((d) => HANGUL.test(d.content));
+  assert.ok(korean.length >= 6, `most docs are Korean under --doc-lang ko (got ${korean.length})`);
+  // Technical identifiers are never translated, even in Korean mode.
+  assert.ok(index.includes("status: needs_review") || index.includes("`needs_review`"), "status identifiers stay English");
+});
+
+test("doc-lang #4: --lang ko --doc-lang en gives Korean findings but English docs", async () => {
+  const cwd = await setupBackendProject("doclang-mix-a-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip", lang: "ko", docLang: "en" });
+
+  const docs = await listWikiMarkdown(cwd);
+  assert.deepEqual(docs.filter((d) => HANGUL.test(d.content)).map((d) => d.rel), [], "docs stay English when docLang=en");
+
+  const auditResult = await audit({ cwd, lang: "ko" });
+  assert.ok(auditResult.findings.some((f) => HANGUL.test(f.message)), "findings are localized to Korean when lang=ko");
+});
+
+test("doc-lang #5: --lang en --doc-lang ko gives English findings but Korean docs", async () => {
+  const cwd = await setupBackendProject("doclang-mix-b-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip", lang: "en", docLang: "ko" });
+
+  const docs = await listWikiMarkdown(cwd);
+  assert.ok(docs.some((d) => HANGUL.test(d.content)), "docs are Korean when docLang=ko");
+
+  const auditResult = await audit({ cwd, lang: "en" });
+  assert.ok(!auditResult.findings.some((f) => HANGUL.test(f.message)), "findings stay English when lang=en");
+});
+
+test("doc-lang #6: config docLanguage is applied (and resolves through resolveOptions)", async () => {
+  // Unit: loadProjectConfig collects docLanguage; mergeConfigIntoOptions fills it.
+  const cwd = await setupBackendProject("doclang-config-");
+  await writeJson(path.join(cwd, "llm-wiki.config.json"), { docLanguage: "ko" });
+  const { config, errors } = await loadProjectConfig(cwd);
+  assert.deepEqual(errors, []);
+  assert.equal(config.docLanguage, "ko");
+  assert.equal(mergeConfigIntoOptions({ docLang: null }, config).docLang, "ko");
+
+  // Integration: resolveOptions merges the file, then init writes Korean docs.
+  const { options } = await api.resolveOptions({ cwd, write: true, type: "backend", existing: "skip" });
+  assert.equal(options.docLang, "ko", "resolveOptions merged config docLanguage");
+  await initCommand(options);
+  const index = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8");
+  assert.ok(HANGUL.test(index), "config docLanguage:ko produced Korean docs");
+});
+
+test("doc-lang #7: CLI --doc-lang overrides config docLanguage", async () => {
+  // Unit: explicit option wins over config.
+  assert.equal(mergeConfigIntoOptions({ docLang: "en" }, { docLanguage: "ko" }).docLang, "en");
+  assert.equal(parseArgs(["init", "--write", "--doc-lang", "en"]).options.docLang, "en");
+
+  // Integration: config says ko, CLI says en -> English docs.
+  const cwd = await setupBackendProject("doclang-override-");
+  await writeJson(path.join(cwd, "llm-wiki.config.json"), { docLanguage: "ko" });
+  const { options } = await api.resolveOptions({ cwd, write: true, type: "backend", existing: "skip", docLang: "en" });
+  assert.equal(options.docLang, "en", "CLI docLang wins over config");
+  await initCommand(options);
+  const index = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8");
+  assert.ok(!HANGUL.test(index), "CLI --doc-lang en produced English docs despite config ko");
+});
+
+test("doc-lang #8: an invalid --doc-lang value is a usage error (exit code 3)", () => {
+  assert.ok(parseArgs(["init", "--doc-lang", "fr"]).errors.some((e) => /documentation language/i.test(e)), "parseArgs reports the invalid value");
+  let status = 0;
+  try {
+    execFileSync(process.execPath, [BIN_PATH, "init", "--doc-lang", "fr"], { stdio: "pipe" });
+  } catch (err) {
+    status = err.status;
+  }
+  assert.equal(status, 3, "the CLI exits 3 on an invalid --doc-lang");
+});
+
+test("doc-lang #9: per-domain docs are generated in English and Korean", async () => {
+  const en = await setupBackendProject("doclang-domain-en-");
+  await initCommand({ cwd: en, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+  const enDomain = await readFile(path.join(en, "docs", "llm-wiki", "domains", "01_billing.md"), "utf8");
+  assert.ok(enDomain.includes("This is a draft for the domain"), "English domain doc");
+  assert.ok(!HANGUL.test(enDomain), "English domain doc has no Hangul");
+
+  const ko = await setupBackendProject("doclang-domain-ko-");
+  await initCommand({ cwd: ko, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip", docLang: "ko" });
+  const koDomain = await readFile(path.join(ko, "docs", "llm-wiki", "domains", "01_billing.md"), "utf8");
+  assert.ok(koDomain.includes("디렉터리 경계로 탐지한 도메인"), "Korean domain doc");
+  assert.ok(koDomain.includes("- `src/modules/billing`"), "source directory identifier stays verbatim in Korean mode");
+});
+
+test("doc-lang #10: bootstrap/handoff/skills state the selected documentation language", () => {
+  for (const task of ["bootstrap", "feature", "fix", "docs-sync"]) {
+    assert.ok(buildTaskPrompt({ task, docLang: "en" }).prompt.includes("Documentation language:"), `${task} names the doc language`);
+    assert.ok(buildTaskPrompt({ task, docLang: "en" }).prompt.includes("in English"), `${task} defaults to English`);
+    assert.ok(buildTaskPrompt({ task, docLang: "ko" }).prompt.includes("in Korean"), `${task} honors Korean`);
+  }
+  assert.ok(initialEnrichmentWorkflow({ docLang: "ko" }).includes("in Korean"), "handoff/bootstrap shared workflow honors Korean");
+  assert.ok(initialEnrichmentWorkflow({ docLang: "en" }).includes("in English"), "shared workflow defaults to English");
+});
+
+test("doc-lang #10b: generated skill artifacts embed the doc-language directive", async () => {
+  const cwd = await setupBackendProject("doclang-skill-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", agents: ["claude"], existing: "skip", docLang: "ko" });
+  const skill = await readFile(path.join(cwd, ".claude", "skills", "llm-wiki-bootstrap", "SKILL.md"), "utf8");
+  assert.ok(skill.includes("Documentation language:") && skill.includes("in Korean"), "skill body carries the Korean directive");
+});
+
+test("doc-lang #11: --doc-lang ko never overwrites existing English wiki or skills", async () => {
+  const cwd = await setupBackendProject("doclang-nooverwrite-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", agents: ["claude"], existing: "skip" });
+  const indexBefore = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8");
+  const skillBefore = await readFile(path.join(cwd, ".claude", "skills", "llm-wiki-bootstrap", "SKILL.md"), "utf8");
+
+  // A second run in Korean with the default skip policy must not touch existing files.
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", agents: ["claude"], existing: "skip", docLang: "ko" });
+  assert.equal(await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8"), indexBefore, "existing English index preserved");
+  assert.equal(await readFile(path.join(cwd, ".claude", "skills", "llm-wiki-bootstrap", "SKILL.md"), "utf8"), skillBefore, "existing skill preserved");
+});
+
+test("doc-lang #12: a run that does not request skills is unchanged by the feature", async () => {
+  const cwd = await setupBackendProject("doclang-noskill-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+  // No --agent / --skills => no skill or adapter artifacts.
+  assert.equal(await fileExists(path.join(cwd, ".claude")), false, "no .claude skills without --agent/--skills");
+  assert.equal(await fileExists(path.join(cwd, ".agents")), false, "no .agents skills");
+  const index = await readFile(path.join(cwd, "docs", "llm-wiki", "index.md"), "utf8");
+  assert.ok(!HANGUL.test(index), "default remains English");
+});
+
+test("doc-lang #13: generated content never embeds an absolute path or the local username", async () => {
+  const cwd = await setupBackendProject("doclang-nopath-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", agents: ["claude"], existing: "skip", docLang: "ko" });
+  const files = await listWikiMarkdown(cwd);
+  const skill = await readFile(path.join(cwd, ".claude", "skills", "llm-wiki-bootstrap", "SKILL.md"), "utf8");
+  const username = path.basename(os.homedir());
+  for (const { rel, content } of [...files, { rel: ".claude/skills/llm-wiki-bootstrap/SKILL.md", content: skill }]) {
+    assert.ok(!content.includes(cwd), `${rel} must not embed the absolute project path`);
+    assert.ok(!content.includes(os.tmpdir()), `${rel} must not embed the temp dir path`);
+    if (username && username.length > 2) assert.ok(!content.includes(username), `${rel} must not embed the local username`);
+  }
+});
+
+test("doc-lang #14: Korean documents round-trip as valid UTF-8 (Windows-safe paths)", async () => {
+  const cwd = await setupBackendProject("doclang-utf8-");
+  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip", docLang: "ko" });
+  const raw = await readFile(path.join(cwd, "docs", "llm-wiki", "README.md")); // Buffer
+  const text = raw.toString("utf8");
+  assert.ok(text.includes("모든 wiki 문서는 YAML frontmatter를 가집니다"), "Korean content decodes cleanly (no mojibake)");
+  assert.ok(!text.includes("�"), "no U+FFFD replacement characters");
 });

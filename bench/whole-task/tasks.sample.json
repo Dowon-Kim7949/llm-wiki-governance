@@ -1,0 +1,62 @@
+[
+  {
+    "id": "domain-onboard",
+    "kind": "onboard",
+    "domain": null,
+    "task": null,
+    "rubric": {
+      "evidencePoints": [
+        "Names the project type and the CLI entrypoint with a source citation.",
+        "Explains one representative command's flow from parse to rendered result, citing source.",
+        "Identifies at least one recorded invariant (e.g. zero runtime dependencies) with a doc/source citation."
+      ],
+      "mustNotClaim": [
+        "Claims a feature exists that no doc or source supports.",
+        "Presents a needs_review document's content as confirmed fact without flagging its status."
+      ],
+      "passCriteria": []
+    }
+  },
+  {
+    "id": "prepare-fix-sample",
+    "kind": "prepare-fix",
+    "domain": null,
+    "task": "A finding message shows the wrong severity in the report — scope the fix.",
+    "rubric": {
+      "evidencePoints": [
+        "Points at the findings/severity source as a CANDIDATE, not a conclusion.",
+        "Lists the tests that cover findings/report output as the ones to run.",
+        "Names which wiki doc(s) would need updating if behavior changes."
+      ],
+      "mustNotClaim": [
+        "Asserts a single file is definitely the cause without reading it.",
+        "Asserts the change is safe before inspecting the source."
+      ],
+      "passCriteria": [
+        "Recorded invariants (zero-dep, frozen JSON shape) are called out as constraints.",
+        "Stops and asks if the docs conflict with the code."
+      ]
+    }
+  },
+  {
+    "id": "prepare-feature-sample",
+    "kind": "prepare-feature",
+    "domain": null,
+    "task": "Add an optional flag to an existing read-only command — scope the change.",
+    "rubric": {
+      "evidencePoints": [
+        "Finds the CLI option-parsing and option-rules source as candidates.",
+        "Finds the command's handler and its existing tests.",
+        "Identifies the three surfaces (CLI/API/MCP) that must stay consistent."
+      ],
+      "mustNotClaim": [
+        "Claims which exact lines to edit without inspecting the source.",
+        "Concludes the feature is trivial before scoping the tests."
+      ],
+      "passCriteria": [
+        "Flags the additive/byte-identical-when-unused contract as a constraint.",
+        "Recommends handing off to the feature skill to implement."
+      ]
+    }
+  }
+]

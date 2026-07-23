@@ -33,6 +33,8 @@ import {
   migrateCommand,
   monorepoCommand,
   nextCommand,
+  onboardCommand,
+  prepareCommand,
   promptCommand,
   quickstartCommand,
   releaseNotesCommand,
@@ -63,6 +65,8 @@ import { TOOL_DEFS as MCP_TOOLS } from "./mcp/tools.js";
  * @typedef {Object} Options
  * @property {string} cwd            Project root (absolute).
  * @property {string} format         "text"|"json"|"markdown"|"html" ("text"|"json"|"mermaid"|"dot" for graph).
+ * @property {string|null} lang      Human-facing findings/explain prose language ("en"|"ko"; default en).
+ * @property {string|null} docLang   Generated wiki document + agent doc-writing language ("en"|"ko"; default en).
  * @property {string|null} type      Forced project type, or null to auto-detect.
  * @property {string[]} profiles     Extra profiles to activate.
  * @property {string[]} agents       Selected adapter agents.
@@ -75,7 +79,9 @@ import { TOOL_DEFS as MCP_TOOLS } from "./mcp/tools.js";
  * @property {boolean} changed       validate --changed scope.
  * @property {string|null} since     Git ref baseline (validate/release-notes).
  * @property {string|null} version   release-notes version override.
- * @property {string|null} task      prompt task name.
+ * @property {string|null} task      prompt/prepare task text.
+ * @property {string|null} domain    onboard work-area (domain) name.
+ * @property {string|null} goal      onboard learning goal text.
  * @property {string|null} findingRule explain target rule.
  * @property {string|null} query     search-docs query.
  * @property {string|null} docPath   get-doc/get-related target document path.
@@ -138,6 +144,8 @@ export const commands = Object.freeze({
   "search-docs": searchDocsCommand,
   "get-doc": getDocCommand,
   "get-related": getRelatedCommand,
+  onboard: onboardCommand,
+  prepare: prepareCommand,
   "release-notes": releaseNotesCommand
 });
 
@@ -202,6 +210,8 @@ export {
   migrateCommand,
   monorepoCommand,
   nextCommand,
+  onboardCommand,
+  prepareCommand,
   promptCommand,
   quickstartCommand,
   releaseNotesCommand,

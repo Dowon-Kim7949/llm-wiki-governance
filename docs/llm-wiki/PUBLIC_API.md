@@ -3,7 +3,7 @@ title: Public Api
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: public_api
 project: llm-wiki-governance
 last_updated: 2026-07-23
@@ -87,6 +87,8 @@ contains_sensitive_info: false
 | `search-docs <query>` | (읽기전용 retrieval, 1.18) 제목/본문/frontmatter에 대한 **zero-dep 키워드/부분문자열** 검색(semantic 아님). 모든 term이 있어야 매치(AND), 점수순 랭크 + 스니펫. `--limit`(기본 20). restricted/민감 문서 제외(같은 `--include-sensitive`), 스니펫 redact | 없음 |
 | `get-doc <path> [--section <terms>]` | (읽기전용 retrieval, 1.18) 문서 하나의 frontmatter + 본문 반환. `<path>`는 repo-relative/wiki-relative/bare name 허용. 민감 라인 redact. `--section <terms>`는 관련 `##` 섹션(+프리앰블)만 반환하는 집중 읽기(큰 문서용; `##` 섹션이 없거나 매치 없으면 full body로 fallback; 필터 시 additive `document.section` `{query,returned,total}` 부가) | 없음 |
 | `get-related <path>` | (읽기전용 retrieval, 1.18) 문서의 해소된 그래프 이웃(outbound/inbound: wiki 링크[이중 대괄호]·related·markdown 링크) 반환 | 없음 |
+| `onboard [--domain <n>] [--goal <t>]` | (읽기전용 guided, 1.24) 신입용 도메인 학습 경로를 기존 위키에서 결정적으로 조립(읽을 문서·소스/테스트 진입점·불변조건/위험·최신성 경고·이해도 점검·다음 단계). CLI는 설명을 창작하지 않음. 도메인 미탐지 시 침묵 대신 사용 가능 목록·생성법 안내. 제한/민감 문서 제외·텍스트 redact | 없음 |
+| `prepare --task <text>` | (읽기전용 guided, 1.24) 구현 전 작업 범위 조사(관련 문서[search-docs 랭킹 재사용]·그래프 이웃·후보 도메인/소스/테스트·API/상태/화면/설정 문서·불변조건·최신성 경고·미확정·범위 점검표). 후보로 표현하며 원인·안전을 단정하지 않음(코드가 최종 사실). /llm-wiki-feature·/llm-wiki-fix로 인계 | 없음 |
 | `release-notes [--body-only]` | 마지막 `v*` 태그 이후 conventional commit으로 릴리스 노트 문서 생성. `--body-only`는 변경 섹션 본문만 출력(frontmatter/H1/스캐폴드 라인 제외, GitHub Release 본문용)하고 본문 민감정보 스캔에 매치 시 차단(exit 2, 본문 withhold) | `--out` 시 |
 
 ## Key Options
@@ -94,6 +96,8 @@ contains_sensitive_info: false
 - `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; 나머지는 명시 선택. writable: codex/claude/cursor/copilot/windsurf/gemini, candidate: jetbrains/antigravity)
 - `--format <text|json|markdown|html>`(대부분 명령), `graph`는 `--format <text|json|mermaid|dot>`(mermaid/dot는 graph 전용). `--out <path>`, `--strict`, `--minimal`
 - `--lang <en|ko>`(전역 옵션, 1.22, 기본 `en`) — 사람이 읽는 findings **프로즈**(finding `message` + `explain`의 meaning/why/remediation)를 한국어로 지역화한다. config `lang`으로도 설정 가능(CLI 우선). rule ID·`--format json` 키/shape·CLI 명령·경로는 항상 영어; `--format json`의 `message`는 `--lang ko`에서만 한국어가 되고 `rule` 키·shape는 불변(소비자는 `rule`로 매칭). 기본 `en`은 모든 포맷에서 byte-identical.
+- `--doc-lang <en|ko>`(전역 옵션, 1.24, 기본 `en`) — `init`/`quickstart`이 **생성하는 위키 문서 본문**과 handoff/`prompt`/생성 스킬의 **에이전트 문서 작성 지시** 언어를 고른다. config `docLanguage`로도 설정 가능(CLI 우선). `--lang`과 독립적이다(하나는 findings 언어, 하나는 생성 문서 언어). 잘못된 값은 usage error(exit 3). 기술 식별자(경로·코드 심볼·JSON 키·frontmatter 필드·status 값·CLI 명령·evidence locator)는 두 언어 모두 번역하지 않는다. `init`/`quickstart` 결과는 선택된 문서 언어를 `docLanguage` 필드(및 텍스트)로 표시한다. 기본 `en`은 이미 영어였던 문서에 대해 byte-identical.
+- `--domain <name>`·`--goal <text>` (onboard — 학습할 업무 영역/목표), `--task <text>` (prepare/prompt — 필수).
 - `--write`, `--dry-run`, `--apply` (migrate), `--downgrade` (drift), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate/impact), `--body-only` (release-notes), `--changed` (validate), `--run <path>` (check-run — 특정 run manifest 지정; 생략 시 `.llm-wiki/runs/`의 최신), `--domains <a,b,c>` (init/quickstart — 도메인 수동 지정). `--strict`는 warning을 exit 1로 승격한다(대부분의 명령; `impact --strict`·`check-run --strict`는 CI 실패로 만든다).
 
 ## Exit Codes
@@ -103,6 +107,7 @@ contains_sensitive_info: false
 ## Configuration
 
 - 프로젝트 루트의 `llm-wiki.config.json`으로 `type`/`profiles`/`agents`/`strict`의 영속 기본값을 선언할 수 있다.
+- 1.24부터 `lang`(findings/`explain` 프로즈 언어)과 `docLanguage`(생성 문서 + 에이전트 문서 작성 지시 언어) 키를 `"en"|"ko"`로 선언할 수 있다(잘못된 값은 config 오류). CLI `--lang`/`--doc-lang`이 각각 우선한다. 둘 다 미설정 시 `en`.
 - 1.8부터 `rules` 맵으로 개별 finding rule을 끄거나 severity를 재정의한다: `{ "rule.id": "off"|"blocked"|"error"|"warning"|"info" }`. `audit`/`status`/`validate-frontmatter`에 중앙 적용되고(그래서 `validate`·`next`도 상속) CLI·API·MCP 모두에 반영된다. 레지스트리 rule만 토글되며 **`sensitive.*`(민감정보)는 절대 토글 불가**(안전 불변식). opt-in lint `content.thin_body`(기본 off)는 `rules`에 설정해 켠다.
 - 1.8부터 `requiredDocs`(문서 경로 배열)로 프로젝트 자체 필수 문서를 core/profile 목록에 추가한다(같은 `structure.required_doc` 검사; 검증 전용, `init`은 임의 문서를 scaffold하지 않음). `templates`(생성문서경로→템플릿파일경로)로 생성 문서를 프로젝트-로컬 템플릿에서 만든다 — **오버라이드는 body만 쓰고 frontmatter는 항상 CLI가 생성해 `status: verified`를 절대 만들 수 없다**(구조적 가드레일).
 - 적용 우선순위: CLI 플래그 > config > 자동감지. 잘못된 config는 exit code `3`으로 거부된다.
@@ -249,3 +254,5 @@ MCP 클라이언트 등록 예시:
 - 2026-07-22에 1.22.0 findings i18n(Gate 27, P4)의 전역 `--lang <en|ko>` 옵션과 config `lang`을 Key Options에 등재했다(프로즈만 지역화; rule ID·`--format json` 키/shape·CLI 명령·경로 영어 고정, `message`는 `--lang ko`에서만 지역화하되 `rule`/shape 불변, 기본 `en` byte-identical). 1.22.0 npm 배포 후 이 추가분과 앞선 `get-doc --section` 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 재승인했다. 명령·옵션 표면이 현재 CLI(`src/cli.js`)·프로그래매틱 API(`src/index.js`)와 일치함을 확인했다(275 tests·validate --strict 0; npm dist-tags.latest=1.22.0).
 - 2026-07-23에 `prompt --task` 표면에 `bootstrap`을 추가하고(CLI 도움말·MCP `prompt` 툴 enum 동기), `init`/`quickstart --skills`·`--agent codex`가 Codex 네이티브 스킬(`.agents/skills/`)을 생성함을 command 표에 반영했다. `bootstrap`은 최초 보강용이며 `handoff`와 규칙을 공유한다. 동결 프로그래매틱 `commands` 맵·`--format json` shape 불변(신규 명령 없음; `prompt` 태스크 enum만 확장). additive·zero-dep. 284 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-23에 위 bootstrap/Codex 반영분을 release-prep 1.23.0의 일부로 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. 1.23.0 `package.json` 범프로 생긴 evidence.stale 드리프트도 reviewed_at 갱신으로 함께 해소했다(284 tests·validate --strict 0).
+- 2026-07-23에 Guided Onboarding and Task Preparation(1.24 대상; 읽기 전용 `onboard`/`prepare` 명령·스킬, 검색 랭킹 `rankDocsByQuery` 재사용)을 반영했다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등한다 — 사람 검토 전까지 미확정이며 허위 검토 메타를 넣지 않는다. 이번 소스 변경(`src/commands/guided.js` 신규 등)으로 소스를 참조하는 다른 verified 문서도 재검토가 필요하다(그 문서들은 `drift --downgrade`로 정직하게 needs_review 처리).
+- 2026-07-23에 생성 문서 언어 선택(긴급 i18n, 1.24.0)을 반영했다: 전역 `--doc-lang <en|ko>`(Key Options)와 config `docLanguage`(Configuration)를 등재했다 — `init`/`quickstart` 생성 문서와 에이전트 문서 작성 지시 언어를 고르며 `--lang`과 독립, CLI가 config 우선, 잘못된 값은 exit 3. 단일 언어 선택 계층 `src/commands/doc-content.js`, 기술 식별자 미번역, 기본 `en`은 이미 영어였던 문서에 byte-identical. 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 전까지 미확정이며 허위 검토 메타를 넣지 않는다. 307 tests·validate --strict 0.

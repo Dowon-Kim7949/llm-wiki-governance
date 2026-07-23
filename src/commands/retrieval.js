@@ -29,7 +29,7 @@ const DEFAULT_SECTION_LIMIT = 3;
 // Load every wiki content doc with parsed frontmatter, body, and a sensitivity
 // flag (declared contains_sensitive_info, restricted visibility, or a
 // sensitive-info scan hit). Sorted by path for deterministic output.
-async function loadContentDocs(cwd) {
+export async function loadContentDocs(cwd) {
   const files = await listWikiContentDocs(cwd);
   const docs = [];
   for (const file of files) {
@@ -55,7 +55,7 @@ function isRestrictedOrSensitive(doc) {
 
 // Redact sensitive-looking lines using the same scan the report writer safety-net
 // uses, so no returned body/snippet ever carries a raw secret.
-function redactSensitive(text) {
+export function redactSensitive(text) {
   if (!text) return text;
   const hits = scanSensitiveInfo(text);
   if (hits.length === 0) return text;
@@ -69,7 +69,7 @@ function docType(frontmatter) {
   return null;
 }
 
-function docSummary(doc) {
+export function docSummary(doc) {
   return {
     path: doc.path,
     title: typeof doc.frontmatter.title === "string" ? doc.frontmatter.title : null,
@@ -93,7 +93,7 @@ function filterPayload(options) {
 // Shared status/visibility/docType/sensitivity filter for list and search.
 // excludedSensitive counts docs dropped only for the sensitivity gate (0 when
 // includeSensitive is set). Returns { kept, excludedSensitive }.
-function applyFilters(docs, options) {
+export function applyFilters(docs, options) {
   let excludedSensitive = 0;
   const kept = docs.filter((doc) => {
     if (!options.includeSensitive && isRestrictedOrSensitive(doc)) {
@@ -139,49 +139,7 @@ export async function searchDocsCommand(options) {
   const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : DEFAULT_SEARCH_LIMIT;
   const docs = await loadContentDocs(options.cwd);
   const { kept, excludedSensitive } = applyFilters(docs, options);
-  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-
-  const matches = [];
-  for (const doc of kept) {
-    const title = typeof doc.frontmatter.title === "string" ? doc.frontmatter.title : "";
-    const metaText = [title]
-      .concat(Array.isArray(doc.frontmatter.tags) ? doc.frontmatter.tags : [])
-      .concat(Array.isArray(doc.frontmatter.aliases) ? doc.frontmatter.aliases : [])
-      .filter((value) => typeof value === "string")
-      .join(" ");
-    const bodyRedacted = redactSensitive(doc.body);
-    const titleHay = title.toLowerCase();
-    const metaHay = metaText.toLowerCase();
-    const bodyHay = bodyRedacted.toLowerCase();
-
-    // AND semantics: every query term must appear somewhere in the doc.
-    const allPresent = terms.length > 0
-      && terms.every((term) => titleHay.includes(term) || metaHay.includes(term) || bodyHay.includes(term));
-    if (!allPresent) continue;
-
-    let score = 0;
-    for (const term of terms) {
-      if (titleHay.includes(term)) score += 10;
-      if (metaHay.includes(term)) score += 3;
-      score += occurrences(bodyHay, term);
-    }
-    matches.push({
-      path: doc.path,
-      title: title || null,
-      status: typeof doc.frontmatter.status === "string" ? doc.frontmatter.status : null,
-      score,
-      snippet: buildSnippet(bodyRedacted, terms),
-      // Internal sort key (stripped before return). The append-only change log
-      // accumulates every keyword, so raw occurrence scoring lets it dominate the
-      // results; deprioritize change logs so reference docs rank above them. The
-      // log is still returned (demoted, not excluded).
-      deprioritized: isAppendOnlyLog(doc.path) || doc.frontmatter.doc_type === "change_log"
-    });
-  }
-  matches.sort((left, right) =>
-    Number(left.deprioritized) - Number(right.deprioritized)
-    || right.score - left.score
-    || left.path.localeCompare(right.path));
+  const matches = rankDocsByQuery(kept, query);
   const limited = matches.slice(0, limit).map(({ deprioritized, ...rest }) => rest);
 
   const summary = [
@@ -312,6 +270,62 @@ export async function getRelatedCommand(options) {
 }
 
 // ---- shared helpers ----------------------------------------------------
+
+// Pure keyword ranking over already-filtered docs. Single source shared by
+// search-docs and the guided onboard/prepare surfaces, so they never reimplement
+// the search engine. `requireAll` (default true) gives AND semantics — every
+// whitespace-separated term must appear (search-docs); pass false for OR-ish recall
+// over a free-text task sentence (prepare), where a doc matches if any term scores.
+// Returns matches sorted by (change-log-deprioritized, score desc, path asc); each
+// carries path/title/status/score/snippet plus the internal `deprioritized` key
+// (callers that expose results strip it, as search-docs does).
+export function rankDocsByQuery(docs, query, { requireAll = true } = {}) {
+  const terms = String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = [];
+  for (const doc of docs) {
+    const title = typeof doc.frontmatter.title === "string" ? doc.frontmatter.title : "";
+    const metaText = [title]
+      .concat(Array.isArray(doc.frontmatter.tags) ? doc.frontmatter.tags : [])
+      .concat(Array.isArray(doc.frontmatter.aliases) ? doc.frontmatter.aliases : [])
+      .filter((value) => typeof value === "string")
+      .join(" ");
+    const bodyRedacted = redactSensitive(doc.body);
+    const titleHay = title.toLowerCase();
+    const metaHay = metaText.toLowerCase();
+    const bodyHay = bodyRedacted.toLowerCase();
+
+    // AND semantics (default): every query term must appear somewhere in the doc.
+    const allPresent = terms.length > 0
+      && terms.every((term) => titleHay.includes(term) || metaHay.includes(term) || bodyHay.includes(term));
+    if (requireAll && !allPresent) continue;
+
+    let score = 0;
+    for (const term of terms) {
+      if (titleHay.includes(term)) score += 10;
+      if (metaHay.includes(term)) score += 3;
+      score += occurrences(bodyHay, term);
+    }
+    // OR-ish recall (requireAll=false): keep only docs at least one term touched.
+    if (!requireAll && score === 0) continue;
+    matches.push({
+      path: doc.path,
+      title: title || null,
+      status: typeof doc.frontmatter.status === "string" ? doc.frontmatter.status : null,
+      score,
+      snippet: buildSnippet(bodyRedacted, terms),
+      // Internal sort key (stripped before return). The append-only change log
+      // accumulates every keyword, so raw occurrence scoring lets it dominate the
+      // results; deprioritize change logs so reference docs rank above them. The
+      // log is still returned (demoted, not excluded).
+      deprioritized: isAppendOnlyLog(doc.path) || doc.frontmatter.doc_type === "change_log"
+    });
+  }
+  matches.sort((left, right) =>
+    Number(left.deprioritized) - Number(right.deprioritized)
+    || right.score - left.score
+    || left.path.localeCompare(right.path));
+  return matches;
+}
 
 function notFound(command, title, requested) {
   const findings = [{

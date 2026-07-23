@@ -86,6 +86,19 @@ export async function loadProjectConfig(cwd) {
     }
   }
 
+  // Language selection. `lang` = human-facing findings/explain prose (Gate 27);
+  // `docLanguage` = generated wiki document content + agent doc-writing instructions.
+  // Both are validated to en|ko so a typo becomes a config error like any other.
+  for (const field of ["lang", "docLanguage"]) {
+    if (field in parsed) {
+      if (parsed[field] !== "en" && parsed[field] !== "ko") {
+        errors.push(`${CONFIG_FILENAME}: "${field}" must be "en" or "ko".`);
+      } else {
+        config[field] = parsed[field];
+      }
+    }
+  }
+
   return { found: true, config, errors };
 }
 
@@ -108,6 +121,10 @@ export function mergeConfigIntoOptions(options, config) {
   }
   if (options.lang == null && (config.lang === "ko" || config.lang === "en")) {
     options.lang = config.lang;
+  }
+  // CLI --doc-lang wins; config docLanguage only fills an unset value.
+  if (options.docLang == null && (config.docLanguage === "ko" || config.docLanguage === "en")) {
+    options.docLang = config.docLanguage;
   }
   if (config.rules && (!options.rules || Object.keys(options.rules).length === 0)) {
     options.rules = { ...config.rules };
