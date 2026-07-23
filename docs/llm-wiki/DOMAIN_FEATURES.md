@@ -3,14 +3,14 @@ title: Domain Features
 tags:
   - llm-wiki
   - verified
-status: needs_review
+status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
 last_updated: 2026-07-23
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-22
+reviewed_at: 2026-07-23
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -170,3 +170,4 @@ contains_sensitive_info: false
 - 2026-07-22에 1.22.0 findings 메시지 한국어화(Gate 27, P4, accepted)를 반영했다: "findings 메시지 한국어화" 기능·Evidence를 추가했다 — 신규 `src/i18n.js`(zero-dep KO 카탈로그, `localizeFinding`/`localizeExplanation`, EN fallback)가 `--lang ko`/config `lang`에서 finding `message`(`applyRuleConfig` seam, text·JSON)와 `explain` 프로즈를 지역화. rule ID·JSON shape·CLI 명령·경로는 영어 고정, 기본 `en` byte-identical. v1: 47개 explanation 전부 + scans/frontmatter/structure finding message. 275 tests(신규 6)·validate --strict 0. additive·zero-dep·1.0.0 계약 불변. 마지막 외부 피드백 항목 완료. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-22에 1.22.0 배포 후 위 "findings 메시지 한국어화" 기능·Evidence를 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 재승인했다. 기능 서술과 근거(`src/i18n.js#symbol:localizeFinding`·`localizeExplanation`)가 현재 소스와 일치함을 확인했다(275 tests·validate --strict 0; npm dist-tags.latest=1.22.0).
 - 2026-07-23에 "스킬 생성" 기능에 최초 위키 작성 전용 `bootstrap` 태스크와 Codex 네이티브 스킬(`.agents/skills/llm-wiki-<task>/SKILL.md`)을 추가 반영했다: bootstrap은 `init --write` 뼈대를 실제 코드 근거로 최초 보강하는 반복 가능 워크플로이며, `handoff`와 규칙을 단일 소스 `src/task-prompts.js#symbol:initialEnrichmentWorkflow`에서 공유한다. `selectedSkillFormats`는 `--skills`(모든 형식)·`--agent claude|codex|cursor`(해당 형식)로 대칭 트리거하고, 미덮어씀·recognize-don't-run·preview-first 안전 계약을 유지한다. Evidence(`writeSkillArtifacts`)를 갱신했다. additive·zero-dep·1.0.0 계약 불변, 옵션 미사용 호출 byte-identical. 284 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
+- 2026-07-23에 위 bootstrap/Codex 반영분을 release-prep 1.23.0의 일부로 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. 1.23.0 `package.json` 범프로 생긴 evidence.stale 드리프트도 reviewed_at 갱신으로 함께 해소했다(284 tests·validate --strict 0).

@@ -3,14 +3,14 @@ title: Architecture Conventions
 tags:
   - llm-wiki
   - verified
-status: needs_review
+status: verified
 doc_type: architecture_conventions
 project: llm-wiki-governance
 last_updated: 2026-07-23
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-22
+reviewed_at: 2026-07-23
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -173,3 +173,4 @@ contains_sensitive_info: false
 - 2026-07-22에 1.22.0 findings i18n(Gate 27, P4, accepted)을 반영했다: 신규 `src/i18n.js`(zero-dep KO 카탈로그 + `localizeFinding`/`localizeExplanation`/`normalizeLang`)를 Module Layout·source_files·Evidence에 추가하고, 프로즈만 지역화하는 Convention(finding `message`는 `applyRuleConfig` seam에서, `explain` 프로즈는 `localizeExplanation`; rule ID/JSON shape/CLI 명령/경로 영어 고정; 기본 `en` byte-identical)을 기술했다. `--lang ko|en`(전역 옵션)·config `lang` 배선. 275 tests·validate --strict 0. additive·zero-dep·1.0.0 계약 불변. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-22에 1.22.0 배포 후 위 findings i18n 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 재승인했다. `src/i18n.js`의 `localizeFinding`/`localizeExplanation`/`normalizeLang`/`localizeMessage` export 실재와 `applyRuleConfig` seam 지역화 서술이 현재 소스와 일치함을 대조 확인했다(275 tests·validate --strict 0; npm dist-tags.latest=1.22.0).
 - 2026-07-23에 최초 위키 작성 전용 `bootstrap` 스킬 + Codex 네이티브 스킬 생성을 반영했다: `task-prompts.js`에 순수·export 단일 소스 `initialEnrichmentWorkflow`(+ `evidenceFocus`)와 `bootstrap` 태스크를 추가하고, `commands.js`의 `buildHandoff`가 이 워크플로를 재사용하도록 리팩터해 handoff/bootstrap 규칙을 단일화했다(중복 `handoffEvidenceGuidance` 제거). `skills.js`는 `SKILL_TASKS`에 bootstrap을, `selectedSkillFormats`에 codex 형식(`.agents/skills/<slug>/SKILL.md`, `renderCodexSkill`)을 대칭적으로 추가했다. Module Layout(skills.js·task-prompts.js)·Evidence를 갱신했다. additive·zero-dep·1.0.0 계약 불변, 옵션 미사용 호출 byte-identical. 284 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
+- 2026-07-23에 위 bootstrap/Codex 반영분을 release-prep 1.23.0의 일부로 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. 1.23.0 `package.json` 범프로 생긴 evidence.stale 드리프트도 reviewed_at 갱신으로 함께 해소했다(284 tests·validate --strict 0).

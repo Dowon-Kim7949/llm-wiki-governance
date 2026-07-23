@@ -24,6 +24,21 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-23 - release-prep 1.23.0 + 재검증(bootstrap/Codex 반영분)
+
+- status: needs_review
+- actor: Claude Code (유저 지시; 워크트리 `worktree-release-1.23.0-prep`)
+- scope: release, docs
+- changed:
+  - package.json (1.22.0→1.23.0) + tests/verification.test.js(버전 단언) + CHANGELOG.md/.ko.md(1.23.0) + ROADMAP.md/.ko.md(1.23 항목·last_updated)
+  - 재검증 16문서(frontmatter만): ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·PUBLIC_API·EXAMPLES는 needs_review→verified 승격(+재승인 Review Note); 00_overview·GLOSSARY·index·profiles/library·project-profile·README(wiki)·releases/v0.1.7·v0.1.8·RELEASE_FLOW·templates/DECISION_LOG.template·templates/TASK_PROMPT.template·VERSIONING는 reviewed_at 2026-07-23으로 갱신(드리프트 해소)
+- summary:
+  - 1.23.0 release-prep(커밋 전용, 태그·npm 배포 없음). 1.23.0 `package.json` 범프가 package.json/소스를 참조하는 verified 문서 12개에 evidence.stale를 유발 → reviewed_at 2026-07-23 갱신으로 해소, 강등했던 4개는 사람 검토(reviewed_by: Dowon-Kim) 후 verified 재승인.
+- tests:
+  - npm test 284/284 pass, validate-frontmatter 0, validate --strict 0.
+- caveats / review items:
+  - reviewed_by: Dowon-Kim는 유지보수자 지시(재승인)에 따른 표기. npm 배포(v1.23.0 태그)는 별도 명시 승인 시 진행.
+
 ## 2026-07-23 - 최초 위키 작성 전용 bootstrap 스킬 + Codex 네이티브 스킬 생성
 
 - status: needs_review

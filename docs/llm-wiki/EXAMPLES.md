@@ -3,14 +3,14 @@ title: Examples
 tags:
   - llm-wiki
   - verified
-status: needs_review
+status: verified
 doc_type: examples
 project: llm-wiki-governance
 last_updated: 2026-07-23
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-22
+reviewed_at: 2026-07-23
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -87,3 +87,4 @@ llm-wiki explain content.not_enriched
 - 2026-07-16에 1.12.0 release-prep에서 `README.md`가 변경되어(감지 대상 행 추가) `evidence.stale`이 발생했다. 이 문서 내용은 무관하며 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
 - 2026-07-20에 1.14.3 release-prep에서 `src/cli.js`가 변경되어(bare 명령/`--help` 오리엔테이션 헤더 추가) `evidence.stale`이 발생했다. 이 문서의 명령 예시는 그대로 유효하며 내용은 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
 - 2026-07-23에 "스킬 생성 + 최초 보강(bootstrap)" 예시 섹션을 추가했다(`--agent codex`→`.agents/skills/`, `--agent claude`→`.claude/skills/`, `--skills`→모든 형식, `prompt --task bootstrap`). 예시 명령은 현재 CLI 표면과 일치한다. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
+- 2026-07-23에 위 bootstrap/Codex 반영분을 release-prep 1.23.0의 일부로 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. 1.23.0 `package.json` 범프로 생긴 evidence.stale 드리프트도 reviewed_at 갱신으로 함께 해소했다(284 tests·validate --strict 0).
