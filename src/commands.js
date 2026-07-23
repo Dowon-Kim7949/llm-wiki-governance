@@ -11,7 +11,7 @@ import { schemaRequiredFields } from "./frontmatter-schema.js";
 import { renderTextReport } from "./report.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
-import { apiServiceInventoryChecklist, buildTaskPrompt } from "./task-prompts.js";
+import { buildTaskPrompt, evidenceFocus, initialEnrichmentWorkflow } from "./task-prompts.js";
 import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
 import { fileChangedSince, lineRangeChangedSince, changedFiles, isPathIgnored } from "./git.js";
 import { localizeExplanation } from "./i18n.js";
@@ -1867,7 +1867,7 @@ function statusNextSteps(initialized, counts, findings, agents) {
 // Shown after skill artifacts are generated. Claude Code discovers skills at session
 // start (not hot-reload), so a freshly written skill stays invisible — and its
 // /llm-wiki-* command reads as "unknown" — until the agent is restarted.
-const SKILL_RELOAD_NOTE = "New skills appear only after you restart your coding agent — Claude Code loads .claude/skills/ at session start (not hot-reload). · 새 스킬은 코딩 에이전트를 재시작해야 나타납니다(hot-reload 아님).";
+const SKILL_RELOAD_NOTE = "New skills appear only after you restart your coding agent — agents load skills (.claude/skills/, .agents/skills/) at session start (not hot-reload). · 새 스킬은 코딩 에이전트를 재시작해야 나타납니다(hot-reload 아님).";
 
 function quickstartInitSummary(initResult) {
   const lines = [];
@@ -1926,7 +1926,7 @@ function buildHandoff(options, detection = null) {
     : agents.filter((agent) => ADAPTER_TARGETS[agent]?.handoffLabel);
   const unsupportedAgents = agents.filter((agent) => ADAPTER_TARGETS[agent] && !ADAPTER_TARGETS[agent].handoffLabel);
   const projectType = detection?.projectType ?? options.type ?? "unknown";
-  const evidenceGuidance = handoffEvidenceGuidance(projectType);
+  const evidenceGuidance = evidenceFocus(projectType);
   const completionPrefix = options.dryRun && !options.write
     ? "CLI 미리보기가 완료되었습니다. 실제 파일 생성 후"
     : "CLI 작업이 완료되었습니다.";
@@ -1968,15 +1968,10 @@ function buildHandoff(options, detection = null) {
     ? `CLI preview is complete. After you write the files for real, hand off to ${label} and run the prompt below.`
     : `CLI setup is complete. Hand off to ${label} and run the prompt below.`;
   const message = `${enLead} · ${completionPrefix} ${label}에게 넘어가서 아래 프롬프트를 실행하세요.`;
-  const prompt = `Read ${entrypoints} first.
-Then enrich the docs/llm-wiki documents, grounding every claim in the actual code, config files, routing, APIs, data models, and key workflows.
-${evidenceGuidance.join("\n")}
-When a domain document mentions API usage, include this API Services inventory:
-${apiServiceInventoryChecklist().join("\n")}
-Keep CLI-generated drafts and agent-edited documents at status: needs_review.
-Do not promote anything to verified — verified is human-approved only. Record items that still need human review, and any thin-evidence gaps, in docs/llm-wiki/log.md in append-only style.
-Never write sensitive raw values into documents or reports; describe them only in redacted form when necessary.
-When finished, summarize the changed files, the source files you inspected, and the remaining review items.`;
+  // The handoff prompt IS the initial-enrichment workflow, sourced from the single
+  // shared builder so it never drifts from the `bootstrap` task/skill. Handoff names
+  // the selected adapter file(s) as the entrypoint; the workflow itself is identical.
+  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints });
 
   return {
     agents,
@@ -1995,32 +1990,6 @@ When finished, summarize the changed files, the source files you inspected, and 
 function handoffLabel(agents) {
   const labels = agents.map((agent) => ADAPTER_TARGETS[agent]?.handoffLabel).filter(Boolean);
   return labels.join(" or ") || "Codex or Claude Code";
-}
-
-function handoffEvidenceGuidance(projectType) {
-  const guidance = {
-    frontend: [
-      "Frontend evidence focus:",
-      "- Inspect routes, pages, components, state management, API clients, accessibility behavior, and end-to-end user workflows."
-    ],
-    backend: [
-      "Backend evidence focus:",
-      "- Inspect API routes, controllers, services, data models, persistence, auth/security boundaries, jobs, and operational configuration."
-    ],
-    fullstack: [
-      "Fullstack evidence focus:",
-      "- Inspect UI flows, API contracts, client/server boundaries, shared schemas, environment configuration, data model changes, and release flow."
-    ],
-    library: [
-      "Library evidence focus:",
-      "- Inspect public exports, package entrypoints, type declarations, examples, versioning policy, compatibility guarantees, and release flow."
-    ]
-  };
-
-  return guidance[projectType] ?? [
-    "General evidence focus:",
-    "- Inspect the files referenced by source_files first, then map architecture, workflows, configuration, tests, and open review questions from real code evidence."
-  ];
 }
 
 function handoffEntrypoints(agents) {

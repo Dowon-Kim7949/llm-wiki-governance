@@ -910,6 +910,27 @@ surface, not a patch).
   emission, and the domain/graph helpers (`src/commands/domains.js` /
   `src/commands/wiki-graph.js`) for the injected domain-map snapshot.
 
+### Extension (2026-07-23): bootstrap task + Codex native skills
+
+Additive extension of Gate 21, same invariants (recognize-don't-run, never-overwrite,
+opt-in, `needs_review`, zero-dep, byte-identical when not requested):
+
+- **New task `bootstrap`** — a fourth skill/`prompt --task` covering the FIRST-time
+  enrichment of an `init --write` skeleton (skeleton → code-grounded docs). Until now this
+  was only the one-shot `handoff` prompt; `bootstrap` makes it a repeatable, consistent
+  artifact. The initial-enrichment rules now live in a single source
+  (`src/task-prompts.js#symbol:initialEnrichmentWorkflow`, `evidenceFocus`) that BOTH
+  `handoff` and the `bootstrap` task reuse, so they cannot drift apart.
+- **Codex native skill format** — emit `.agents/skills/llm-wiki-<task>/SKILL.md` (valid
+  `name`/`description` frontmatter), Codex's native skill location. Selection is symmetric
+  with the other agents: `--agent codex` emits the Codex format, `--skills` emits every
+  native format (Claude + Codex + Cursor + neutral). Reuses the existing `.agents/skills/`
+  path — no new `.codex/skills` location. The agent-neutral prompt still accompanies any
+  emission.
+- Surfaces kept in lockstep: `prompt --task` (CLI help + MCP `prompt` tool enum),
+  `SKILL_TASKS`, README/PUBLIC_API/ARCHITECTURE/DOMAIN_FEATURES/EXAMPLES. 284 tests,
+  `validate --strict` 0.
+
 ## Impact Measurement Scope Decision (accepted 2026-07-21)
 
 **Motivation.** The product-identity audit (`outputs/audits/product-identity-audit.md`, Conditional Go) rates the governance core real and honestly named, but the value chain — durable memory → less rediscovery → fewer tokens / faster, safer work — is **unproven**; it lists benchmarking as the precondition for any efficiency/productivity claim. The launch copy already had to drop token-savings language for lack of evidence. So measurement is pulled to the FRONT of the post-1.16 line: build the harness and a baseline *before* the feature gates, so the roadmap is steered by numbers and every later gate is re-measured for its delta.

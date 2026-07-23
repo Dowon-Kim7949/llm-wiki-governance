@@ -1,9 +1,10 @@
 // Skill/automation-prompt artifact generation (Gate 21, 1.15.0). Packages the
-// wiki-grounded feature/fix/docs-sync workflows already in task-prompts.js as
-// invocable agent artifacts, in each agent's native shape:
+// wiki-grounded bootstrap/feature/fix/docs-sync workflows already in task-prompts.js
+// as invocable agent artifacts, in each agent's native shape:
 //   - Claude Code skill  .claude/skills/llm-wiki-<task>/SKILL.md
+//   - Codex skill        .agents/skills/llm-wiki-<task>/SKILL.md
 //   - Cursor rule        .cursor/rules/llm-wiki-<task>.mdc
-//   - Agent-neutral      .llm-wiki/prompts/llm-wiki-<task>.md  (Codex / any agent)
+//   - Agent-neutral      .llm-wiki/prompts/llm-wiki-<task>.md  (any other agent)
 // Each body embeds a generation-time snapshot of the project's domain map (from the
 // generated wiki) so the agent knows which docs to read. Recognize-don't-run: this
 // module only WRITES the artifacts; the agent runs them. Existing files are never
@@ -18,19 +19,22 @@ import { buildTaskPrompt } from "../task-prompts.js";
 
 // The workflows exposed as skills, and their invocable slug/description.
 export const SKILL_TASKS = [
+  { task: "bootstrap", slug: "llm-wiki-bootstrap", description: "Enrich a newly initialized LLM-WIKI from actual source evidence while keeping documents needs_review." },
   { task: "feature", slug: "llm-wiki-feature", description: "Add or modify a feature grounded in the project's LLM-WIKI, then update the wiki (needs_review)." },
   { task: "fix", slug: "llm-wiki-fix", description: "Fix a bug grounded in the project's LLM-WIKI, then update the wiki (needs_review)." },
   { task: "docs-sync", slug: "llm-wiki-docs-sync", description: "Sync LLM-WIKI docs with recent code changes (needs_review)." }
 ];
 
 // Which artifact formats to emit for the given agents/options. Skills are opt-in:
-// active only when --skills is set or a claude/cursor agent is selected. The
-// agent-neutral prompt always accompanies any emission so Codex/other agents are
-// covered. Returns a Set of "claude" | "cursor" | "neutral".
+// active only when --skills is set or a native-skill agent (claude/codex/cursor) is
+// selected. --skills emits every native format; a specific --agent emits that agent's
+// native format. The agent-neutral prompt always accompanies any emission so other
+// agents are covered. Returns a Set of "claude" | "codex" | "cursor" | "neutral".
 export function selectedSkillFormats(agents, options) {
   const formats = new Set();
   const explicit = Boolean(options && options.skills);
   if (explicit || agents.includes("claude")) formats.add("claude");
+  if (explicit || agents.includes("codex")) formats.add("codex");
   if (explicit || agents.includes("cursor")) formats.add("cursor");
   if (formats.size > 0) formats.add("neutral");
   return formats;
@@ -125,6 +129,12 @@ function renderClaudeSkill(entry, body) {
   return `---\nname: ${entry.slug}\ndescription: ${entry.description}\n---\n\n${body}`;
 }
 
+// Codex native skill: .agents/skills/<name>/SKILL.md with name/description
+// frontmatter. Same shape as the Claude skill body (both are SKILL.md contracts).
+function renderCodexSkill(entry, body) {
+  return `---\nname: ${entry.slug}\ndescription: ${entry.description}\n---\n\n${body}`;
+}
+
 function renderCursorRule(entry, body) {
   return `---\ndescription: ${entry.description}\nalwaysApply: false\n---\n\n${body}`;
 }
@@ -137,6 +147,7 @@ function renderNeutralPrompt(entry, body) {
 function artifactTargets(formats, entry) {
   const targets = [];
   if (formats.has("claude")) targets.push({ format: "claude", path: `.claude/skills/${entry.slug}/SKILL.md`, render: renderClaudeSkill });
+  if (formats.has("codex")) targets.push({ format: "codex", path: `.agents/skills/${entry.slug}/SKILL.md`, render: renderCodexSkill });
   if (formats.has("cursor")) targets.push({ format: "cursor", path: `.cursor/rules/${entry.slug}.mdc`, render: renderCursorRule });
   if (formats.has("neutral")) targets.push({ format: "neutral", path: `.llm-wiki/prompts/${entry.slug}.md`, render: renderNeutralPrompt });
   return targets;

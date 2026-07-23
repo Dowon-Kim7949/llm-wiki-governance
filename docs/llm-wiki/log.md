@@ -24,6 +24,32 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-23 - 최초 위키 작성 전용 bootstrap 스킬 + Codex 네이티브 스킬 생성
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: src, tests, docs
+- changed:
+  - src/task-prompts.js (신규 `bootstrap` 태스크 + 최초 보강 단일 소스 `initialEnrichmentWorkflow`·`evidenceFocus`; `SUPPORTED_TASK_PROMPTS` 확장)
+  - src/commands.js (`buildHandoff`가 `initialEnrichmentWorkflow` 재사용; 중복 `handoffEvidenceGuidance` 제거; `SKILL_RELOAD_NOTE`를 `.agents/skills` 포함하도록 일반화)
+  - src/commands/skills.js (`SKILL_TASKS`에 bootstrap; `selectedSkillFormats`에 codex; `.agents/skills/<slug>/SKILL.md` 타깃 + `renderCodexSkill`)
+  - src/cli.js (`prompt --task` usage/설명에 bootstrap), src/mcp/tools.js (`prompt` 툴 task enum·설명에 bootstrap)
+  - tests/verification.test.js·tests/mcp.test.js (신규 9 테스트; 기존 "no skills" 테스트를 codex→copilot로 정정)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,EXAMPLES}.md, README.md, README.ko.md
+- summary:
+  - `init --write` 뼈대를 실제 코드 근거로 **최초 보강**하는 절차를 반복 가능한 `bootstrap` 스킬/`prompt --task bootstrap`으로 제공. 규칙은 `handoff`와 단일 소스에서 공유.
+  - Codex 네이티브 스킬(`.agents/skills/<name>/SKILL.md`, `name`/`description` frontmatter) 생성. `--agent codex` 또는 `--skills`로 claude/cursor와 대칭 트리거.
+- design decisions:
+  - 공통 규칙을 leaf 모듈 `task-prompts.js`의 `initialEnrichmentWorkflow`에 두어 `commands.js`↔`commands/skills.js` 순환 import를 피함.
+  - Codex 경로는 요구대로 `.agents/skills/`만 사용(`.codex/skills` 신설 안 함).
+  - 안전 계약 유지: preview-first·`--write`에서만 쓰기·기존 스킬 미덮어씀(kept/skipped 표기)·절대경로/username 미포함·needs_review·verified 자동승격 금지·zero-dep.
+  - 초기화 순서: `bootstrap` 스킬은 `init --write`가 뼈대·도메인 문서를 쓴 뒤 생성되며(같은 write 흐름), dry-run은 파일이 없어도 결정적으로 계획 출력.
+- tests:
+  - `npm test` 284/284 pass. `validate-frontmatter` 0. `validate --strict` 0. CLI 스모크(codex/claude/--skills) 통과.
+- caveats / review items:
+  - `--agent codex`의 스킬 생성은 **신규 동작**(기존엔 codex 단독 선택 시 아티팩트 0). 스킬을 요청하지 않은 기존 호출(예: `--agent copilot`, 옵션 미사용)은 byte-identical.
+  - 편집한 verified 위키 4종(ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·PUBLIC_API·EXAMPLES)을 `needs_review`로 강등 — 사람 재검토 후 재승격 필요.
+
 ## 2026-07-23 - 팀 브리핑 덱 v1.19.0 → v1.22.0 갱신
 
 - status: needs_review

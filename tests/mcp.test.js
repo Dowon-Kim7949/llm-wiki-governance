@@ -153,6 +153,18 @@ test("buildToolOptions maps args and defaults handoff/prompt to a claude agent",
   assert.deepEqual(buildToolOptions(prompt, { task: "feature", agents: ["codex"] }).agents, ["codex"]);
 });
 
+test("prompt tool exposes the bootstrap task over MCP and runs it", async () => {
+  const prompt = TOOL_DEFS.find((t) => t.name === "prompt");
+  assert.ok(prompt.inputSchema.properties.task.enum.includes("bootstrap"), "bootstrap is in the MCP prompt task enum");
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 60, method: "tools/call", params: { name: "prompt", arguments: { cwd: repoRoot, task: "bootstrap", agents: ["codex"] } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  assert.equal(res.result.structuredContent.taskPrompt.task, "bootstrap");
+  assert.ok(res.result.structuredContent.taskPrompt.prompt.includes("bootstrapping an LLM-WIKI"));
+});
+
 test("buildToolOptions maps retrieval args (query/path/filters/includeSensitive/limit)", () => {
   const search = TOOL_DEFS.find((t) => t.name === "search_docs");
   assert.deepEqual(

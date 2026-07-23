@@ -521,7 +521,7 @@ Usage:
   llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--domains <a,b,c>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
   llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki prompt --task <feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prompt --task <bootstrap|feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--format text|json|markdown|html] [--out <path>]
   llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--domains <a,b,c>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
@@ -640,10 +640,10 @@ Purpose:
   prompt: `llm-wiki prompt
 
 Usage:
-  llm-wiki prompt --task <feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prompt --task <bootstrap|feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
-  Prints a repeatable post-wiki agent workflow prompt. Use feature, fix, or refactor for code-and-doc tasks, docs-sync for stale wiki updates without unrelated code edits, and okf-extract for prompt-assisted OKF v0.1 extraction.
+  Prints a repeatable agent workflow prompt. Use bootstrap for the first-time enrichment of an init-generated wiki (shares its rules with handoff), feature, fix, or refactor for code-and-doc tasks, docs-sync for stale wiki updates without unrelated code edits, and okf-extract for prompt-assisted OKF v0.1 extraction.
 `,
   init: `llm-wiki init
 

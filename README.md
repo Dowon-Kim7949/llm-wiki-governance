@@ -49,7 +49,7 @@ npx llm-wiki quickstart --write --type frontend --agent claude   # or --agent co
 
 `quickstart --write` detects the project, creates the wiki + adapter files, and prints a handoff prompt. Paste that prompt into your agent: it reads `docs/llm-wiki/index.md`, enriches the docs from real source files, and leaves everything `needs_review` for you to approve. Preview first with `quickstart --dry-run`.
 
-Add `--skills` (or `--agent claude|cursor`) to also generate invocable, wiki-grounded automation prompts — a Claude skill (`/llm-wiki-feature`), a Cursor rule, and an agent-neutral prompt — for ongoing feature/fix/docs-sync work, each carrying a snapshot of your project's domain map.
+Add `--skills` (or `--agent claude|codex|cursor`) to also generate invocable, wiki-grounded automation prompts — a Claude skill (`.claude/skills/`, e.g. `/llm-wiki-feature`), a Codex skill (`.agents/skills/`), a Cursor rule, and an agent-neutral prompt — each carrying a snapshot of your project's domain map. They cover `bootstrap` (first-time enrichment of the init-generated skeleton, sharing its rules with `handoff`) plus ongoing `feature`/`fix`/`docs-sync` work. `--skills` emits every native format; a specific `--agent` emits that agent's format.
 
 **Already have an OKF (or plain Markdown) knowledge folder?** Point the CLI at it to add verification, drift detection, and CI *without changing the format* — `--profile okf-v0.1` treats it as first-class.
 
@@ -74,7 +74,7 @@ The `llm-wiki mcp` server is deterministic (no model); the agent *calling* its t
 | `audit` · `status` | Full findings report · current wiki state. |
 | `graph` · `stats` | Knowledge graph (text/JSON/Mermaid/DOT) · health snapshot (verified % / enrichment % / evidence coverage). |
 | `drift` · `fix` · `migrate` | Drift detection & downgrade · scoped safe autofix · contract upgrade (all preview-first). |
-| `handoff` · `prompt` | Agent handoff prompt · repeatable task prompts (feature/fix/refactor/docs-sync/okf-extract). |
+| `handoff` · `prompt` | Agent handoff prompt · repeatable task prompts (bootstrap/feature/fix/refactor/docs-sync/okf-extract). |
 | `mcp` | Run the read-only MCP server (see below). |
 
 Add `--lang ko` (or set `lang` in `llm-wiki.config.json`) to see findings messages and `explain` output in Korean; rule IDs, the `--format json` shape, and default English output are unchanged.

@@ -1,4 +1,4 @@
-export const SUPPORTED_TASK_PROMPTS = new Set(["feature", "fix", "refactor", "docs-sync", "okf-extract"]);
+export const SUPPORTED_TASK_PROMPTS = new Set(["bootstrap", "feature", "fix", "refactor", "docs-sync", "okf-extract"]);
 
 export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents = [] }) {
   if (!SUPPORTED_TASK_PROMPTS.has(task)) {
@@ -22,11 +22,13 @@ export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents 
     agents: agents.length ? agents : ["codex", "claude"]
   };
 
-  const prompt = task === "docs-sync"
-    ? docsSyncPrompt(context)
-    : task === "okf-extract"
-      ? okfExtractPrompt(context)
-      : implementationPrompt(task, context);
+  const prompt = task === "bootstrap"
+    ? bootstrapPrompt(context)
+    : task === "docs-sync"
+      ? docsSyncPrompt(context)
+      : task === "okf-extract"
+        ? okfExtractPrompt(context)
+        : implementationPrompt(task, context);
 
   return {
     task,
@@ -53,6 +55,87 @@ export function apiServiceInventoryChecklist() {
     "- Related UI or domain workflow.",
     "- `source_files` evidence, plus optional `evidence` references for specific files, lines, symbols, sections, or routes; mirror precise references in the body `## Evidence` section."
   ];
+}
+
+// Project-type-specific evidence focus. Single source shared by the `handoff`
+// prompt (commands.js) and the initial-enrichment workflow below, so both point an
+// agent at the same parts of the codebase. Moved here from commands.js so it has no
+// back-dependency on commands.js (task-prompts.js is a leaf module).
+export function evidenceFocus(projectType) {
+  const guidance = {
+    frontend: [
+      "Frontend evidence focus:",
+      "- Inspect routes, pages, components, state management, API clients, accessibility behavior, and end-to-end user workflows."
+    ],
+    backend: [
+      "Backend evidence focus:",
+      "- Inspect API routes, controllers, services, data models, persistence, auth/security boundaries, jobs, and operational configuration."
+    ],
+    fullstack: [
+      "Fullstack evidence focus:",
+      "- Inspect UI flows, API contracts, client/server boundaries, shared schemas, environment configuration, data model changes, and release flow."
+    ],
+    library: [
+      "Library evidence focus:",
+      "- Inspect public exports, package entrypoints, type declarations, examples, versioning policy, compatibility guarantees, and release flow."
+    ]
+  };
+
+  return guidance[projectType] ?? [
+    "General evidence focus:",
+    "- Inspect the files referenced by source_files first, then map architecture, workflows, configuration, tests, and open review questions from real code evidence."
+  ];
+}
+
+// The canonical initial-enrichment workflow — the SINGLE source shared by the
+// `handoff` prompt (commands.js) and the `bootstrap` task/skill, so both describe
+// the same rules for turning an `init --write` skeleton into a code-grounded wiki.
+// `entrypoints` names what to read first (handoff passes the selected adapter
+// file(s); bootstrap passes a generic instruction). `projectType` selects the
+// evidence focus. Callers pass repo-relative text only — no machine-absolute paths.
+export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints } = {}) {
+  const entry = entrypoints || "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md";
+  return [
+    `1. Read ${entry} first.`,
+    "2. Review the init-generated documents and their source_files to see what still needs grounding.",
+    "3. Investigate the actual code, config, routing, public APIs, data models, and key workflows before making any claim.",
+    ...evidenceFocus(projectType),
+    "4. Replace placeholder content with descriptions backed by real source evidence. Do not guess — leave anything uncertain as an explicit review item instead of inventing detail.",
+    "5. For backend/fullstack projects, also enrich the related docs/llm-wiki/domains/*.md documents.",
+    "When a domain document mentions API usage, include this API Services inventory:",
+    ...apiServiceInventoryChecklist(),
+    "6. Tidy the related frontmatter entries and local Markdown links between related documents.",
+    "7. Record broad evidence in source_files and precise evidence in the frontmatter evidence entries, mirrored in the body ## Evidence section.",
+    "8. Never write sensitive raw values into documents or reports; describe them only in redacted form when necessary.",
+    "9. Keep every created or edited wiki document at status: needs_review.",
+    "10. Do not promote anything to verified — verified is human-approved only.",
+    "11. Append docs/llm-wiki/log.md in append-only style with the changed files, evidence, caveats, and remaining review items.",
+    "12. When finished, run the appropriate validate / audit / stats checks and summarize the results, and call out the areas with thin or missing evidence and the items a human must review before verified."
+  ].join("\n");
+}
+
+// The first-time enrichment task: turn the init-generated skeleton into a
+// code-grounded wiki. Shares initialEnrichmentWorkflow() with `handoff` so the two
+// never drift apart. Preconditions are stated because bootstrap runs AFTER init has
+// written the skeleton (index.md, core/profile docs, and detected domains/*.md).
+function bootstrapPrompt(context) {
+  return `You are a senior engineer bootstrapping an LLM-WIKI from real source evidence.
+
+Workspace:
+${context.cwd}
+
+Task:
+Enrich the freshly initialized LLM-WIKI (created by 'llm-wiki init --write') so every document is backed by real code. The project type is ${context.projectType}. Active profiles: ${formatList(context.profiles)}. Target agent context: ${formatList(context.agents)}.
+Preconditions: this runs after init has generated docs/llm-wiki/index.md, the core/profile documents, and (when detected) docs/llm-wiki/domains/*.md.
+
+Required workflow:
+${initialEnrichmentWorkflow({ projectType: context.projectType, entrypoints: "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md" })}
+
+Expected final response:
+- Changed wiki docs (and any domain docs enriched).
+- Source evidence inspected.
+- validate / audit / stats run and results.
+- Areas with thin or missing evidence, and items a human must review before verified.`;
 }
 
 function implementationPrompt(task, context) {

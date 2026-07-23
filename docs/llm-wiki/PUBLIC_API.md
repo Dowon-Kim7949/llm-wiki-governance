@@ -3,10 +3,10 @@ title: Public Api
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: public_api
 project: llm-wiki-governance
-last_updated: 2026-07-22
+last_updated: 2026-07-23
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
@@ -74,8 +74,8 @@ contains_sensitive_info: false
 | `audit` | detection/structure/frontmatter/related/evidence/link/adapter/enrichment findings | 없음 |
 | `quickstart --dry-run\|--write` | doctor+init+frontmatter+handoff 프롬프트 | `--write` 시 |
 | `handoff` | Codex/Claude Code 인수인계 프롬프트 출력 | `--out` 시 |
-| `prompt --task <name>` | 반복 작업 프롬프트(feature/fix/refactor/docs-sync/okf-extract) | `--out` 시 |
-| `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성. backend/fullstack(디렉터리/파일 도메인)·frontend/mobile(SPA `pages`/`views`/... 폴더 + vue/react-router 라우트 그룹)은 도메인별 문서(`domains/NN_<name>.md`)도 생성 — 도메인 미탐지 시 침묵하지 않고 명시 안내, `--domains a,b,c`로 수동 지정 가능. 1.15부터 `--skills`(또는 `--agent claude\|cursor`)로 위키-그라운디드 자동화 프롬프트 아티팩트(Claude 스킬·Cursor 룰·중립 프롬프트, 도메인 맵 주입; opt-in·미덮어씀) 생성 | `--write` 시 |
+| `prompt --task <name>` | 반복 작업 프롬프트(bootstrap/feature/fix/refactor/docs-sync/okf-extract). `bootstrap`은 init 뼈대의 최초 보강용이며 `handoff`와 규칙을 공유 | `--out` 시 |
+| `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성. backend/fullstack(디렉터리/파일 도메인)·frontend/mobile(SPA `pages`/`views`/... 폴더 + vue/react-router 라우트 그룹)은 도메인별 문서(`domains/NN_<name>.md`)도 생성 — 도메인 미탐지 시 침묵하지 않고 명시 안내, `--domains a,b,c`로 수동 지정 가능. 1.15부터 `--skills`(또는 `--agent claude\|codex\|cursor`)로 위키-그라운디드 자동화 프롬프트 아티팩트(Claude 스킬 `.claude/skills/`·Codex 스킬 `.agents/skills/`·Cursor 룰·중립 프롬프트, bootstrap/feature/fix/docs-sync, 도메인 맵 주입; opt-in·미덮어씀) 생성 | `--write` 시 |
 | `migrate [--apply]` | `wiki_block_version` 업그레이드 리포트 + 계획. `--apply`로 `fix` 범위 재사용해 문서를 현재 계약으로 올림(preview-first, `verified` 보존; GATE_REVIEW Gate 8) | `--apply` 시 |
 | `fix [--write]` | 승인된 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 섹션 보완, 깨진 related/링크 `needs_review` 스텁, 수정 문서 `last_updated` 갱신). 기본은 미리보기 | `--write` 시 |
 | `drift [--downgrade]` | `verified` 문서의 `evidence.stale` 드리프트 리포트. `--downgrade`로 드리프트 문서를 `needs_review`로 강등(GATE_REVIEW Gate 9) | `--downgrade` 시 |
@@ -247,3 +247,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-22에 1.19 명령 표면 doc-sync 갭을 메웠다: 야간 자율 실행의 Gate 25/26 커밋이 ARCHITECTURE/DOMAIN_FEATURES만 갱신하고 PUBLIC_API는 놓쳐, 배포된 read-only `check-run [--run <path>] [--strict]` 명령(Gate 26)과 `stats --format json`의 계산된 `evidenceTiers`(Gate 25)가 누락돼 있었다. Commands 표에 `check-run` 행(intent-앵커 run manifest 검증; `run.*` findings; 쓰기 없음)을, Key Options에 `--run <path>`을, Evidence·frontmatter evidence에 `src/commands.js#symbol:checkRunCommand`를, `stats` 행에 `evidenceTiers` 부가 노출을 등재했다. check-run은 `impact`와 마찬가지로 CLI/API 전용(MCP 미노출). additive·read-only·`--format json`·frontmatter·zero-dep·`1.0.0` 계약 불변. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 재승인했다(1.16.0→1.19 명령 표면 누적분 포함).
 - 2026-07-22에 `get-doc`에 `--section <terms>` 집중 읽기 옵션을 추가했다(벤치가 지목한 "큰 문서 전문 읽기가 토큰-비쌈" 문제 대응): 관련 `##` 섹션+프리앰블만 반환하고, `##` 섹션이 없거나 매치가 없으면 full body로 fallback하며, 필터 시에만 additive `document.section` `{query,returned,total}`을 부가한다(기본 출력 불변). CLI 플래그·MCP `get_doc.section`·프로그래매틱 옵션 3표면 배선. 실측: 잘 구조화된 문서에 −53%(PUBLIC_API 자체), 거대 단일 섹션 문서엔 미미(1~8%). additive·read-only·zero-dep·`1.0.0` 계약 불변, 미릴리스(main 한정, 다음 minor에서 배포·버전 태깅 예정). 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-22에 1.22.0 findings i18n(Gate 27, P4)의 전역 `--lang <en|ko>` 옵션과 config `lang`을 Key Options에 등재했다(프로즈만 지역화; rule ID·`--format json` 키/shape·CLI 명령·경로 영어 고정, `message`는 `--lang ko`에서만 지역화하되 `rule`/shape 불변, 기본 `en` byte-identical). 1.22.0 npm 배포 후 이 추가분과 앞선 `get-doc --section` 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 재승인했다. 명령·옵션 표면이 현재 CLI(`src/cli.js`)·프로그래매틱 API(`src/index.js`)와 일치함을 확인했다(275 tests·validate --strict 0; npm dist-tags.latest=1.22.0).
+- 2026-07-23에 `prompt --task` 표면에 `bootstrap`을 추가하고(CLI 도움말·MCP `prompt` 툴 enum 동기), `init`/`quickstart --skills`·`--agent codex`가 Codex 네이티브 스킬(`.agents/skills/`)을 생성함을 command 표에 반영했다. `bootstrap`은 최초 보강용이며 `handoff`와 규칙을 공유한다. 동결 프로그래매틱 `commands` 맵·`--format json` shape 불변(신규 명령 없음; `prompt` 태스크 enum만 확장). additive·zero-dep. 284 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.

@@ -124,10 +124,10 @@ export const TOOL_DEFS = [
   {
     name: "prompt",
     title: "Repeatable task prompt",
-    description: "Produce a repeatable post-wiki agent workflow prompt for a task (feature, fix, refactor, docs-sync, or okf-extract).",
+    description: "Produce a repeatable agent workflow prompt for a task (bootstrap for first-time wiki enrichment, or feature, fix, refactor, docs-sync, or okf-extract).",
     command: "prompt",
     inputSchema: schema({
-      task: { type: "string", enum: ["feature", "fix", "refactor", "docs-sync", "okf-extract"], description: "The task workflow to generate a prompt for." },
+      task: { type: "string", enum: ["bootstrap", "feature", "fix", "refactor", "docs-sync", "okf-extract"], description: "The task workflow to generate a prompt for." },
       cwd: cwdProp,
       type: typeProp,
       profiles: profilesProp,

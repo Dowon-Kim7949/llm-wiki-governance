@@ -14,6 +14,8 @@ import { buildReleaseNotes, buildReleaseNotesBody, parseCommit } from "../src/re
 import { fileChangedSince, lineRangeChangedSince } from "../src/git.js";
 import { FINDING_EXPLANATIONS, applyRuleConfig } from "../src/commands/findings.js";
 import { localizeFinding, localizeMessage, normalizeLang } from "../src/i18n.js";
+import { buildTaskPrompt, initialEnrichmentWorkflow } from "../src/task-prompts.js";
+import { SKILL_TASKS, selectedSkillFormats } from "../src/commands/skills.js";
 import { execFileSync } from "node:child_process";
 
 test("init dry-run works for an empty zero-base project", async () => {
@@ -4381,8 +4383,8 @@ test("skill generation: --skills emits Claude/Cursor/neutral artifacts with an i
 test("skill generation: off unless requested, and never overwrites (1.15.0)", async () => {
   const cwd = await makeProject("skills-off-");
   await writeFile(path.join(cwd, "requirements.txt"), "fastapi==0.110.0\n", { encoding: "utf8" });
-  // No --skills and no claude/cursor agent -> nothing emitted.
-  await initCommand({ cwd, write: true, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: ["codex"], existing: "skip" });
+  // No --skills and no native-skill agent (claude/codex/cursor) -> nothing emitted.
+  await initCommand({ cwd, write: true, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: ["copilot"], existing: "skip" });
   assert.equal(await fileExists(path.join(cwd, ".claude", "skills", "llm-wiki-feature", "SKILL.md")), false, "no skills when not requested");
 
   // A pre-existing skill file is never overwritten.
@@ -4406,8 +4408,8 @@ test("skill generation surfaces a restart-required note only when skills are cre
   // Without skills: no note, skillsCreated falsy.
   const off = await makeProject("skill-note-off2-");
   await writeJson(path.join(off, "package.json"), { dependencies: { fastify: "^4.0.0" } });
-  const noSkills = await initCommand({ cwd: off, write: true, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: ["codex"], existing: "skip" });
-  assert.ok(!(noSkills.skillsCreated > 0), "no skills created without --skills / claude|cursor");
+  const noSkills = await initCommand({ cwd: off, write: true, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: ["copilot"], existing: "skip" });
+  assert.ok(!(noSkills.skillsCreated > 0), "no skills created without --skills / native-skill agent (claude|codex|cursor)");
   assert.ok(!noSkills.text.includes("restart your coding agent"), "no restart note when no skills were created");
 
   // quickstart surfaces it too (it runs init).
@@ -4415,6 +4417,146 @@ test("skill generation surfaces a restart-required note only when skills are cre
   await writeJson(path.join(qs, "package.json"), { dependencies: { fastify: "^4.0.0" } });
   const quick = await quickstartCommand({ cwd: qs, dryRun: false, write: true, minimal: true, withAdapters: false, skills: true, type: "backend", profiles: [], agents: [], existing: "skip" });
   assert.ok(quick.text.includes("재시작") && quick.text.includes("session start"), "quickstart shows the restart note");
+});
+
+// --- Bootstrap skill + Codex native skill generation ---
+
+const CODEX_SKILL_TASKS = ["llm-wiki-bootstrap", "llm-wiki-feature", "llm-wiki-fix", "llm-wiki-docs-sync"];
+
+test("skill formats: --agent codex and --skills both select the codex native format", () => {
+  assert.ok(selectedSkillFormats(["codex"], {}).has("codex"), "--agent codex selects codex skills");
+  assert.ok(!selectedSkillFormats(["codex"], {}).has("claude"), "--agent codex does not select claude skills");
+  const all = selectedSkillFormats([], { skills: true });
+  for (const fmt of ["claude", "codex", "cursor", "neutral"]) assert.ok(all.has(fmt), `--skills selects ${fmt}`);
+  assert.equal(selectedSkillFormats(["copilot"], {}).size, 0, "a non-native-skill agent selects nothing");
+  // The registry carries the bootstrap task alongside feature/fix/docs-sync.
+  assert.deepEqual(SKILL_TASKS.map((t) => t.slug), CODEX_SKILL_TASKS);
+});
+
+test("skill generation: --agent codex plans .agents/skills/<name>/SKILL.md for all four tasks (dry-run, deterministic)", async () => {
+  const cwd = await makeProject("codex-plan-");
+  await writeJson(path.join(cwd, "package.json"), { dependencies: { fastify: "^4.0.0" } });
+  // Dry-run must be stable even though no wiki/domain files exist yet.
+  const result = await initCommand({ cwd, dryRun: true, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: ["codex"], existing: "skip" });
+  for (const slug of CODEX_SKILL_TASKS) {
+    const rel = `.agents/skills/${slug}/SKILL.md`;
+    assert.ok(result.planned.some((line) => line.includes(rel)), `${rel} planned`);
+  }
+  // Codex native format is planned; Claude skill path is not (only --agent codex selected).
+  assert.ok(!result.planned.some((line) => line.includes(".claude/skills/")), "no claude skill planned for --agent codex");
+});
+
+test("skill generation: init --write --agent codex writes four Codex skills with valid frontmatter and bootstrap body (2/3/4)", async () => {
+  const cwd = await makeProject("codex-write-");
+  await writeFile(path.join(cwd, "requirements.txt"), "fastapi==0.110.0\n", { encoding: "utf8" });
+  await mkdir(path.join(cwd, "app", "api", "v2", "endpoints"), { recursive: true });
+  await writeFile(path.join(cwd, "app", "api", "v2", "endpoints", "hazard.py"), "from fastapi import APIRouter\nrouter = APIRouter()\n", { encoding: "utf8" });
+
+  const result = await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", profiles: [], agents: ["codex"], existing: "skip" });
+  assert.equal(result.result, "pass");
+
+  const descBySlug = Object.fromEntries(SKILL_TASKS.map((t) => [t.slug, t.description]));
+  for (const slug of CODEX_SKILL_TASKS) {
+    const abs = path.join(cwd, ".agents", "skills", slug, "SKILL.md");
+    assert.ok(await fileExists(abs), `${slug} SKILL.md created`);
+    const content = await readFile(abs, "utf8");
+    // 4: valid name/description frontmatter.
+    assert.ok(content.startsWith(`---\nname: ${slug}\ndescription: ${descBySlug[slug]}\n---\n`), `${slug} frontmatter`);
+    // Portability/privacy: no machine-absolute path / username baked in.
+    assert.ok(!content.includes(cwd) && !/[A-Za-z]:\\Users\\/.test(content), "no absolute machine path leaked");
+  }
+
+  // 5: the bootstrap body carries the required initial-enrichment contract.
+  const bootstrap = await readFile(path.join(cwd, ".agents", "skills", "llm-wiki-bootstrap", "SKILL.md"), "utf8");
+  assert.ok(bootstrap.includes("docs/llm-wiki/index.md"), "reads index.md first");
+  assert.ok(/Investigate the actual code/.test(bootstrap), "investigates real source");
+  assert.ok(bootstrap.includes("source_files") && bootstrap.includes("evidence"), "evidence/source_files");
+  assert.ok(bootstrap.includes("needs_review"), "needs_review");
+  assert.ok(bootstrap.includes("Do not promote anything to verified"), "no auto-verified promotion");
+  assert.ok(bootstrap.includes("docs/llm-wiki/log.md") && bootstrap.includes("append-only"), "log.md append-only");
+  assert.ok(/validate \/ audit \/ stats/.test(bootstrap), "runs validation");
+  // Bootstrap injects the generated domain map, and states its preconditions.
+  assert.match(bootstrap, /docs\/llm-wiki\/domains\/\d+_hazard\.md/, "injected domain map from the generated wiki");
+  assert.ok(bootstrap.includes("Preconditions:"), "states preconditions (init has run)");
+});
+
+test("skill generation: existing Codex skill is never overwritten (6)", async () => {
+  const cwd = await makeProject("codex-keep-");
+  await writeJson(path.join(cwd, "package.json"), { dependencies: { fastify: "^4.0.0" } });
+  await mkdir(path.join(cwd, ".agents", "skills", "llm-wiki-bootstrap"), { recursive: true });
+  await writeFile(path.join(cwd, ".agents", "skills", "llm-wiki-bootstrap", "SKILL.md"), "CUSTOM CODEX\n", { encoding: "utf8" });
+  const result = await initCommand({ cwd, write: true, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: ["codex"], existing: "skip" });
+  assert.equal(await readFile(path.join(cwd, ".agents", "skills", "llm-wiki-bootstrap", "SKILL.md"), "utf8"), "CUSTOM CODEX\n", "existing codex skill preserved");
+  assert.ok(result.skipped.some((l) => l.includes(".agents/skills/llm-wiki-bootstrap/SKILL.md") && l.includes("kept existing")), "skip is noted");
+});
+
+test("skill generation: --skills emits all four native formats including codex + bootstrap (9/10)", async () => {
+  const cwd = await makeProject("skills-all-");
+  await writeJson(path.join(cwd, "package.json"), { dependencies: { fastify: "^4.0.0" } });
+  const result = await initCommand({ cwd, write: true, minimal: true, withAdapters: false, skills: true, type: "backend", profiles: [], agents: [], existing: "skip" });
+  assert.equal(result.result, "pass");
+  // 9: Claude skill + Cursor rule still generated. 10: neutral prompt still generated.
+  for (const rel of [
+    ".claude/skills/llm-wiki-bootstrap/SKILL.md",
+    ".agents/skills/llm-wiki-bootstrap/SKILL.md",
+    ".cursor/rules/llm-wiki-bootstrap.mdc",
+    ".llm-wiki/prompts/llm-wiki-bootstrap.md",
+    ".claude/skills/llm-wiki-feature/SKILL.md",
+    ".cursor/rules/llm-wiki-fix.mdc",
+    ".llm-wiki/prompts/llm-wiki-docs-sync.md"
+  ]) {
+    assert.ok(await fileExists(path.join(cwd, rel)), `${rel} created`);
+  }
+});
+
+test("skill generation: existing calls that do not request skills are unchanged (11)", async () => {
+  const cwd = await makeProject("skills-none-");
+  await writeJson(path.join(cwd, "package.json"), { dependencies: { fastify: "^4.0.0" } });
+  // A non-native-skill agent, no --skills: no skill artifacts at all.
+  const result = await initCommand({ cwd, write: true, minimal: true, withAdapters: false, type: "backend", profiles: [], agents: ["copilot"], existing: "skip" });
+  assert.ok(!(result.skillsCreated > 0), "no skills created");
+  for (const dir of [".agents", ".claude", ".cursor", ".llm-wiki"]) {
+    assert.equal(await fileExists(path.join(cwd, dir, "skills")), false, `no ${dir}/skills`);
+  }
+  assert.equal(await fileExists(path.join(cwd, ".llm-wiki", "prompts")), false, "no neutral prompts");
+});
+
+test("handoff and the bootstrap skill share the core initial-enrichment rules (12)", async () => {
+  const cwd = await makeProject("bootstrap-share-");
+  await writeJson(path.join(cwd, "package.json"), { dependencies: { fastify: "^4.0.0" } });
+  const handoff = await handoffCommand({ cwd, dryRun: false, write: false, minimal: false, withAdapters: false, type: "backend", profiles: [], agents: ["codex"], existing: "skip" });
+  const bootstrap = buildTaskPrompt({ task: "bootstrap", cwd: ".", projectType: "backend", profiles: [], agents: [] });
+  assert.equal(bootstrap.result, "pass");
+
+  // Both surfaces carry the same canonical rule sentences (single source: initialEnrichmentWorkflow).
+  const shared = [
+    "When a domain document mentions API usage, include this API Services inventory:",
+    "Keep every created or edited wiki document at status: needs_review.",
+    "Do not promote anything to verified — verified is human-approved only.",
+    "Append docs/llm-wiki/log.md in append-only style"
+  ];
+  for (const line of shared) {
+    assert.ok(handoff.handoff.prompt.includes(line), `handoff includes: ${line}`);
+    assert.ok(bootstrap.prompt.includes(line), `bootstrap includes: ${line}`);
+  }
+  // The shared backend workflow chunk (identical entrypoint) is a substring of both.
+  const core = initialEnrichmentWorkflow({ projectType: "backend", entrypoints: "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md" });
+  assert.ok(bootstrap.prompt.includes(core), "bootstrap embeds the shared workflow verbatim");
+  assert.ok(handoff.handoff.prompt.includes("Backend evidence focus:"), "handoff carries the shared evidence focus");
+});
+
+test("bootstrap is accepted as a public prompt task on the CLI (13)", async () => {
+  const parsed = parseArgs(["prompt", "--task", "bootstrap", "--type", "backend", "--agent", "codex"]);
+  assert.equal(parsed.command, "prompt");
+  assert.equal(parsed.options.task, "bootstrap");
+  assert.deepEqual(parsed.errors, []);
+
+  const cwd = await makeProject("bootstrap-prompt-");
+  await writeJson(path.join(cwd, "package.json"), { dependencies: { fastify: "^4.0.0" } });
+  const result = await promptCommand({ cwd, task: "bootstrap", type: "backend", profiles: [], agents: ["codex"] });
+  assert.equal(result.taskPrompt.result, "pass");
+  assert.equal(result.taskPrompt.task, "bootstrap");
+  assert.ok(result.taskPrompt.prompt.includes("bootstrapping an LLM-WIKI"), "renders the bootstrap workflow");
 });
 
 // --- Gate 27 (P4): findings message + explain KO localization ---
