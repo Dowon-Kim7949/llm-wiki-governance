@@ -10,7 +10,7 @@ last_updated: 2026-07-23
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-23
+reviewed_at: 2026-07-24
 wiki_block_version: v1
 source_files:
   - src/cli.js

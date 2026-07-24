@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-24 - verified 문서 13개 재검토·재기준 (2026-07-24 additive 커밋 후 evidence.stale 해소)
+- changed:
+  - docs/llm-wiki/{domains/00_overview.md, EXAMPLES.md, GLOSSARY.md, index.md, profiles/library.md, project-profile.md, README.md, RELEASE_FLOW.md, VERSIONING.md, templates/DECISION_LOG.template.md, templates/TASK_PROMPT.template.md, releases/v0.1.7.md, releases/v0.1.8.md} — frontmatter `reviewed_at` 2026-07-23→2026-07-24만 갱신(본문·`last_updated`·source_files/evidence 불변)
+- summary:
+  - 위 "Harden & Adopt" 커밋(Gate 20 review·Track A 위생·Track C 문서)이 참조 소스(src/commands.js·src/cli.js·src/mcp/tools.js·package.json·README.md 등)를 건드려, 이들을 참조하는 verified 문서 13개가 `evidence.stale`(22건)로 잡혔다. 변경은 전부 additive이고 각 문서의 주장은 여전히 정확함을 사람(Dowon-Kim)이 "모든 문서 확인 완료"로 재검토·확인했으므로, `reviewed_at`을 오늘로 재기준해 drift를 해소했다(과거 사이클과 동일한 방식, 본문 변경 없음).
+- verification:
+  - validate --strict 0(이전 22 evidence.stale → 0)·validate-frontmatter 0.
+- evidence:
+  - package.json · src/commands.js · src/cli.js · src/mcp/tools.js · README.md (2026-07-24 additive 변경이 재검토를 촉발)
+- caveats:
+  - release notes·BENCHMARK 등 32개 needs_review 이력 문서는 의도적으로 needs_review 유지(승격 대상 아님). 문서 내용은 바꾸지 않았고 review 날짜만 재기준했다.
+
 ## 2026-07-24 - post-1.25 "Harden & Adopt" 라인 인세션 구축 완료 (Gate 20 review + Track A 위생 + Track C 도입 문서)
 - changed:
   - (Track B/Gate 20 review 명령 — 아래 Gate 20 항목의 정정·보강) src/commands.js(`reviewCommand` + REVIEW_RISK_WEIGHTS + buildReviewEntry/renderReviewList/approveReview/stampVerified/resolveReviewer/finishReview), src/git.js(`gitUserName`), src/commands/fix-migrate.js(`upsertFrontmatterScalar`), src/commands/findings.js(`review.reviewer_unresolved`/`review.confirmation_required`), src/config-file.js(`reviewer`/`reviewedBy` 키), src/cli.js·src/index.js·src/mcp/tools.js(3표면 배선; MCP는 LIST만), tests/verification.test.js(+6)·tests/mcp.test.js(+1). GATE_REVIEW.md(Gate 20 `proposed`→`accepted`, 미해결 3문항 표준안 확정)
