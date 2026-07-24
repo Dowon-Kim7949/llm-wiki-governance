@@ -2,15 +2,15 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
 last_updated: 2026-07-23
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-23
+reviewed_at: 2026-07-24
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -180,3 +180,4 @@ contains_sensitive_info: false
 - 2026-07-23에 위 1.24.0(doc-language i18n + guided onboarding) 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. 기능·근거 서술이 현재 소스(HEAD c7a1a7a, npm dist-tags.latest=1.24.0)와 일치함을 확인했다.
 - 2026-07-23에 "토큰 효율: 가장 싼 안전한 경로 + compact retrieval" 기능(제안·부분 구축)을 추가했다: 경로 선택기 `src/commands/task-path.js`(A), `get-doc`/`selectSections`의 토큰 제어(C, `--strict-section`/`--compact`/`--max-chars`·strict no-fallback·제목 가중·`estimateTokens`[chars/4 PROXY]·`clampText`), `prepare --compact` 번들(B)을 반영했다. 모두 additive·opt-in·zero-dep이고 신규 옵션 미사용 시 기본 출력 byte-identical, redaction 후 클램프로 민감정보 보존, 정답 파일명/심볼을 경로 선택에 미사용(벤치 누출 가드). D(스킬 간소화·`--refresh`)·E(벤치 arm)는 설계만 기록. 315 tests(신규 8)·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-23(1.25.0 릴리스)에 위 "토큰 효율" 기능을 완성해 배포했다: (D) 스킬 간소화(feature/fix/docs-sync 런타임 맵·manifest 압축, bootstrap 스냅샷 유지) + 안전한 `--refresh`(content-hash 마커, 사용자·커스텀 스킬 미덮어씀), (E-비유료) proxy 벤치 `B3_retrieval_compact` + whole-task `guided-compact`(dry), MCP 토큰 제어 + compact dedup을 추가했다. 유지보수자(Dowon-Kim)가 릴리스를 지시해 게이트를 1.25.0으로 수용했다. real/유료 벤치는 보류. 319 tests·validate --strict 0. 에이전트 편집이라 `needs_review` 유지 — 사람 재검토 후 `verified` 예정.
+- 2026-07-24에 위 1.25.0 반영분("토큰 효율: 가장 싼 안전한 경로 + compact retrieval" 기능 + "스킬 생성" 기능의 런타임 도메인맵·`--refresh` 갱신)을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-24)를 거쳐 `verified`로 재승인했다. 기능 서술과 근거(`task-path.js`·`selectSections`·`prepareCommand`·`skills.js`)가 현재 소스(HEAD 5fe3aff, npm dist-tags.latest=1.25.0)와 일치함을 확인했다(319 tests·validate --strict 0).

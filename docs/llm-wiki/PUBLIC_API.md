@@ -2,15 +2,15 @@
 title: Public Api
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: public_api
 project: llm-wiki-governance
 last_updated: 2026-07-23
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-23
+reviewed_at: 2026-07-24
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -259,3 +259,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-23에 위 1.24.0(doc-language i18n + guided onboarding) 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. 옵션·config 표면 서술이 현재 소스(HEAD c7a1a7a, npm dist-tags.latest=1.24.0)와 일치함을 확인했다.
 - 2026-07-23에 토큰 효율 retrieval 토큰 제어(제안, opt-in)를 command 표에 반영했다: `get-doc`에 `--strict-section`/`--compact`/`--max-chars`, `prepare`에 `--compact`/`--max-chars`를 추가했다. 모두 additive·opt-in이라 미사용 시 표면·`--format json` 형태 byte-identical(신규 옵션 사용 시에만 `document`에 `chars`/`estimatedTokens`/`truncated`, prepare compact 페이로드 부가). 동결 프로그래매틱 API 맵의 키 집합·exit code 의미 불변. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-07-23(1.25.0 릴리스)에 `init`/`quickstart`의 부가 옵션 `--refresh`(사용자 미수정 관리 스킬만 갱신; 사용자·커스텀 스킬 미덮어씀)를 command 표에 반영하고, MCP `get_doc`/`prepare`에 토큰 제어 옵션(`strictSection`/`compact`/`maxChars`)이 노출됨을 기록했다. 모두 additive·opt-in이라 미사용 시 표면·`--format json`·동결 맵 불변. 에이전트 편집이라 `needs_review` 유지 — 사람 재검토 후 `verified` 예정.
+- 2026-07-24에 위 1.25.0 반영분(command 표의 `get-doc --strict-section`/`--compact`/`--max-chars`·`prepare --compact`/`--max-chars`·`init`/`quickstart --refresh`, MCP `get_doc`/`prepare` 토큰 제어 옵션)을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-24)를 거쳐 `verified`로 재승인했다. command 표·옵션 표면이 현재 소스(HEAD 5fe3aff, npm dist-tags.latest=1.25.0)와 일치하고 동결 프로그래매틱 API 맵의 키 집합·`--format json` 형태가 불변임을 확인했다(319 tests·validate --strict 0).

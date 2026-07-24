@@ -2,15 +2,15 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: architecture_conventions
 project: llm-wiki-governance
 last_updated: 2026-07-23
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-23
+reviewed_at: 2026-07-24
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -187,3 +187,4 @@ contains_sensitive_info: false
 - 2026-07-23에 토큰 효율(“가장 싼 안전한 경로” + compact retrieval; GATE_REVIEW의 해당 Scope Decision, 제안·부분 구축)을 반영했다: 신규 순수 leaf `src/commands/task-path.js`(`classifyTaskRisk`/`selectTaskPath`)를 Module Layout·Evidence에 추가하고, `retrieval.js`에 `estimateTokens`(chars/4 PROXY)·`clampText`(정확 `--max-chars`)와 `selectSections`의 strict 모드·섹션 제목 가중을, `getDocCommand`에 opt-in `strictSection`/`compact`/`maxChars`를, `guided.js`의 `prepareCommand`에 opt-in `--compact` 번들을 기술했다. 모두 additive·opt-in·zero-dep이며 신규 옵션 미사용 시 기본 출력 byte-identical, redaction 후 클램프로 민감정보 보존. `--doc-lang` help-usage 갭 수정도 함께 했다. 315 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등한다 — 사람 검토 전까지 미확정이며 허위 검토 메타를 넣지 않는다. D(스킬 간소화·refresh)·E(벤치 arm)는 설계만 기록했고 미구현(별도 패스·사람 검토 필요).
 - 2026-07-23(패스 2, "활주로 치우기 — 유료는 보류")에 토큰 효율의 비유료 후속을 구축했다: (E) proxy 벤치에 `B3_retrieval_compact` arm(`bench/lib/strategies.js`, `bench/run.js`·`current.*`에 표면화)을 추가·실행해 B3 vs B2 −34.5% 토큰 / grounding 100%→83.3%의 정직한 트레이드오프를 기록하고, whole-task 러너에 `guided-compact` arm(dry)을 추가했다. real 하네스 B3·empty-wiki 통제·모든 유료 실행은 보류(사람 예산 결정). MCP 완결성: `src/mcp/tools.js`의 `get_doc`에 `strictSection`/`compact`/`maxChars`, `prepare`에 `compact`/`maxChars`를 배선하고, content vs structuredContent 본문 중복을 조사했다 — get_doc는 본문을 `content[0].text`와 `structuredContent` 양쪽에 미러하므로(클라이언트가 둘 다 모델 입력에 넣는지는 미측정·미단정) 기본은 불변으로 두고 opt-in `compact` 경로에서만 본문을 structuredContent에만 두고 text엔 포인터를 둔다(중복 회피). 317 tests·validate --strict 0. 에이전트 편집이라 `needs_review` 유지. D(스킬 간소화·`--refresh`)와 real/유료 벤치는 여전히 사람 검토·결정 대기.
 - 2026-07-23(패스 3, 1.25.0 릴리스)에 D(스킬 간소화 + 안전한 `--refresh`)를 구축했다: `src/commands/skills.js`에서 feature/fix/docs-sync가 생성 시점 도메인맵 스냅샷 대신 실행 시점(`liveWikiMapSection` → `prepare --compact`/`onboard`)에 맵을 조립하도록 바꿔 고정 본문이 도메인 수와 무관해지고(예: feature ~3.18k chars로 평탄화) stale되지 않게 했고(bootstrap은 최초 보강용이라 `readDomainMap` 스냅샷 유지), `manifestContractSection`을 필드 계약으로 압축했다(안전 규칙 전부 유지). content-hash 마커(`withGeneratedMarker`/`isManagedUnmodified`, `node:crypto`)와 `--refresh`(`writeSkillArtifacts`/`planSkillArtifacts`)를 추가해 사용자 미수정 관리 스킬만 갱신(사용자·커스텀 스킬 미덮어씀·conflict 보고, dry-run이 create/refresh/conflict/up-to-date 구분). `src/cli.js`에 `--refresh` 배선. 저장소 dogfood 스킬 재생성(마커 부착). 유지보수자(Dowon-Kim)가 릴리스를 지시해 이 토큰 효율 게이트를 1.25.0으로 수용했다. 319 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 재검토 후 `verified` 승격 예정(허위 검토 메타 미기입). real/유료 벤치는 여전히 보류.
+- 2026-07-24에 위 1.25.0(토큰 효율: 가장 싼 안전한 경로 + compact retrieval, 스킬 간소화·`--refresh`) 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-24)를 거쳐 `verified`로 재승인했다. Module Layout의 신규 leaf `task-path.js` 항목과 Evidence 포인터(`task-path.js#selectTaskPath`·`classifyTaskRisk`, `retrieval.js#selectSections`·`estimateTokens`·`clampText`) 서술이 현재 소스(HEAD 5fe3aff, npm dist-tags.latest=1.25.0)와 일치함을 확인했다(319 tests·validate --strict 0).
