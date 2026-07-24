@@ -1,0 +1,430 @@
+{
+  "schema": "llm-wiki-bench-real/1",
+  "executed": true,
+  "generatedAt": "2026-07-24T03:55:07.923Z",
+  "arm": "B",
+  "armLabel": "no-retrieval (read source)",
+  "repeats": 3,
+  "tasks": [
+    {
+      "id": "auth-signin",
+      "question": "How does a user sign in to this web app — what happens from submitting the login form to being authenticated, and where is the login request sent?",
+      "groundTruth": [
+        "src/pages/LoginPage.vue",
+        "src/stores/UserStore.ts",
+        "src/utils/api/index.ts",
+        "src/utils/api/axiosInstance.ts",
+        "src/utils/common/crypto.ts"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: How does a user sign in to this web app — what happens from submitting the login form to being authenticated, and where is the login request sent?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "I now have a complete picture. Here's how sign-in works in this app.\n\n## Sign-in flow\n\n### 1. The login form — `src/pages/LoginPage.vue`\nThe login UI is a Quasar `<q-form @submit=\"onSubmit\">` with three inputs bound to refs: `svc_id` (`client_id`), `userId` (`username`), and `userPw` (`password`), plus a \"remember ID\" checkbox. Submitting the form triggers **`onSubmit()`**, which orchestrates a **3-step, RSA-encrypted login**:\n\n**Step A – Get a public key + session id:**\n```\nApiService.getPublicKey({ username, client_id })\n```\nThis POSTs to **`/api/v2/auth/enc/session`** and returns `{ public_key_pem, session_id }`. (The backend also sets a session cookie here.)\n\n**Step B – Encrypt the password client-side** with `encryptRSA()` in `src/utils/common/crypto.ts`, which uses the Web Crypto API (`window.crypto.subtle`) with **RSA-OAEP / SHA-256** to encrypt the plaintext password against the returned PEM key, then Base64-encodes it. The raw password is never sent.\n\n**Step C – Submit the actual login** via the store:\n```\nuserStore.userLogin(session_id, svc_id, userId, encryptedPw, true)   // forceLogout hardcoded true\n```\n\n### 2. The store action — `src/stores/UserStore.ts` → `userLogin()`\nThis just wraps `ApiService.getLoginToken(...)` and normalizes the result into `{ status: 'success'|'fail', data | code }`.\n\n### 3. Where the login request is sent — `src/utils/api/index.ts` → `getLoginToken()`\nThis builds a `URLSearchParams` body (`session_id`, `client_id`, `username`, `password` = the encrypted value, `force_logout=Y`) and sends:\n```\nPOST /api/v2/auth/login\n```\nvia `api.axiosCaller`. The base URL comes from `import.meta.env.VITE_APP_BACKEND_URL`.\n\n### 4. Transport & auth token — `src/utils/api/axiosInstance.ts`\n`ApiWrapper` creates an axios instance with **`withCredentials: true`**, so authentication is **cookie/session-based**: the backend sets HTTP-only cookies (session at `/auth/enc/session`, auth token at `/auth/login`) and the browser sends them automatically. There is no bearer token stored in JS. The response interceptor handles token expiry: on `419`/`201403` it silently calls **`POST /api/v2/auth/token/refresh`** and retries the original request; on `401`/`403` it clears local user info and redirects to login.\n\n### 5. Post-authentication handling (back in `LoginPage.vue`)\nOn a successful `/auth/login` response:\n- **MFA branch:** if the response contains `mfa_challenge_token`, it opens `MfaDialog` (which verifies via `/api/v2/auth/mfa/verify`); on `onMfaSuccess` it continues to `processLoginSuccess`.\n- **`processLoginSuccess(data)`** persists `user_info`, `groups`, and `menu` to session storage (`saveLocalUserInfo`, etc.), populates the Pinia `userStore`, optionally saves the ID cookie if \"remember\" is checked, and then handles password-status edge cases:\n  - `pswd_stts_cd === 1` → opens `PasswordChangeRequiredDialog` (temp password must be changed),\n  - password older than 60 days → `PasswordChangePromptDialog`,\n  - otherwise **`navigateToHazards`** routes to `/hazards_list`.\n\n### 6. Route protection — `src/router/index.ts`\nA navigation guard checks for a local user (session storage) and the populated store; if missing it forces `next('/login')`, which is why authenticated state (the presence of saved `user_info` + valid cookies) gates the rest of the app.\n\n## Summary\nSubmitting the form → `onSubmit` fetches an RSA key from **`/api/v2/auth/enc/session`**, encrypts the password with Web Crypto (`encryptRSA`), then `userStore.userLogin` → `ApiService.getLoginToken` POSTs the encrypted credentials to **`/api/v2/auth/login`**. Authentication is **session-cookie based** (`withCredentials: true`), optionally followed by MFA verification, after which user/menu/group data is stored and the user is routed to `/hazards_list`.",
+          "inputTokens": 48642,
+          "outputTokens": 2086,
+          "wallMs": 34582,
+          "toolCalls": 7,
+          "openedPaths": [
+            "src/pages/LoginPage.vue",
+            "src/stores/UserStore.ts",
+            "src/utils/api/index.ts",
+            "src/utils/api/axiosInstance.ts",
+            "src/utils/common/crypto.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I have a complete understanding of the authentication flow. Here's the answer.\n\n## How a user signs in\n\nThe login is a **two-step, RSA-encrypted, cookie-session based flow**, implemented mainly in `src/pages/LoginPage.vue` → `src/stores/UserStore.ts` → `src/utils/api/index.ts` → `src/utils/api/axiosInstance.ts`.\n\n### 1. Submitting the form (`src/pages/LoginPage.vue`)\nThe `<q-form @submit=\"onSubmit\">` collects three fields: `svc_id` (client/service id), `userId` (username/email), and `userPw` (password). On submit, `onSubmit()` runs:\n\n1. **Fetch RSA public key + session:** calls `ApiService.getPublicKey({ username, client_id })`, which `POST`s to **`/api/v2/auth/enc/session`**. This returns `public_key_pem` and a `session_id` (and sets a session cookie server-side).\n2. **Encrypt the password:** `encryptRSA(userPw, publicKeyPEM)` (`src/utils/common/crypto.ts`, using the Web Crypto API) encrypts the plaintext password with the returned public key. The raw password is never sent.\n3. **Send credentials:** calls `userStore.userLogin(session_id, svc_id, userId, encryptedPw, true)` — `forceLogout` is hard-coded to `true`.\n\n### 2. The actual login request (`src/utils/api/index.ts`)\n`userStore.userLogin` (in `src/stores/UserStore.ts`) delegates to `ApiService.getLoginToken(...)`, which builds a `URLSearchParams` body (`session_id`, `client_id`, `username`, `password`, `force_logout=Y`) and sends:\n\n> **`POST /api/v2/auth/login`**\n\nThe base URL comes from `import.meta.env.VITE_APP_BACKEND_URL`. On success it returns `{ status: 'success', data }`; on failure it returns `{ status: 'fail', code }`.\n\n### 3. Handling the response (back in `LoginPage.vue`)\n- If the response contains `mfa_challenge_token`, the `MfaDialog` opens for TOTP verification (`ApiService.verifyMFA` → `/api/v2/auth/mfa/verify`); its `@success` calls `processLoginSuccess`.\n- Otherwise `processLoginSuccess(response.data)` runs: it persists `user_info`, `groups`, and `menu` into session storage (`saveLocalUserInfo`, `saveLocalUserGroups`, `saveLocalMenu`) and into the Pinia `UserStore`, optionally saves the id via an encrypted cookie if \"remember id\" is checked, then handles password-expiry dialogs, and finally `router.push('/hazards_list')`.\n\n### 4. What \"authenticated\" actually means\nAuth tokens are **HTTP-only cookies**, not stored by the JS. The axios client in `src/utils/api/axiosInstance.ts` is created with `withCredentials: true`, so the browser automatically sends the session/auth cookies on every request. The frontend's notion of \"logged in\" is the presence of local user info:\n\n- The router guard `Router.beforeEach` in `src/router/index.ts` checks `getLocalUserInfo()`; if absent it forces redirect to `/login`, and it restores the Pinia store from session storage after a refresh.\n- The axios response interceptor auto-refreshes on `419`/`201403` via **`POST /api/v2/auth/token/refresh`**, and on `401`/`403` clears user info and redirects to login.\n\n### Key files/symbols\n- `src/pages/LoginPage.vue` — `onSubmit`, `processLoginSuccess`, `onMfaSuccess`\n- `src/stores/UserStore.ts` — `userLogin` action\n- `src/utils/api/index.ts` — `ApiService.getPublicKey` (`/api/v2/auth/enc/session`) and `ApiService.getLoginToken` (**`/api/v2/auth/login`**)\n- `src/utils/common/crypto.ts` — `encryptRSA`\n- `src/utils/api/axiosInstance.ts` — `ApiWrapper` with `withCredentials`, token-refresh/401/403 interceptors\n- `src/router/index.ts` — `beforeEach` auth guard",
+          "inputTokens": 70967,
+          "outputTokens": 2325,
+          "wallMs": 36321,
+          "toolCalls": 8,
+          "openedPaths": [
+            "src/pages/LoginPage.vue",
+            "src/utils/api/index.ts",
+            "src/utils/api/axiosInstance.ts",
+            "src/stores/UserStore.ts",
+            "src/router/index.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I now have the complete picture. Here's how sign-in works in this app.\n\n## Summary of the login flow\n\n**1. The login form — `src/pages/LoginPage.vue`**\nThe page renders a `<q-form>` with three fields bound to refs: `svc_id` (`client_id`), `userId` (`username`), and `userPw` (password). Submitting the form triggers `@submit=\"onSubmit\"`.\n\n**2. `onSubmit()` — a 3-step handshake (RSA-encrypted password):**\n\n- **Step 1 — Fetch an RSA public key + session:** Calls `ApiService.getPublicKey({ username, client_id })`, which POSTs to **`/api/v2/auth/enc/session`**. The response returns `public_key_pem` and `session_id`.\n- **Step 2 — Encrypt the password client-side:** `encryptRSA(userPw, publicKeyPEM)` in `src/utils/common/crypto.ts` imports the PEM key via the Web Crypto API (`RSA-OAEP` / `SHA-256`) and returns the Base64 ciphertext. The plaintext password is never sent.\n- **Step 3 — Authenticate:** Calls `userStore.userLogin(session_id, svc_id, userId, encryptedPw, true)` (`src/stores/UserStore.ts`), which delegates to `ApiService.getLoginToken(...)`.\n\n**3. Where the login request is sent — `src/utils/api/index.ts`**\n`ApiService.getLoginToken` builds a `URLSearchParams` body (`session_id`, `client_id`, `username`, `password` = encrypted, `force_logout=Y`) and POSTs to:\n\n```\nPOST /api/v2/auth/login\n```\n\nagainst the base URL from `import.meta.env.VITE_APP_BACKEND_URL`.\n\n**4. How authentication is persisted — `src/utils/api/axiosInstance.ts`**\nThe axios instance is created with **`withCredentials: true`**, so authentication is cookie/session-based — the server sets HTTP-only auth cookies; there's no bearer token stored in JS. Token expiry is handled by an interceptor that, on `419 / code 201403`, silently calls **`/api/v2/auth/token/refresh`** and retries the original request; on refresh failure or 401/403 it clears state and redirects to `/`.\n\n**5. Post-auth handling (back in `LoginPage.vue`):**\n- If the response contains `mfa_challenge_token`, it opens `MfaDialog` (verifies via `/api/v2/auth/mfa/verify`); on success `onMfaSuccess` continues the flow.\n- Otherwise `processLoginSuccess(data)` runs: rejects operator accounts (`oprtr_yn === 'Y'`), persists `groups`, `menu`, and `user_info` to session storage (`saveLocalUserInfo`, etc.), and populates `UserStore`.\n- It then forces a password change if required (`pswd_stts_cd === 1` → `PasswordChangeRequiredDialog`; older-than-60-days → `PasswordChangePromptDialog`), and finally `navigateToHazards` routes to `/hazards_list`.\n\n**6. Route protection — `src/router/index.ts`**\nA navigation guard checks `hasLocalUser` (the persisted user info) and the store's user state, redirecting to `/login` when unauthenticated and away from `/login` when already signed in.\n\n### Key files & symbols\n- `src/pages/LoginPage.vue` → `onSubmit`, `processLoginSuccess`, `onMfaSuccess`\n- `src/stores/UserStore.ts` → `userLogin` action\n- `src/utils/api/index.ts` → `ApiService.getPublicKey` (`/api/v2/auth/enc/session`) and `ApiService.getLoginToken` (**`/api/v2/auth/login`**)\n- `src/utils/common/crypto.ts` → `encryptRSA`\n- `src/utils/api/axiosInstance.ts` → `withCredentials: true` + token-refresh interceptor\n- `src/router/index.ts` → auth navigation guard",
+          "inputTokens": 48421,
+          "outputTokens": 2023,
+          "wallMs": 30658,
+          "toolCalls": 7,
+          "openedPaths": [
+            "src/pages/LoginPage.vue",
+            "src/stores/UserStore.ts",
+            "src/utils/api/index.ts",
+            "src/utils/api/axiosInstance.ts",
+            "src/utils/common/crypto.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "routing-map",
+      "question": "How does this app decide which page component to render for a given browser URL, and where is that URL-to-page mapping defined?",
+      "groundTruth": [
+        "src/router/routes.ts",
+        "src/router/index.ts"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: How does this app decide which page component to render for a given browser URL, and where is that URL-to-page mapping defined?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "## Answer\n\nThis is a **Quasar + Vue 3** app that uses **`vue-router`** for URL-to-page resolution. The mechanism spans two files:\n\n### 1. The URL → page mapping: `src/router/routes.ts`\nThe `routes` constant (a `RouteRecordRaw[]`, exported as default) is the authoritative mapping. Each entry pairs a URL `path` with a lazily-loaded page component via dynamic `import()`. Structure:\n\n- A root route `path: '/'` renders `layouts/MainLayout.vue` and `redirect`s to `/login`. Its **`children`** define the in-app pages rendered inside the layout's `<router-view>`, e.g.:\n  - `hazards_list` → `pages/HazardManagement/OverallHazardsListPage.vue`\n  - `hazards_map` → `OverallHazardsMapPage.vue`\n  - `jobs`, `assigned`, `completed`, `transfers`, `groups`, `users`, `myInformation`, `typesettings`, `displaysettings`, `statistics`, `deviceStatus`, `vehicleStatistics`, `forbidden`, `rkInformation` → their respective page components.\n  - Some children carry `meta: { requiresRootAdmin: true }` used for access control.\n- `/login` → `pages/LoginPage.vue` (outside the main layout).\n- A catch-all `/:catchAll(.*)*` → `pages/NotFoundPage.vue` for any unmatched URL.\n\n### 2. The router that consumes the mapping: `src/router/index.ts`\nThe default export (wrapped in Quasar's `route(...)`) calls **`createRouter({ routes, history: createWebHistory('/') })`**, importing `routes` from `src/router/routes.ts`. Because it uses `createWebHistory` (HTML5 history mode, matching `vueRouterMode: 'history'` in `quasar.config.js`), vue-router matches the browser's URL path against the `routes` records and renders the matched component into the `<router-view>`.\n\nIt also installs a **`Router.beforeEach` navigation guard** that runs on every navigation. This doesn't change the base path→component table but can redirect before rendering:\n- redirects already-logged-in users away from `/login`,\n- forces unauthenticated users to `/login`,\n- restores the Pinia user store on refresh,\n- checks `to.matched.some(r => r.meta.requiresRootAdmin)` and redirects unauthorized users to `/forbidden`.\n\n### Summary\n- **Decision engine:** `vue-router`'s matcher, configured in `src/router/index.ts` (`createRouter` + `createWebHistory`), with per-navigation logic in the `beforeEach` guard.\n- **The mapping itself:** the `routes` array in **`src/router/routes.ts`**, where each `{ path, component }` record binds a URL to a dynamically-imported page component (nested under `MainLayout.vue` for authenticated pages).",
+          "inputTokens": 8835,
+          "outputTokens": 1405,
+          "wallMs": 22124,
+          "toolCalls": 5,
+          "openedPaths": [
+            "src/router/index.ts",
+            "src/router/routes.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I have everything I need.\n\n## Answer\n\nThis app uses **Vue Router** (via the Quasar framework) to map browser URLs to page components. The mechanism spans two files:\n\n### 1. The URL-to-page mapping: `src/router/routes.ts`\n\nThe mapping is defined in the exported `routes` array (typed as `RouteRecordRaw[]`). Each entry pairs a URL `path` with a lazily-loaded page `component`. The structure is:\n\n- A root route `path: '/'` renders `layouts/MainLayout.vue` and has a `redirect: '/login'`.\n- Its `children` array holds the actual page mappings, each rendered inside the layout's `<router-view>`. For example:\n  - `hazards_list` → `pages/HazardManagement/OverallHazardsListPage.vue`\n  - `jobs` → `pages/JobManagement/OverallJobsPage.vue`\n  - `groups` → `pages/GroupAndUser/GroupsPage.vue`\n  - `myInformation` → `pages/MyInformation/MyInformationPage.vue`, etc.\n- A top-level `path: '/login'` → `pages/LoginPage.vue`.\n- A catch-all `path: '/:catchAll(.*)*'` → `pages/NotFoundPage.vue` for unmatched URLs.\n\nComponents are declared as `() => import(...)` so each page is code-split and loaded on demand. Some routes carry `meta: { requiresRootAdmin: true }` for access control.\n\n### 2. The router that consumes the mapping: `src/router/index.ts`\n\nThe default export (a Quasar `route(...)` wrapper) calls `createRouter(...)`, passing in the `routes` array and `history: createWebHistory('/')`. Because it uses **HTML5 history mode** (also configured as `vueRouterMode: 'history'` in `quasar.config.js`), the router matches the real browser URL path against the `routes` table and renders the corresponding component into the `<router-view>`.\n\n### The decision mechanism\n\n1. On navigation, Vue Router matches the current URL path against the `routes` records and selects the matching component (falling back to `NotFoundPage.vue` via the catch-all).\n2. Before rendering, the global **`Router.beforeEach((to, from, next) => {...})`** navigation guard in `index.ts` runs to enforce rules that can redirect the user, e.g.:\n   - Logged-in users hitting `/login` are redirected to `/hazards_list`.\n   - Non-logged-in users hitting any non-login page are redirected to `/login`.\n   - It restores the Pinia user store on refresh, and blocks routes flagged `meta.requiresRootAdmin` (redirecting to `/forbidden`) unless the user has the required admin/manager privileges.\n\n**Summary:** URL → page mapping lives in `src/router/routes.ts` (the `routes` `RouteRecordRaw[]`), and `src/router/index.ts` builds the Vue Router instance (`createRouter` + `createWebHistory`) that uses that table—plus the `beforeEach` guard—to decide which page component to render for a given browser URL.",
+          "inputTokens": 6082,
+          "outputTokens": 1326,
+          "wallMs": 21827,
+          "toolCalls": 4,
+          "openedPaths": [
+            "src/router/index.ts",
+            "src/router/routes.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "## Answer\n\nThis is a **Quasar + Vue 3** app that uses **`vue-router`** for client-side URL-to-page resolution. Two files are responsible:\n\n### 1. `src/router/routes.ts` — where the URL-to-page mapping is defined\nThis exports the `routes` array (`RouteRecordRaw[]`), which is the actual URL → page-component table. It maps browser paths to lazily-imported page components via `component: () => import(...)`. Structure:\n\n- **`/`** → `layouts/MainLayout.vue` (redirects to `/login`), with nested **child routes** rendered inside the layout's `<router-view>`:\n  - `hazards_list` → `pages/HazardManagement/OverallHazardsListPage.vue`\n  - `hazards_map` → `OverallHazardsMapPage.vue`\n  - `jobs`, `assigned`, `completed`, `transfers`, `groups`, `users`, `myInformation`, `typesettings`, `displaysettings`, `statistics`, `deviceStatus`, `vehicleStatistics`, `forbidden`, `rkInformation` → their respective page components under `pages/...`\n- **`/login`** → `pages/LoginPage.vue`\n- **`/:catchAll(.*)*`** (fallback for unmatched URLs) → `pages/NotFoundPage.vue`\n\nSome routes carry a `meta: { requiresRootAdmin: true }` flag used for access control.\n\n### 2. `src/router/index.ts` — where the router is created/wired\nThe default-exported `route(...)` factory calls **`createRouter`** with:\n- `routes` (imported from `src/router/routes`),\n- `history: createWebHistory('/')` — this is what makes the router read the **browser URL path** (HTML5 history mode) and match it against the routes table.\n\nIt also registers a **`Router.beforeEach`** navigation guard that runs before each URL change to enforce auth/authorization: it redirects logged-in users away from `/login` to `/hazards_list`, blocks unauthenticated access to non-login pages (redirect to `/login`), restores the Pinia user store on refresh, and sends users lacking admin rights to `/forbidden` when a matched route has `meta.requiresRootAdmin`.\n\n### Mechanism summary\n1. The browser URL changes.\n2. `createWebHistory` feeds the path to the router, which matches it against `routes` in `routes.ts` (including nested children and the `catchAll` fallback).\n3. The `beforeEach` guard may redirect based on auth/roles.\n4. The matched route's lazily-imported page component is rendered into the appropriate `<router-view>` (top-level, or inside `MainLayout.vue` for child routes).",
+          "inputTokens": 7238,
+          "outputTokens": 1245,
+          "wallMs": 22575,
+          "toolCalls": 4,
+          "openedPaths": [
+            "src/router/index.ts",
+            "src/router/routes.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "api-layer",
+      "question": "How does the frontend talk to its backend — where is the server base URL configured, and how are requests authenticated across calls?",
+      "groundTruth": [
+        "src/utils/api/index.ts",
+        "src/utils/api/axiosInstance.ts"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: How does the frontend talk to its backend — where is the server base URL configured, and how are requests authenticated across calls?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "I now have a complete picture. Here's how the frontend talks to its backend.\n\n## Answer\n\n### Server base URL configuration\n\nThe base URL is resolved in **`src/utils/api/index.ts`** into the `baseUrl` constant. All three modes (`dev`, `local`, and the default/prod branch) currently resolve to the same environment variable:\n\n```ts\nconst baseUrl =\n  import.meta.env.VITE_APP_MODE === 'dev'   ? import.meta.env.VITE_APP_BACKEND_URL\n  : import.meta.env.VITE_APP_MODE === 'local' ? import.meta.env.VITE_APP_BACKEND_URL\n  : import.meta.env.VITE_APP_BACKEND_URL\n```\n\n- `VITE_APP_BACKEND_URL` (and `VITE_APP_MODE`) come from the `.env.*` files (e.g. `.env.development` → `https://csap-admin-dev.riaas.io/rkapi`; `.env.production`/`.env.local` leave it empty, meaning same-origin relative requests).\n- That `baseUrl` is passed into `new ApiWrapper(baseUrl)`, which lives in **`src/utils/api/axiosInstance.ts`**. Its constructor creates the axios instance with `axios.create({ baseURL, withCredentials: true })`.\n\n(Note: the Quasar boot file `src/boot/axios.ts` sets up a `$axios`/`$api` global, but its `baseURL` line is commented out — it's essentially legacy/unused. The real API client is `ApiWrapper`.)\n\nAll backend calls go through the exported **`ApiService`** object in `index.ts`, whose methods call `api.axiosCaller(method, url, params)` with paths like `/api/v2/...` that get prefixed by `baseURL`.\n\n### How requests are authenticated\n\nAuthentication is **cookie/session-based**, not a manually attached bearer token:\n\n1. **`withCredentials: true`** on the axios instance (`ApiWrapper` constructor) means every request automatically sends the auth cookies set by the backend at login. There is no `Authorization: Bearer` header being injected — the credentials ride along in cookies.\n\n2. **Login** flows through `ApiService.getPublicKey`, `getLoginToken` (`/api/v2/auth/login`), MFA verify, etc., which establish the server session/cookie.\n\n3. **Automatic token refresh** is handled in the response interceptor (`setupInterceptors` in `axiosInstance.ts`):\n   - When a request fails with **HTTP 419 + code `201403`** (token expired), the interceptor calls `POST ${baseURL}/api/v2/auth/token/refresh` (via raw `axios` with `withCredentials: true`) to renew the session cookie, then retries the original request.\n   - A concurrency guard (`isRefreshing` flag + `refreshSubscribers` queue with `addRefreshSubscriber`/`onTokenRefreshed`) ensures only one refresh happens at a time; other in-flight requests wait and are replayed (or rejected) once the refresh resolves.\n   - On refresh failure, or on **401/403** responses, it calls `removeLocalUserInfo()`, clears `sessionStorage`, shows a notification, and redirects to the login page.\n\n4. A request interceptor also resets the idle/session-timeout timer (`resetSessionTimer`) on each outgoing call.\n\n**In short:** base URL is configured via `VITE_APP_BACKEND_URL` and applied in `ApiWrapper` (`src/utils/api/axiosInstance.ts`); authentication is done with credentialed cookies (`withCredentials: true`) that the browser sends on every request, with a response interceptor transparently refreshing the token via `/api/v2/auth/token/refresh` on 419 errors and forcing logout on 401/403.",
+          "inputTokens": 40416,
+          "outputTokens": 1943,
+          "wallMs": 33267,
+          "toolCalls": 6,
+          "openedPaths": [
+            "src/utils/api/axiosInstance.ts",
+            "src/utils/api/index.ts",
+            "src/boot/axios.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "## How the frontend talks to its backend\n\n### 1. Server base URL configuration\n\nThe base URL is resolved in **`src/utils/api/index.ts`** in the `baseUrl` constant:\n\n```ts\nconst baseUrl =\n  import.meta.env.VITE_APP_MODE === 'dev'\n    ? import.meta.env.VITE_APP_BACKEND_URL\n    : import.meta.env.VITE_APP_MODE === 'local'\n    ? import.meta.env.VITE_APP_BACKEND_URL\n    : import.meta.env.VITE_APP_BACKEND_URL\n```\n\nAll three branches currently resolve to the same env var **`VITE_APP_BACKEND_URL`** (the mode-based branching is effectively vestigial). This value is passed into `new ApiWrapper(baseUrl)`, which stores it as `this.baseURL` and hands it to `axios.create({ baseURL, withCredentials: true })` in **`src/utils/api/axiosInstance.ts`** (the `ApiWrapper` constructor).\n\nNote: the Quasar boot file **`src/boot/axios.ts`** creates a *separate*, generic `$axios`/`$api` instance with no base URL (the `baseURL` line is commented out). This boot instance is not the one used for backend API calls — the real API client is `ApiWrapper`.\n\n### 2. The API client structure\n\n- **`ApiWrapper`** (`src/utils/api/axiosInstance.ts`) — wraps one `AxiosInstance`, sets up interceptors, and exposes `axiosCaller(method, url, params)` which builds the request (query params for GET, `data` for POST/PUT/PATCH, and `multipart/form-data` headers when passed `FormData`).\n- **`ApiService`** (`src/utils/api/index.ts`) — a single instantiated `ApiWrapper` with one method per endpoint (all under `/api/v2/...`), e.g. `getHazards`, `getLoginToken`, `logout`, etc.\n\n### 3. How requests are authenticated\n\nAuthentication is **cookie-based**, not header/token-based:\n\n- The axios instance is created with **`withCredentials: true`**, so the browser automatically sends the backend's auth cookies (e.g. session/JWT cookies set at login) on every request. Notably, the request interceptor does **not** attach any `Authorization` header — it only calls `resetSessionTimer()` (session-timeout housekeeping). So credentials ride along purely as cookies.\n\n- **Token refresh flow** (response interceptor in `axiosInstance.ts`): when the backend returns HTTP `419` with error code `201403` (token expired), the interceptor:\n  1. Sets an `isRefreshing` flag and calls `POST ${baseURL}/api/v2/auth/token/refresh` (with `withCredentials: true`) using a raw `axios` call.\n  2. On success, replays the original failed request and, via the `refreshSubscribers` / `onTokenRefreshed` queue, releases any concurrent requests that arrived during the refresh.\n  3. On refresh failure, rejects all queued requests, clears local/session storage (`removeLocalUserInfo()`, `sessionStorage.clear()`), and redirects to login.\n\n- **Other auth failures**: `401` and `403` are handled by clearing user info/session storage, showing a notification, and redirecting to `/` (login), with special handling for self-password-reset flows and specific error codes.\n\n### Summary\n- Base URL: `VITE_APP_BACKEND_URL`, applied in `src/utils/api/index.ts` → `ApiWrapper` constructor (`axios.create({ baseURL, withCredentials: true })`).\n- Auth: HTTP-only cookies carried automatically via `withCredentials: true`; there is no manual bearer token. Expired tokens are transparently refreshed via a `419`/`201403`-triggered call to `/api/v2/auth/token/refresh`, with a subscriber queue serializing concurrent requests during refresh.",
+          "inputTokens": 18928,
+          "outputTokens": 1864,
+          "wallMs": 28311,
+          "toolCalls": 5,
+          "openedPaths": [
+            "src/utils/api/axiosInstance.ts",
+            "src/utils/api/index.ts",
+            "src/boot/axios.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I now have a complete picture. Let me give the answer.\n\n## How the frontend talks to the backend\n\n### Server base URL configuration\n\nThe base URL is resolved in **`src/utils/api/index.ts`**, from a Vite environment variable:\n\n```ts\nconst baseUrl =\n  import.meta.env.VITE_APP_MODE === 'dev'   ? import.meta.env.VITE_APP_BACKEND_URL\n  : import.meta.env.VITE_APP_MODE === 'local'? import.meta.env.VITE_APP_BACKEND_URL\n  :                                            import.meta.env.VITE_APP_BACKEND_URL\n```\n\nAll three branches currently resolve to `VITE_APP_BACKEND_URL`, which is defined per environment in `.env.development`, `.env.local`, `.env.production` (e.g. `https://csap-admin-dev.riaas.io/rkapi`, empty for same-origin in prod).\n\nThat `baseUrl` is passed into a single client instance:\n\n```ts\nconst api = new ApiWrapper(baseUrl)\n```\n\n`ApiWrapper` (in **`src/utils/api/axiosInstance.ts`**) creates the underlying axios instance:\n\n```ts\nthis.axiosInstance = axios.create({ baseURL, withCredentials: true })\n```\n\nThe `ApiService` object then exposes all endpoint methods (e.g. `getHazards`, `getLoginToken`, `refreshToken`), each calling `api.axiosCaller(method, url, params)` with paths like `/api/v2/...`.\n\n> Note: `src/boot/axios.ts` also creates a bare `axios.create()`, but its `baseURL` line is commented out — the real API client used app‑wide is `ApiWrapper`/`ApiService`.\n\n### How requests are authenticated\n\nAuthentication is **cookie / session based, not token headers**. The key is `withCredentials: true` on the axios instance — the browser automatically sends the session/auth cookies (set by the backend at login via `/api/v2/auth/login`) with every request. There is no `Authorization: Bearer` header anywhere in `src/`.\n\nSession lifecycle is handled by axios interceptors in `ApiWrapper.setupInterceptors`:\n\n- **Request interceptor**: on each call it resets the idle/session timer (`resetSessionTimer()` from `useSessionTimeout`) unless a warning dialog is already showing.\n- **Response interceptor** handles auth failures:\n  - **419 + code `201403` (token expired)**: it transparently refreshes the session by POSTing to `${this.baseURL}/api/v2/auth/token/refresh` (with `withCredentials: true`), then **retries the original request**. A concurrency guard (`isRefreshing` flag + `refreshSubscribers` queue via `addRefreshSubscriber`/`onTokenRefreshed`) ensures only one refresh runs while other failed requests wait and are replayed (or rejected) once refresh resolves.\n  - **401 / 403**: clears local user info (`removeLocalUserInfo`), clears `sessionStorage`, notifies the user, and redirects to login.\n\nSo: the base URL comes from `VITE_APP_BACKEND_URL` (resolved in `src/utils/api/index.ts`), a single `ApiWrapper` instance in `src/utils/api/axiosInstance.ts` carries credentials automatically via cookies (`withCredentials`), and authentication is kept alive across calls through the response interceptor's silent token-refresh-and-retry mechanism.",
+          "inputTokens": 18794,
+          "outputTokens": 1757,
+          "wallMs": 28922,
+          "toolCalls": 5,
+          "openedPaths": [
+            "src/utils/api/axiosInstance.ts",
+            "src/utils/api/index.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "hazard-domain",
+      "question": "On the hazard-management screen, how does the page obtain its list of hazards from the server and hold that data for display?",
+      "groundTruth": [
+        "src/pages/HazardManagement/OverallHazardsListPage.vue",
+        "src/stores/HazardStore.ts",
+        "src/utils/api/index.ts",
+        "src/stores/SearchStore.ts"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: On the hazard-management screen, how does the page obtain its list of hazards from the server and hold that data for display?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "I now have the complete picture.\n\n## Answer\n\nThe hazard-management screen is **`src/pages/HazardManagement/OverallHazardsListPage.vue`** (routed at the \"Total Road Hazards\" / 위험물 관리 menu item, see `src/router/routes.ts`). It obtains and holds its list of hazards through a store + local‑ref pattern:\n\n### 1. Fetching from the server\nThe page defines the async function **`fetchAllHazards()`** in `OverallHazardsListPage.vue`. It calls the Pinia store action **`hazardStore.fetchAllHazards(fetchParams.value)`** (`useHazardStore`, from `src/stores/HazardStore.ts`).\n\nInside that store action:\n- It augments the request params (`fetchParams`) with paging/sort values pulled from `useSearchStore` (`limit`, `page`, `order`, `group_id`).\n- It calls **`ApiService.getAllHazards(params)`** (`src/utils/api/index.ts`), which issues a `GET /api/v2/hazards/all` request via the axios wrapper.\n- On response it writes the total count and page count back into the SearchStore (`searchStore.setCount(...)`, `searchStore.setTotalPage(...)`) and **returns `response.data.hazards`** (the array of hazard records).\n\n### 2. Holding the data for display\nBack in the page, `fetchAllHazards()` assigns the returned array to the reactive ref **`tableRows`** (`const tableRows = ref<IHazardResponseVO[]>([])`), and stores the total in the `counts` ref. This `tableRows` ref is bound to the table component:\n\n```\n<HazardTable :columns=\"tableColumns\" :rows=\"tableRows\" ... />\n```\n\nSo the list itself is held **locally in the page's `tableRows` reactive ref**, while ancillary metadata (total count, total pages, current page, limit, sort, group filter) is held in the **SearchStore** and pagination is driven by `pagesNumber`/`counts`. The `HazardStore` itself does not cache the list — it only performs the fetch and returns the data.\n\n### Triggers\n`fetchAllHazards()` is invoked on group change (`handleGroupFetchData`), on filter search (`handleConditionalSearch`), ID search (`handleSearchId`), sort change, page change, row-count change, and after dialog actions (`@fetchData`). Column definitions (`tableColumns`) map each `IHazardResponseVO` row's `hazard`/`job` fields to display values.\n\n(A separate `hazardAllData` ref plus a paged loop in `fetchAllHazardDataForExport()` is used only for CSV export, not for on-screen display.)",
+          "inputTokens": 91204,
+          "outputTokens": 1477,
+          "wallMs": 30034,
+          "toolCalls": 7,
+          "openedPaths": [
+            "src/pages/HazardManagement/OverallHazardsListPage.vue",
+            "src/stores/HazardStore.ts",
+            "src/utils/api/index.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I now have a complete picture of the data flow.\n\n## Answer\n\nThe hazard-management screen is **`src/pages/HazardManagement/OverallHazardsListPage.vue`** (routed at `/hazards_list`, labeled \"Total Road Hazards\"). It obtains and holds the hazard list through the following chain:\n\n### 1. Fetching from the server\nThe page's local function **`fetchAllHazards()`** drives the retrieval. It calls the Pinia store action **`hazardStore.fetchAllHazards(fetchParams.value)`** (`useHazardStore` in `src/stores/HazardStore.ts`).\n\n- That store action enriches the request DTO with paging/sort/group values pulled from `useSearchStore` (`limit`, `page`, `order`, `group_id`), then calls **`ApiService.getAllHazards(params)`**.\n- `ApiService.getAllHazards` (`src/utils/api/index.ts`) issues an HTTP **`GET /api/v2/hazards/all`** with those params.\n- On the response it stores side data into the search store (`searchStore.setCount(response.data.hazards_cnt)` and `searchStore.setTotalPage(response.data.total_page)`) and **returns `response.data.hazards`** (the array of hazard records).\n\n### 2. Holding the data for display\nBack in the page, `fetchAllHazards()` assigns the returned array into a reactive `ref`:\n\n```js\nconst tableRows = ref<IHazardResponseVO[]>([])\n...\nconst response = await hazardStore.fetchAllHazards(fetchParams.value)\nif (response) { tableRows.value = response }\ncounts.value = searchStore.getCount\n```\n\nSo:\n- **`tableRows`** (a `ref`) holds the hazard list and is bound to the `<HazardTable :rows=\"tableRows\" ...>` component for display.\n- **`counts`** holds the total item count (read from `searchStore.getCount`), and `pagesNumber`/`pagination` handle pagination (total pages come from `searchStore.getTotalPage`).\n- A separate ref, **`hazardAllData`**, is used only for the CSV export path (`fetchAllHazardDataForExport`), which loops pages via the same `hazardStore.fetchAllHazards`.\n\n### 3. When it fetches\n`fetchAllHazards()` is invoked on group selection (`handleGroupFetchData`), ID search (`handleSearchId`), filter changes (`handleConditionalSearch`), sort/page-size/pagination changes, and a `searchStore.triggerSearch` watcher. Initial filter defaults (date range, grades) are set in `onBeforeMount`.\n\n**Summary of responsible symbols:**\n- `OverallHazardsListPage.vue` → `fetchAllHazards()`, `tableRows` (holds data), `counts`, `fetchParams`\n- `HazardStore.ts` → `useHazardStore().fetchAllHazards()`\n- `api/index.ts` → `ApiService.getAllHazards()` → `GET /api/v2/hazards/all`\n- `SearchStore` → holds paging/count/total-page/group context used by the fetch",
+          "inputTokens": 78019,
+          "outputTokens": 1637,
+          "wallMs": 31904,
+          "toolCalls": 7,
+          "openedPaths": [
+            "src/pages/HazardManagement/OverallHazardsListPage.vue",
+            "src/stores/HazardStore.ts",
+            "src/utils/api/index.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I now have a complete picture. Let me provide the answer.\n\n## Answer\n\nThe hazard-management screen is **`src/pages/HazardManagement/OverallHazardsListPage.vue`** (mapped in `src/router/routes.ts`). It obtains and holds its hazard list through the following chain:\n\n### 1. The page's fetch trigger and local holder\nIn `OverallHazardsListPage.vue`:\n\n- The reactive **`tableRows` ref** (`const tableRows = ref<IHazardResponseVO[]>([])`) is where the fetched hazards are held for display; it feeds the `<HazardTable :rows=\"tableRows\" ...>` component.\n- The **`fetchAllHazards()`** function performs the load:\n  ```js\n  const fetchAllHazards = async () => {\n    isLoading.value = true\n    const response = await hazardStore.fetchAllHazards(fetchParams.value)\n    if (response) {\n      tableRows.value = response\n    }\n    counts.value = searchStore.getCount\n    isLoading.value = false\n    tableStore.setSelectedRowIndex(-1)\n  }\n  ```\n- It is invoked on initial group load (`handleGroupFetchData`), on searches/filters (`handleSearchId`, `handleConditionalSearch`), pagination/sort/row-count changes, and after dialog actions. Request parameters (grade, date range, order, etc.) are held in the **`fetchParams` ref**.\n\n### 2. The Pinia store action\n`hazardStore.fetchAllHazards(params)` lives in **`src/stores/HazardStore.ts`** (`useHazardStore`). It:\n- Enriches `params` with `limit`, `page`, `order`, and `group_id` pulled from `useSearchStore`,\n- Calls `ApiService.getAllHazards(params)`,\n- Stores paging metadata back into the SearchStore via `searchStore.setCount(response.data.hazards_cnt)` and `searchStore.setTotalPage(response.data.total_page)`,\n- Returns `response.data.hazards` (the array assigned to `tableRows`).\n\nNote: the store itself does **not** cache the list in state (its state only holds `hazardType`); the returned array is held locally in the page's `tableRows` ref.\n\n### 3. The HTTP call\n`ApiService.getAllHazards` in **`src/utils/api/index.ts`** issues:\n```js\napi.axiosCaller('GET', '/api/v2/hazards/all', params)\n```\ni.e., a GET to the backend endpoint **`/api/v2/hazards/all`**.\n\n### Summary of the mechanism\nThe page calls `fetchAllHazards()` → `useHazardStore().fetchAllHazards()` → `ApiService.getAllHazards()` → GET `/api/v2/hazards/all`. Count/total-page info is stored in `SearchStore` (used for the `counts` display and pagination `pagesNumber`), while the hazard array itself is returned up the chain and held in the component's reactive **`tableRows`** ref, which the `HazardTable` renders.",
+          "inputTokens": 82458,
+          "outputTokens": 1578,
+          "wallMs": 31736,
+          "toolCalls": 7,
+          "openedPaths": [
+            "src/pages/HazardManagement/OverallHazardsListPage.vue",
+            "src/stores/HazardStore.ts",
+            "src/utils/api/index.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "session-timeout",
+      "question": "How does the app handle an idle user or an expired login session?",
+      "groundTruth": [
+        "src/composables/useSessionTimeout.ts",
+        "src/utils/api/axiosInstance.ts",
+        "src/layouts/MainLayout.vue",
+        "src/stores/UserStore.ts"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: How does the app handle an idle user or an expired login session?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "I now have a complete picture. Here's how the app handles idle users and expired login sessions — through two complementary mechanisms.\n\n## 1. Idle user (client-side inactivity timer)\n\n**File: `src/composables/useSessionTimeout.ts`** — a global singleton composable.\n\n- Defines two thresholds: `WARNING_LIMIT = 59 min` and `TIMEOUT_LIMIT = 60 min`.\n- **`resetSessionTimer()`** clears/restarts three timers:\n  - `visualInterval` — a 1-second interval that decrements `remainingSeconds`, powering the `formattedTime` countdown shown in the header (`mdi-timer-outline` in `MainLayout.vue`).\n  - `warningTimer` — after 59 minutes sets `showWarningDialog.value = true`.\n  - `logoutTimer` — after 60 minutes calls `executeLogout()`.\n- **`executeLogout()`** calls `userStore.logout()` (backend session destroy API), clears all timers, calls `removeLocalUserInfo()`, shows a \"logged out\" notification, and hard-redirects with `window.location.href = '/login'`.\n\n**Activity that resets the idle timer:**\n- Every API request resets it via the request interceptor in `src/utils/api/axiosInstance.ts` (`if (!showWarningDialog.value) resetSessionTimer()`).\n- Every route change resets it via the `watch(() => route.path, …)` in `MainLayout.vue`, plus an initial `resetSessionTimer()` in `onMounted`.\n- Note: once the warning dialog is showing, timers are *not* reset (the `!showWarningDialog.value` guard), so the user must explicitly act.\n\n**The warning dialog** is rendered in `src/layouts/MainLayout.vue` (`<q-dialog v-model=\"showWarningDialog\" persistent>`) with two buttons:\n- **Extend** → `resetSessionTimer()` (dismisses dialog, restarts the 60-min cycle).\n- **Logout** → `executeLogout()`.\n\nIf the user ignores the dialog, `logoutTimer` fires `executeLogout()` at the 60-minute mark.\n\n## 2. Expired login session (server-side, response interceptor)\n\n**File: `src/utils/api/axiosInstance.ts`** — the Axios response interceptor (`setupInterceptors`) handles auth failures from the server:\n\n- **419 + code `201403` (token expired):** Uses a refresh-lock mechanism (`isRefreshing`, `refreshSubscribers`, `addRefreshSubscriber`, `onTokenRefreshed`). It POSTs to `/api/v2/auth/token/refresh` (with `withCredentials`), and on success **replays the original request** plus any queued requests. Concurrent requests wait via subscriber callbacks.\n  - **On refresh failure:** calls `removeLocalUserInfo()`, `sessionStorage.clear()`, shows notification `201404`, rejects all queued requests, and redirects to `/` after a delay.\n- **403:** shows an appropriate error code, `sessionStorage.clear()`, then redirects to `/` (login) after `redirectDelay`.\n- **401 (auth expired/invalid):** shows \"Authentication expired or invalid.\" message, `removeLocalUserInfo()`, then redirects to `/`.\n- A special `isSelfPasswordReset` flag lengthens the redirect delay to 30s and shows a security logout warning instead.\n\n## Supporting symbols\n- **`UserStore.logout()`** (`src/stores/UserStore.ts`) calls `ApiService.logout()` → `POST /api/v2/logout` (`src/utils/api/index.ts`).\n- **`removeLocalUserInfo()`** (`src/utils/sessionstorage.ts`) clears local user info.\n- `MainLayout.vue` also watches `userStore.isExpiredToken` and pushes to `/login` if it becomes true.\n\n**Summary:** Idle handling is a purely client-side timer in `useSessionTimeout.ts` (59-min warning dialog, 60-min forced logout, reset on any API call or route change), while expired/invalid server sessions are caught by the Axios response interceptor in `axiosInstance.ts` — attempting a silent token refresh on 419, and forcing logout + redirect to login on 401/403 or refresh failure.",
+          "inputTokens": 27380,
+          "outputTokens": 2016,
+          "wallMs": 28847,
+          "toolCalls": 6,
+          "openedPaths": [
+            "src/composables/useSessionTimeout.ts",
+            "src/utils/api/axiosInstance.ts",
+            "src/layouts/MainLayout.vue"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I now have a complete picture. Here's how the app handles idle users and expired login sessions.\n\n## Answer\n\nThe app handles this with **two complementary mechanisms**: a client-side inactivity/idle timer, and a server-driven token-expiry (session) handler in the HTTP layer.\n\n### 1. Idle-user handling — `src/composables/useSessionTimeout.ts`\n\nThis composable is a **global singleton** timer that tracks user activity:\n\n- **Constants**: `WARNING_LIMIT = 59 min`, `TIMEOUT_LIMIT = 60 min`.\n- **`resetSessionTimer()`** clears/restarts three timers and hides the warning dialog:\n  - `visualInterval` — a 1-second `setInterval` that decrements `remainingSeconds`, exposed via the `formattedTime` computed (the `MM:SS` countdown shown in the header of `MainLayout.vue`).\n  - `warningTimer` — after 59 minutes sets `showWarningDialog.value = true`.\n  - `logoutTimer` — after 60 minutes calls `executeLogout()`.\n- **`executeLogout()`** calls `userStore.logout()` (backend session destroy), clears all timers, calls `removeLocalUserInfo()`, shows a \"logged out\" notification, and forces `window.location.href = '/login'`.\n\n**What resets the idle timer (i.e., what counts as \"activity\"):**\n- Every outgoing API request — the **request interceptor** in `src/utils/api/axiosInstance.ts` (`setupInterceptors`) calls `resetSessionTimer()` (only if the warning dialog isn't already showing).\n- Every route change — the `watch(() => route.path, ...)` in `MainLayout.vue`, plus `onMounted`, also call `resetSessionTimer()`.\n\n**The warning dialog** lives in `src/layouts/MainLayout.vue` (`<q-dialog v-model=\"showWarningDialog\" persistent>`). At the 59-minute mark it pops up and gives the user two choices:\n- **Extend** → `@click=\"resetSessionTimer\"` (restarts the whole cycle).\n- **Logout** → `@click=\"executeLogout\"`.\n\nIf the user does nothing, the `logoutTimer` fires at 60 minutes and `executeLogout()` runs automatically.\n\n### 2. Expired login session (token expiry) — `src/utils/api/axiosInstance.ts` response interceptor\n\nThe **response interceptor** handles server-reported auth failures:\n\n- **HTTP 419 with code `201403` (token expired)** → attempts a silent **token refresh** by POSTing to `/api/v2/auth/token/refresh`. A `isRefreshing` flag plus a `refreshSubscribers` queue (`addRefreshSubscriber`/`onTokenRefreshed`) ensure concurrent requests wait for one refresh and are then retried.\n  - **Refresh succeeds** → the original request is replayed.\n  - **Refresh fails** → queued requests are rejected, `removeLocalUserInfo()` + `sessionStorage.clear()` run, a notification is shown, and the user is redirected to `/` after `redirectDelay`.\n- **HTTP 403 / 401** → shows an \"authentication expired or invalid\" notification, clears session/local info, and redirects to `/` (login) after the delay (with a special longer 30-second delay path when `isSelfPasswordReset` is set).\n\n### Summary\n- **Idle timeout**: `useSessionTimeout.ts` (60-min auto-logout, 59-min warning dialog), reset on each API call and route change; UI in `MainLayout.vue`.\n- **Expired session/token**: axios response interceptor in `axiosInstance.ts` — 419 triggers a refresh-token retry flow; 401/403 (and failed refresh) clear local data and force redirect to login.",
+          "inputTokens": 27612,
+          "outputTokens": 1820,
+          "wallMs": 31284,
+          "toolCalls": 6,
+          "openedPaths": [
+            "src/composables/useSessionTimeout.ts",
+            "src/utils/api/axiosInstance.ts",
+            "src/layouts/MainLayout.vue"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I have everything I need. Here's the complete answer.\n\n## How the app handles idle users and expired login sessions\n\nThe app uses **two complementary mechanisms**: a client-side idle timer and a server-driven token-expiry interceptor.\n\n### 1. Idle user → client-side inactivity timer\n**File: `src/composables/useSessionTimeout.ts`**\n\nThis composable is a global singleton that tracks user inactivity with two timers:\n- `WARNING_LIMIT = 59 min` and `TIMEOUT_LIMIT = 60 min`.\n- **`resetSessionTimer()`** clears/restarts all timers and a 1-second `visualInterval` that counts down `remainingSeconds` (shown in the header as `formattedTime`). It sets:\n  - `warningTimer` → after 59 min sets `showWarningDialog = true`.\n  - `logoutTimer` → after 60 min calls `executeLogout()`.\n- **`executeLogout()`** calls `userStore.logout()` (backend session destroy), clears all timers, removes local user info via `removeLocalUserInfo()`, shows a notification, and hard-redirects to `/login` via `window.location.href`.\n\n**Activity that resets the timer:**\n- Every outgoing API request resets it via the **request interceptor** in `src/utils/api/axiosInstance.ts` (`setupInterceptors` calls `resetSessionTimer()` when the warning dialog isn't open).\n- Route navigation resets it too — `MainLayout.vue` calls `resetSessionTimer()` in a `watch` on `route.path` and in `onMounted`.\n\n**UI wiring — `src/layouts/MainLayout.vue`:**\n- Imports `{ showWarningDialog, formattedTime, resetSessionTimer, executeLogout }` from the composable.\n- Renders a persistent `q-dialog` bound to `showWarningDialog` with two buttons: **Extend** (`@click=\"resetSessionTimer\"`) and **Logout** (`@click=\"executeLogout\"`). So at 59 min the user is warned and can extend; at 60 min they're logged out automatically.\n\n### 2. Expired login session → response interceptor (server-driven)\n**File: `src/utils/api/axiosInstance.ts`** (`ApiWrapper.setupInterceptors`, response interceptor)\n\nWhen any API call fails, the error handler inspects `status`/`code`:\n\n- **HTTP 419 + code `201403` (token expired):** attempts a **silent refresh**. Using a raw `axios.post` to `/api/v2/auth/token/refresh`, guarded by an `isRefreshing` flag plus a `refreshSubscribers` queue (`addRefreshSubscriber`/`onTokenRefreshed`) so concurrent requests wait rather than fire multiple refreshes.\n  - On success: replays the original request (and queued ones).\n  - On failure: `removeLocalUserInfo()`, `sessionStorage.clear()`, notifies, and redirects to `/` after a delay (`redirectDelay`, longer if `isSelfPasswordReset`).\n- **HTTP 401 (auth expired/invalid):** shows a notification (\"인증 정보가 만료되었거나 유효하지 않습니다.\" / \"Authentication expired or invalid.\"), calls `removeLocalUserInfo()`, and redirects to `/` unless already on `/login`.\n- **HTTP 403:** clears sessionStorage and redirects similarly (with special-case codes).\n\n### Supporting pieces\n- **`src/stores/UserStore.ts`** — `logout()` action calls `ApiService.logout()`; also holds an `isExpiredToken` flag with `setExpiredToken()`. `MainLayout.vue` watches `userStore.isExpiredToken` and pushes to `/login` when true.\n- **`src/utils/api/index.ts`** — `ApiService.logout()` (`POST /api/v2/logout`) and `refreshToken()` (`POST /api/v2/auth/token/refresh`).\n- **`removeLocalUserInfo()`** in `src/utils/sessionstorage` clears the locally stored user info on logout.\n\n**Summary:** Idle timeout is handled purely on the client via `useSessionTimeout` (warn at 59 min, force-logout at 60 min, timer reset on every request/navigation). Expired/invalid *server* sessions are caught in the axios response interceptor — 419 triggers a transparent token refresh, while 401/403 (or a failed refresh) clears local user state and redirects the user to the login page.",
+          "inputTokens": 87258,
+          "outputTokens": 2280,
+          "wallMs": 40497,
+          "toolCalls": 8,
+          "openedPaths": [
+            "src/utils/api/index.ts",
+            "src/composables/useSessionTimeout.ts",
+            "src/utils/api/axiosInstance.ts",
+            "src/layouts/MainLayout.vue",
+            "src/stores/UserStore.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "state-mgmt",
+      "question": "After a user logs in, where is their user, menu, and group information stored so that other pages can use it?",
+      "groundTruth": [
+        "src/stores/UserStore.ts",
+        "src/pages/LoginPage.vue",
+        "src/utils/sessionstorage/index.ts"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: After a user logs in, where is their user, menu, and group information stored so that other pages can use it?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "I now have a complete picture.\n\n## Answer\n\nAfter a successful login, the user, menu, and group information is persisted in the **browser's `sessionStorage`** (via helper functions), with a partial copy also mirrored into a **Pinia store** for in-memory reactive access.\n\n### Where it happens\nThe storing occurs in **`src/pages/LoginPage.vue`**, in the `processLoginSuccess()` function (lines ~251–256):\n\n```js\nsaveLocalUserGroups(JSON.stringify(responseData.groups))  // group info\nsaveLocalMenu(JSON.stringify(responseData.menu))          // menu info\nsaveLocalUserInfo(JSON.stringify(userInfo))               // user info\n\nuserStore.setUserNickname(userId.value)\nuserStore.setUserName(userInfo.user_nm)\nuserStore.setUserInfos(userInfo)\n```\n\n### The storage mechanism — `src/utils/sessionstorage/index.ts`\nThese three save helpers write to `sessionStorage` under fixed keys:\n\n| Data | Function | sessionStorage key | Notes |\n|------|----------|--------------------|-------|\n| User info | `saveLocalUserInfo` | `csap_rk_userInfo` | **AES-encrypted** (crypto-js) before storing |\n| Menu | `saveLocalMenu` | `csap_rk_menu` | stored as plain JSON string |\n| Groups | `saveLocalUserGroups` | `csap_rk_userGroups` | stored as plain JSON string |\n\nOther pages read it back through the matching getters in the same file:\n- `getLocalUserInfo()` — reads `csap_rk_userInfo` and AES-decrypts it\n- `getLocalMenu()` — reads `csap_rk_menu`\n- `getLocalUserGroups()` — reads `csap_rk_userGroups` and `JSON.parse`s it\n\n`removeLocalUserInfo()` clears all these keys (used on logout / re-login).\n\n### The in-memory copy — `src/stores/UserStore.ts`\nThe Pinia store `useUserStore` (defineStore `'user'`) also holds the user info in reactive state via `setUserInfos` / `setUserName` / `setUserNickname` (state fields `userInfos`, `userName`, `userNickname`, plus getters `getUserInfos`, etc.). This is convenient reactive access during a page session.\n\n### Why two places\nBecause Pinia state is lost on a page refresh, the `sessionStorage` copy is the durable source of truth for the session. Indeed, the router guard in **`src/router/index.ts`** checks both — if `sessionStorage` still has the user but the Pinia store is empty (e.g., after a hard refresh), it forces a redirect to re-login (lines 41–46). So `sessionStorage` (`csap_rk_userInfo` / `csap_rk_menu` / `csap_rk_userGroups`) is where the information lives so other pages can use it after login.",
+          "inputTokens": 76487,
+          "outputTokens": 1604,
+          "wallMs": 34207,
+          "toolCalls": 8,
+          "openedPaths": [
+            "src/pages/LoginPage.vue",
+            "src/utils/sessionstorage/index.ts",
+            "src/stores/UserStore.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I now have a complete picture.\n\n## Answer\n\nAfter a successful login, the data is persisted in **two complementary layers**: the browser's `sessionStorage` (via helper functions) and the **Pinia `user` store** (in-memory).\n\n### Where it happens\nThe orchestration is in **`src/pages/LoginPage.vue`**, inside the `processLoginSuccess(responseData)` function. Once the login API response arrives, it does:\n\n```js\nsaveLocalUserGroups(JSON.stringify(responseData.groups))  // group info\nsaveLocalMenu(JSON.stringify(responseData.menu))          // menu info\nsaveLocalUserInfo(JSON.stringify(userInfo))               // user info\n\nuserStore.setUserNickname(userId.value)\nuserStore.setUserName(userInfo.user_nm)\nuserStore.setUserInfos(userInfo)\n```\n\n### 1. `sessionStorage` (survives navigation between pages)\nThe `save*` functions come from **`src/utils/sessionstorage/index.ts`**, which write to keyed `sessionStorage` entries:\n\n- **Menu** → `saveLocalMenu` → key `csap_rk_menu` (plain JSON).\n- **Groups** → `saveLocalUserGroups` → key `csap_rk_userGroups` (plain JSON).\n- **User info** → `saveLocalUserInfo` → key `csap_rk_userInfo`, but **AES-encrypted** with `crypto-js` (using the module's `SECRET_KEY`).\n\nOther pages read these back through the matching getters in the same file: `getLocalMenu()`, `getLocalUserGroups()`, and `getLocalUserInfo()` (which AES-decrypts). `removeLocalUserInfo()` clears all of them on logout/expiry.\n\n### 2. Pinia store (`src/stores/UserStore.ts`)\n`useUserStore` (`defineStore('user', …)`) holds the same user data in reactive state — `userInfos`, `userName`, `userNickname`, `userGroups`, `cid`, etc. — set via actions like `setUserInfos`, `setUserName`, `setUserGroups`, and exposed to other components through getters (`getUserInfos`, `getUserGroups`, `getUserName`, …).\n\n### Why both\n`sessionStorage` gives durable, tab-scoped persistence (so a page refresh/route change doesn't lose the session), while the Pinia store gives reactive in-memory access during the SPA session. The user info is AES-encrypted in `sessionStorage`; menu and group arrays are stored as plain JSON strings.\n\nNote: a separate helper, `saveSavedUserInfo`, stores only the `svc_id`/`userId` in an **encrypted 30‑day cookie** (`csap_rk_savedInfo`) — that's just the \"remember ID\" convenience feature, not the logged-in session data.",
+          "inputTokens": 69272,
+          "outputTokens": 1592,
+          "wallMs": 34962,
+          "toolCalls": 9,
+          "openedPaths": [
+            "src/pages/LoginPage.vue",
+            "src/stores/UserStore.ts",
+            "src/utils/sessionstorage/index.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        },
+        {
+          "answer": "I now have a complete picture. Here's the answer.\n\n## Answer\n\nAfter a successful login, the user, menu, and group information are stored in the browser's **`sessionStorage`** (with the user info AES‑encrypted), via helper functions in **`src/utils/sessionstorage/index.ts`**. A copy of the user info is also kept in-memory in a **Pinia store** (`src/stores/UserStore.ts`).\n\n### Mechanism\n\n**1. Where it happens (the login flow)**\nIn `src/pages/LoginPage.vue`, the `processLoginSuccess()` function takes the API response and persists the three pieces of data:\n\n```js\nsaveLocalUserGroups(JSON.stringify(responseData.groups))  // groups\nsaveLocalMenu(JSON.stringify(responseData.menu))          // menu\nsaveLocalUserInfo(JSON.stringify(userInfo))               // user info\n\nuserStore.setUserInfos(userInfo)   // also cached in Pinia (in-memory)\n```\n\n**2. The storage implementation** (`src/utils/sessionstorage/index.ts`)\nEach maps to a specific `sessionStorage` key:\n\n- `saveLocalUserInfo` → key **`csap_rk_userInfo`**, AES-encrypted with `SECRET_KEY` (read back with `getLocalUserInfo`, which decrypts).\n- `saveLocalMenu` → key **`csap_rk_menu`** (plain, via `getLocalMenu`).\n- `saveLocalUserGroups` → key **`csap_rk_userGroups`** (plain JSON, via `getLocalUserGroups`).\n\n**3. How other pages use it**\nOther pages/components import `getLocalUserInfo` (and `getLocalUserGroups` / `getLocalMenu`) from `src/utils/sessionstorage` and read the values on mount — e.g. `MainLayout.vue`, `DashboardPage.vue`, `GroupsPage.vue`, the map components, hazard/job pages, etc. (all shown calling `getLocalUserInfo()`).\n\n**4. Reconciliation with the Pinia store**\n`src/router/index.ts` (`Router.beforeEach`) ties the two together:\n- It blocks navigation if there's no `getLocalUserInfo()` (redirects to `/login`).\n- On a browser refresh (when the in-memory Pinia store is empty but `sessionStorage` still has the user), it **restores** the store from sessionStorage: `userStore.setUserInfos(localUserInfo)`.\n\nSo `sessionStorage` is the durable source of truth (surviving reloads within the tab session), and the Pinia `UserStore` is the convenience in-memory cache that gets rehydrated from it.\n\nNote: `removeLocalUserInfo()` clears all these keys (`csap_rk_userInfo`, `csap_rk_userGroups`, `csap_rk_menu`, plus customer/region/workteam keys) on logout.",
+          "inputTokens": 48397,
+          "outputTokens": 1576,
+          "wallMs": 26503,
+          "toolCalls": 7,
+          "openedPaths": [
+            "src/pages/LoginPage.vue",
+            "src/router/index.ts",
+            "src/utils/sessionstorage/index.ts"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          }
+        }
+      ]
+    }
+  ]
+}
