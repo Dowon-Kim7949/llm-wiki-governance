@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-07-23
+last_updated: 2026-07-24
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -20,6 +20,8 @@ source_files:
   - src/detector.js
   - src/git.js
   - src/config-file.js
+  - .github/actions/validate/action.yml
+  - .github/workflows/ci.yml
   - CHANGELOG.md
 related:
   - GATE_REVIEW.md
@@ -387,6 +389,83 @@ enrichment 린팅(→ 1.8, 토글 가능한 `content.thin_body` 규칙으로).
   유료 실행은 API 예산 대기. Claude 특이성 검증용 교차 에이전트(GPT) 드라이버는 보류. `bench/real/DRIVER_RUNBOOK.md` 참조.
 - **후보(미구현):** `fix`-타임 도메인 링크 재배선; 유료 SDK 경로 실행과 교차 에이전트 벤치; 리포트
   chrome/severity 단어 지역화 및 KO/EN 외 언어.
+
+## 출시 계획 (post-1.25) — 견고화 & 도입 (Harden & Adopt, 제안 — 미승인)
+
+**공개** 저장소에 대한 외부 3자 심층 분석(2026-07-24)은 설계·거버넌스 코어를 "탁월하고 내부적으로
+일관됨"으로, zero-dependency 자세를 대표 강점으로 평가했으나, **더 넓은 도입의 병목은 기능이 아니라
+운영 표준화 + 엔지니어링 위생(hygiene)**에 있다고 지목했다. 이 라인은 그 리포트에 대응하며,
+measure-first 라인(Gate 27까지 완료) 및 global-reach 프로그램과 조화시키되, 무런타임 의존성 정체성의
+제약 안에서 진행한다.
+
+**아래는 전부 제안(PROPOSED)이며 유지보수자 승인을 대기한다. 여기 어떤 게이트도 아직 승인되지 않았고,
+각 기능 항목은 코드 전에 `GATE_REVIEW.md` 범위 결정을 기록한다 — 이전 모든 라인과 동일한 규율이다.**
+항목은 가장 저렴하고 신뢰도 높은 것부터 정렬했으며, 버전 번호는 고정하지 않는다(이 로드맵 규칙대로
+일정이 아니라 필요가 당긴다).
+
+리포트의 사각지대 유의: 공개 파일만 읽었으므로 "미지정" 플래그 다수는 **역량 격차가 아니라 문서-가시성
+격차**다 — 내부 설계 노트·measure-first 벤치 라인·토큰 효율 작업을 보지 못한다. 아래 계획은 진짜 격차만
+남기고 나머지는 뺀다. **README 성능 헤드라인은** 실제 다중 레포/다중 모델 측정이 뒷받침하기 전까지
+**여전히 금지**다(하네스 수치는 `chars/4` 프록시).
+
+### Track A — 엔지니어링 위생 & 공급망 견고화 (부가적; 무런타임 의존성)
+
+리포트의 비기능 항목. 어느 것도 런타임 의존성을 추가하지 않으며, 두 항목은 이 로드맵이 조용히 처리하지
+말고 **명시적으로 내려야 할 정체성 결정**을 담는다.
+
+- **composite action의 기본 `version` 고정.** `.github/actions/validate/action.yml`은 `version` 입력
+  기본값이 `"latest"`다(11행). 그래서 소비자가 action을 태그로 고정해도 실행되는 CLI 버전은 떠 있다.
+  공급망 재현성을 위해 기본값을 고정 `X.Y`/`X.Y.Z`로 바꾸거나 필수 입력으로 만든다. 가장 저렴한 항목,
+  순수 CI, 게이트 불필요. (리포트 #8.)
+- **테스트 커버리지 수집 + 선택적 CI 임계값 — Node 내장으로.** `node --test --experimental-test-coverage`
+  (Node 20+, 이미 CI 매트릭스에 있음 — `.github/workflows/ci.yml`)로 커버리지를 수집·공개하고, 선택적으로
+  비차단 하한을 둔다. **정체성 결정: 이는 zero-dep를 보존한다. 리포트의 문자 그대로의 제안(nyc/c8)은
+  devDependency를 추가해 "의존성 없음 AND devDependency 없음" 정체성을 깬다 — 권장 답은 nyc/c8가 아니라
+  내장 기능이다.** (리포트 #6.)
+- **자동 보안 스캔.** GitHub 네이티브 CodeQL 워크플로(패키지 의존성 없음)를 추가하고 시크릿 스캔을
+  문서화한다; 선택적으로 `npm sbom`로 SBOM. 전부 CI/GitHub 네이티브 — 런타임·패키지 의존성 0. (리포트 #9.)
+- **운영-거버넌스 메타데이터.** `CODEOWNERS`, 유지보수자/승인자 매트릭스, 릴리스 승인자 노트. 순수 저장소
+  설정 + 문서. (리포트 #11.)
+- **Lint/format/typecheck 입장 — 유일한 강한 zero-dep 긴장.** 내장 JS 린터가 없으므로 이 제안은 커버리지처럼
+  충족할 수 없다. **정체성 결정(반드시 명시적으로, 조용한 devDep 추가 금지):** 둘 중 하나 — (a) zero-dep를
+  유지하고 CI에 `node --check` 문법 게이트 + `.editorconfig` + "스타일은 린터 의존성이 아니라 리뷰로
+  강제한다"는 의도적 입장을 문서화; 또는 (b) **범위 한정 devDependency**(ESLint/Prettier)를 수용하고
+  "devDependency 없음" 주장을 폐기. 권장: (a) — 리포트 스스로 칭찬한 정체성을 보존하고, 그 입장을
+  `CONTRIBUTING`에 공개적으로 밝힌다. (리포트 #7.)
+
+### Track B — 거버넌스 완성 (리포트의 기능-HIGH 항목)
+
+- **Gate 20 결정 — 사람 검토 → `verified` 워크플로.** 리포트는 검토/승인 워크플로를 최상위 기능 격차로
+  독립적으로 지목했다; 내부적으로는 첫 외부 end-to-end 실행이 `needs_review` 백로그를 남겼는데 이를
+  검토·승인할 편의 수단이 없던 이래 **초안-미승인**(`GATE_REVIEW.md` Gate 20, `proposed_for_next`) 상태로
+  오래 있었다. 읽기 전용 `review` 명령이 `needs_review` 콘텐츠 문서를 위험 순위(얇음 / 근거 없음 /
+  깨진 링크 / 미보강 우선)로 나열하고 문서별 품질 + 근거 요약으로 빠른 점검을 돕는다; `verified` 승격
+  (`reviewed_by`/`reviewed_at` 기록)은 오직 명시적·확인된 `--approve <경로>…`에서만 일어난다 — 자동은
+  절대 없다. 이는 루프에서 가장 약하고 가장 수동적인 부분이자 거버넌스 코어 그 자체다. **권장: Gate 20을
+  수용하고 이 라인의 헤드라인 기능으로 구축한다.** 부가적·opt-in·기본 읽기전용·zero-dep; `verified`는 모든
+  명령에서 사람 전용을 유지한다.
+- **MCP 접근 경계 문서.** MCP 서버가 가정하는 신뢰 모델(로컬 stdio 서브프로세스 / CI 러너, stdout=프로토콜
+  채널, 읽기 전용 툴, 쓰기 없음)을 문서화하고, 원격 브로커로 노출하지 말 것을 경고하며, 민감 저장소용
+  지침을 준다. 순수 문서; 코드 변경 없음. (리포트 #2.)
+
+### Track C — 도입 자산 (리포트 MED/LOW + global-reach P2)
+
+- **End-to-end 예제 + 픽스처.** `init → enrich → validate → review`의 작은 실동 예제(또는 문서화된
+  `examples/` 워크스루), 확장된 테스트 픽스처, 실제 `quickstart` 출력 스냅샷. (리포트 #3.)
+- **규모별 운영 가이드.** 소규모 레포 / 중규모 레포 / monorepo용 짧은 가이드: 어떤 플래그, CI 비용, 문서 수
+  전략. (리포트 #4.)
+- **README 아키텍처 다이어그램 + 감사 출력 예시.** command → scan → report 파이프라인 다이어그램과 실제
+  (redact된) 감사 출력 몇 개. (리포트 #5.)
+- **기존 벤치를 주기/릴리스 CI 가드에 배선.** `bench/` 하네스는 공개 리포트가 볼 수 있는 것보다 훨씬
+  성숙하다; `node bench/run.js --against <baseline>`을 재실행해 회귀를 표시하는 opt-in 잡을 추가한다.
+  **`chars/4` 프록시는 프록시로 남는다 — 실제 다중 레포 / 다중 모델 측정이 뒷받침하기 전까지 README에
+  토큰/속도 헤드라인은 배포하지 않는다.** (리포트 #10.)
+
+### 이 라인 너머 (게이트 대상, 실제 도입 신호가 당길 때)
+
+global-reach 프로그램의 P3 도입 장벽 — 기존 대규모 문서셋의 브라운필드 적합성, 비-JS 팀을 위한 Node
+런타임 허들 — 은 각자의 게이트 뒤에 보류로 남으며, 측정과 위 도입 자산이 실제로 도입이 막히는 지점을
+드러낼 때만 당긴다.
 
 ## 비목표 (Non-Goals — 안전 원칙 불변)
 

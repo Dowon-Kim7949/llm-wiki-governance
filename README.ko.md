@@ -86,6 +86,50 @@ retrieval에는 opt-in 토큰 제어가 있습니다(기본 출력 불변): `get
 
 전체 명령·옵션·exit code·프로그래매틱 API 레퍼런스: `npx llm-wiki help <command>`(오프라인) 또는 [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) 참조.
 
+## 작동 방식
+
+모든 명령은 동일한 읽기 우선 파이프라인을 거칩니다 — 프로젝트 감지 → scan 패밀리 실행 → findings 수집 → 리포트와 exit code 렌더:
+
+```mermaid
+flowchart LR
+  A["llm-wiki (command)"] --> B["detectProject()"]
+  B --> C["scan* family"]
+  C --> D["findings[]"]
+  D --> E["report (text / json / markdown / html)"]
+  D --> F["exit code (0 pass / 1 error / 2 blocked / 3 usage)"]
+```
+
+`scan*` 패밀리는 구조·frontmatter 계약·`source_files`/`evidence`·링크 & 위키 그래프·evidence 드리프트·민감정보·선택 adapter를 다룹니다. 쓰기는 명시적 `--write`/`--apply`/`--approve` 경로에서만 일어나고, 위 파이프라인은 읽기 전용입니다.
+
+깨끗한 `validate`는 이렇게 보입니다(text 포맷, 마스킹됨):
+
+```text
+$ npx llm-wiki-governance validate --strict
+# LLM-WIKI Validate
+
+## Summary
+- result: pass
+- project_type: library
+- active_profiles: core, library
+- findings: 0
+
+## Wiki Graph
+- documents: 24
+- resolved_wiki_links: 18
+- orphan_documents: 0
+
+## Finding Summary
+- none
+```
+
+주의가 필요할 때 findings는 `severity · rule · path` 형태라 grep 가능하고 `llm-wiki explain <rule>`로 설명됩니다:
+
+```text
+## Findings
+- [warning] evidence.stale docs/llm-wiki/DOMAIN_FEATURES.md: referenced source changed in git after review
+- [error]   frontmatter.required docs/llm-wiki/api.md: missing required field 'project'
+```
+
 ## 거버넌스 실전
 
 - **의도적으로 검증.** 에이전트가 쓴 문서는 `needs_review`로 두고, 사람이 읽은 뒤 `verified`로 승격합니다. CLI가 하는 어떤 것도 이를 우회할 수 없습니다.
@@ -107,7 +151,9 @@ retrieval에는 opt-in 토큰 제어가 있습니다(기본 출력 불변): `get
 { "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-**읽기 전용** 툴 — `validate`, `audit`, `next`, `status`, `doctor`, `stats`, `graph`, `explain`, `handoff`, `prompt` — 만 노출해, 에이전트가 위키를 조회하되 쓰지는 못합니다. 상세: [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · [GATE_REVIEW.md](./GATE_REVIEW.md)(Gate 11).
+**읽기 전용** 툴 — 거버넌스(`validate`, `audit`, `next`, `status`, `doctor`, `stats`, `graph`, `explain`, `handoff`, `prompt`), retrieval(`list_docs`, `search_docs`, `get_doc`, `get_related`), guided(`onboard`, `prepare`), 리뷰 백로그(`review`, 목록만) — 만 노출해, 에이전트가 위키를 조회하되 쓰지는 못합니다: 쓰기 명령은 노출되지 않고, `review`의 `verified` 승격은 사람의 CLI 액션으로만 일어납니다.
+
+**경계:** 서버는 **로컬 stdio 서브프로세스**를 전제로 하며 `stdout`을 프로토콜 채널로 씁니다. 인증이 없으므로 자체 인증 프록시 없이 네트워크로 노출하지 마세요. 신뢰 모델: [SECURITY.ko.md](./SECURITY.ko.md#mcp-서버-신뢰-모델). 상세: [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · [GATE_REVIEW.md](./GATE_REVIEW.md)(Gate 11).
 
 ## 코드에서 사용
 
@@ -133,5 +179,6 @@ const code = await run(["validate", "--strict"]); // 0 pass / 1 error / 2 blocke
 - [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) — 전체 명령·옵션·exit code·설정·프로그래매틱 API·MCP 레퍼런스.
 - [GATE_REVIEW.md](./GATE_REVIEW.md) — 승인된 안전 범위(fix/migrate/drift/MCP/스킬)와 릴리스 게이트.
 - [ROADMAP.md](./ROADMAP.md) — 방향성과 구현 이력.
+- [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md) — 운영 가이드: 소규모 레포 / 중규모 레포 / 모노레포에서 LLM-WIKI 운영(플래그·CI 비용·문서 수 전략).
 - [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) — 실사용 예시 · [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) — 유지보수자 릴리스 절차.
 - 커뮤니티: [CONTRIBUTING.ko.md](./CONTRIBUTING.ko.md) · [CODE_OF_CONDUCT.ko.md](./CODE_OF_CONDUCT.ko.md) · [SECURITY.ko.md](./SECURITY.ko.md).

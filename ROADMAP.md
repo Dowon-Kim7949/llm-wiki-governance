@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-07-23
+last_updated: 2026-07-24
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -20,6 +20,8 @@ source_files:
   - src/detector.js
   - src/git.js
   - src/config-file.js
+  - .github/actions/validate/action.yml
+  - .github/workflows/ci.yml
   - CHANGELOG.md
 related:
   - GATE_REVIEW.md
@@ -523,6 +525,98 @@ zero-dependency, backend/fullstack byte-identical.
   (GPT-family) driver to test Claude-specificity is deferred. See `bench/real/DRIVER_RUNBOOK.md`.
 - **Candidates (not yet built):** `fix`-time re-wiring of domain links; the paid SDK-path run and
   a cross-agent benchmark; report-chrome/severity-word localization and languages beyond KO/EN.
+
+## Release Plan (post-1.25) — Harden & Adopt (proposed — not yet accepted)
+
+An external third-party deep-analysis of the **public** repository (2026-07-24) judged the
+design and governance core "excellent and internally consistent" and named the
+zero-dependency stance a signature strength, but located the gap for broader adoption in
+**operational standardization + engineering hygiene** — not features. This line acts on that
+report, reconciled with the measure-first line (complete through Gate 27) and the
+global-reach program, and constrained by the zero-runtime-dependency identity.
+
+**Everything below is PROPOSED and awaits maintainer acceptance. No gate here is accepted
+yet; each functional feature records a `GATE_REVIEW.md` scope decision before code — the same
+discipline as every prior line.** Items are ordered cheapest-and-highest-trust first, and no
+version numbers are pinned (pulled by need, not calendar, per this roadmap's own rules).
+
+Note on the report's blind spots: it read public files only, so several of its "unspecified"
+flags are **doc-visibility gaps, not capability gaps** — it cannot see the internal design
+notes, the measure-first bench line, or the token-efficiency work. The plan below keeps the
+genuine gaps and drops the rest. **The README performance headline stays forbidden** until a
+real multi-repo / multi-model measurement supports it (the harness figures are a `chars/4`
+proxy).
+
+### Track A — Engineering hygiene & supply-chain hardening (additive; zero-runtime-dep)
+
+The report's non-functional items. None add a runtime dependency; two carry an explicit
+identity decision this roadmap must make rather than resolve silently.
+
+- **Pin the composite action's default `version`.** `.github/actions/validate/action.yml`
+  defaults its `version` input to `"latest"` (line 11), so a consumer who pins the action by
+  tag still floats the CLI it runs. Change the default to a pinned `X.Y`/`X.Y.Z` or make it a
+  required input, for supply-chain reproducibility. Cheapest item, pure CI, no gate needed.
+  (Report #8.)
+- **Test-coverage collection + optional CI threshold — via the Node built-in.** Collect
+  coverage with `node --test --experimental-test-coverage` (Node 20+, already in the CI
+  matrix — see `.github/workflows/ci.yml`) and publish the number; optionally add a
+  non-blocking floor. **Identity decision: this preserves zero-dep. The report's literal
+  suggestion (nyc/c8) would add a devDependency and break the advertised "no dependencies AND
+  no devDependencies" identity — the recommended answer is the built-in, NOT nyc/c8.**
+  (Report #6.)
+- **Automated security scanning.** Add a GitHub-native CodeQL workflow (no package
+  dependency) and document secret-scanning; optionally an SBOM via `npm sbom`. All
+  CI/GitHub-native — zero runtime and zero package dependency. (Report #9.)
+- **Ops-governance metadata.** `CODEOWNERS`, a maintainer/approver matrix, and a
+  release-approver note. Pure repo config + docs. (Report #11.)
+- **Lint/format/typecheck stance — the one hard zero-dep tension.** There is no built-in JS
+  linter, so the report's suggestion cannot be met the way coverage can. **Identity decision
+  (must be explicit, not a silent devDep add):** either (a) keep zero-dep and adopt a
+  `node --check` syntax gate in CI + an `.editorconfig` + a documented, deliberate "style is
+  enforced by review, not by a linter dependency" position; or (b) accept a **scoped
+  devDependency** (ESLint/Prettier) and retire the "no devDependencies" claim. Recommended:
+  (a) — preserve the identity the report itself praised, and state the stance openly in
+  `CONTRIBUTING`. (Report #7.)
+
+### Track B — Governance completion (the report's functional-HIGH items)
+
+- **Decide Gate 20 — the human review → `verified` workflow.** The report independently
+  flagged the review/approval workflow as the top functional gap; internally it has been
+  **drafted-not-accepted** (`GATE_REVIEW.md` Gate 20, `proposed_for_next`) since the first
+  external end-to-end run left a `needs_review` backlog with no ergonomic way to review and
+  bless it. A read-only `review` command lists `needs_review` content docs risk-ranked (thin /
+  no-evidence / broken-link / never-enriched first) with a per-doc quality + evidence summary
+  for fast spot-checking; promotion to `verified` (stamping `reviewed_by`/`reviewed_at`)
+  happens ONLY on an explicit, confirmed `--approve <path>…` — never automatically. This is the
+  weakest, most manual part of the loop and the governance core itself. **Recommended: accept
+  Gate 20 and build it as the headline functional feature of this line.** Additive/opt-in,
+  read-only by default, zero-dep; `verified` stays human-only in every command.
+- **MCP access-boundary docs.** Document the trust model the MCP server assumes (a local stdio
+  subprocess / CI runner, stdout-as-protocol, read-only tools, no writes), warn against
+  exposing it through a remote broker, and give guidance for sensitive repos. Pure docs; no
+  code change. (Report #2.)
+
+### Track C — Adoption assets (report MED/LOW + global-reach P2)
+
+- **End-to-end example + fixtures.** A small worked example (or a documented `examples/`
+  walk-through) of `init → enrich → validate → review`, expanded test fixtures, and a snapshot
+  of real `quickstart` output. (Report #3.)
+- **Per-scale operational guide.** A short guide for small repo / medium repo / monorepo: which
+  flags, the CI cost, and a doc-count strategy. (Report #4.)
+- **README architecture diagram + sample audit output.** A diagram of the
+  command → scan → report pipeline plus a couple of real (redacted) audit outputs. (Report #5.)
+- **Wire the existing bench to a periodic / release CI guard.** The `bench/` harness is far
+  more mature than the public report can see; add an opt-in job that re-runs
+  `node bench/run.js --against <baseline>` and flags a regression. **The `chars/4` proxy stays
+  a proxy — no token/speed headline ships in the README until a real, multi-repo / multi-model
+  measurement supports it.** (Report #10.)
+
+### Beyond this line (gated, pulled by real adoption signal)
+
+The global-reach program's P3 adoption barriers — brownfield fit for existing large doc sets,
+and the Node-runtime hurdle for non-JS teams — remain deferred behind their own gates and are
+pulled only once measurement and the adoption assets above show where adoption actually
+stalls.
 
 ## Non-Goals (unchanged safety ethos)
 

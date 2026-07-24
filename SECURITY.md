@@ -57,4 +57,33 @@ Reports of particular interest include: unintended writes outside the intended
 scope, path traversal, code execution via crafted project files, or leakage of
 sensitive information into reports/logs.
 
+## MCP server trust model
+
+The `llm-wiki mcp` server (Gate 11) is designed for a **local, single-tenant**
+deployment. Understand its boundary before exposing it:
+
+- **Transport assumption.** It speaks newline-delimited JSON-RPC 2.0 over
+  **stdio** and is meant to be spawned as a **local subprocess** by a trusted
+  client — your editor/agent (Claude Code, Cursor, …) or a CI runner. `stdout`
+  **is** the protocol channel; only protocol messages go there (logs go to
+  `stderr`). Do not pipe anything else into its stdout.
+- **No authentication or authorization.** The server has no auth layer, no
+  sessions, and no per-caller access control. Anyone who can reach the process
+  can call every exposed tool.
+- **Read-only tools only.** No write/mutating command (`init`/`fix`/`migrate`/
+  `drift`/`quickstart --write`, and the `review` **promotion** path) is exposed
+  over MCP. Tools carry `readOnlyHint`. Promotion to `verified` stays a human CLI
+  action; the `review` MCP tool exposes only the read-only backlog **list**.
+- **Do not expose it over a network.** Because there is no auth, do **not** put
+  the stdio server behind a public/remote broker or network transport as-is. If
+  you must reach it remotely, front it with **your own** authenticated,
+  access-controlled proxy and treat the whole wiki as readable by anyone who can
+  reach that proxy.
+- **Sensitive repositories.** The same content protections apply as in the CLI:
+  restricted / `contains_sensitive_info` / sensitive-scan-hit documents are
+  excluded from `list_docs`/`search_docs` by default (opt-in `includeSensitive`),
+  and returned bodies/snippets redact sensitive-looking lines. Still, assume any
+  caller that can reach the server can read every non-excluded document — keep
+  real secrets out of the wiki, not merely `visibility: restricted`.
+
 Thank you for helping keep the project and its users safe.

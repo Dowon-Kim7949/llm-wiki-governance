@@ -86,6 +86,50 @@ Retrieval has opt-in token controls (default output unchanged): `get-doc --stric
 
 Full command, option, exit-code, and programmatic-API reference: run `npx llm-wiki help <command>` (offline), or see [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md).
 
+## How it works
+
+Every command runs the same read-first pipeline — detect the project, run the scan family, collect findings, then render a report and an exit code:
+
+```mermaid
+flowchart LR
+  A["llm-wiki (command)"] --> B["detectProject()"]
+  B --> C["scan* family"]
+  C --> D["findings[]"]
+  D --> E["report (text / json / markdown / html)"]
+  D --> F["exit code (0 pass / 1 error / 2 blocked / 3 usage)"]
+```
+
+The `scan*` family covers structure, frontmatter contract, `source_files` / `evidence`, links & the wiki graph, evidence drift, sensitive-info, and selected adapters. Writes happen only on the explicit `--write` / `--apply` / `--approve` paths — the pipeline above is read-only.
+
+A clean `validate` looks like this (text format; redacted):
+
+```text
+$ npx llm-wiki-governance validate --strict
+# LLM-WIKI Validate
+
+## Summary
+- result: pass
+- project_type: library
+- active_profiles: core, library
+- findings: 0
+
+## Wiki Graph
+- documents: 24
+- resolved_wiki_links: 18
+- orphan_documents: 0
+
+## Finding Summary
+- none
+```
+
+When something needs attention, findings are `severity · rule · path` — machine-greppable and explainable with `llm-wiki explain <rule>`:
+
+```text
+## Findings
+- [warning] evidence.stale docs/llm-wiki/DOMAIN_FEATURES.md: referenced source changed in git after review
+- [error]   frontmatter.required docs/llm-wiki/api.md: missing required field 'project'
+```
+
 ## Governance in practice
 
 - **Verify deliberately.** Agent-written docs stay `needs_review`; a human promotes to `verified` after reading them. Nothing the CLI does can bypass that.
@@ -107,7 +151,9 @@ In an N=3 benchmark on an external Vue/Quasar app (Claude Opus 4.8; 6 code-compr
 { "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-It exposes **read-only** tools — `validate`, `audit`, `next`, `status`, `doctor`, `stats`, `graph`, `explain`, `handoff`, `prompt` — so an agent can inspect the wiki but never write it. Details: [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · [GATE_REVIEW.md](./GATE_REVIEW.md) (Gate 11).
+It exposes **read-only** tools — governance (`validate`, `audit`, `next`, `status`, `doctor`, `stats`, `graph`, `explain`, `handoff`, `prompt`), retrieval (`list_docs`, `search_docs`, `get_doc`, `get_related`), guided (`onboard`, `prepare`), and the review backlog (`review`, list only) — so an agent can inspect the wiki but never write it: no write command is exposed, and `review` promotion to `verified` stays a human CLI action.
+
+**Boundary:** the server assumes a **local stdio subprocess** and uses `stdout` as the protocol channel; it has no authentication. Do not expose it over a network without your own auth proxy. Trust model: [SECURITY.md](./SECURITY.md#mcp-server-trust-model). Details: [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · [GATE_REVIEW.md](./GATE_REVIEW.md) (Gate 11).
 
 ## Use it from code
 
@@ -133,5 +179,6 @@ Preview-first everywhere (writes only with `--write` / `--apply`); `verified` is
 - [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) — full command / option / exit-code / configuration / programmatic-API / MCP reference.
 - [GATE_REVIEW.md](./GATE_REVIEW.md) — accepted safety scopes (fix / migrate / drift / MCP / skills) and release gates.
 - [ROADMAP.md](./ROADMAP.md) — direction and shipped history.
+- [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md) — operator guide: running LLM-WIKI on a small repo / medium repo / monorepo (flags, CI cost, doc-count strategy).
 - [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) — worked examples · [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) — maintainer release steps.
 - Community: [CONTRIBUTING.md](./CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) · [SECURITY.md](./SECURITY.md).
