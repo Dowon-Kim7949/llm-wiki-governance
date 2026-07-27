@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - 릴리스 1.26.0 준비 (Harden & Adopt: Gate 20 `review` + Track A 위생 + Track C 도입 문서)
+- changed:
+  - package.json(1.25.0→1.26.0), tests/verification.test.js(버전 단언 1.26.0)
+  - CHANGELOG.md·CHANGELOG.ko.md(1.26.0 섹션 신설), README.md·README.ko.md(Core commands 표에 `review` 행 추가 — 이번 릴리스 헤드라인인데 누락돼 있었음)
+  - ROADMAP.md·ROADMAP.ko.md("Harden & Adopt" 섹션을 제안→**1.26.0 출시됨**으로 전환, 3개 결정 확정 결과·미완 2건 명시), GATE_REVIEW.md(Review Workflow Scope Decision 제목에 shipped in 1.26.0 표기)
+  - .github/actions/validate/action.yml(CLI 버전 핀 `1.25`→`1.26`)
+  - outputs/team-briefing/{llm-wiki-briefing.html, SPEAKER_NOTES.md, README.md}(대상 버전 v1.26.0 정렬, 타임라인에 1.26 항목 추가; 노트·README는 v1.23.0에 머물러 있던 스테일도 함께 해소)
+- summary:
+  - 1.25.0 이후 main에 쌓인 미배포 작업을 1.26.0으로 묶었다. 새 CLI 명령 `review`가 추가되므로 **MINOR**다.
+  - 내용: Gate 20 `review`(needs_review 백로그 위험도 정렬 나열 = 읽기 전용 기본, `--approve`/`--approve-all --yes`로만 `status: verified`+`reviewed_by`+`reviewed_at` 스탬프, 자동 승격 없음, blocking/구조적 finding 문서 거부, reviewed_by 미해소 시 스탬프 거부, MCP는 LIST만), Track A 위생(Node 내장 커버리지·`node --check` lint·CodeQL·action 버전 핀·CODEOWNERS/MAINTAINERS — 런타임 의존성과 devDependency 모두 0 유지), Track C 도입 문서(SECURITY MCP 신뢰 모델·docs/OPERATIONS.md·examples/·README How it works).
+- verification:
+  - 326 tests · validate --strict 0 · validate-frontmatter --strict 0 (아래 릴리스 커밋 시점 기준).
+- evidence:
+  - package.json · CHANGELOG.md · ROADMAP.md · .github/actions/validate/action.yml · src/commands.js#symbol:reviewCommand
+- caveats:
+  - `docs/llm-wiki/releases/v1.26.0.md` 큐레이션 노트는 만들지 않았다 — 1.19~1.25도 만들지 않아 최근 관행과 일치시켰다(릴리스 본문은 `release-notes`가 생성).
+  - **README 성능 헤드라인은 이 릴리스에서도 금지 유지**(유지보수자가 2026-07-27 재확인). 빈-위키 통제 arm 미실행.
+  - 버전 범프로 package.json을 참조하는 verified 문서에 `evidence.stale`이 발생하면, 사람 확인을 전제로 `reviewed_at`만 재기준하는 기존 방식으로 해소한다.
+
 ## 2026-07-27 - BENCHMARK.md에 2026-07-24 SDK 경로 유료 실측 + 블라인드 채점 반영 (문서-실행 지연 해소)
 - changed:
   - docs/llm-wiki/BENCHMARK.md — §실측 2 신설, §규율에 2026-07-24 이후 규율 추가, §토큰-효율 벤치 확장 제목·도입부 축 정정, §한계 범위 한정, frontmatter(`last_updated` 2026-07-22→2026-07-27, source_files +3, evidence +2)·§Evidence 등재, Review Notes 추가

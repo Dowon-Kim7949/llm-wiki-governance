@@ -8,7 +8,7 @@ inputs:
   version:
     description: "npm version or dist-tag of llm-wiki-governance to run (pinned by default for supply-chain reproducibility; override with a tag/dist-tag such as 'latest' when you want floating)."
     required: false
-    default: "1.25"
+    default: "1.26"
   cwd:
     description: "Project root to validate."
     required: false

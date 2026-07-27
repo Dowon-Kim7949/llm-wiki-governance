@@ -785,10 +785,11 @@ heuristic stays strictly conservative.
 - `src/detector.js#symbol:detectEcosystems` — the Go/Python role heuristic extended with a
   guarded stdlib-server source signal.
 
-## Review Workflow Scope Decision (accepted)
+## Review Workflow Scope Decision (accepted — shipped in 1.26.0)
 
 **DRAFTED 2026-07-20; ACCEPTED by Dowon-Kim on 2026-07-24 (in-session), with the
-recommended open-question answers resolved below.** The external third-party deep-analysis
+recommended open-question answers resolved below; SHIPPED in 1.26.0 on 2026-07-27
+(CLI + frozen programmatic `commands` map full command, MCP LIST mode only).** The external third-party deep-analysis
 of the public repo (2026-07-24) independently flagged the review/approval workflow as the
 top functional gap, reinforcing the internal motivation. Motivated by the first successful
 external end-to-end run: a backend developer ran the handoff prompt, enriched a full

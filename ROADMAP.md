@@ -526,7 +526,7 @@ zero-dependency, backend/fullstack byte-identical.
 - **Candidates (not yet built):** `fix`-time re-wiring of domain links; the paid SDK-path run and
   a cross-agent benchmark; report-chrome/severity-word localization and languages beyond KO/EN.
 
-## Release Plan (post-1.25) — Harden & Adopt (proposed — not yet accepted)
+## Release Plan (post-1.25) — Harden & Adopt — **shipped as 1.26.0 (2026-07-27)**
 
 An external third-party deep-analysis of the **public** repository (2026-07-24) judged the
 design and governance core "excellent and internally consistent" and named the
@@ -535,10 +535,16 @@ zero-dependency stance a signature strength, but located the gap for broader ado
 report, reconciled with the measure-first line (complete through Gate 27) and the
 global-reach program, and constrained by the zero-runtime-dependency identity.
 
-**Everything below is PROPOSED and awaits maintainer acceptance. No gate here is accepted
-yet; each functional feature records a `GATE_REVIEW.md` scope decision before code — the same
-discipline as every prior line.** Items are ordered cheapest-and-highest-trust first, and no
-version numbers are pinned (pulled by need, not calendar, per this roadmap's own rules).
+**Status: this entire line shipped as 1.26.0 on 2026-07-27.** The three decisions it surfaced
+were resolved as recommended — coverage via the Node built-in (not nyc/c8), lint via a
+`node --check` gate (not an ESLint/Prettier devDependency), and **Gate 20 accepted** and built
+as the headline `review` command. Zero runtime dependencies **and** zero devDependencies are
+intact. The plan below is kept verbatim as the record of what was proposed and why; per-item
+outcomes are in `CHANGELOG.md` (1.26.0).
+
+Two items from this line are deliberately **not** closed: the README performance headline stays
+forbidden (see Track C), and the empty-wiki control arm that would separate "wiki content" from
+"retrieval tooling" in the benchmark has not been run.
 
 Note on the report's blind spots: it read public files only, so several of its "unspecified"
 flags are **doc-visibility gaps, not capability gaps** — it cannot see the internal design

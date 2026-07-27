@@ -5,6 +5,52 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.26.0 — 2026-07-27
+
+**견고화 & 도입: 사람 검토를 실제로 할 만큼 싸게 만든다.** 헤드라인은 `review`다 — `needs_review`
+백로그를 유지보수자가 몇 분 만에 훑을 수 있는 형태로 바꾸는 읽기 전용 명령이며, 거버넌스 루프에서
+가장 약하고 가장 수동적이던 지점을 겨냥한다. 함께: zero-dependency 정체성을 보존하는(런타임 의존성
+**과** devDependency 모두 없음) CI·공급망 위생과, 외부 독자가 요청한 도입 문서. 전부 부가적이고
+`1.0.0` 명령·`--format json`·frontmatter 계약은 불변이다.
+
+### Added
+
+- **`review` — 사람 검토 → `verified` 워크플로(Gate 20).** 기본은 읽기 전용: `needs_review`
+  백로그를 **위험도 순**(미보강·얇은 본문·근거 없음·깨진 링크 우선)으로 나열하고 문서별 품질·근거
+  요약을 붙여, 파일 순서대로 전부 읽는 대신 위험한 문서부터 spot-check하게 한다. 승격은 명시적
+  `review --approve <path>`(또는 `review --approve-all --yes`)에서**만** 일어나며,
+  `status: verified` + `reviewed_by` + `reviewed_at` 외에는 아무것도 스탬프하지 않는다 —
+  본문·`source_files`·`evidence`·`last_updated`는 건드리지 않는다. `drift --downgrade`의 정확한 역방향이다.
+  - **CLI는 여전히 스스로 승인할 수 없다.** blocking/구조적 finding(`blocked`/`error`)이 남은 문서는
+    수정 전까지 거부하고, `reviewed_by`는 `--reviewer` > config `reviewer` > git `user.name` 순으로
+    해소되어야 한다 — 검토자 신원이 없으면 공란이나 날조 대신 **스탬프 자체를 거부**한다.
+  - 세 표면에 **비대칭적으로** 노출한다: CLI와 동결 프로그래매틱 `commands` 맵은 전체 명령을 갖고,
+    **MCP는 LIST 모드만** 노출해 에이전트는 백로그를 읽되 승격은 사람의 CLI 작업으로 남는다.
+- **`reviewer` config 키** (`llm-wiki.config.json`; `--reviewer`가 우선).
+- **엔지니어링 위생, zero-dep 보존.** 커버리지는 Node 내장
+  (`node --test --experimental-test-coverage`, nyc/c8 아님), lint는 `node --check` 문법 게이트
+  (`npm run lint`, 린터 의존성 없음) + `.editorconfig`, GitHub 네이티브 CodeQL 워크플로,
+  `npm sbom`·bench 스크립트, `CODEOWNERS`·`MAINTAINERS.md`.
+- **도입 문서.** `SECURITY.md`의 MCP 신뢰 모델 섹션(로컬 stdio 서브프로세스·stdout이 프로토콜 채널·
+  인증 없음·네트워크 노출 금지), 규모별 운영 가이드 `docs/OPERATIONS.md`(소규모/중규모/monorepo),
+  `init → enrich → validate → review` end-to-end 워크스루 `examples/`, README의 `## How it works`
+  파이프라인 다이어그램 + 실제 audit 출력 샘플. 전부 EN/KO.
+
+### Changed
+
+- **컴포지트 GitHub Action이 실행할 CLI 버전을 핀한다.** `.github/actions/validate/action.yml`의
+  `version` 입력 기본값이 `latest`라 액션을 태그로 핀해도 그 아래 CLI는 떠 있었다. 이제 기본값이
+  마이너 핀(`1.26`)이며, 떠 있는 동작을 원하면 `version: latest`를 명시적으로 넘기면 된다.
+
+### Documentation
+
+- `BENCHMARK.md`에 2026-07-24 real SDK 경로 실측(input **0.516×**, cost **0.581×**, pooled
+  **−40.7%**, arm-블라인드 루브릭 채점 0.910 vs 0.971, 환각 0)을 기록하되 **입증하지 못한 것도 함께**
+  적었다: retrieval이 지는 태스크(3.17×), 같은 레포의 이전 −10% 실행과의 미해명 격차, "위키 내용"과
+  "retrieval 툴"을 분리하지 못하게 하는 빈-위키 통제 arm 부재, 그리고 채점자가 사람이 아닌 에이전트라는 점.
+- **README 성능 헤드라인은 계속 금지다.** 다중 레포·다중 모델 실측이 나오기 전까지 이 수치들이
+  뒷받침하는 최대치는 **스코프를 명시한 링크된 각주**다.
+
 ## 1.25.0 — 2026-07-23
 
 **토큰 효율: 가장 싼 안전한 경로 선택.** 정확도·문서 최신성·사람 검토를 희생하지 않으면서 올바른·검증된

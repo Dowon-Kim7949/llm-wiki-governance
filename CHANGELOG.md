@@ -6,6 +6,59 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.26.0 — 2026-07-27
+
+**Harden & Adopt: make human review cheap enough to actually do.** The headline is `review`,
+a read-only command that turns the `needs_review` backlog into something a maintainer can work
+through in minutes — the weakest, most manual part of the governance loop. Alongside it: CI and
+supply-chain hygiene that preserves the zero-dependency identity (no runtime dependencies **and**
+no devDependencies), and the adoption docs an outside reader asked for. Additive throughout; the
+`1.0.0` command / `--format json` / frontmatter contracts are unchanged.
+
+### Added
+
+- **`review` — the human review → `verified` workflow (Gate 20).** Read-only by default: lists the
+  `needs_review` backlog **risk-ranked** (never-enriched, thin body, no evidence, broken links
+  first) with a per-doc quality and evidence summary, so a reviewer can spot-check the risky docs
+  instead of reading the pile in file order. Promotion happens **only** on an explicit
+  `review --approve <path>` (or `review --approve-all --yes`), and it stamps nothing but
+  `status: verified` + `reviewed_by` + `reviewed_at` — body, `source_files`, `evidence`, and
+  `last_updated` are never touched. It is the exact reverse of `drift --downgrade`.
+  - **The CLI still cannot self-approve.** Docs carrying blocking or structural findings
+    (`blocked`/`error`) are refused until fixed, and `reviewed_by` must resolve from
+    `--reviewer` > config `reviewer` > git `user.name` — with no reviewer identity, the stamp is
+    refused rather than left blank or invented.
+  - Exposed on all three surfaces, asymmetrically: CLI and the frozen programmatic `commands` map
+    get the full command; **MCP gets the LIST mode only**, so an agent can read the backlog but
+    promotion stays a human CLI action.
+- **`reviewer` config key** in `llm-wiki.config.json` (`--reviewer` takes precedence).
+- **Engineering hygiene, zero-dep preserved.** Test coverage via the Node built-in
+  (`node --test --experimental-test-coverage`, not nyc/c8); a `node --check` syntax gate
+  (`npm run lint`, no linter dependency) plus `.editorconfig`; a GitHub-native CodeQL workflow;
+  `npm sbom` and bench scripts; `CODEOWNERS` and `MAINTAINERS.md`.
+- **Adoption documentation.** An MCP trust-model section in `SECURITY.md` (local stdio subprocess,
+  stdout-as-protocol, no authentication, do not expose over a network); `docs/OPERATIONS.md`, a
+  per-scale operator guide (small repo / medium repo / monorepo); an `examples/` end-to-end
+  walk-through of `init → enrich → validate → review`; and a `## How it works` pipeline diagram
+  plus sample audit output in the README. All EN/KO.
+
+### Changed
+
+- **The composite GitHub Action pins the CLI version it runs.** `.github/actions/validate/action.yml`
+  defaulted its `version` input to `latest`, so pinning the action by tag still floated the CLI
+  underneath it. The default is now a pinned minor (`1.26`); pass `version: latest` explicitly if
+  you want the floating behavior.
+
+### Documentation
+
+- `BENCHMARK.md` now records the 2026-07-24 real SDK-path measurement (input **0.516×**, cost
+  **0.581×**, pooled **−40.7%**, blind-to-arm rubric grade 0.910 vs 0.971 with zero hallucinations)
+  **together with** what it does not establish: the one task where retrieval loses (3.17×), an
+  unexplained gap against the earlier −10% run on the same repo, a missing empty-wiki control arm
+  that leaves "wiki content" and "retrieval tooling" unseparated, and an agent — not human — grader.
+- **The README performance headline remains forbidden.** A scoped, linked footnote is the most
+  these numbers support until a multi-repo / multi-model measurement exists.
+
 ## 1.25.0 — 2026-07-23
 
 **Token efficiency: pick the cheapest safe path.** Additive, opt-in, zero-dependency changes

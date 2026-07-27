@@ -74,6 +74,7 @@ The `llm-wiki mcp` server is deterministic (no model); the agent *calling* its t
 | `audit` · `status` | Full findings report · current wiki state. |
 | `graph` · `stats` | Knowledge graph (text/JSON/Mermaid/DOT) · health snapshot (verified % / enrichment % / evidence coverage). |
 | `drift` · `fix` · `migrate` | Drift detection & downgrade · scoped safe autofix · contract upgrade (all preview-first). |
+| `review` | Human review workflow: lists the `needs_review` backlog risk-ranked (read-only). `review --approve <path> --reviewer "<name>"` stamps `verified` — only on that explicit flag, never automatically. |
 | `handoff` · `prompt` | Agent handoff prompt · repeatable task prompts (bootstrap/feature/fix/refactor/docs-sync/okf-extract). |
 | `onboard` · `prepare` | Guided, read-only: learn a work area from real code evidence (`onboard [--domain]`) · scope a change before implementing (`prepare --task`). Assembled from the wiki; the CLI invents no explanation. |
 | `mcp` | Run the read-only MCP server (see below). |
