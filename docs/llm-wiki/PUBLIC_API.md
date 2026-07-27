@@ -2,11 +2,11 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: public_api
 project: llm-wiki-governance
-last_updated: 2026-07-24
+last_updated: 2026-07-27
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
@@ -75,7 +75,7 @@ contains_sensitive_info: false
 | `quickstart --dry-run\|--write` | doctor+init+frontmatter+handoff 프롬프트 | `--write` 시 |
 | `handoff` | Codex/Claude Code 인수인계 프롬프트 출력 | `--out` 시 |
 | `prompt --task <name>` | 반복 작업 프롬프트(bootstrap/feature/fix/refactor/docs-sync/okf-extract). `bootstrap`은 init 뼈대의 최초 보강용이며 `handoff`와 규칙을 공유 | `--out` 시 |
-| `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성. backend/fullstack(디렉터리/파일 도메인)·frontend/mobile(SPA `pages`/`views`/... 폴더 + vue/react-router 라우트 그룹)은 도메인별 문서(`domains/NN_<name>.md`)도 생성 — 도메인 미탐지 시 침묵하지 않고 명시 안내, `--domains a,b,c`로 수동 지정 가능. 1.15부터 `--skills`(또는 `--agent claude\|codex\|cursor`)로 위키-그라운디드 자동화 프롬프트 아티팩트(Claude 스킬 `.claude/skills/`·Codex 스킬 `.agents/skills/`·Cursor 룰·중립 프롬프트, bootstrap/feature/fix/docs-sync; opt-in·미덮어씀; 1.25.0부터 bootstrap만 도메인 맵 스냅샷·나머지는 실행 시점 맵, `--refresh`로 사용자 미수정 관리 스킬만 갱신) 생성 | `--write` 시 |
+| `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성. backend/fullstack(디렉터리/파일 도메인)·frontend/mobile(SPA `pages`/`views`/... 폴더 + vue/react-router 라우트 그룹)은 도메인별 문서(`domains/NN_<name>.md`)도 생성 — 도메인 미탐지 시 침묵하지 않고 명시 안내, `--domains a,b,c`로 수동 지정 가능. 1.15부터 `--skills`(또는 `--agent claude\|codex\|cursor`)로 위키-그라운디드 자동화 프롬프트 아티팩트(Claude 스킬 `.claude/skills/`·Codex 스킬 `.agents/skills/`·Cursor 룰·중립 프롬프트, bootstrap/feature/fix/docs-sync; opt-in·미덮어씀; 1.25.0부터 bootstrap만 도메인 맵 스냅샷·나머지는 실행 시점 맵, `--refresh`로 사용자 미수정 관리 스킬만 갱신) 생성. 어댑터 선택은 `--with-adapters`(에이전트 미지정 시 전체) / `--no-adapters`(어댑터 없음 — **선언적**이라 플래그 순서와 무관하고, 명시적 opt-out이므로 config `agents`가 목록을 되채우지 않는다) | `--write` 시 |
 | `migrate [--apply]` | `wiki_block_version` 업그레이드 리포트 + 계획. `--apply`로 `fix` 범위 재사용해 문서를 현재 계약으로 올림(preview-first, `verified` 보존; GATE_REVIEW Gate 8) | `--apply` 시 |
 | `fix [--write]` | 승인된 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 섹션 보완, 깨진 related/링크 `needs_review` 스텁, 수정 문서 `last_updated` 갱신). 기본은 미리보기 | `--write` 시 |
 | `drift [--downgrade]` | `verified` 문서의 `evidence.stale` 드리프트 리포트. `--downgrade`로 드리프트 문서를 `needs_review`로 강등(GATE_REVIEW Gate 9) | `--downgrade` 시 |
@@ -201,7 +201,7 @@ MCP 클라이언트 등록 예시:
 - 프로그래매틱 API(`commands` 맵 키, 개별 함수 export, `SCHEMA_VERSION`, 공통 결과 필드)는 안정 계약이다. 명령별 payload 필드는 CLI `--format json`과 동일한 부가적(additive) SemVer 정책을 따른다.
 - `migrate --apply`는 GATE_REVIEW Gate 8 범위로 활성화돼 있다(preview-first, `fix` 범위 + `wiki_block_version` 업그레이드, `verified` 내용·status 불변). `graph`/`stats`는 읽기전용이다.
 - `fix`는 `GATE_REVIEW.md`의 "Autofix (--fix) Scope Decision"에 명시된 좁은 범위만 수정한다: `verified` 문서 내용·`docs/llm-wiki/` 밖 파일·`source_files`/`evidence` 값·Tier B 필드(title/doc_type/project/author)·미보강 내용은 건드리지 않는다.
-- `llm-wiki.config.json` 스키마는 Gate 13(1.8)으로 성장했다: `type`/`profiles`/`agents`/`strict`에 더해 `rules`(rule 토글)·`requiredDocs`(커스텀 문서셋)·`templates`(템플릿 오버라이드, never-`verified` 가드레일)가 추가돼 config 성장이 완성됐다. unknown 키는 여전히 무시돼 옛 파일이 계속 동작한다. 1.7.2부터 `init`/`quickstart --write`가 최소 config를 scaffold하고 `doctor`가 effective config를 echo한다.
+- `llm-wiki.config.json` 스키마는 Gate 13(1.8)으로 성장했다: `type`/`profiles`/`agents`/`strict`에 더해 `rules`(rule 토글)·`requiredDocs`(커스텀 문서셋)·`templates`(템플릿 오버라이드, never-`verified` 가드레일)가 추가돼 config 성장이 완성됐다. unknown 키는 여전히 무시돼 옛 파일이 계속 동작한다. 1.7.2부터 `init`/`quickstart --write`가 최소 config를 scaffold하고 `doctor`가 effective config를 echo한다. config 파일은 **BOM 인식**으로 읽는다 — UTF-8 BOM(Windows PowerShell `Out-File -Encoding utf8`·구형 메모장의 기본)이나 UTF-16으로 저장돼도 정상 로드되며, 진짜 malformed JSON만 `is not valid JSON`(exit 3)이다.
 - MCP 서버(1.6)는 읽기 전용 툴만 노출하고 무의존성(Node 내장 JSON-RPC)으로 구현한다. MCP 툴 이름 집합과 결과 형태(1.5 result + `schemaVersion`)가 새 안정 계약이다(GATE_REVIEW Gate 11). 1.7.2부터 MCP 툴 호출도 대상 프로젝트의 `llm-wiki.config.json`을 `resolveOptions`로 병합해 CLI·API와 동일한 effective options를 쓴다(malformed config는 `isError`로 표면화).
 
 ## Evidence
@@ -263,3 +263,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-23(1.25.0 릴리스)에 `init`/`quickstart`의 부가 옵션 `--refresh`(사용자 미수정 관리 스킬만 갱신; 사용자·커스텀 스킬 미덮어씀)를 command 표에 반영하고, MCP `get_doc`/`prepare`에 토큰 제어 옵션(`strictSection`/`compact`/`maxChars`)이 노출됨을 기록했다. 모두 additive·opt-in이라 미사용 시 표면·`--format json`·동결 맵 불변. 에이전트 편집이라 `needs_review` 유지 — 사람 재검토 후 `verified` 예정.
 - 2026-07-24에 위 1.25.0 반영분(command 표의 `get-doc --strict-section`/`--compact`/`--max-chars`·`prepare --compact`/`--max-chars`·`init`/`quickstart --refresh`, MCP `get_doc`/`prepare` 토큰 제어 옵션)을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-24)를 거쳐 `verified`로 재승인했다. command 표·옵션 표면이 현재 소스(HEAD 5fe3aff, npm dist-tags.latest=1.25.0)와 일치하고 동결 프로그래매틱 API 맵의 키 집합·`--format json` 형태가 불변임을 확인했다(319 tests·validate --strict 0).
 - 2026-07-24에 Gate 20 read-only `review` 워크플로(GATE_REVIEW "Review Workflow Scope Decision", accepted 2026-07-24)를 반영했다: Commands 표에 `review [--approve <path>]... [--approve-all --yes] [--reviewer <name>] [--include-sensitive]` 행을, Key Options에 `--approve`/`--approve-all`/`--yes`/`--reviewer`/`--include-sensitive`를, MCP 노출 툴 목록에 `review`(LIST만; 승격은 CLI 전용)을, Evidence에 `src/commands.js#symbol:reviewCommand` 포인터를 등재했다. needs_review 백로그를 위험도 정렬해 나열(read-only)하고 명시적 `--approve`/`--approve-all --yes`로만 `status: verified`+`reviewed_by`+`reviewed_at`을 스탬프하며 자동 승격은 절대 없다(blocking/구조적 finding 문서 거부; reviewed_by 미해소 시 스탬프 거부). 동결 프로그래매틱 API `commands` 맵에 `review` 키를 additive로 추가(`src/index.js`). additive·`1.0.0` 계약·`--format json` shape·zero-dep 불변. 319 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-07-27에 저장소 품질 감사에서 재현한 버그 2건의 수정을 옵션 표면 문서에 반영했다: (1) Commands 표 `init` 행에 그동안 **문서화되지 않았던** `--with-adapters`/`--no-adapters`를 등재하고, `--no-adapters`가 선언적(플래그 순서 무관)이며 명시적 opt-out이라 config `agents`가 목록을 되채우지 않음을 명시했다 — 수정 전에는 순서에 따라 결과가 달랐고 비워진 목록을 config가 되살렸다. (2) Contract Notes의 config 항목에 config 파일이 **BOM 인식**으로 읽힌다는 점(UTF-8 BOM·UTF-16 로드 성공, 진짜 malformed만 exit 3)을 추가했다. 공개 계약 관점: 명령/JSON shape/exit code 의미/동결 `commands` 맵 키 집합 불변이고, `defaultOptions()`에 `noAdapters: false`가 **additive**로 늘었다(`normalizeOptions`가 spread하므로 프로그래매틱 API 반환 객체에 키 1개 추가). 330 tests·lint OK·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.

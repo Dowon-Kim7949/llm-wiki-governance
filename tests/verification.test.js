@@ -6,7 +6,7 @@ import path from "node:path";
 import { detectFrontendDomains } from "../src/commands/domains.js";
 import { enrichmentChecklist } from "../src/commands/scans.js";
 import { audit, checkRunCommand, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, evidenceTier, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, onboardCommand, planDomainDocs, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
-import { parseArgs } from "../src/cli.js";
+import { applyProjectConfig, parseArgs } from "../src/cli.js";
 import { writeReport, renderHtmlDashboard, renderOutputFile, printResult } from "../src/report.js";
 import * as api from "../src/index.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "../src/config-file.js";
@@ -3388,6 +3388,70 @@ test("reports invalid llm-wiki.config.json", async () => {
   assert.ok(jsonResult.errors.some((error) => error.includes("valid JSON")));
   assert.ok(shapeResult.errors.some((error) => error.includes("type")));
   assert.ok(shapeResult.errors.some((error) => error.includes("profiles")));
+});
+
+// A config saved by Windows PowerShell (`Out-File -Encoding utf8`) or older
+// Notepad carries a UTF-8 BOM; a redirected one can be UTF-16. Read as raw UTF-8
+// the leading U+FEFF made JSON.parse throw, so every command failed with
+// "not valid JSON" and exit 3 on a file that is valid JSON.
+test("loads llm-wiki.config.json written with a BOM (UTF-8 BOM, UTF-16LE/BE)", async () => {
+  const json = JSON.stringify({ type: "library", agents: ["codex"] });
+  const encodings = [
+    ["utf8bom", Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(json, "utf8")])],
+    ["utf16le", Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(json, "utf16le")])],
+    ["utf16be", Buffer.concat([Buffer.from([0xfe, 0xff]), Buffer.from(json, "utf16le").swap16()])]
+  ];
+
+  for (const [label, bytes] of encodings) {
+    const cwd = await makeProject(`config-bom-${label}-`);
+    await writeFile(path.join(cwd, "llm-wiki.config.json"), bytes);
+    const { found, config, errors } = await loadProjectConfig(cwd);
+
+    assert.equal(found, true, label);
+    assert.deepEqual(errors, [], label);
+    assert.equal(config.type, "library", label);
+    assert.deepEqual(config.agents, ["codex"], label);
+  }
+});
+
+// Guard the fix above: genuinely malformed JSON must still be reported, BOM or not.
+test("a BOM does not rescue malformed llm-wiki.config.json", async () => {
+  const cwd = await makeProject("config-bom-bad-");
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("{ not json", "utf8")]));
+  const { errors } = await loadProjectConfig(cwd);
+
+  assert.ok(errors.some((error) => error.includes("valid JSON")));
+});
+
+// --no-adapters used to clear options.agents inside its own parse branch, so the
+// result depended on flag order. It must be declarative.
+test("--no-adapters resolves identically regardless of flag order", () => {
+  const before = parseArgs(["init", "--agent", "claude", "--no-adapters"]);
+  const after = parseArgs(["init", "--no-adapters", "--agent", "claude"]);
+
+  assert.deepEqual(before.errors, []);
+  assert.deepEqual(after.errors, []);
+  assert.deepEqual(before.options.agents, []);
+  assert.deepEqual(after.options.agents, before.options.agents);
+  assert.equal(before.options.withAdapters, false);
+  assert.equal(before.options.noAdapters, true);
+  assert.equal(parseArgs(["init", "--agent", "claude"]).options.noAdapters, false);
+});
+
+// The emptied list must not read as "the CLI said nothing": config `agents` used
+// to refill it, so --no-adapters handed selectedAgents() more agents than the
+// user named. Config still applies when the user expressed no preference.
+test("--no-adapters stops config agents from refilling the list", async () => {
+  const cwd = await makeProject("config-noadapters-");
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), JSON.stringify({ agents: ["codex", "claude"] }), { encoding: "utf8" });
+
+  const optedOut = parseArgs(["init", "--agent", "claude", "--no-adapters", "--cwd", cwd]).options;
+  assert.deepEqual((await applyProjectConfig(optedOut)).errors, []);
+  assert.deepEqual(optedOut.agents, []);
+
+  const silent = parseArgs(["init", "--cwd", cwd]).options;
+  assert.deepEqual((await applyProjectConfig(silent)).errors, []);
+  assert.deepEqual(silent.agents, ["codex", "claude"]);
 });
 
 test("mergeConfigIntoOptions fills unset options but lets CLI flags win", () => {

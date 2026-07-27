@@ -24,6 +24,27 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - 버그 수정 2건: config UTF-8 BOM · `--no-adapters` 순서 의존
+- changed:
+  - src/config-file.js — config 읽기를 `readUtf8`→`readTextAuto`(BOM 인식)로 교체, `mergeConfigIntoOptions`에 `noAdapters` 가드 추가
+  - src/cli.js — `defaultOptions()`에 `noAdapters: false` 추가, `--no-adapters` 분기를 선언적으로 변경(순회 후 일괄 적용), `applyProjectConfig`의 `usedConfigAgents`에 가드 추가
+  - tests/verification.test.js — 신규 4건(BOM 3종 로드 · BOM이 malformed를 구제하지 않음 · `--no-adapters` 순서 무관 · config 재주입 차단)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 반영 후 `verified`→`needs_review` 강등
+- summary:
+  - **버그 1 (config BOM)**: Windows PowerShell `Out-File -Encoding utf8`·구형 메모장이 기본으로 붙이는 UTF-8 BOM 때문에 유효한 JSON인 `llm-wiki.config.json`이 `JSON.parse`에서 던져 **모든 명령**이 `is not valid JSON`(exit 3)으로 죽었고, 메시지가 원인을 알려주지 않았다. 1.14.1이 detector 매니페스트에 쓴 `readTextAuto`를 재사용해 고쳤다(UTF-16LE/BE도 함께 해결). 위키 문서 읽기는 mojibake 스캔 보존을 위해 raw `readUtf8` 그대로다.
+  - **버그 2 (`--no-adapters`)**: 플래그가 자기 파싱 분기에서 `options.agents`를 비워 결과가 **플래그 순서에 의존**했고(`--agent claude --no-adapters` ≠ `--no-adapters --agent claude`), 비워진 목록이 "CLI 미지정"으로 읽혀 config `agents`가 재주입됐다 — 이 저장소에서는 어댑터를 끄는 플래그가 `agents=[codex,claude]`를 만들어 사용자가 지정하지도 않은 에이전트를 늘렸다. 플래그를 선언적으로 바꾸고 `options.noAdapters`로 의도를 config 병합까지 전달해 둘 다 막았다.
+  - 두 수정 모두 additive·zero-dep·Node built-ins. 영향 범위는 config 로딩 전역과 `--no-adapters`를 받는 `init` 뿐이며, 진짜 malformed JSON은 여전히 exit 3이고 config가 CLI 미지정 값을 채우는 기존 동작은 불변이다.
+- verification:
+  - 330 tests pass(신규 4) · lint OK(49 files) · `validate --strict` 0 · `validate-frontmatter` pass
+  - 신규 테스트 3건이 **수정 전 소스에서 실패**함을 `git stash`로 확인했다(회귀를 실제로 잡는지 검증). 나머지 1건은 "BOM이 malformed JSON을 구제하지 않는다"는 과교정 방지 가드라 양쪽에서 통과하는 것이 정상이다.
+  - 4개 인코딩(UTF-8 BOM/무BOM/UTF-16LE/UTF-16BE) 모두 exit 0으로 로드 확인.
+- evidence:
+  - src/config-file.js#symbol:loadProjectConfig · src/config-file.js#symbol:mergeConfigIntoOptions · src/cli.js#symbol:parseArgs · src/cli.js#symbol:applyProjectConfig
+- caveats:
+  - `defaultOptions()`에 `noAdapters` 키가 늘어 `normalizeOptions()` 반환 객체에 키 1개가 추가된다(additive; 키 집합을 단언하는 테스트는 없음을 확인).
+  - `impact`가 이 diff로 `verified` 문서 **8건**을 flag했다. 내용이 실제로 바뀐 3건만 갱신·강등했고, 나머지 5건(`index.md`·`EXAMPLES.md`·`project-profile.md`·`profiles/library.md`·`domains/00_overview.md`)은 `src/cli.js`를 폭넓게 참조할 뿐 이번 변경으로 주장이 달라지지 않아 **손대지 않았다** — 재baseline(reviewed_at 갱신)은 사람의 몫이며 에이전트가 검토 메타를 새로 찍지 않는다.
+  - 감사에서 함께 확인된 나머지 항목(frontmatter negative-path 테스트 공백, frontmatter 중복 키 last-wins, MCP `inputSchema` 미강제, README의 retrieval CLI 명령 누락, README의 `actions/validate@v1.26.0` 핀 stale)은 이번 범위에 넣지 않았다.
+
 ## 2026-07-27 - Orca 병렬 에이전트 개발 프로세스 배선(개발 도구, 배포 무관)
 - changed:
   - AGENTS.md — `## Orca Parallel Agent Rules` 섹션 추가(wiki-block은 불변)

@@ -119,7 +119,7 @@ export async function main(argv) {
 export async function applyProjectConfig(options) {
   const { config, errors } = await loadProjectConfig(options.cwd);
   if (errors.length > 0) return { errors };
-  const usedConfigAgents = (!options.agents || options.agents.length === 0) && Array.isArray(config?.agents);
+  const usedConfigAgents = !options.noAdapters && (!options.agents || options.agents.length === 0) && Array.isArray(config?.agents);
   mergeConfigIntoOptions(options, config);
   if (usedConfigAgents) {
     const agentErrors = [];
@@ -171,6 +171,7 @@ export function defaultOptions() {
     maxChars: null,
     minimal: false,
     withAdapters: false,
+    noAdapters: false,
     skills: false,
     refresh: false,
     existing: "skip",
@@ -411,7 +412,7 @@ export function parseArgs(argv) {
     } else if (arg === "--no-adapters") {
       usedOptions.add("no-adapters");
       options.withAdapters = false;
-      options.agents = [];
+      options.noAdapters = true;
     } else if (arg === "--skills") {
       usedOptions.add("skills");
       options.skills = true;
@@ -431,6 +432,13 @@ export function parseArgs(argv) {
     }
   }
 
+  // `--no-adapters` is declarative, not positional. Clearing the agent list here —
+  // after the whole argv is parsed, rather than inside the flag's own branch —
+  // makes `--agent claude --no-adapters` and `--no-adapters --agent claude`
+  // resolve identically; before, the first order kept nothing and the second kept
+  // claude. options.noAdapters carries the intent past this point so config
+  // `agents` cannot refill the list (see mergeConfigIntoOptions).
+  if (options.noAdapters) options.agents = [];
   options.agents = normalizeAgents(options.agents, options.withAdapters, errors);
   if (!SUPPORTED_EXISTING_POLICIES.has(options.existing)) {
     errors.push(`Unsupported existing policy: ${options.existing}`);

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { pathExists } from "./files.js";
-import { readUtf8 } from "./encoding.js";
+import { readTextAuto } from "./encoding.js";
 
 export const CONFIG_FILENAME = "llm-wiki.config.json";
 
@@ -20,7 +20,14 @@ export async function loadProjectConfig(cwd) {
 
   let parsed;
   try {
-    parsed = JSON.parse(await readUtf8(file));
+    // BOM-aware read (not readUtf8): Windows PowerShell `Out-File -Encoding utf8`
+    // and older Notepad write a UTF-8 BOM by default, and a leading U+FEFF makes
+    // JSON.parse throw on a file that is otherwise valid JSON — which failed every
+    // command with "not valid JSON" and exit 3, naming no cause. readTextAuto also
+    // decodes UTF-16LE/BE, so a redirected config survives too. Same fix already
+    // applied to detector manifests in 1.14.1; wiki docs keep raw readUtf8 so the
+    // mojibake scan still works.
+    parsed = JSON.parse(await readTextAuto(file));
   } catch {
     return { found: true, config: null, errors: [`${CONFIG_FILENAME} is not valid JSON.`] };
   }
@@ -122,7 +129,11 @@ export function mergeConfigIntoOptions(options, config) {
   if ((!options.profiles || options.profiles.length === 0) && Array.isArray(config.profiles)) {
     options.profiles = [...config.profiles];
   }
-  if ((!options.agents || options.agents.length === 0) && Array.isArray(config.agents)) {
+  // `--no-adapters` is an explicit opt-out, not an absent value: without this
+  // guard the emptied list reads as "the CLI said nothing" and config `agents`
+  // refills it, so the flag that disables adapters would hand selectedAgents()
+  // MORE agents than the user named.
+  if (!options.noAdapters && (!options.agents || options.agents.length === 0) && Array.isArray(config.agents)) {
     options.agents = [...config.agents];
   }
   if (config.strict) {
