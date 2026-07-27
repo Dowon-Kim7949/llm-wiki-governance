@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - `B2_empty` 통제 arm 구축·실행: 토큰 절감은 툴이 아니라 위키 내용의 효과
+- changed:
+  - bench/real/runner.js(`B2_empty` arm + `assertControlPromptParity` + BENCH_WIKI_CWD 가드 + dry 패리티 출력), bench/real/make-stub-wiki.mjs(신규), bench/real/aggregate.mjs(신규), bench/real/DRIVER_RUNBOOK.md(통제 arm 절차·해석표)
+  - bench/results/real-B2_empty-2026-07-27T03-38-58-669Z.json(원자료 18런), bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md(실행 기록)
+  - docs/llm-wiki/BENCHMARK.md(§통제 arm 신설, §규율에 2026-07-27 규율 추가, frontmatter/§Evidence 등재, `verified`→`needs_review` 강등)
+- summary:
+  - 2026-07-24 결과(B2가 B 대비 input −48.4%)는 **왜** 줄었는지 답하지 못했다 — 위키 **내용** 때문인지 단순히 **검색 툴**이 있어서인지. 이 교란요인이 README 헤드라인 금지의 최대 근거였다. `B2_empty`(B2와 도구·프롬프트 바이트 동일, 조회 대상만 지식 제거된 스텁 위키)로 분리했다.
+  - **결과: B2_empty = B의 1.140×(input +14.0%, cost +17.4%), B2 대비 2.21배.** 통제군이 B2가 아니라 **B보다도 위**에 떨어졌다 → **−48.4%는 보강된 내용의 효과**이며 retrieval 툴 자체는 순손실이다. 행동 지표가 뒷받침한다: 소스 미열람 응답 런 = B2 8/18 vs B2_empty **0/18**, 소스 열람/런 = B 3.22·B2 0.67·B2_empty 2.39.
+  - **부수 발견: 미보강 위키는 없느니만 못하다(+14%).** `content.not_enriched`가 잡는 바로 그 상태이며 보강·검토 규율의 직접 근거다.
+  - 유료 실행 전 무료 검증을 통과시켰다: 정답 경로 누출 **0/13**, search-docs 매치 12/3/18→1/0/1(툴은 정상 작동), 6개 태스크 프롬프트 패리티 OK, BENCH_WIKI_CWD 누락 시 exit 3.
+- verification:
+  - 326 tests · validate --strict 0 · validate-frontmatter 0 · npm run lint OK. `aggregate.mjs`는 기존 2026-07-24 손계산 수치(0.516×/0.581× 및 태스크별 6개 비율)를 그대로 재현해 검증했다.
+- evidence:
+  - bench/real/runner.js#symbol:assertControlPromptParity · bench/real/make-stub-wiki.mjs · bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md
+- caveats:
+  - **README 헤드라인 금지 유지.** 최대 반론은 닫혔으나 단일 레포·단일 모델·6 태스크·N=3, 2026-07-22(−10%)와의 격차 미해명, 이 arm 정확도 미채점은 그대로다.
+  - 스텁이 제목·경로를 남긴 **관대한** 통제라 +14%는 하한이다. 6개 중 2개 태스크(hazard-domain 0.90×·session-timeout 0.69×)는 스텁 arm이 여전히 B를 이겼다 — 뭉개지 않고 기록했다.
+  - 비용 $5.9516로 사전 추정($3~5.5)을 초과했다. 실측 누적 약 **$17.10** / 런북 $19 캡 — 잔여 약 $1.90이라 추가 유료 arm은 새 예산 결정이 필요하다.
+  - csap 저장소는 무변경(읽기 전용 하네스). API 키는 User 범위 환경변수에서 실행 시점에만 읽어 대화·저장소에 남기지 않았다.
+
 ## 2026-07-27 - verified 문서 12개 재기준 (1.26.0 버전 범프 후 evidence.stale 해소)
 - changed:
   - docs/llm-wiki/{EXAMPLES.md, index.md, profiles/library.md, project-profile.md, PUBLIC_API.md, README.md, releases/v0.1.7.md, releases/v0.1.8.md, RELEASE_FLOW.md, templates/DECISION_LOG.template.md, templates/TASK_PROMPT.template.md, VERSIONING.md} — frontmatter `reviewed_at` 2026-07-24→2026-07-27만 갱신

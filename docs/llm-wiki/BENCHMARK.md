@@ -4,7 +4,7 @@ tags:
   - llm-wiki
   - benchmark
   - needs-review
-status: verified
+status: needs_review
 doc_type: reference
 project: llm-wiki-governance
 last_updated: 2026-07-27
@@ -19,17 +19,22 @@ source_files:
   - bench/tasks.json
   - bench/tasks-csap.json
   - bench/real/runner.js
+  - bench/real/make-stub-wiki.mjs
+  - bench/real/aggregate.mjs
   - bench/results/baseline.json
   - bench/results/current.json
   - bench/results/real-driver-csap-sdk-2026-07-24.md
+  - bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md
 evidence:
   - bench/run.js
   - bench/lib/strategies.js#symbol:strategyWikiGrounded
   - bench/lib/strategies.js#symbol:strategyWikiRetrieval
+  - bench/real/runner.js#symbol:assertControlPromptParity
   - bench/results/baseline.md
   - bench/results/current.md
   - bench/results/real-driver-csap-sdk-2026-07-24.md
   - bench/results/real-driver-csap-sdk-2026-07-24-grading.md
+  - bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md
   - GATE_REVIEW.md#section:Impact Measurement Scope Decision
 related:
   - docs/llm-wiki/project-profile.md
@@ -220,11 +225,51 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 위키). 이 세 가지로 방향은 설명되지만 **격차 전부가 설명되지는 않았다**. 따라서 두 수치를 모두
 남기고, 교차-실행 비교는 **미해결**로 둔다.
 
-**남은 통제 실험(미실행):** B2의 이득이 *위키 내용* 때문인지 *retrieval 툴* 때문인지는 아직
-분리되지 않았다 — **빈/스텁 위키 위에서 같은 retrieval 툴을 쓰는 통제 arm**(`B2_empty_wiki`)이
-필요하며 이번 패스에서 하지 않았다. 상세·원자료:
+**통제 실험은 2026-07-27에 실행됐다 — 아래 §통제 arm 참조.** 상세·원자료:
 [`bench/results/real-driver-csap-sdk-2026-07-24.md`](../../bench/results/real-driver-csap-sdk-2026-07-24.md),
 채점 워크시트 [`…-grading.md`](../../bench/results/real-driver-csap-sdk-2026-07-24-grading.md).
+
+## 통제 arm · `B2_empty` — 툴이 아니라 내용이었다 (csap, N=3, 2026-07-27)
+
+위 −48.4%는 **왜** 줄었는지 말하지 못했다: 위키의 **내용** 때문일 수도, 그냥 **검색 툴**이
+있었기 때문일 수도 있다. 이걸 분리하지 못하는 한 위키에 대한 인과 주장은 성립하지 않으며,
+이것이 README 헤드라인 금지의 가장 큰 근거였다. `B2_empty`가 그 질문에 답한다.
+
+**설계.** B2와 **도구·프롬프트가 바이트 동일**하고(러너가 import 시점에 패리티를 단언한다)
+모델·태스크도 같다. 유일한 차이는 그 도구가 조회하는 위키다 — `make-stub-wiki.mjs`가 만든
+**스텁 위키**(문서 22개의 경로·파일명·제목·frontmatter는 그대로, `source_files`/`evidence`는
+정답 파일명을 담고 있어 **비움**, 본문은 미보강 placeholder; 167,236→17,685 bytes). 즉
+`init --write` 직후 아무도 보강하지 않은 상태다. 소스 read/grep은 여전히 진짜 csap을 향한다.
+
+| arm | input | cost | vs B |
+| --- | --: | --: | --: |
+| B (retrieval 없음) | 856,410 | $5.0709 | — |
+| B2 (retrieval, 실제 위키) | 441,521 | $2.9463 | **0.516× (−48.4%)** |
+| **B2_empty (툴, 스텁 위키)** | 976,159 | $5.9516 | **1.140× (+14.0%)** |
+
+**통제군은 B2가 아니라 B보다도 위에 떨어졌다.** 지식 없는 위키에 retrieval 툴만 붙이면
+중립도 아니고 **입력 토큰 +14%·비용 +17.4%의 순손실**이다(B2 대비 2.21배).
+
+- **결론: −48.4%는 retrieval 툴이 아니라 위키의 보강된 내용이 만든 것이다.** 2026-07-24 결과에
+  남아 있던 마지막 핵심 교란요인이 내용 쪽으로 해소됐다.
+- **메커니즘 확인(총량이 아니라 행동으로):** 소스 파일 열람/런 = B 3.22 · B2 0.67 · B2_empty 2.39,
+  **소스를 한 번도 안 열고 답한 런 = B2 8/18 vs B2_empty 0/18**. B2_empty는 거의 매 런 스텁을
+  질의하고(1.11 get_doc/런) 쓸 게 없어 B에 가까운 수준으로 소스를 다시 읽었다 — 즉
+  "B의 소스 작업 + 헛된 조회 왕복" = +14%다.
+- **부수적이지만 독립적인 발견: 미보강 위키는 없느니만 못하다.** 생성만 하고 채우지 않은
+  스캐폴드는 아무 대가 없이 토큰만 쓴다. 이 도구가 `content.not_enriched`로 잡는 바로 그 상태이며,
+  보강·검토 규율이 선택이 아니라는 직접적 근거다.
+- **균일하지 않다(공개):** 6개 중 2개(hazard-domain 0.90×·session-timeout 0.69×)는 스텁 arm이
+  여전히 B를 이겼다. 스텁에 제목·경로가 남아 약간의 오리엔테이션 값이 있을 수 있고, 런간 변동
+  (input CV 최대 36%)일 수도 있다. 뭉개지 않고 그대로 적는다.
+- **스텁은 관대한 통제다.** 제목·경로를 남겼으므로 위키가 아예 없는 경우는 더 비쌀 가능성이 크다 —
+  **+14%는 상한이 아니라 하한**이다.
+- **이 arm의 정확도는 미채점.** 18런 모두 실질 답변(2.3~3.9k자)을 냈고 정답 파일을 열었지만
+  루브릭 채점은 하지 않았다 — +14%를 정확도 주장과 엮지 말 것.
+- **비용 $5.9516**(사전 추정 $3~5.5 초과 — 스텁 arm은 소스 fallback에 더해 출력/사고 토큰도 더 썼다:
+  42,832 vs B 31,554). 실측 누적 **약 $17.10** / 런북 $19 캡 — 잔여 약 $1.90.
+
+상세·원자료: [`bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md`](../../bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md).
 
 ## 한계 · Caveats
 
@@ -250,6 +295,13 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   인용할 때는 N=3 단독(−48.4%)이 아니라 **pooled −40.7%**를 기본으로 하고, 지는 태스크
   (routing-map 3.17×)와 "정확도 패널티 없음(0.910 vs 0.971, 환각 0)"을 **함께** 적는다.
   공개 주장 승격 조건은 아래 §토큰-효율 벤치 확장의 "장기 공개 주장 조건"이 그대로 적용된다.
+- **2026-07-27 통제 arm 이후 갱신된 규율:** `B2_empty`가 "툴 때문 아니냐"는 최대 반론을 닫았고,
+  결과는 **내용 쪽 손을 들어줬다**(툴만으로는 +14% 손해). 그럼에도 **헤드라인 금지는 유지**한다 —
+  남은 결함이 그대로이기 때문이다: 여전히 단일 레포·단일 모델·6 태스크·N=3이고, 2026-07-22
+  실측(−10%)과의 4~5배 격차가 미해명이며, B2_empty의 정확도는 미채점이다. 다만 이제
+  **인과 주장 자체는 스코프 안에서 성립**하므로, 각주에는 "retrieval 툴이 아니라 **보강된 내용**이
+  절감을 만든다(통제 arm으로 확인, 이 픽스처 한정)"까지 쓸 수 있다. 함께 쓸 수 있는 더 강한
+  문장은 효율이 아니라 거버넌스 쪽이다: **"미보강 위키는 없느니만 못하다(+14%)."**
 - 이 문서는 에이전트(Claude Code)가 작성했으므로 `needs_review`다 — 사람 검토 후 `verified`.
 
 ## 토큰-효율 벤치 확장 (proxy 실행됨 · real 하네스는 executed:false)
@@ -298,6 +350,10 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 - `bench/results/current.md` — 현재 실행(B2 포함) 자동 생성 결과표.
 - `bench/results/real-driver-csap-sdk-2026-07-24.md` — 2026-07-24 SDK 경로 유료 실측 기록(N=3 input/output 분리 토큰·비용·태스크별 표·픽스처 건강도·caveat).
 - `bench/results/real-driver-csap-sdk-2026-07-24-grading.md` — 같은 실행의 블라인드 채점 워크시트(arm 라벨 제거·셔플·답변별 루브릭 점수·집계).
+- `bench/real/runner.js#symbol:assertControlPromptParity` — `B2_empty`가 B2의 도구·firstStep을 그대로 유지하는지 import 시점에 단언(어긋나면 통제가 아니라 프롬프트 차이를 재게 되므로 즉시 예외).
+- `bench/real/make-stub-wiki.mjs` — 스텁 위키 생성기: 문서 경로·제목·frontmatter 유지, `source_files`/`evidence` 비움(정답 파일명 누출 차단), 본문은 미보강 placeholder. 대상 저장소 미변경.
+- `bench/real/aggregate.mjs` — 결과 JSON들을 3-arm 비교표로 집계(비율 우선, 총량 아님). 기존 2026-07-24 손계산 수치를 소수점까지 재현해 검증했다.
+- `bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md` — `B2_empty` 통제 arm 실행 기록(설계·사전 검증·3-arm 표·행동 지표·caveat·비용).
 - `GATE_REVIEW.md#section:Impact Measurement Scope Decision` — 수용된 Gate 22 범위·불변식·수용 기준.
 
 ## Review Notes
@@ -323,4 +379,16 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   미측정"을 프록시 하네스 한정으로 한정. (5) frontmatter·§Evidence에 새 근거 2건 등재. 새 수치는
   전부 원자료에서 전사했고 지어낸 값은 없다. 에이전트(Claude Code) 편집이라 `needs_review` 유지 —
   사람 검토 후 `verified` 승격 예정(허위 검토 메타 미기입).
+- 2026-07-27에 **`B2_empty` 통제 arm을 구축·실행**해 tooling-vs-knowledge 교란요인을 닫았다
+  (유지보수자 지시, 유료 $5.95). 하네스: `runner.js`에 B2와 도구·프롬프트가 바이트 동일한
+  `B2_empty` arm + import-time `assertControlPromptParity` + `BENCH_WIKI_CWD` 누락 시 실행 거부,
+  신규 `make-stub-wiki.mjs`(지식만 제거한 스텁 위키), 신규 `aggregate.mjs`(3-arm 집계; 기존
+  손계산 수치 재현으로 검증). 유료 실행 전 무료 검증: 정답 경로 누출 0/13, search-docs 매치
+  12/3/18→1/0/1, 6개 태스크 패리티 OK. **결과: B2_empty = B의 1.140×(+14.0% input, +17.4% cost)**
+  — B2가 아니라 B보다도 위. 따라서 **−48.4%는 툴이 아니라 보강된 내용의 효과**이고, 부수적으로
+  **미보강 위키는 없느니만 못하다**는 독립적 발견을 얻었다. 불리·미확정도 함께 적었다: 6개 중
+  2개 태스크는 스텁 arm이 여전히 B를 이김, 스텁이 제목·경로를 남긴 관대한 통제라 +14%는 하한,
+  이 arm 정확도 미채점, 2026-07-22와의 격차 여전히 미해명. §규율에 2026-07-27 규율을 추가했으나
+  **README 헤드라인 금지는 유지**한다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로
+  강등한다 — 사람 검토 후 재승인 예정(허위 검토 메타 미기입).
 - 2026-07-22에 실측 후속 엄밀성 하네스를 **scaffolded**(미실행)했다: SDK 경로 드라이버 `bench/real/agent.js`(Anthropic SDK tool_runner; read/grep + 읽기 전용 `llm-wiki` retrieval 툴; env로 target-agnostic; 읽기 전용)가 서브에이전트 경로에 없던 **input/output 토큰 분리**를 제공한다. `bench/tasks-csap.json`(6 태스크 재현), `bench/real/package.json`(SDK를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변), `runner.js`의 `BENCH_TASKS` 오버라이드, `DRIVER_RUNBOOK.md` § SDK path 실행법을 함께 추가했다. `--dry`로 배선 검증(모델 호출·비용 0). **유료 실행과 교차 에이전트(GPT) 드라이버는 보류**(유저 지시). 커밋되는 재현 산출물은 tasks-csap.json·package.json·runner.js·runbook이며 `agent.js`는 설계상 git-ignore(SDK dep 격리)다. 에이전트 편집이라 `needs_review` 유지.
