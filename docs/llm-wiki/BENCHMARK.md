@@ -25,6 +25,7 @@ source_files:
   - bench/results/current.json
   - bench/results/real-driver-csap-sdk-2026-07-24.md
   - bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md
+  - bench/results/real-driver-csap-sdk-empty-control-2026-07-27-grading.md
 evidence:
   - bench/run.js
   - bench/lib/strategies.js#symbol:strategyWikiGrounded
@@ -35,6 +36,7 @@ evidence:
   - bench/results/real-driver-csap-sdk-2026-07-24.md
   - bench/results/real-driver-csap-sdk-2026-07-24-grading.md
   - bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md
+  - bench/results/real-driver-csap-sdk-empty-control-2026-07-27-grading.md
   - GATE_REVIEW.md#section:Impact Measurement Scope Decision
 related:
   - docs/llm-wiki/project-profile.md
@@ -264,8 +266,21 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   (input CV 최대 36%)일 수도 있다. 뭉개지 않고 그대로 적는다.
 - **스텁은 관대한 통제다.** 제목·경로를 남겼으므로 위키가 아예 없는 경우는 더 비쌀 가능성이 크다 —
   **+14%는 상한이 아니라 하한**이다.
-- **이 arm의 정확도는 미채점.** 18런 모두 실질 답변(2.3~3.9k자)을 냈고 정답 파일을 열었지만
-  루브릭 채점은 하지 않았다 — +14%를 정확도 주장과 엮지 말 것.
+- **정확도도 블라인드 채점했다(2026-07-27, 무료).** 54개 답변(arm당 18개)을 arm 라벨 제거·태스크 내
+  셔플 후 채점하고 집계 시에만 arm을 재결합했다:
+
+  | metric | B | B2 | B2_empty |
+  | --- | --: | --: | --: |
+  | mean rubric frac | 0.910 | **0.978** | 0.911 |
+  | pooled claims | 62.5/69 | **67/69** | 62/69 |
+  | 환각·오파일 | 1 | 0 | 0 |
+
+  **B2_empty(0.911) = B(0.910).** 스텁 위키는 정확도를 전혀 사주지 못하면서 토큰만 +14% 더 썼다.
+  정확도를 올린 건 보강된 위키뿐이다(+6.8pp). **두 축(토큰·정확도) 모두 이득의 원인을 내용으로 지목한다.**
+  절차 안정성 검증: arm B를 2026-07-24 워크시트를 보지 않고 블라인드 재채점했더니 **0.9097·62.5/69로
+  정확히 재현**됐고, 당시 기록된 개별 결함 2건(B의 가드 역설명, B2의 `useSessionTimeout` 경로 오류)도
+  독립적으로 같은 arm에 재귀속됐다. 채점자는 여전히 **사람이 아닌 에이전트**다(같은 모델 계열) —
+  사람 비준이 남은 마지막 갭.
 - **비용 $5.9516**(사전 추정 $3~5.5 초과 — 스텁 arm은 소스 fallback에 더해 출력/사고 토큰도 더 썼다:
   42,832 vs B 31,554). 실측 누적 **약 $17.10** / 런북 $19 캡 — 잔여 약 $1.90.
 
@@ -354,6 +369,8 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 - `bench/real/make-stub-wiki.mjs` — 스텁 위키 생성기: 문서 경로·제목·frontmatter 유지, `source_files`/`evidence` 비움(정답 파일명 누출 차단), 본문은 미보강 placeholder. 대상 저장소 미변경.
 - `bench/real/aggregate.mjs` — 결과 JSON들을 3-arm 비교표로 집계(비율 우선, 총량 아님). 기존 2026-07-24 손계산 수치를 소수점까지 재현해 검증했다.
 - `bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md` — `B2_empty` 통제 arm 실행 기록(설계·사전 검증·3-arm 표·행동 지표·caveat·비용).
+- `bench/results/real-driver-csap-sdk-empty-control-2026-07-27-grading.md` — 3-arm 54개 답변 블라인드 채점 기록(방법·arm별 집계·태스크별·답변별 표·B 재현 검증).
+- `bench/real/make-grading-worksheet.mjs` — 블라인드 채점 워크시트 생성기: arm 라벨 제거 + 해시 기반 결정적 셔플, 정답 map은 별도 파일로 분리(채점 전 열지 않음).
 - `GATE_REVIEW.md#section:Impact Measurement Scope Decision` — 수용된 Gate 22 범위·불변식·수용 기준.
 
 ## Review Notes
@@ -388,7 +405,11 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   — B2가 아니라 B보다도 위. 따라서 **−48.4%는 툴이 아니라 보강된 내용의 효과**이고, 부수적으로
   **미보강 위키는 없느니만 못하다**는 독립적 발견을 얻었다. 불리·미확정도 함께 적었다: 6개 중
   2개 태스크는 스텁 arm이 여전히 B를 이김, 스텁이 제목·경로를 남긴 관대한 통제라 +14%는 하한,
-  이 arm 정확도 미채점, 2026-07-22와의 격차 여전히 미해명. §규율에 2026-07-27 규율을 추가했으나
+  2026-07-22와의 격차 여전히 미해명. **이어서 3-arm 54개 답변을 블라인드 채점(무료)**해 정확도 축도
+  닫았다: B 0.910 · B2 **0.978** · B2_empty 0.911 — 즉 **스텁 위키는 정확도를 전혀 사주지 못하면서
+  토큰만 더 쓴다**(두 축 모두 원인은 내용). 절차 검증으로 arm B가 2026-07-24 채점과 정확히 재현됐다
+  (0.9097·62.5/69, 개별 결함 2건도 같은 arm에 재귀속). 채점자는 여전히 에이전트(사람 비준 미완).
+  §규율에 2026-07-27 규율을 추가했으나
   **README 헤드라인 금지는 유지**한다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로
   강등한다 — 사람 검토 후 재승인 예정(허위 검토 메타 미기입).
 - 2026-07-22에 실측 후속 엄밀성 하네스를 **scaffolded**(미실행)했다: SDK 경로 드라이버 `bench/real/agent.js`(Anthropic SDK tool_runner; read/grep + 읽기 전용 `llm-wiki` retrieval 툴; env로 target-agnostic; 읽기 전용)가 서브에이전트 경로에 없던 **input/output 토큰 분리**를 제공한다. `bench/tasks-csap.json`(6 태스크 재현), `bench/real/package.json`(SDK를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변), `runner.js`의 `BENCH_TASKS` 오버라이드, `DRIVER_RUNBOOK.md` § SDK path 실행법을 함께 추가했다. `--dry`로 배선 검증(모델 호출·비용 0). **유료 실행과 교차 에이전트(GPT) 드라이버는 보류**(유저 지시). 커밋되는 재현 산출물은 tasks-csap.json·package.json·runner.js·runbook이며 `agent.js`는 설계상 git-ignore(SDK dep 격리)다. 에이전트 편집이라 `needs_review` 유지.

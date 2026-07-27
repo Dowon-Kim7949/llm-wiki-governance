@@ -38,8 +38,9 @@ contains_sensitive_info: false
   - 326 tests · validate --strict 0 · validate-frontmatter 0 · npm run lint OK. `aggregate.mjs`는 기존 2026-07-24 손계산 수치(0.516×/0.581× 및 태스크별 6개 비율)를 그대로 재현해 검증했다.
 - evidence:
   - bench/real/runner.js#symbol:assertControlPromptParity · bench/real/make-stub-wiki.mjs · bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md
+  - **정확도 축도 닫았다(같은 날, 무료 블라인드 채점).** 3-arm 54개 답변을 arm 라벨 제거·셔플 후 채점: **B 0.910 · B2 0.978 · B2_empty 0.911**(환각 B 1건·나머지 0). **B2_empty = B** — 스텁 위키는 정확도를 전혀 사주지 못하면서 토큰만 +14% 더 쓴다. 절차 검증: arm B가 2026-07-24 채점과 **정확히 재현**(0.9097·62.5/69)됐고 개별 결함 2건도 같은 arm에 독립 재귀속됐다. 신규 `bench/real/make-grading-worksheet.mjs`(라벨 제거+해시 셔플, map 분리)로 재현 가능하게 만들었다.
 - caveats:
-  - **README 헤드라인 금지 유지.** 최대 반론은 닫혔으나 단일 레포·단일 모델·6 태스크·N=3, 2026-07-22(−10%)와의 격차 미해명, 이 arm 정확도 미채점은 그대로다.
+  - **README 헤드라인 금지 유지.** 최대 반론은 닫혔으나 단일 레포·단일 모델·6 태스크·N=3, 2026-07-22(−10%)와의 격차 미해명, 채점자가 사람이 아닌 에이전트(같은 모델 계열)라는 점은 그대로다.
   - 스텁이 제목·경로를 남긴 **관대한** 통제라 +14%는 하한이다. 6개 중 2개 태스크(hazard-domain 0.90×·session-timeout 0.69×)는 스텁 arm이 여전히 B를 이겼다 — 뭉개지 않고 기록했다.
   - 비용 $5.9516로 사전 추정($3~5.5)을 초과했다. 실측 누적 약 **$17.10** / 런북 $19 캡 — 잔여 약 $1.90이라 추가 유료 arm은 새 예산 결정이 필요하다.
   - csap 저장소는 무변경(읽기 전용 하네스). API 키는 User 범위 환경변수에서 실행 시점에만 읽어 대화·저장소에 남기지 않았다.
