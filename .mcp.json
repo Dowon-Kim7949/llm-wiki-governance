@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "llm-wiki-local": {
+      "command": "node",
+      "args": ["./bin/llm-wiki.js", "mcp"]
+    }
+  }
+}

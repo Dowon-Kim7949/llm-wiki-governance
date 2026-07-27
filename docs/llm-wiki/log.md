@@ -24,6 +24,27 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - Orca 병렬 에이전트 개발 프로세스 배선(개발 도구, 배포 무관)
+- changed:
+  - AGENTS.md — `## Orca Parallel Agent Rules` 섹션 추가(wiki-block은 불변)
+  - docs/ORCA_PARALLEL_DEV.md — 신규. worktree 규약·병렬/순차 판단·워크플로 A/B/C·완료 기준·핸드오프 포맷·권한 정책·로컬 MCP·Orca 스킬
+  - .orca/README.md, .orca/agents/0{1..5}-*.md — research/plan/implement/review/release 5개 역할 시작 프롬프트
+  - .mcp.json — 신규. 개발용 로컬 MCP 서버(`node ./bin/llm-wiki.js mcp`; 배포판 `npx`가 아님)
+  - .claude/settings.json — 신규. 파괴적 명령 `deny` 14개 + 사람 권한 명령 `ask` 12개(Bash·PowerShell 양쪽)
+- summary:
+  - 여러 코딩 에이전트를 Orca worktree에서 병렬 실행하되 **승인은 사람만** 하는 개발 프로세스를 문서와 설정으로 고정했다. 제품이 강제하는 규율(에이전트는 쓰고 사람만 verified)을 개발 프로세스 자신에게도 적용한 것이다.
+  - **권한표는 규약일 뿐 통제가 아니다**는 점을 명시하고, 실제 강제 지점 두 곳(`.claude/settings.json`의 deny/ask, GitHub branch protection)을 문서에 못박았다. `review --approve`는 `deny`가 아니라 `ask`에 뒀다 — 유지보수자가 에이전트 세션으로 실행하는 기존 흐름을 끊지 않으면서 무언 실행만 막는다.
+  - 구현 역할은 새 워크플로를 발명하지 않고 저장소가 이미 제공하는 스킬(`/llm-wiki-prepare`→`/llm-wiki-feature`/`fix`)을 타도록 배선했다 — 그래야 run manifest·`check-run` 감사 추적이 남는다.
+- verification:
+  - 326 tests pass · lint OK(49 files) · `validate --strict` result pass, findings 0 · `validate-frontmatter` pass · `audit` pass · `check-run` pass
+  - `.mcp.json`·`.claude/settings.json` JSON 파싱 확인
+- evidence:
+  - AGENTS.md · docs/ORCA_PARALLEL_DEV.md · .claude/settings.json
+- caveats:
+  - `src/` 변경 없음. `package.json` `files`는 allowlist라 `.orca/`·`.mcp.json`·`docs/`는 npm 패키지에 포함되지 않는다 — 배포 영향 없음.
+  - 새 문서는 `docs/llm-wiki/` 밖(OPERATIONS.md와 같은 이유: 운영 가이드이지 거버넌스 위키 문서가 아님)이라 `validate` 스캔 대상이 아니다. 위키 문서 내용 변경이 없어 다른 문서의 status는 건드리지 않았다.
+  - `.claude/settings.json`의 deny/ask 규칙은 선언·JSON 검증만 했고 실제 차단 동작은 미검증이다(검증하려면 파괴적 명령을 시도해야 함). 세션 시작 시점에 없던 설정 파일이라 Claude Code 재시작 전까지는 적용되지 않을 수 있다.
+
 ## 2026-07-27 - BENCHMARK.md verified 재승격 + 팀 브리핑 덱 갱신·Artifact 재게시
 - changed:
   - docs/llm-wiki/BENCHMARK.md — `review --approve`로 `needs_review`→`verified`(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27)
