@@ -24,6 +24,29 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - 릴리스 1.26.3 + 버그 수정 반영분 재승인
+
+- changed:
+  - package.json 1.26.2→1.26.3 · tests/verification.test.js 버전 단언 갱신
+  - CHANGELOG.md · CHANGELOG.ko.md — 1.26.3 섹션(Fixed 2건 · additive 1건 · Documentation)
+  - README.md · README.ko.md — 핵심 명령 표에 읽기 전용 retrieval 행(`list-docs`/`search-docs`/`get-doc`/`get-related`) 추가, 컴포지트 액션 핀 예시 `@v1.26.0`→`@v1.26.3`
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 사람 검토 후 `needs_review`→`verified` 재승인(`review --approve --reviewer "Dowon-Kim"`) + Review Notes 1줄 추가
+  - docs/llm-wiki/domains/00_overview.md — `reviewed_at` 2026-07-24→2026-07-27만 재baseline(본문·`source_files`·`evidence`·`last_updated` 미변경)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,BENCHMARK}.md — tags의 `needs-review`를 `verified`로 맞춰 status와 일치시켰다(나머지 verified 문서 14건은 이미 일치)
+  - outputs/team-briefing/{llm-wiki-briefing.html,SPEAKER_NOTES.md,README.md} — 대상 버전 라벨 v1.26.2→v1.26.3
+- summary:
+  - 직전 항목의 버그 수정 2건(config UTF-8 BOM · `--no-adapters` 순서 의존)을 `1.26.3` 패치로 배포한다. 사용자가 Windows에서 저장한 config 하나로 모든 명령이 멈추는 문제라 npm에 도달해야 의미가 있다.
+  - 유지보수자(Dowon-Kim)가 문서 내용을 확인해 재승인을 지시했고, 강등돼 있던 핵심 3문서를 저장소 자신의 `review --approve`로 스탬프했다(도구가 프론트매터 3필드만 건드림). `src/cli.js` 변경으로 남아 있던 `evidence.stale` 1건은 `domains/00_overview.md`의 `reviewed_at`만 갱신해 해소했다 — 주장 내용이 이번 변경으로 달라지지 않았음을 대조 확인한 뒤다.
+  - 감사가 지적했던 README 갭 2건도 이 릴리스에 실었다: retrieval CLI 명령이 표에 없었고(1.18.0 도입 후 누락 — npm 페이지가 MCP 표면만 알렸다), 액션 핀 예시가 19개 릴리스 전 태그를 가리켰다.
+- verification:
+  - 330 tests pass · lint OK(49 files) · `validate --strict` findings 0 · `validate-frontmatter` pass
+- evidence:
+  - package.json · CHANGELOG.md · README.md
+- caveats:
+  - `review --approve`는 설계상 tags를 건드리지 않으므로 강등 때 뒤집힌 태그가 승격 후에도 남는다. 이번에는 손으로 맞췄고, 도구가 tags까지 동기화하게 만드는 것은 "3필드만 스탬프한다"는 문서화된 계약을 바꾸는 일이라 이 패치 범위에 넣지 않았다.
+  - 감사의 나머지 항목(frontmatter negative-path 테스트 공백 · 중복 키 last-wins · MCP `inputSchema` 미강제)은 여전히 미착수다.
+  - 팀 브리핑 덱은 라벨만 올렸다(기능 변화가 없어 타임라인 항목은 추가하지 않음). 공개된 Artifact 링크 재배포는 릴리스 후 별도로 처리한다.
+
 ## 2026-07-27 - 버그 수정 2건: config UTF-8 BOM · `--no-adapters` 순서 의존
 - changed:
   - src/config-file.js — config 읽기를 `readUtf8`→`readTextAuto`(BOM 인식)로 교체, `mergeConfigIntoOptions`에 `noAdapters` 가드 추가

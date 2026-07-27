@@ -3,7 +3,7 @@ title: Impact Measurement Baseline
 tags:
   - llm-wiki
   - benchmark
-  - needs-review
+  - verified
 status: verified
 doc_type: reference
 project: llm-wiki-governance

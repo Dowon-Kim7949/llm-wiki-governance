@@ -6,6 +6,41 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.26.3 — 2026-07-27
+
+Two bug fixes reproduced by a repository quality audit. No new command or option; the `1.0.0`
+command / `--format json` shape / frontmatter contracts and the zero-dependency invariant are
+unchanged.
+
+### Fixed
+
+- **A UTF-8 BOM in `llm-wiki.config.json` no longer breaks every command.** Windows PowerShell's
+  `Out-File -Encoding utf8` and older Notepad prepend a byte-order mark; `JSON.parse` then threw on
+  otherwise-valid JSON, so **every** command exited 3 with `llm-wiki.config.json is not valid JSON`
+  and the message named no cause. The config file is now read through the BOM-aware reader
+  (`readTextAuto`) that detector manifests have used since 1.14.1, so UTF-8-BOM and UTF-16 (LE/BE)
+  config files load. Genuinely malformed JSON still exits 3, and wiki documents keep the raw UTF-8
+  read so the mojibake scan is unaffected.
+- **`init --no-adapters` no longer depends on flag order, and config no longer refills the list it
+  cleared.** The flag now records the intent declaratively and is applied once after argument
+  parsing, so `--agent claude --no-adapters` and `--no-adapters --agent claude` agree. And because
+  an emptied `agents` list read as "unspecified", the config's `agents` was merged back in — in this
+  repository `init --agent claude --no-adapters` produced `agents=[codex, claude]`, so the flag that
+  turns adapters *off* added an agent the user never named. Both merge paths (`src/cli.js`,
+  `src/config-file.js`) now honour the opt-out. Only `init` accepts the flag, so nothing else moves.
+
+### Changed (additive)
+
+- `defaultOptions()` gains `noAdapters: false`. `normalizeOptions` spreads it, so the programmatic
+  API's returned options object carries one additional key; no existing key or value changes.
+
+### Documentation
+
+- **The README's core-command table now lists the read-only retrieval commands**
+  (`list-docs` · `search-docs` · `get-doc` · `get-related`), which had been missing from the table
+  since they shipped in 1.18.0 — the npm page advertised the MCP surface but not the CLI one. `init`'s `--with-adapters`/`--no-adapters` are likewise now documented in `PUBLIC_API.md`.
+- The composite-action example pin moved from `@v1.26.0` to `@v1.26.3` (EN + KO).
+
 ## 1.26.2 — 2026-07-27
 
 Documentation only, again for the npm package page. No code, no CLI, no contract change.

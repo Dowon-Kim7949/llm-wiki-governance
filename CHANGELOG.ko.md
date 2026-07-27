@@ -5,6 +5,41 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.26.3 — 2026-07-27
+
+저장소 품질 감사에서 재현한 버그 2건을 고쳤다. 신규 명령·옵션은 없고, `1.0.0` 명령 /
+`--format json` shape / frontmatter 계약과 무의존성 불변식은 그대로다.
+
+### Fixed
+
+- **`llm-wiki.config.json`의 UTF-8 BOM 하나가 더 이상 모든 명령을 죽이지 않는다.** Windows
+  PowerShell `Out-File -Encoding utf8`과 구형 메모장은 BOM을 붙이는데, 그 때문에 유효한 JSON인데도
+  `JSON.parse`가 던져 **모든** 명령이 `llm-wiki.config.json is not valid JSON`으로 exit 3이 됐고
+  메시지는 원인을 전혀 알려주지 않았다. 이제 config 파일은 1.14.1부터 detector 매니페스트가 쓰던
+  BOM 인식 리더(`readTextAuto`)로 읽어 UTF-8 BOM·UTF-16(LE/BE) config도 로드된다. 진짜 malformed
+  JSON은 여전히 exit 3이며, 위키 문서는 mojibake 스캔을 보존하기 위해 raw UTF-8 읽기를 유지한다.
+- **`init --no-adapters`가 플래그 순서에 좌우되지 않고, 비운 목록을 config가 되채우지 않는다.**
+  플래그가 의도만 선언적으로 기록하고 인자 파싱이 끝난 뒤 한 번 적용되므로
+  `--agent claude --no-adapters`와 `--no-adapters --agent claude`가 같은 결과를 낸다. 또한 비워진
+  `agents`가 "미지정"으로 읽혀 config의 `agents`가 다시 병합됐는데 — 이 저장소에서는
+  `init --agent claude --no-adapters`가 `agents=[codex, claude]`를 냈다. 어댑터를 **끄는** 플래그가
+  사용자가 지정하지도 않은 에이전트를 더한 것이다. 이제 두 병합 경로(`src/cli.js`,
+  `src/config-file.js`)가 모두 이 opt-out을 존중한다. 이 플래그를 받는 명령은 `init` 뿐이라 다른
+  동작은 그대로다.
+
+### Changed (additive)
+
+- `defaultOptions()`에 `noAdapters: false`가 추가됐다. `normalizeOptions`가 이를 spread하므로
+  프로그래매틱 API가 돌려주는 옵션 객체에 키가 1개 늘어난다. 기존 키·값은 변하지 않는다.
+
+### Documentation
+
+- **README 핵심 명령 표에 읽기 전용 retrieval 명령이 등재됐다**(`list-docs` · `search-docs` ·
+  `get-doc` · `get-related`). 1.18.0에 도입된 이후 표에서 빠져 있어 npm 페이지가 MCP 표면만 알리고
+  같은 기능의 CLI 표면은 알리지 않았다. `init`의 `--with-adapters`/`--no-adapters`도 `PUBLIC_API.md`에
+  등재했다.
+- 컴포지트 액션 예시 핀을 `@v1.26.0`→`@v1.26.3`으로 올렸다(EN·KO).
+
 ## 1.26.2 — 2026-07-27
 
 문서만 변경, 역시 npm 패키지 페이지 반영용. 코드·CLI·계약 변경 없음.

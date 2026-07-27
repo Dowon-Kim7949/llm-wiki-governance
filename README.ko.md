@@ -77,6 +77,7 @@ CLI 자체는 모델이 필요 없습니다. 오직 **보강(enrichment)** 단�
 | `review` | 사람 검토 워크플로: `needs_review` 백로그를 위험도 순으로 나열(읽기 전용). `review --approve <path> --reviewer "<이름>"`로만 `verified`를 스탬프하며 자동 승격은 없음. |
 | `handoff` · `prompt` | 에이전트 handoff 프롬프트 · 반복 작업 프롬프트(bootstrap/feature/fix/refactor/docs-sync/okf-extract). |
 | `onboard` · `prepare` | 읽기 전용 guided: 업무 영역을 코드 근거와 함께 학습(`onboard [--domain]`) · 구현 전 작업 범위 조사(`prepare --task`). 위키에서 조립하며 CLI는 설명을 창작하지 않음. |
+| `list-docs` · `search-docs` · `get-doc` · `get-related` | 문서 **본문**을 돌려주는 읽기 전용 retrieval: `--status`/`--visibility`/`--doc-type` 필터 열거 · 무의존성 키워드 검색(semantic 아님) · 문서 하나의 frontmatter+본문(`--section`·`--max-chars`) · 해소된 그래프 이웃. 제한·민감 문서는 `--include-sensitive` 없이는 제외되고, 민감 라인은 redact된다. |
 | `mcp` | 읽기 전용 MCP 서버 실행(아래 참조). |
 
 `--lang ko`를 붙이면(또는 `llm-wiki.config.json`에 `lang` 설정) findings 메시지와 `explain` 출력을 한국어로 볼 수 있습니다. rule ID·`--format json` shape·기본 영어 출력은 불변입니다.
@@ -137,7 +138,7 @@ $ npx llm-wiki-governance validate --strict
 - **드리프트를 조기에.** 모든 문서가 `source_files`/정밀 `evidence`를 인용하고, 그게 바뀌면 `evidence.stale`·`drift`가 표시합니다. `drift --downgrade`로 낡은 `verified` 문서를 `needs_review`로 되돌립니다.
 - **같은 변경에서 최신 유지.** 코드와 같은 변경에서 위키도 갱신(`prompt --task docs-sync` 또는 `docs-sync` 스킬)하고, pre-commit/CI에서 `validate --changed` 실행.
 - **에이전트가 스스로 쓰게.** `mcp` 서버를 연결하면 에이전트가 코드를 다시 훑는 대신 위키를 툴로 질의합니다.
-- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.26.0`(정확한 태그로 고정).
+- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.26.3`(정확한 태그로 고정).
 - **눈에 보이게.** `graph --format mermaid`·`stats`·`audit --format html`로 사람이 코퍼스를 봅니다. GitHub/GitLab·Obsidian·MkDocs에서 그대로 렌더(정적 사이트 생성기가 아니라 Markdown-in-git 유지).
 
 ## 실제로 도움이 되나?

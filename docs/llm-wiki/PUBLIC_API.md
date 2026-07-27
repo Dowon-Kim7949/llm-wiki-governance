@@ -2,8 +2,8 @@
 title: Public Api
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: public_api
 project: llm-wiki-governance
 last_updated: 2026-07-27
@@ -264,3 +264,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-24에 위 1.25.0 반영분(command 표의 `get-doc --strict-section`/`--compact`/`--max-chars`·`prepare --compact`/`--max-chars`·`init`/`quickstart --refresh`, MCP `get_doc`/`prepare` 토큰 제어 옵션)을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-24)를 거쳐 `verified`로 재승인했다. command 표·옵션 표면이 현재 소스(HEAD 5fe3aff, npm dist-tags.latest=1.25.0)와 일치하고 동결 프로그래매틱 API 맵의 키 집합·`--format json` 형태가 불변임을 확인했다(319 tests·validate --strict 0).
 - 2026-07-24에 Gate 20 read-only `review` 워크플로(GATE_REVIEW "Review Workflow Scope Decision", accepted 2026-07-24)를 반영했다: Commands 표에 `review [--approve <path>]... [--approve-all --yes] [--reviewer <name>] [--include-sensitive]` 행을, Key Options에 `--approve`/`--approve-all`/`--yes`/`--reviewer`/`--include-sensitive`를, MCP 노출 툴 목록에 `review`(LIST만; 승격은 CLI 전용)을, Evidence에 `src/commands.js#symbol:reviewCommand` 포인터를 등재했다. needs_review 백로그를 위험도 정렬해 나열(read-only)하고 명시적 `--approve`/`--approve-all --yes`로만 `status: verified`+`reviewed_by`+`reviewed_at`을 스탬프하며 자동 승격은 절대 없다(blocking/구조적 finding 문서 거부; reviewed_by 미해소 시 스탬프 거부). 동결 프로그래매틱 API `commands` 맵에 `review` 키를 additive로 추가(`src/index.js`). additive·`1.0.0` 계약·`--format json` shape·zero-dep 불변. 319 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-27에 저장소 품질 감사에서 재현한 버그 2건의 수정을 옵션 표면 문서에 반영했다: (1) Commands 표 `init` 행에 그동안 **문서화되지 않았던** `--with-adapters`/`--no-adapters`를 등재하고, `--no-adapters`가 선언적(플래그 순서 무관)이며 명시적 opt-out이라 config `agents`가 목록을 되채우지 않음을 명시했다 — 수정 전에는 순서에 따라 결과가 달랐고 비워진 목록을 config가 되살렸다. (2) Contract Notes의 config 항목에 config 파일이 **BOM 인식**으로 읽힌다는 점(UTF-8 BOM·UTF-16 로드 성공, 진짜 malformed만 exit 3)을 추가했다. 공개 계약 관점: 명령/JSON shape/exit code 의미/동결 `commands` 맵 키 집합 불변이고, `defaultOptions()`에 `noAdapters: false`가 **additive**로 늘었다(`normalizeOptions`가 spread하므로 프로그래매틱 API 반환 객체에 키 1개 추가). 330 tests·lint OK·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-07-27에 위 버그 수정 2건 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27)를 거쳐 `verified`로 재승인했다. 옵션 표면 서술이 현재 소스와 일치함을 확인했다: `--no-adapters`는 `src/cli.js`에서 `options.noAdapters`만 세우고 argv 순회 후 일괄 적용되며(선언적), `src/config-file.js`의 config 병합이 그 플래그를 가드로 존중한다. config 읽기는 `readTextAuto`(BOM 인식)다. 이 재승인은 1.26.3 릴리스의 일부다(330 tests·lint OK·validate --strict 0).

@@ -77,6 +77,7 @@ The `llm-wiki mcp` server is deterministic (no model); the agent *calling* its t
 | `review` | Human review workflow: lists the `needs_review` backlog risk-ranked (read-only). `review --approve <path> --reviewer "<name>"` stamps `verified` — only on that explicit flag, never automatically. |
 | `handoff` · `prompt` | Agent handoff prompt · repeatable task prompts (bootstrap/feature/fix/refactor/docs-sync/okf-extract). |
 | `onboard` · `prepare` | Guided, read-only: learn a work area from real code evidence (`onboard [--domain]`) · scope a change before implementing (`prepare --task`). Assembled from the wiki; the CLI invents no explanation. |
+| `list-docs` · `search-docs` · `get-doc` · `get-related` | Read-only retrieval that returns document **content**: enumerate with `--status`/`--visibility`/`--doc-type` filters · zero-dependency keyword search (not semantic) · one document's frontmatter + body (`--section`, `--max-chars`) · resolved graph neighbours. Restricted/sensitive documents are excluded unless you pass `--include-sensitive`, and sensitive lines are redacted. |
 | `mcp` | Run the read-only MCP server (see below). |
 
 Add `--lang ko` (or set `lang` in `llm-wiki.config.json`) to see findings messages and `explain` output in Korean; rule IDs, the `--format json` shape, and default English output are unchanged.
@@ -137,7 +138,7 @@ When something needs attention, findings are `severity · rule · path` — mach
 - **Catch drift early.** Every doc cites `source_files` / precise `evidence`; when those change, `evidence.stale` and `drift` flag the doc. Run `drift --downgrade` to flip stale `verified` docs back to `needs_review`.
 - **Keep it current in the same change.** Update the wiki alongside the code (`prompt --task docs-sync`, or the `docs-sync` skill), and run `validate --changed` in pre-commit / CI.
 - **Let agents self-serve.** Point your agent at the `mcp` server so it queries the wiki as tools instead of re-scanning the code.
-- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.26.0` (pin an exact tag).
+- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.26.3` (pin an exact tag).
 - **Make it readable.** `graph --format mermaid`, `stats`, and `audit --format html` help humans see the corpus; it stays Markdown-in-git (renders on GitHub/GitLab, Obsidian, MkDocs — not a static-site generator).
 
 ## Does it actually help?
