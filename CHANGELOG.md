@@ -6,6 +6,31 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.26.1 — 2026-07-27
+
+Documentation only. No code, no CLI, no contract change — published so the corrected README
+reaches the npm package page, which otherwise keeps serving the text from 1.26.0.
+
+### Documentation
+
+- **The "Does it actually help?" section now states the controlled benchmark result** and drops a
+  superseded figure. It previously cited a 2026-07-22 run ("~10% fewer tokens") measured with a
+  single total-token count. It now reports the three-arm measurement: an agent querying a current,
+  verified wiki used **about 41% fewer input tokens** (the conservative pooled figure) than one
+  reading source, at slightly better rubric accuracy — and the control arm, which is the part that
+  matters: the **same retrieval tools over a wiki with its content stripped out cost 14% *more*
+  than having no wiki at all**. So the saving comes from the maintained content, not from giving
+  the agent a search tool, and an unenriched wiki is worse than no wiki.
+  - The scope conditions travel with the number — one repository, one model, six tasks, N=3,
+    agent-graded — along with the one task where retrieval *lost* at 3.17×. Full method, including
+    the runs that went against us: `docs/llm-wiki/BENCHMARK.md`.
+  - No performance headline: the figure stays inside a paragraph, never in the title, the tagline,
+    or a badge.
+- **The CI example pins a current tag.** It suggested `actions/validate@v1.7.0`, nineteen releases
+  old; now `@v1.26.0`.
+
+Both changes applied to `README.md` and `README.ko.md` together.
+
 ## 1.26.0 — 2026-07-27
 
 **Harden & Adopt: make human review cheap enough to actually do.** The headline is `review`,

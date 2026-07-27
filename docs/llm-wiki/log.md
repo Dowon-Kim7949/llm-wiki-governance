@@ -24,6 +24,20 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - 릴리스 1.26.1 (문서 전용): 교정된 README를 npm 페이지에 반영
+- changed:
+  - package.json(1.26.0→1.26.1), tests/verification.test.js(버전 단언), CHANGELOG.md·CHANGELOG.ko.md(1.26.1 섹션)
+- summary:
+  - 앞선 README 교정(폐기된 −10% 인용 → 통제 arm 포함 결과, CI 예시 태그 `@v1.26.0`)은 `README.md`·`README.ko.md`가 npm `files` allowlist에 들어 있어 **새 배포 없이는 npm 패키지 페이지에 반영되지 않는다**. main 푸시는 GitHub만 갱신한다. 그래서 문서 전용 패치로 배포했다.
+  - v1.26.0 이후 변경된 패키지 포함 파일은 정확히 두 README뿐이다(나머지는 bench/·docs/llm-wiki/·outputs/ = 미배포). 코드·CLI·`1.0.0` 계약 변경 없음.
+- verification:
+  - 326 tests · validate-frontmatter 0 · validate --strict 0 · `npm pack --dry-run` → llm-wiki-governance-1.26.1.tgz(73 files).
+- evidence:
+  - package.json · README.md · CHANGELOG.md
+- caveats:
+  - 팀 브리핑 덱은 **의도적으로 v1.26.0에 둔다** — 1.26.1은 기능 변화가 없는 문서 교정이라 발표 스토리가 달라지지 않는다(별도 지시 시 정렬). 공유 Artifact 링크는 여전히 v1.25.0 내용이라 재게시 대기 중.
+  - 벤치 채점의 사람 비준은 여전히 미완이며, 이 릴리스는 그 상태를 바꾸지 않는다.
+
 ## 2026-07-27 - README(EN/KO) 스토어프론트 2건 반영: 통제 결과로 교체(보수적 −40.7%) + CI 예시 태그 갱신
 - changed:
   - README.md·README.ko.md — (1) "Does it actually help?/실제로 도움이 되나?" 문단을 폐기된 2026-07-22 −10% 인용에서 **통제 arm 포함 결과**로 교체, (2) CI 예시 액션 핀 `@v1.7.0`→`@v1.26.0`
