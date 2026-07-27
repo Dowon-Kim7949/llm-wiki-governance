@@ -24,7 +24,10 @@ arms: the inverted router-guard claim landed on **B**, and the `useSessionTimeou
 state-mgmt answer out of 69.
 
 **Caveat, unchanged and load-bearing:** this is an **agent** rubric-grade, blind to arm, from a
-model in the same family as the one under test — not an independent human blind grade. Blinding
+model in the same family as the one under test — not an independent human blind grade.
+A reviewer-facing worksheet for closing that gap — a 7-answer sample chosen adversarially against
+this grade, with a sensitivity analysis of its most contestable judgment — is at
+[`…-ratification.md`](./real-driver-csap-sdk-empty-control-2026-07-27-ratification.md). Blinding
 removes label bias, not every cue: an answer can still betray its arm by citing a wiki document.
 Rubric-claim coverage is a completeness proxy, not an absolute truth score.
 
