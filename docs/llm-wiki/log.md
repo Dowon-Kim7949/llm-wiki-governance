@@ -24,6 +24,20 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - verified 문서 12개 재기준 (1.26.0 버전 범프 후 evidence.stale 해소)
+- changed:
+  - docs/llm-wiki/{EXAMPLES.md, index.md, profiles/library.md, project-profile.md, PUBLIC_API.md, README.md, releases/v0.1.7.md, releases/v0.1.8.md, RELEASE_FLOW.md, templates/DECISION_LOG.template.md, templates/TASK_PROMPT.template.md, VERSIONING.md} — frontmatter `reviewed_at` 2026-07-24→2026-07-27만 갱신
+- summary:
+  - 1.26.0 릴리스 커밋(`5e640f7`)이 `package.json`·`README.md`를 건드려, 이들을 참조하는 verified 문서 12개가 `evidence.stale` 14건으로 잡혔다. 이 문서들은 의도적으로 버전 비의존으로 작성돼(`project-profile`이 명시) 버전 범프로 주장이 달라지지 않으며, 변경은 버전 숫자·추가 문서뿐이다. 유지보수자(Dowon-Kim)가 재기준을 지시해 기존 방식(`ddbf6ca`·`b9fd3cd` 선례)대로 `reviewed_at`만 오늘로 옮겨 drift를 해소했다.
+  - 변경 범위 확인: git diff가 12파일 × 1줄이며 바뀐 라인은 `reviewed_at`뿐이다 — 본문·`last_updated`·`source_files`·`evidence`·`status`는 불변.
+- verification:
+  - validate --strict 0(이전 14 evidence.stale → 0) · drift 0 · validate-frontmatter 0.
+- evidence:
+  - package.json · README.md (1.26.0 범프가 재검토를 촉발)
+- caveats:
+  - 릴리스 자체는 이 drift에 막히지 않았다 — Publish·CI는 `validate-frontmatter`와 `doctor`만 검사한다. 이 항목은 순수 거버넌스 정리다.
+  - 31개 needs_review 이력 문서(릴리스 노트)는 의도적으로 그대로 둔다.
+
 ## 2026-07-27 - 릴리스 1.26.0 준비 (Harden & Adopt: Gate 20 `review` + Track A 위생 + Track C 도입 문서)
 - changed:
   - package.json(1.25.0→1.26.0), tests/verification.test.js(버전 단언 1.26.0)
