@@ -137,12 +137,12 @@ $ npx llm-wiki-governance validate --strict
 - **드리프트를 조기에.** 모든 문서가 `source_files`/정밀 `evidence`를 인용하고, 그게 바뀌면 `evidence.stale`·`drift`가 표시합니다. `drift --downgrade`로 낡은 `verified` 문서를 `needs_review`로 되돌립니다.
 - **같은 변경에서 최신 유지.** 코드와 같은 변경에서 위키도 갱신(`prompt --task docs-sync` 또는 `docs-sync` 스킬)하고, pre-commit/CI에서 `validate --changed` 실행.
 - **에이전트가 스스로 쓰게.** `mcp` 서버를 연결하면 에이전트가 코드를 다시 훑는 대신 위키를 툴로 질의합니다.
-- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.7.0`(정확한 태그로 고정).
+- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.26.0`(정확한 태그로 고정).
 - **눈에 보이게.** `graph --format mermaid`·`stats`·`audit --format html`로 사람이 코퍼스를 봅니다. GitHub/GitLab·Obsidian·MkDocs에서 그대로 렌더(정적 사이트 생성기가 아니라 Markdown-in-git 유지).
 
 ## 실제로 도움이 되나?
 
-외부 Vue/Quasar 앱 대상 N=3 벤치마크(Claude Opus 4.8, 코드이해 태스크 6개)에서, **최신** 위키를 조회한 에이전트는 **소스를 전혀 읽지 않고 동일 정확도로** 답하며 토큰을 ~10% 덜 썼다 — 태스크 의존적(답이 여러 파일에 흩어질수록 이득이 크고, 작은 파일 하나면 미미하거나 오히려 손해). 반면 **오래된** 위키는 자신 있게 틀린 답을 냈다. 그래서 진짜 이득은 **신선도에서 오는 정확도**이며, 이는 `verified` 검토·drift/`impact`·`validate --changed`가 지키는 바로 그것이다. 이는 스코프가 한정된 결과(단일 에이전트·단일 레포·total-token 프록시)이지 보편적 속도 주장이 아니다. 정직한 방법·전체 수치: [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md).
+외부 Vue/Quasar 앱에서 측정했다 — 코드이해 태스크 6개, Claude Opus 4.8, 답변은 **어느 arm이 냈는지 모르는 상태로 채점**했다. **최신·verified** 위키를 조회한 에이전트는 소스를 직접 읽은 쪽보다 입력 토큰을 **약 41% 덜** 썼고(태스크당 4샘플 pooled), 루브릭 정확도는 소폭 더 높았다. 다만 그 수치보다 중요한 건 **통제군**이다: **같은 조회 도구를 내용만 비운 위키에 붙였더니 위키가 아예 없을 때보다 오히려 14% 더 들었다**(N=3) — 즉 절감은 검색 도구가 아니라 **유지된 내용**에서 나온다. 뒤집으면 **미보강 위키는 없느니만 못하다**는 뜻이다. 한편 **오래된** 위키를 쓴 이전 실행에서는 보안상 자신 있게 틀린 답이 나왔다. 그래서 진짜 이득은 **신선도에서 오는 정확도**이며, 이는 `verified` 검토·drift/`impact`·`validate --changed`가 지키는 바로 그것이다. 범위: 단일 레포·단일 모델·6 태스크·N=3·에이전트 채점 — 그리고 6개 중 1개 태스크에서는 조회 쪽이 3.17배로 **졌다**. 방법과 전체 수치, 불리하게 나온 실행까지: [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md).
 
 ## 에이전트 네이티브 (MCP)
 

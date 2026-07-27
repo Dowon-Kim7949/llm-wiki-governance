@@ -6,9 +6,10 @@ criticism costs more credibility than the criticism did.
 
 ---
 
-### "48% is meaningless — that's one repo."
+### "41% is meaningless — that's one repo."
 
-Agreed, and that's why there's no number in the README or the title. It's one external repo, one
+Agreed, and that's why the number lives in a paragraph with all its conditions attached rather
+than in the title, the tagline, or a badge. It's one external repo, one
 model, six tasks, N=3, and the grader was an agent. What the run does establish is narrower and
 more useful: a control arm with the same tools over an emptied wiki cost *more* than no wiki, so
 whatever effect exists comes from the content rather than from having a search tool. That's the

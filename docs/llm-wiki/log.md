@@ -24,6 +24,22 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - README(EN/KO) 스토어프론트 2건 반영: 통제 결과로 교체(보수적 −40.7%) + CI 예시 태그 갱신
+- changed:
+  - README.md·README.ko.md — (1) "Does it actually help?/실제로 도움이 되나?" 문단을 폐기된 2026-07-22 −10% 인용에서 **통제 arm 포함 결과**로 교체, (2) CI 예시 액션 핀 `@v1.7.0`→`@v1.26.0`
+  - outputs/distribution/{CLAIMS,README-note,launch-post,reddit-post,reply-kit}.md — 반영 상태 기록 및 수치 정합화
+- summary:
+  - 유지보수자가 두 건 모두 승인하고 **보수적 pooled −40.7%**("약 41%")를 선택했다(N=3 단독 −48.4% 아님). EN/KO 동시 반영.
+  - 새 문단은 헤드라인 금지를 지킨다: 수치가 제목·태그라인·배지가 아니라 **문단 안**에 있고, 4개 조건(단일 레포·단일 모델·6 태스크·N=3·에이전트 채점)과 **진 태스크(3.17×)**를 함께 싣는다. 통제 arm(+14%)과 stale 위키 보안 오답도 같은 문단에 남겨 신선도-종속 정확도 논지를 유지했다.
+  - **정합성 교정:** 배포 드래프트 3곳에 "README에는 성능 수치를 넣지 않았다"는 문장이 남아 있었는데 이번 반영으로 **사실이 아니게 되어** 전부 고쳤다("조건과 함께 문단에 싣되 헤드라인은 아님"). 드래프트의 48% 인용도 README와 맞춰 ~41%로 통일했다(CLAIMS.md에 규칙 명시).
+  - `@v1.26.0` 태그가 origin에 실재함을 확인하고 핀했다.
+- verification:
+  - 326 tests · validate --strict 0.
+- evidence:
+  - docs/llm-wiki/BENCHMARK.md · outputs/distribution/CLAIMS.md
+- caveats:
+  - 여전히 **아무것도 게시하지 않았다**. 공개 전 선행 조건(채점 워크시트 사람 비준)도 그대로 남아 있다.
+
 ## 2026-07-27 - BENCHMARK.md verified 승격 + 배포 준비 자료 재작성 (게시 행위 없음)
 - changed:
   - docs/llm-wiki/BENCHMARK.md — `review --approve`로 `needs_review`→`verified`(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27). 유지보수자가 통제 arm·블라인드 채점 반영분을 검토 완료.

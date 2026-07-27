@@ -36,7 +36,7 @@ three-arm test on an external Vue/Quasar app — six code-comprehension question
 Opus 4.8, answers graded blind to arm:
 
 - agent reads source, no wiki:                    baseline
-- agent queries a current, verified wiki:         48% fewer input tokens, slightly better answers
+- agent queries a current, verified wiki:         ~41% fewer input tokens, slightly better answers
 - same tools over a wiki with the content removed: 14% MORE tokens than having no wiki at all
 
 That third arm is the one that mattered. Without it I could not tell whether the saving came
@@ -48,7 +48,8 @@ Caveats, because one repo is one repo: single project, single model, six tasks, 
 grader was an agent (blind to arm, but same model family — not an independent human). On one of
 the six tasks retrieval lost badly, 3.17x, because the source file was tiny and reading it
 directly was cheaper. An earlier run on the same repo measured only -10% and I can't fully
-explain the gap. I'm not putting a performance number in the README on the strength of this.
+explain the gap. The README states this as a scoped paragraph with its conditions, not as a
+headline number — one repo doesn't earn a headline.
 Method and full numbers, including the runs that went against me:
 https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md
 
@@ -90,7 +91,7 @@ needs_review; a human approves, and their name and date get stamped. The tool ha
 this.
 
 4/ I tested whether it pays for itself. Three arms, external Vue app, 6 tasks, N=3, Opus 4.8,
-graded blind. Wiki: -48% input tokens. Same tools over an EMPTY wiki: +14% vs no wiki at all.
+graded blind. Wiki: ~-41% input tokens. Same tools over an EMPTY wiki: +14% vs no wiki at all.
 So it's the content, not the tooling.
 
 5/ Which also means: a scaffolded wiki nobody filled in is worse than no wiki.

@@ -51,8 +51,9 @@ Both hold **for this fixture**. Neither is a general claim.
 
 ## Forbidden
 
-- **Any headline number.** No "48% fewer tokens", no "cuts your context in half", no percentage in
-  a title, tagline, or first line. The result is a footnote, not a claim.
+- **Any headline number.** No "41% fewer tokens" as a slogan, no "cuts your context in half", no
+  percentage in a title, tagline, badge, or opening line. The figure belongs inside a paragraph
+  with its conditions — which is exactly where the README now puts it — never on its own.
 - **Any generalisation from one repo/model.** Not "saves tokens", not "makes agents cheaper".
 - **Any `chars/4` proxy figure** (the −81.5% and similar from `bench/run.js`). Those are a
   diagnostic proxy, not measured tokens, and must never appear in public copy.
@@ -83,4 +84,10 @@ Both hold **for this fixture**. Neither is a general claim.
 1. **Human ratification of the grading worksheet.** `bench/results/…-empty-control-2026-07-27-grading.md`
    contains a per-answer table; the maintainer spot-checking a sample and saying so converts
    "agent-graded" into "agent-graded, human-ratified" and closes the last obvious line of attack.
-2. Decide whether the README's existing evidence paragraph is updated (see `README-note.md`).
+2. ~~Decide whether the README's evidence paragraph is updated.~~ **Done 2026-07-27** — both
+   READMEs now carry the controlled result at the conservative pooled figure ("about 41%"), with
+   the control arm, the losing task, and all four scope conditions. See `README-note.md`.
+
+**Public copy must now match the README.** The README quotes ~41% (pooled); posts and registry
+entries should not quote 48.4% alongside it, or the two surfaces will read as inconsistent.
+Where a draft in this directory still says 48%, prefer the pooled figure or drop the number.

@@ -42,7 +42,7 @@ on an external Vue/Quasar app, six comprehension questions, N=3, Opus 4.8, answe
 to which arm produced them:
 
 - reading source, no wiki:                          baseline
-- querying a current, verified wiki:                48% fewer input tokens, slightly better answers
+- querying a current, verified wiki:                ~41% fewer input tokens, slightly better answers
 - same tools over a wiki with the content removed:  14% MORE tokens than no wiki at all
 
 That last arm is the point. Without it I couldn't tell whether the win came from the wiki's
@@ -51,8 +51,8 @@ you. Which also means a scaffolded wiki you never filled in is worse than not ha
 
 Honest limits: one repo, one model, six tasks, N=3, and the grader was an agent (blind to arm,
 but same model family — not an independent human). On one of the six tasks retrieval lost badly
-because the file was small enough to just read. I'm not putting a performance number in the
-README off the back of this.
+because the file was small enough to just read. The README states this with its conditions
+attached rather than as a headline — one repo doesn't earn a headline.
 
 npx llm-wiki quickstart --write
 https://github.com/Dowon-Kim7949/llm-wiki-governance
@@ -75,7 +75,7 @@ server so Claude can query the wiki instead of re-reading your codebase.
 Node, MIT, zero dependencies.
 
 I measured it three ways on an external Vue app (6 tasks, N=3, Opus 4.8, blind-graded): querying
-a current wiki used 48% fewer input tokens than reading source; the same tools over an *emptied*
+a current wiki used ~41% fewer input tokens than reading source; the same tools over an *emptied*
 wiki cost 14% more than having no wiki at all. So it's the content that pays, not the tooling —
 and an unenriched wiki is worse than none. One repo, one model, agent-graded, and it lost on one
 of the six tasks; full method in the repo.

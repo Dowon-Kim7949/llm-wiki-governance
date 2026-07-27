@@ -1,4 +1,9 @@
-# Storefront readiness — two proposed README changes (NOT applied)
+# Storefront readiness — two README changes (✅ BOTH APPLIED 2026-07-27)
+
+> **Status: done.** The maintainer approved both on 2026-07-27 and chose the **conservative
+> pooled −40.7%** ("about 41%") over the N=3-only −48.4%. Applied to `README.md` and
+> `README.ko.md` together; the CI example now pins `@v1.26.0` (tag verified to exist on origin).
+> The text below is retained as the record of what was proposed and why.
 
 The README is the npm and GitHub storefront: it is the first thing anyone arriving from a
 registry listing or a post will read. Two things in it are now out of step with the repository.
