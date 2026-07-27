@@ -6,6 +6,26 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.26.2 — 2026-07-27
+
+Documentation only, again for the npm package page. No code, no CLI, no contract change.
+
+### Documentation
+
+- **The benchmark's grading is now human-ratified, and the README says so precisely.** The scope
+  line read "agent-graded"; it now reads **"agent-graded with the grading standard ratified by the
+  maintainer on a sampled review"**.
+  - What that means: on 2026-07-27 the maintainer reviewed a deliberately adversarial 7-answer
+    sample — matched per-arm triplets covering the task with the largest spread, the task where
+    the *no-wiki* arm wins, the harshest grade given, and a leniency check — and confirmed the
+    grading standard was applied consistently across arms. No scores changed.
+  - What it does **not** mean: it is not an independent human re-grade of all 54 answers, and it
+    is never described as "human-graded". The worksheet also records a sensitivity analysis
+    showing the conclusion survives if the most contestable judgment is discarded.
+  - Record: `bench/results/real-driver-csap-sdk-empty-control-2026-07-27-ratification.md`.
+- **The performance-headline ban is unchanged.** Ratification raises confidence in the grading; it
+  does not enlarge the sample. One repository, one model, six tasks, N=3.
+
 ## 1.26.1 — 2026-07-27
 
 Documentation only. No code, no CLI, no contract change — published so the corrected README

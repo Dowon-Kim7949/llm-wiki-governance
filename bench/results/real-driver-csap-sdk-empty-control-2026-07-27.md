@@ -93,8 +93,9 @@ Reported rather than smoothed over.
    same repo differ by 4–5×; driver path, token accounting, and fixture differ, but not
    demonstrably by that much.
 5. **README / launch token and speed headlines remain FORBIDDEN.** This run removes the strongest
-   objection to the finding; it does not satisfy the publication conditions (≥3 repo types,
-   ≥2 model families, N≥5, human ratification). Scoped footnote only.
+   objection to the finding, and the maintainer ratified the grading standard on a sampled review
+   (2026-07-27), but neither enlarges the sample: the publication conditions (≥3 repo types,
+   ≥2 model families, N≥5) are still unmet. Scoped footnote only.
 
 ## Cost
 

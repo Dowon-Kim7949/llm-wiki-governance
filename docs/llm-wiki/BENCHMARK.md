@@ -4,7 +4,7 @@ tags:
   - llm-wiki
   - benchmark
   - needs-review
-status: verified
+status: needs_review
 doc_type: reference
 project: llm-wiki-governance
 last_updated: 2026-07-27
@@ -26,6 +26,7 @@ source_files:
   - bench/results/real-driver-csap-sdk-2026-07-24.md
   - bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md
   - bench/results/real-driver-csap-sdk-empty-control-2026-07-27-grading.md
+  - bench/results/real-driver-csap-sdk-empty-control-2026-07-27-ratification.md
 evidence:
   - bench/run.js
   - bench/lib/strategies.js#symbol:strategyWikiGrounded
@@ -37,6 +38,7 @@ evidence:
   - bench/results/real-driver-csap-sdk-2026-07-24-grading.md
   - bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md
   - bench/results/real-driver-csap-sdk-empty-control-2026-07-27-grading.md
+  - bench/results/real-driver-csap-sdk-empty-control-2026-07-27-ratification.md
   - GATE_REVIEW.md#section:Impact Measurement Scope Decision
 related:
   - docs/llm-wiki/project-profile.md
@@ -217,7 +219,8 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   refresh-interceptor 루브릭 항목을 누락했다. 경미한 부정확 2건뿐(모두 비치명적).
 - **채점의 한계(중요):** 이것은 **arm에 블라인드한 에이전트 루브릭 채점**이지 **독립적 사람 블라인드
   채점이 아니다**(테스트 대상과 같은 모델 계열). rubric-claim coverage는 완전성 프록시이지 절대
-  진리 점수가 아니다. 사람 비준이 남은 마지막 방법론적 갭이다.
+  진리 점수가 아니다. **2026-07-27에 유지보수자(Dowon-Kim)가 채점 기준을 표본 검토로 비준했다**
+  (아래 §통제 arm 참조) — 단 이는 기준의 비준이지 54개 전량의 독립 재채점은 아니다.
 - **비용:** 유료 실행 총 **$11.15**(N=1 캘리브레이션 $3.13 + N=3 $8.02), $19 하드캡 이내.
 
 **2026-07-22 실측(−10%)과의 불일치 — 숨기지 않고 기록한다.** 같은 레포·같은 6태스크인데 델타가
@@ -280,7 +283,13 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   절차 안정성 검증: arm B를 2026-07-24 워크시트를 보지 않고 블라인드 재채점했더니 **0.9097·62.5/69로
   정확히 재현**됐고, 당시 기록된 개별 결함 2건(B의 가드 역설명, B2의 `useSessionTimeout` 경로 오류)도
   독립적으로 같은 arm에 재귀속됐다. 채점자는 여전히 **사람이 아닌 에이전트**다(같은 모델 계열) —
-  사람 비준이 남은 마지막 갭.
+  **2026-07-27 사람 비준 완료(승인, Dowon-Kim)** — 결론을 무효화할 수 있는 유일한 질문("arm 간
+  잣대가 같았는가")을 겨냥해 **불리하게 고른 7개 표본**(격차 최대 태스크·B가 이긴 태스크·최저점·
+  관대함 점검)을 매칭 3중쌍으로 검토했고, 점수 변경 사유는 나오지 않았다. 워크시트에는 가장
+  논쟁적인 판정(state-mgmt 4번 항목)을 **제외했을 때의 민감도**도 계산해 뒀다: B 0.942 ·
+  B2_empty 0.953 · B2 0.978로 **결론 불변**. 표기는 **"agent-graded, 채점 기준 사람 비준(표본)"**
+  이며 "human-graded"가 아니다 — 독립 재채점은 아니기 때문이다. 기록:
+  [`…-ratification.md`](../../bench/results/real-driver-csap-sdk-empty-control-2026-07-27-ratification.md).
 - **비용 $5.9516**(사전 추정 $3~5.5 초과 — 스텁 arm은 소스 fallback에 더해 출력/사고 토큰도 더 썼다:
   42,832 vs B 31,554). 실측 누적 **약 $17.10** / 런북 $19 캡 — 잔여 약 $1.90.
 
@@ -369,6 +378,7 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 - `bench/real/make-stub-wiki.mjs` — 스텁 위키 생성기: 문서 경로·제목·frontmatter 유지, `source_files`/`evidence` 비움(정답 파일명 누출 차단), 본문은 미보강 placeholder. 대상 저장소 미변경.
 - `bench/real/aggregate.mjs` — 결과 JSON들을 3-arm 비교표로 집계(비율 우선, 총량 아님). 기존 2026-07-24 손계산 수치를 소수점까지 재현해 검증했다.
 - `bench/results/real-driver-csap-sdk-empty-control-2026-07-27.md` — `B2_empty` 통제 arm 실행 기록(설계·사전 검증·3-arm 표·행동 지표·caveat·비용).
+- `bench/results/real-driver-csap-sdk-empty-control-2026-07-27-ratification.md` — 사람 비준 워크시트와 판정(승인, Dowon-Kim 2026-07-27): 불리하게 고른 7개 표본·매칭 3중쌍·항목별 판정 근거·민감도 분석(가장 논쟁적 판정 제외 시에도 결론 불변).
 - `bench/results/real-driver-csap-sdk-empty-control-2026-07-27-grading.md` — 3-arm 54개 답변 블라인드 채점 기록(방법·arm별 집계·태스크별·답변별 표·B 재현 검증).
 - `bench/real/make-grading-worksheet.mjs` — 블라인드 채점 워크시트 생성기: arm 라벨 제거 + 해시 기반 결정적 셔플, 정답 map은 별도 파일로 분리(채점 전 열지 않음).
 - `GATE_REVIEW.md#section:Impact Measurement Scope Decision` — 수용된 Gate 22 범위·불변식·수용 기준.
@@ -396,6 +406,14 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   미측정"을 프록시 하네스 한정으로 한정. (5) frontmatter·§Evidence에 새 근거 2건 등재. 새 수치는
   전부 원자료에서 전사했고 지어낸 값은 없다. 에이전트(Claude Code) 편집이라 `needs_review` 유지 —
   사람 검토 후 `verified` 승격 예정(허위 검토 메타 미기입).
+- 2026-07-27에 **채점 기준을 사람이 비준**했다(승인, reviewed_by: Dowon-Kim). 결론을 무효화할 수
+  있는 유일한 질문(arm 간 잣대 일관성)을 겨냥해 불리하게 고른 7개 표본을 매칭 3중쌍으로 제시하고
+  민감도 분석(가장 논쟁적 판정 제외 시 B 0.942·B2_empty 0.953·B2 0.978, 결론 불변)을 함께 냈으며,
+  점수 변경 사유는 없었다. 표기를 **"agent-graded, 채점 기준 사람 비준(표본)"**으로 통일하고
+  README(EN/KO)·bench 기록·배포 자료의 관련 문구를 모두 맞췄다. **독립 재채점이 아님을 어디서도
+  흐리지 않는다.** 이로써 벤치 라인의 마지막 방법론 갭이 닫혔으나 **README 헤드라인 금지는 유지**
+  된다(비준은 신뢰도를 올릴 뿐 표본을 늘리지 않는다). 신규 기록
+  `bench/results/…-empty-control-2026-07-27-ratification.md`.
 - 2026-07-27에 **`B2_empty` 통제 arm을 구축·실행**해 tooling-vs-knowledge 교란요인을 닫았다
   (유지보수자 지시, 유료 $5.95). 하네스: `runner.js`에 B2와 도구·프롬프트가 바이트 동일한
   `B2_empty` arm + import-time `assertControlPromptParity` + `BENCH_WIKI_CWD` 누락 시 실행 거부,

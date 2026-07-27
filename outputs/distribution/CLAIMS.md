@@ -66,9 +66,11 @@ Both hold **for this fixture**. Neither is a general claim.
 
 ## Caveats that must travel with the numbers
 
-- The grader is an **agent from the same model family as the system under test**, blind to arm but
-  **not an independent human**. Human ratification of the grading worksheet is the one open
-  methodological gap.
+- The grader is an **agent from the same model family as the system under test**, blind to arm.
+  On 2026-07-27 the maintainer **ratified the grading standard** after an adversarially-chosen
+  7-answer sample (verdict (a); no scores changed). Say it as **"agent-graded, standard
+  human-ratified on a sampled review"** — **never "human-graded"**, because it was not an
+  independent re-grade of all 54 answers.
 - The fixture wiki was in good health (22/22 verified, zero drift). Results on a stale wiki are
   different and worse — an earlier run produced a **confidently wrong security answer** from a
   stale doc. That failure mode belongs in the story, not hidden.
@@ -81,9 +83,10 @@ Both hold **for this fixture**. Neither is a general claim.
 
 ## Before anything goes public
 
-1. **Human ratification of the grading worksheet.** `bench/results/…-empty-control-2026-07-27-grading.md`
-   contains a per-answer table; the maintainer spot-checking a sample and saying so converts
-   "agent-graded" into "agent-graded, human-ratified" and closes the last obvious line of attack.
+1. ~~Human ratification of the grading worksheet.~~ **Done 2026-07-27** — the maintainer reviewed
+   the adversarial 7-answer sample in `bench/results/…-ratification.md` and ratified the standard
+   (verdict (a), no scores changed). **Both preconditions are now clear; publishing is unblocked.**
+   Remaining honest limit: it ratified the *standard on a sample*, not an independent re-grade.
 2. ~~Decide whether the README's evidence paragraph is updated.~~ **Done 2026-07-27** — both
    READMEs now carry the controlled result at the conservative pooled figure ("about 41%"), with
    the control arm, the losing task, and all four scope conditions. See `README-note.md`.

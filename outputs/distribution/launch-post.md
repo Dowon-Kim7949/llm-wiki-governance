@@ -45,7 +45,8 @@ tooling on its own is a net cost. It also means an unenriched wiki, the kind you
 scaffold docs and never fill them in, is worse than no wiki.
 
 Caveats, because one repo is one repo: single project, single model, six tasks, N=3, and the
-grader was an agent (blind to arm, but same model family — not an independent human). On one of
+grader was an agent, blind to arm but from the same model family — I ratified the grading standard
+against an adversarial sample, which is not the same as an independent re-grade. On one of
 the six tasks retrieval lost badly, 3.17x, because the source file was tiny and reading it
 directly was cheaper. An earlier run on the same repo measured only -10% and I can't fully
 explain the gap. The README states this as a scoped paragraph with its conditions, not as a

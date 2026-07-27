@@ -21,7 +21,12 @@ Yes, and it's the biggest hole left. Mitigations: answers were stripped of their
 shuffled before grading, arms were re-attached only at aggregation, and grades were written down
 before the label map was opened. As a check, re-grading the no-wiki arm blind reproduced the
 earlier pass exactly — same score, and the same two individual defects re-attributed to the same
-arms. That makes the procedure stable, not independent. A human blind grade is still owed.
+arms. That makes the procedure stable, not independent. I then had the grading standard ratified
+against a deliberately adversarial 7-answer sample — the task where the no-wiki arm wins, the
+harshest grade I gave, and a case where I may have been too lenient — including a sensitivity
+check showing the conclusion survives if my most contestable judgment is thrown out. That is
+ratification of the standard, not an independent re-grade of all 54 answers, and I won't claim
+otherwise.
 
 ### "How is this different from just putting docs in the repo / a CLAUDE.md?"
 

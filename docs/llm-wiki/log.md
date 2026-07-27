@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - 채점 기준 사람 비준(승인) 기록 + 릴리스 1.26.2 (문서 전용)
+- changed:
+  - bench/results/…-ratification.md(판정 (a) 승인 기록), …-grading.md·…-empty-control-2026-07-27.md(caveat 갱신)
+  - docs/llm-wiki/BENCHMARK.md(§실측·§통제 arm caveat 갱신, Review Notes 추가, frontmatter/§Evidence에 비준 기록 등재, `verified`→`needs_review`)
+  - README.md·README.ko.md(범위 문구 "에이전트 채점"→"에이전트 채점, 채점 기준 사람 표본 비준")
+  - outputs/distribution/{CLAIMS,README,launch-post,reddit-post,reply-kit}.md(선행 조건 해소·표기 통일)
+  - package.json(1.26.1→1.26.2), tests/verification.test.js, CHANGELOG.md·CHANGELOG.ko.md
+- summary:
+  - 유지보수자(Dowon-Kim)가 비준 워크시트를 검토하고 **(a) 승인**했다 — 채점 기준이 arm 간 일관 적용됨. 점수 변경 사유 없음(B 0.910·B2 0.978·B2_empty 0.911 유지).
+  - **표기를 전 문서에서 통일했다: "agent-graded, 채점 기준 사람 비준(표본)".** 54개 전량 독립 재채점이 아니므로 **"human-graded"로는 절대 쓰지 않는다** — 이 구분을 흐리지 않는 것이 이번 반영의 핵심 규율이다.
+  - 두 README가 패키지 포함 파일이라 npm 페이지 반영을 위해 1.26.2로 배포했다(1.26.1과 동일한 사유).
+  - 이로써 배포 선행 조건 2개(README 결정·사람 비준)가 모두 해소됐다. **게시 자체는 여전히 하지 않았다.**
+- verification:
+  - 326 tests · validate --strict 0 · validate-frontmatter 0.
+- evidence:
+  - bench/results/real-driver-csap-sdk-empty-control-2026-07-27-ratification.md · README.md · package.json
+- caveats:
+  - **README 헤드라인 금지 불변.** 비준은 채점 신뢰도를 올릴 뿐 표본(단일 레포·단일 모델·6 태스크·N=3)을 늘리지 않는다.
+  - BENCHMARK.md는 에이전트 편집이라 `needs_review`로 강등 — 사람 재검토 후 재승인 필요.
+
 ## 2026-07-27 - 릴리스 1.26.1 (문서 전용): 교정된 README를 npm 페이지에 반영
 - changed:
   - package.json(1.26.0→1.26.1), tests/verification.test.js(버전 단언), CHANGELOG.md·CHANGELOG.ko.md(1.26.1 섹션)

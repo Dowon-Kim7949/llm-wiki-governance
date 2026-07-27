@@ -50,7 +50,8 @@ content or just from giving the agent a search tool — and it turns out the too
 you. Which also means a scaffolded wiki you never filled in is worse than not having one.
 
 Honest limits: one repo, one model, six tasks, N=3, and the grader was an agent (blind to arm,
-but same model family — not an independent human). On one of the six tasks retrieval lost badly
+but same model family; I ratified the grading standard against an adversarial sample, which is not
+an independent re-grade). On one of the six tasks retrieval lost badly
 because the file was small enough to just read. The README states this with its conditions
 attached rather than as a headline — one repo doesn't earn a headline.
 

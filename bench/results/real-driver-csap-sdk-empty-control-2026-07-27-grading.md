@@ -23,11 +23,18 @@ arms: the inverted router-guard claim landed on **B**, and the `useSessionTimeou
 **B2**. Arm B2 came out 0.978 here against 0.971 recorded — a single half-claim difference on one
 state-mgmt answer out of 69.
 
-**Caveat, unchanged and load-bearing:** this is an **agent** rubric-grade, blind to arm, from a
-model in the same family as the one under test — not an independent human blind grade.
-A reviewer-facing worksheet for closing that gap — a 7-answer sample chosen adversarially against
-this grade, with a sensitivity analysis of its most contestable judgment — is at
-[`…-ratification.md`](./real-driver-csap-sdk-empty-control-2026-07-27-ratification.md). Blinding
+**Caveat, and exactly how far it has been closed.** These are **agent** rubric-grades, blind to
+arm, from a model in the same family as the one under test. On **2026-07-27 the maintainer
+(Dowon-Kim) ratified the grading standard** after reviewing a 7-answer sample chosen adversarially
+against this grade — matched per-arm triplets covering the task with the largest spread, the task
+where the no-wiki arm *wins*, the harshest grade given, and a leniency check — and confirmed the
+standard was applied consistently across arms. Worksheet and verdict:
+[`…-ratification.md`](./real-driver-csap-sdk-empty-control-2026-07-27-ratification.md).
+
+**This is ratification of the standard on a sample, not an independent human re-grade of all 54
+answers.** The scores remain agent-produced. Cite it as *"agent-graded, standard human-ratified on
+a sampled review"* — never as "human-graded". No scores changed: ratification found nothing to
+recompute. Blinding
 removes label bias, not every cue: an answer can still betray its arm by citing a wiki document.
 Rubric-claim coverage is a completeness proxy, not an absolute truth score.
 
@@ -150,9 +157,11 @@ the three arms say one coherent thing **for this fixture**:
 
 **The verified content is what pays. The tooling on its own costs tokens and returns nothing.**
 
-Scope is unchanged: one repo, one model, six tasks, N=3, agent-graded. **README/launch token and
-speed headlines remain forbidden**; this is a scoped, linked footnote. Human ratification of this
-worksheet remains the one open methodological gap.
+Scope is unchanged: one repo, one model, six tasks, N=3, agent-graded with the standard ratified
+by the maintainer on a sampled review (2026-07-27). **README/launch token and speed headlines
+remain forbidden** — ratification raises confidence in the grading, it does not enlarge the sample.
+This stays a scoped, linked footnote until the publication conditions are met (≥3 repo types,
+≥2 model families, N≥5).
 
 ## Reproduce
 

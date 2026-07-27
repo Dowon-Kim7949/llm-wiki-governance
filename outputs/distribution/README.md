@@ -31,18 +31,23 @@ evidence.
 ## The discipline these are written under
 
 No performance headline. The measurement is a **scoped footnote**: one repository, one model, six
-tasks, N=3, agent-graded. Wherever a number appears, all four conditions appear with it, along
+tasks, N=3, agent-graded with the standard ratified on a sampled review. Wherever a number appears, all four conditions appear with it, along
 with the task where retrieval lost. The most persuasive line available is a negative result about
 our own category — *an unenriched wiki is worse than no wiki* — and that is deliberate: a project
 that publishes its own unfavourable findings is easier to believe about the favourable ones.
 
 ## Before publishing anything
 
-1. **Human ratification of the grading worksheet** (`bench/results/…-empty-control-2026-07-27-grading.md`).
-   "Agent-graded" is the last obvious line of attack; a maintainer spot-check closes it.
-2. **Decide the two README changes** in `README-note.md`.
+1. ~~Human ratification of the grading worksheet.~~ **Done 2026-07-27** — the maintainer reviewed
+   the adversarial 7-answer sample in `bench/results/…-ratification.md` and ratified the standard
+   (verdict (a), no scores changed). Publishing is no longer blocked on it.
+2. ~~Decide the two README changes.~~ **Done 2026-07-27** — applied at the conservative pooled
+   figure and shipped as 1.26.1 (a README fix only reaches the npm page via a publish). See
+   `README-note.md`.
 3. Pick a sequence — `registries.md` recommends MCP registries first, Show HN last and only with
    two hours free to sit in the thread.
+
+**Both preconditions are now clear. Nothing blocks publishing except the decision to do it.**
 
 ## Measuring the outcome
 
