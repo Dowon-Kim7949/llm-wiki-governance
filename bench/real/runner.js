@@ -77,8 +77,37 @@ export const ARMS = {
     label: "retrieval (query the wiki)",
     tools: ["search_docs", "get_doc", "get_related", "read", "grep"],
     firstStep: "Answer by QUERYING THE WIKI first: search_docs for the terms, then get_doc the most relevant matches. Only fall back to reading source if the wiki does not answer it."
+  },
+  // CONTROL for B2. Same tools, same firstStep — therefore a byte-identical prompt
+  // (buildPrompt reads only `tools` and `firstStep`). The ONLY difference is the
+  // wiki those tools query: point BENCH_WIKI_CWD at a stub wiki built by
+  // bench/real/make-stub-wiki.mjs (same doc paths and titles, knowledge removed).
+  //
+  // What it decides: B2's token win could come from the wiki's KNOWLEDGE or merely
+  // from having SEARCH TOOLING. If B2_empty lands near B2, the tooling explains the
+  // win; if it lands near B (or worse), the enriched content does. Without this arm
+  // no causal claim about the wiki is supportable.
+  B2_empty: {
+    id: "B2_empty",
+    label: "retrieval control (tools over a stub wiki with no knowledge)",
+    tools: ["search_docs", "get_doc", "get_related", "read", "grep"],
+    firstStep: "Answer by QUERYING THE WIKI first: search_docs for the terms, then get_doc the most relevant matches. Only fall back to reading source if the wiki does not answer it."
   }
 };
+
+// The control is only valid while its prompt matches B2's exactly. Asserted at
+// import time so a well-meaning edit to one arm cannot silently invalidate the run.
+export function assertControlPromptParity() {
+  const a = JSON.stringify(ARMS.B2.tools) === JSON.stringify(ARMS.B2_empty.tools);
+  const b = ARMS.B2.firstStep === ARMS.B2_empty.firstStep;
+  if (!a || !b) {
+    throw new Error(
+      "B2_empty must keep B2's tools and firstStep verbatim, otherwise the control " +
+      "measures prompt differences instead of wiki content."
+    );
+  }
+}
+assertControlPromptParity();
 
 export function loadTasks() {
   // Default: this repo's tasks (bench/tasks.json). Override with BENCH_TASKS to
@@ -173,19 +202,25 @@ function dryReport() {
   const L = [];
   L.push("Real-LLM bench — DRY (no model call; harness validation only)");
   L.push("=".repeat(64));
-  L.push(`tasks: ${tasks.length}   arms: B (no-retrieval), B2 (retrieval)`);
+  L.push(`tasks: ${tasks.length}   arms: ${Object.values(ARMS).map((a) => `${a.id} (${a.label})`).join(", ")}`);
   L.push("Design + honesty caveats: bench/REAL_LLM_METHODOLOGY.md");
   L.push("");
   for (const task of tasks) {
     L.push(`# ${task.id}`);
     L.push(`  ground-truth: ${task.groundTruth.join(", ")}`);
     L.push(`  rubric key-claims: ${(RUBRICS[task.id] ?? task.rubric ?? []).length}`);
-    for (const arm of [ARMS.B, ARMS.B2]) {
+    for (const arm of Object.values(ARMS)) {
       const p = buildPrompt(task, arm);
       L.push(`  [${arm.id}] tools=${arm.tools.join("/")}  prompt=${p.length} chars`);
     }
+    const parity = buildPrompt(task, ARMS.B2) === buildPrompt(task, ARMS.B2_empty);
+    L.push(`  control parity (B2 prompt == B2_empty prompt): ${parity ? "OK" : "BROKEN"}`);
     L.push("");
   }
+  L.push("B2_empty is a CONTROL: identical prompt and tools to B2, pointed via");
+  L.push("BENCH_WIKI_CWD at a stub wiki (bench/real/make-stub-wiki.mjs). It isolates");
+  L.push("wiki KNOWLEDGE from retrieval TOOLING — run it before claiming either.");
+  L.push("");
   L.push("Every task has a rubric; both arm prompts build. To run for real, wire an");
   L.push("AgentRunner (bench/REAL_LLM_METHODOLOGY.md §5). The default runner throws —");
   L.push("this harness never fabricates tokens or answers.");
@@ -230,7 +265,16 @@ async function main() {
     return;
   }
   if (!opts.arm || !ARMS[opts.arm]) {
-    console.error("Specify --arm B|B2 (or --dry). See bench/REAL_LLM_METHODOLOGY.md.");
+    console.error("Specify --arm B|B2|B2_empty (or --dry). See bench/REAL_LLM_METHODOLOGY.md.");
+    process.exitCode = 3;
+    return;
+  }
+  if (opts.arm === "B2_empty" && !process.env.BENCH_WIKI_CWD) {
+    console.error(
+      "B2_empty is the stub-wiki control: set BENCH_WIKI_CWD to a stub built by\n" +
+      "bench/real/make-stub-wiki.mjs. Without it the arm would query the REAL wiki\n" +
+      "and silently reproduce B2 instead of controlling for it."
+    );
     process.exitCode = 3;
     return;
   }

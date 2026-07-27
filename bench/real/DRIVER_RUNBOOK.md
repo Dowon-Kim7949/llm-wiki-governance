@@ -136,13 +136,57 @@ The within-agent B2/B ratio cancels that shared overhead, so it *is* the portabl
 - **Model-labeled.** State the agent + model + N. A Codex number and a Claude Code number are
   different results — never merge them or compare arms across agents.
 - **Tooling vs knowledge (threat #3).** B2's win could come from *better tools*, not the *wiki
-  content*. If the headline hinges on B2, add a third arm — B2 with the retrieval tools over an
-  **empty/stub wiki** — to separate tooling from knowledge.
+  content*. The `B2_empty` control arm exists for exactly this — see below. Until it has run
+  against a given fixture, **no causal claim about the wiki's content is supportable** from a
+  B2-vs-B result, however large the delta.
 - **Benchmark ≠ real work (threat #6).** The honest ceiling of even a good result is "on these
   six tasks, on this repo, with this agent."
 - **Still forbidden until measured.** The proxy's −80% is `chars/4`, not a real run. Only a
   completed run of this protocol (or the SDK path) with real, model-labeled token counts can
   support a README/launch claim.
+
+## The `B2_empty` control arm (tooling vs knowledge)
+
+`B2_empty` is B2 with the knowledge taken away: **identical tools, byte-identical prompt, same
+model, same tasks** — only the wiki its tools query is different. `runner.js` asserts that parity
+at import time and refuses to run the arm without `BENCH_WIKI_CWD`, so it cannot silently
+degenerate into a second B2 run.
+
+Build the stub fixture (reads the target's wiki, writes only under `--out`; the repo under test
+is never modified):
+
+```
+node bench/real/make-stub-wiki.mjs --src <target-repo> --out <scratch-dir> [--force]
+```
+
+The stub keeps every document path, filename, and title, and keeps the frontmatter — except
+`source_files` and `evidence`, which are emptied because they name ground-truth files and would
+otherwise hand the agent the answer. Bodies become the generator's unenriched placeholder. The
+result is exactly what a repo looks like after `init --write` and before anyone enriches it.
+
+Then run the arm against it:
+
+```
+BENCH_TARGET_REPO=<target-repo>            # source reads/greps still hit the real repo
+BENCH_WIKI_CWD=<scratch-dir>               # ...but the wiki tools hit the stub
+BENCH_TASKS=<...>/bench/tasks-csap.json
+node bench/real/runner.js --arm B2_empty --repeats 3
+```
+
+**Validate the fixture before spending anything** (all free): confirm no ground-truth path from
+the task set survives in the stub, and compare `search-docs` match counts between the stub and the
+real wiki — the stub should return near-zero matches while the tools still function.
+
+**How to read the outcome.** Compare input tokens across all three arms:
+
+| Outcome | Reading |
+| --- | --- |
+| `B2_empty` ≈ `B2` | The win is the **tooling**. A claim about the wiki's content is not supported. |
+| `B2_empty` ≈ `B` | The win is the **enriched content**. The tools alone buy nothing. |
+| `B2_empty` > `B` | The tools cost more than they return when the wiki is empty — an unenriched wiki is a **net loss**, which is itself worth publishing. |
+
+Report the arm alongside B and B2; never publish a B2-vs-B delta from a fixture where this control
+has not been run.
 
 ## Which driver, and cross-agent runs
 
