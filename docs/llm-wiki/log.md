@@ -24,6 +24,24 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - BENCHMARK.md verified 승격 + 배포 준비 자료 재작성 (게시 행위 없음)
+- changed:
+  - docs/llm-wiki/BENCHMARK.md — `review --approve`로 `needs_review`→`verified`(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27). 유지보수자가 통제 arm·블라인드 채점 반영분을 검토 완료.
+  - outputs/distribution/{README, CLAIMS, README-note, registries, launch-post, reddit-post, reply-kit}.md — 신규(옛 킷은 `7509020`에서 stale로 삭제됐었음)
+- summary:
+  - 로드맵이 비었고(모든 게이트 accepted·출시 완료) 채택 지표가 사실상 0(스타 3·포크 0·이슈 0)이라, 유지보수자가 다음 방향으로 **배포(A)**를 선택했다. 단 **게시 행위는 범위에서 제외** — 자료만 준비하고 공개는 유지보수자 몫.
+  - 자료 전체가 `CLAIMS.md`(허용/금지 문구 + 근거 대응표) 아래에서 작성됐다: **README 성능 헤드라인 금지 유지**, 수치를 쓸 때는 4개 조건(단일 레포·단일 모델·6 태스크·N=3·에이전트 채점)과 진 태스크(routing-map 3.17×)를 함께 적는다. chars/4 프록시 수치는 공개 문구 사용 금지.
+  - 가장 설득력 있는 공개 카드는 자기 범주에 불리한 결과로 잡았다 — **"미보강 위키는 없느니만 못하다(+14%)"**.
+  - `README-note.md`에 스토어프론트 미정합 2건을 초안만 제시했다(미적용, 유지보수자 결정 필요): README:145가 폐기된 −10% 실측을 인용 중, README:140 CI 예시가 `@v1.7.0`(19개 릴리스 전) 핀.
+- verification:
+  - validate --strict 0 · `npm pack --dry-run`에 `outputs/` 0건(패키지 미포함 확인).
+- evidence:
+  - docs/llm-wiki/BENCHMARK.md · bench/results/real-driver-csap-sdk-empty-control-2026-07-27-grading.md
+- caveats:
+  - **아무것도 게시·제출하지 않았다.** 모든 파일은 초안이며 공개는 유지보수자 계정으로만 이뤄진다.
+  - 공개 전 선행 조건 2개를 자료에 명시했다: (1) 채점 워크시트의 **사람 비준**(남은 유일한 방법론 갭), (2) README 2건 결정.
+  - npm 다운로드는 채택 지표가 아니다(자체 CI 매트릭스 설치 + 미러). 정직한 카운터는 스타·포크·이슈.
+
 ## 2026-07-27 - `B2_empty` 통제 arm 구축·실행: 토큰 절감은 툴이 아니라 위키 내용의 효과
 - changed:
   - bench/real/runner.js(`B2_empty` arm + `assertControlPromptParity` + BENCH_WIKI_CWD 가드 + dry 패리티 출력), bench/real/make-stub-wiki.mjs(신규), bench/real/aggregate.mjs(신규), bench/real/DRIVER_RUNBOOK.md(통제 arm 절차·해석표)

@@ -4,7 +4,7 @@ tags:
   - llm-wiki
   - benchmark
   - needs-review
-status: needs_review
+status: verified
 doc_type: reference
 project: llm-wiki-governance
 last_updated: 2026-07-27
