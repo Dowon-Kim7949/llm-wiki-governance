@@ -24,6 +24,22 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - BENCHMARK.md verified 재승격 + 팀 브리핑 덱 갱신·Artifact 재게시
+- changed:
+  - docs/llm-wiki/BENCHMARK.md — `review --approve`로 `needs_review`→`verified`(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27)
+  - outputs/team-briefing/llm-wiki-briefing.html — 버전 v1.26.0→v1.26.2, 실측 슬라이드를 3-arm 통제 실험으로 교체, MCP 툴 개수 10→17 교정
+  - outputs/team-briefing/{SPEAKER_NOTES.md, README.md} — 대상 버전 v1.26.2, 21번 슬라이드 스크립트를 3-arm 서사로 교체, 타임라인 heading 갱신
+- summary:
+  - 덱을 갱신하며 **낡은 사실 2건**을 발견해 교정했다: (1) 실측 슬라이드가 폐기된 **−10%** 수치를 그대로 쓰고 있어 README와 모순됐다 → 3-arm 통제 실험(약 41% 절감 / 통제군 +14% / 정확도 0.978 vs 0.910)으로 교체하고 지는 태스크·채점 방식 caveat을 각주에 넣었다. (2) MCP 읽기 전용 툴이 **10개**로 적혀 있었으나 실제 **17개**다(1.6 시점 수치가 방치됨).
+  - 덱의 새 메시지는 "이득은 도구가 아니라 **내용**" — 통제 arm 결과를 발표 서사의 중심에 놓았다.
+  - Artifact를 **같은 URL로 재게시**했다(v1.25.0 내용 → v1.26.2). 재게시 전 게시본을 fetch해 다른 세션 변경이 없음을 확인했다.
+- verification:
+  - validate --strict 0. 덱은 npm 패키지 미포함(`outputs/`)이라 배포 영향 없음.
+- evidence:
+  - outputs/team-briefing/llm-wiki-briefing.html · docs/llm-wiki/BENCHMARK.md
+- caveats:
+  - 덱 버전은 `package.json`(1.26.2)에 맞췄다. 타임라인 항목은 기능 단위라 `1.26`으로 유지한다.
+
 ## 2026-07-27 - 채점 기준 사람 비준(승인) 기록 + 릴리스 1.26.2 (문서 전용)
 - changed:
   - bench/results/…-ratification.md(판정 (a) 승인 기록), …-grading.md·…-empty-control-2026-07-27.md(caveat 갱신)
