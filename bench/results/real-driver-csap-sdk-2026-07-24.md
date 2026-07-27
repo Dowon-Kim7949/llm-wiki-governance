@@ -130,8 +130,10 @@ Plus a ~$0.0002 one-call smoke test. Well under the $19 hard cap.
 2. **Tooling vs knowledge is not isolated here.** B2's win could partly be the *tools*, not the
    *wiki content*. To separate them, add a third arm — B2's retrieval tools over an **empty/stub
    wiki** — and re-run. Not done in this pass.
-3. **Correctness is unmeasured** (see above). Do not pair the −48% with any accuracy claim until the
-   blind grade is in.
+3. **Correctness is graded but not human-ratified.** The blind-to-arm rubric grade above (B 0.910 vs
+   B2 0.971, 0 hallucinations) is an *agent* grade from the same model family — it supersedes the
+   earlier "unmeasured" state, but a human ratification pass is still outstanding. Pair the −48%
+   with the accuracy result only together with that limitation.
 4. **README/launch token & speed headlines remain FORBIDDEN** on the strength of this run. This file
    is the scoped evidence record, not marketing copy.
 5. These are **real** model-reported token counts (not the `chars/4` proxy) — that is the one thing

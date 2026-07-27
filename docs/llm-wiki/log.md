@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-07-23
+last_updated: 2026-07-27
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,23 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-27 - BENCHMARK.md에 2026-07-24 SDK 경로 유료 실측 + 블라인드 채점 반영 (문서-실행 지연 해소)
+- changed:
+  - docs/llm-wiki/BENCHMARK.md — §실측 2 신설, §규율에 2026-07-24 이후 규율 추가, §토큰-효율 벤치 확장 제목·도입부 축 정정, §한계 범위 한정, frontmatter(`last_updated` 2026-07-22→2026-07-27, source_files +3, evidence +2)·§Evidence 등재, Review Notes 추가
+  - bench/results/real-driver-csap-sdk-2026-07-24.md — caveat #3의 자기모순 교정("Correctness is unmeasured" → 같은 파일의 블라인드 채점 결과를 반영하되 사람 비준은 미완으로 명시)
+- summary:
+  - 커밋 `0e2b012`(2026-07-24)이 real SDK 경로 csap 벤치(N=3) 결과와 블라인드 채점 워크시트를 `bench/results/`에만 남기고 위키 문서를 갱신하지 않아, BENCHMARK.md가 실행 사실보다 뒤처져 있었다. 그 상태로 `verified` 승격을 요청받아 먼저 문서를 사실에 맞췄다.
+  - 반영한 수치(전부 원자료 전사, 지어낸 값 없음): input B2/B **0.516×(−48.4%)**, cost 0.581×(−41.9%), pooled(N=1+N=3) **0.593×(−40.7%)**, 블라인드 루브릭 채점 B **0.910** vs B2 **0.971**·환각 0, 픽스처 22/22 verified·validate 0·drift 0, 유료 총 **$11.15**($19 캡 이내).
+  - 불리한 사실도 함께 기록했다: routing-map은 B2가 **3.17× 패**, 2026-07-22 실측(−10%)과의 **격차가 완전히 설명되지 않음**(드라이버 경로·토큰 회계·픽스처 3요인으로 방향만 설명), `B2_empty_wiki` 통제 arm 미실행이라 "위키 내용 vs retrieval 툴" 미분리, 채점은 **에이전트 루브릭 채점**(사람 블라인드 채점 아님).
+  - 축 혼동 교정: 이전 제목 "토큰-효율 벤치 확장 (설계, executed:false)"가 "유료 실측이 전혀 없다"로 오독될 수 있어, 2026-07-24 실행은 **retrieval 축(B vs B2)**이고 **B3/whole-task real 하네스는 여전히 `executed:false`**임을 분리 명시했다.
+- verification:
+  - validate --strict 0 · validate-frontmatter --strict 0 · 326 tests(문서 변경이라 코드 무영향).
+- evidence:
+  - bench/results/real-driver-csap-sdk-2026-07-24.md · bench/results/real-driver-csap-sdk-2026-07-24-grading.md · bench/real/runner.js · bench/tasks-csap.json
+- caveats:
+  - **README·런치 카피의 토큰/속도 헤드라인은 계속 금지**(단일 레포·단일 모델·6 태스크·N=3·에이전트 채점·통제 arm 미실행). 인용 시 pooled −40.7% 기준 + 지는 태스크 + 정확도 결과를 함께 적는다.
+  - 에이전트(Claude Code) 편집이라 BENCHMARK.md는 `needs_review` 유지 — 사람 검토 후 `review --approve`로 승격 예정(허위 검토 메타 미기입).
 
 ## 2026-07-24 - verified 문서 13개 재검토·재기준 (2026-07-24 additive 커밋 후 evidence.stale 해소)
 - changed:

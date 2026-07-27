@@ -4,27 +4,32 @@ tags:
   - llm-wiki
   - benchmark
   - needs-review
-status: needs_review
+status: verified
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-07-22
+last_updated: 2026-07-27
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-22
+reviewed_at: 2026-07-27
 wiki_block_version: v1
 source_files:
   - bench/run.js
   - bench/lib/strategies.js
   - bench/tasks.json
+  - bench/tasks-csap.json
+  - bench/real/runner.js
   - bench/results/baseline.json
   - bench/results/current.json
+  - bench/results/real-driver-csap-sdk-2026-07-24.md
 evidence:
   - bench/run.js
   - bench/lib/strategies.js#symbol:strategyWikiGrounded
   - bench/lib/strategies.js#symbol:strategyWikiRetrieval
   - bench/results/baseline.md
   - bench/results/current.md
+  - bench/results/real-driver-csap-sdk-2026-07-24.md
+  - bench/results/real-driver-csap-sdk-2026-07-24-grading.md
   - GATE_REVIEW.md#section:Impact Measurement Scope Decision
 related:
   - docs/llm-wiki/project-profile.md
@@ -160,10 +165,72 @@ append-only `log.md`는 검색은 되지만 get-doc하지 않는다(체인지로
 즉 verify·drift·`validate --changed` 거버넌스가 retrieval의 신뢰를 만든다. 상세·원자료:
 `bench/results/real-driver-csap-aws-global-pilot-2026-07-22.md`.
 
+## 실측 2 · Real-LLM, SDK 경로 + 블라인드 채점 (csap, N=3, 2026-07-24)
+
+위 2026-07-22 실측의 두 가지 약점(서브에이전트 경로라 **input/output 토큰 미분리**, 정확도가
+자기채점 위험)을 없앤 **두 번째 유료 실측**이다. 드라이버는 SDK 경로
+`bench/real/agent.js`(Anthropic SDK `toolRunner`, 설계상 git-ignore — SDK dep 격리)를
+[`bench/real/runner.js`](../../bench/real/runner.js)가 오케스트레이션하며, 호출별 실제 `usage`에서
+**input/output 토큰을 분리**해 기록한다. 모델 `claude-opus-4-8`, 태스크는
+[`bench/tasks-csap.json`](../../bench/tasks-csap.json)의 6개 cold-keyword 이해 태스크,
+arm은 **B**(retrieval 없음: 자체 read/grep, 위키 차단) vs **B2**(retrieval: `search_docs`/`get_doc`/
+`get_related` 우선), (task, arm, repeat)마다 새 세션, **N=3**(+ N=1 캘리브레이션). csap 저장소는 무변경.
+
+**픽스처 건강도(실행 전 확인):** 대상 위키 `llm-wiki stats` = **22/22 verified · enriched 100% ·
+evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22 실행을 오염시켰던
+드리프트(auth 평문 오답·hazard 매핑)가 **없는 깨끗한 픽스처**다.
+
+| metric (18 runs/arm) | B (no-retrieval) | B2 (retrieval) | B2/B |
+| --- | --: | --: | --: |
+| **input tokens** | 856,410 | 441,521 | **0.516× (−48.4%)** |
+| output tokens | 31,554 | 29,549 | 0.936× (−6.4%) |
+| cost @ $5/$25 per 1M | $5.0709 | $2.9463 | 0.581× (−41.9%) |
+
+- **인용은 보수적으로:** N=1+N=3 pooled(태스크당 4샘플) input B2/B = **0.593× (−40.7%)**. 이 pooled
+  수치를 기본으로 인용한다. 태스크별 변동이 커(session-timeout B CV=59%, api-layer B CV=39%,
+  auth-signin B2 CV=41%) **N=1은 부족**하다 — N=1만으로는 0.83×(−17%)였다. 항상 평균+분산을 함께 쓴다.
+- **메커니즘 확인:** B는 매 태스크 ground-truth 소스를 직접 열었고(5–8 tool call), B2는 위키를 먼저
+  질의해 **6개 중 3개(auth-signin·routing-map·hazard-domain)는 소스를 한 번도 안 열고** 답했다.
+  나머지 3개는 소스 1–2개 fallback — 의도한 "위키 먼저, 필요할 때만 소스" 패턴 그대로다.
+- **retrieval이 지는 케이스(공개):** routing-map은 **3.17×로 B2가 패배**한다. `src/router/routes.ts`가
+  작아 B가 싸게 읽는 반면 B2는 위키 질의 비용을 내고도 소스를 연다. retrieval의 이득은
+  **from-source 경로가 비쌀수록**(hazard-domain 0.24×, state-mgmt 0.29×) 커진다.
+
+**정확도 — 블라인드 채점(arm 라벨 제거·태스크 내 셔플 후 루브릭 채점, 집계 시에만 arm 재결합):**
+
+| metric (18 answers/arm) | B | B2 |
+| --- | --: | --: |
+| mean rubric-claim fraction | 0.910 | **0.971** |
+| pooled claims | 62.5/69 (90.6%) | 66.5/69 (96.4%) |
+| 환각·오파일 | **0** | **0** |
+
+- **결론: 정확도는 동률~B2 소폭 우위 — retrieval에 정확도 패널티가 없다.** B2 우위는 state-mgmt
+  (B 0.58 vs B2 0.96; B가 "bearer 토큰 없음/HTTP-only 쿠키"를 놓치고 `beforeEach` 가드를 오설명)와
+  hazard-domain에 몰려 있다. 반대로 auth-signin만 B 우위(1.00 vs 0.87)로, B2 답변 2/3이 419/`201403`
+  refresh-interceptor 루브릭 항목을 누락했다. 경미한 부정확 2건뿐(모두 비치명적).
+- **채점의 한계(중요):** 이것은 **arm에 블라인드한 에이전트 루브릭 채점**이지 **독립적 사람 블라인드
+  채점이 아니다**(테스트 대상과 같은 모델 계열). rubric-claim coverage는 완전성 프록시이지 절대
+  진리 점수가 아니다. 사람 비준이 남은 마지막 방법론적 갭이다.
+- **비용:** 유료 실행 총 **$11.15**(N=1 캘리브레이션 $3.13 + N=3 $8.02), $19 하드캡 이내.
+
+**2026-07-22 실측(−10%)과의 불일치 — 숨기지 않고 기록한다.** 같은 레포·같은 6태스크인데 델타가
+−10% vs −48.4%로 크게 다르다. 알려진 차이는 세 가지다: (1) 드라이버 경로(서브에이전트 vs SDK),
+(2) 토큰 회계(단일 total 토큰 vs 모델 보고 **input/output 분리** — retrieval의 이득은 input 쪽에
+몰리므로 total로 합치면 희석된다), (3) 픽스처(job tmp 스크래치 de-drift본 vs 커밋된 22/22 verified
+위키). 이 세 가지로 방향은 설명되지만 **격차 전부가 설명되지는 않았다**. 따라서 두 수치를 모두
+남기고, 교차-실행 비교는 **미해결**로 둔다.
+
+**남은 통제 실험(미실행):** B2의 이득이 *위키 내용* 때문인지 *retrieval 툴* 때문인지는 아직
+분리되지 않았다 — **빈/스텁 위키 위에서 같은 retrieval 툴을 쓰는 통제 arm**(`B2_empty_wiki`)이
+필요하며 이번 패스에서 하지 않았다. 상세·원자료:
+[`bench/results/real-driver-csap-sdk-2026-07-24.md`](../../bench/results/real-driver-csap-sdk-2026-07-24.md),
+채점 워크시트 [`…-grading.md`](../../bench/results/real-driver-csap-sdk-2026-07-24-grading.md).
+
 ## 한계 · Caveats
 
-- `chars/4`는 실제 토크나이저가 아니다(절대값 근사). 벽시계 시간·답변 품질은 미측정 →
-  더 무거운 LLM 실측이 후속(별도). 위키 **유지 비용**은 공개했으나 모델링하지 않았다.
+- `chars/4`는 실제 토크나이저가 아니다(절대값 근사). 이 프록시 하네스 자체는 벽시계 시간·답변
+  품질을 재지 않는다 — 실제 LLM 토큰과 답변 품질은 §실측(2026-07-22)·§실측 2(2026-07-24 블라인드
+  채점)에서 별도로 측정했다. 위키 **유지 비용**은 공개했으나 여전히 모델링하지 않았다.
 - 단일·자기참조 레포(성숙한 evidence 링크 위키)라 더 크거나 얇거나 낡은 위키로 일반화 불가.
 - **핵심 caveat(순서):** "재발견 감소" 메커니즘은 retrieval(Gate 24)에서 완성된다. 그 전에 잰
   베이스라인은 modest한 게 정상이며, 로드맵 헤드라인은 raw 베이스라인이 아니라
@@ -176,14 +243,24 @@ append-only `log.md`는 검색은 되지만 get-doc하지 않는다(체인지로
   +17%, 단일 에이전트[Opus 4.8]·단일 레포·6 태스크·total-token 프록시). 항상 **정확도-동률 + 신선도-종속**을
   앞세우고 수치엔 조건(N=3, 모델, 레포)을 붙인다. `chars/4` 프록시 수치(−81.5% 등)를 README에 싣는 것은
   계속 금지(프록시이지 실측 아님).
+- **2026-07-24 SDK 실측 이후 갱신된 규율:** 이제 (a) 모델 보고 **input/output 분리** 토큰과
+  (b) **arm-블라인드 채점**이 함께 있는 측정이 존재한다. 그래도 **README·런치 카피의 토큰/속도
+  헤드라인은 계속 금지**한다 — 단일 레포·단일 모델·6 태스크·N=3·**에이전트 채점**(사람 블라인드
+  채점 아님)·`B2_empty_wiki` 통제 미실행이기 때문이다. 이 결과는 **스코프 명시 각주**로만 쓴다.
+  인용할 때는 N=3 단독(−48.4%)이 아니라 **pooled −40.7%**를 기본으로 하고, 지는 태스크
+  (routing-map 3.17×)와 "정확도 패널티 없음(0.910 vs 0.971, 환각 0)"을 **함께** 적는다.
+  공개 주장 승격 조건은 아래 §토큰-효율 벤치 확장의 "장기 공개 주장 조건"이 그대로 적용된다.
 - 이 문서는 에이전트(Claude Code)가 작성했으므로 `needs_review`다 — 사람 검토 후 `verified`.
 
-## 토큰-효율 벤치 확장 (설계, executed:false)
+## 토큰-효율 벤치 확장 (proxy 실행됨 · real 하네스는 executed:false)
 
 목표는 스킬 문장 축소가 아니라 **올바른·검증된 코드 변경까지의 총토큰**을 줄이는 것이다. 이를
-측정하려면 두 벤치를 **분리 유지**하고(어휘 혼용 금지), 각각에 arm을 **추가**한다. 아래는 설계이며
-이번 패스에서는 **실측하지 않았다(`executed:false`)** — chars/4는 프록시라 진단용이고, 실제 다중
-프로젝트·다중 모델 실측 전에는 README 헤드라인 수치로 쓰지 않는다.
+측정하려면 두 벤치를 **분리 유지**하고(어휘 혼용 금지), 각각에 arm을 **추가**한다.
+
+**실행 상태(축을 혼동하지 말 것).** 위 §실측 2의 2026-07-24 유료 실행은 **retrieval 축(B vs B2)**을
+잰 것이고, 아래 **토큰-효율 축(B3 compact/section-scoping · whole-task)의 real 하네스는 여전히
+`executed:false`**다. 아래 B3 수치는 전부 chars/4 **프록시**(진단용)이며, 실제 다중 프로젝트·다중
+모델 실측 전에는 README 헤드라인 수치로 쓰지 않는다.
 
 - **retrieval 벤치(proxy `bench/run.js`, chars/4) — B3 arm 구축 완료(비유료)**: 기존 A0/A1/A2/B/B2에
   `B3_retrieval_compact`를 추가했다(`bench/lib/strategies.js#symbol:strategyWikiRetrievalCompact`).
@@ -196,7 +273,8 @@ append-only `log.md`는 검색은 되지만 get-doc하지 않는다(체인지로
   토큰보다 중요하면 B2 또는 `--section`(비-strict)을 쓰라"고 안내한다 — 즉 compact/strict는 **opt-in
   트레이드오프**다. `bench/results/current.md`에 반영. **README 헤드라인 금지(chars/4 프록시).**
   - `B2_empty_wiki` 통제 arm과 **real 하네스 B3**(유료 SDK 드라이버가 get_doc의 섹션 옵션을 지원해야 함)는
-    **유료 후속으로 보류**(`bench/REAL_LLM_METHODOLOGY.md` §6 위협 #3).
+    **유료 후속으로 보류**(`bench/REAL_LLM_METHODOLOGY.md` §6 위협 #3). 2026-07-24 유료 실행에도
+    **포함되지 않았다** — 그 실행은 retrieval 축(B vs B2) 전용이다.
 - **전체-작업 벤치(`bench/whole-task/`, dry 스캐폴드) — `guided-compact` arm 추가(dry, 비유료)**: 기존
   `source-only`/`wiki-retrieval`/`guided`에 `guided-compact`(`prepare --compact` + `get-doc
   --strict-section` 경유 compact/adaptive 경로)를 추가했다. 러너는 드라이버 없으면 계속 **수치를
@@ -218,6 +296,8 @@ append-only `log.md`는 검색은 되지만 get-doc하지 않는다(체인지로
 - `bench/lib/strategies.js#symbol:strategyWikiRetrieval` — B2 arm: `search-docs`(동일 스코어링) + 상위 매칭 문서 본문 `get-doc`(소스 재독 없음); B2 vs B가 드리프트를 상쇄한 retrieval 델타.
 - `bench/results/baseline.md` — frozen Gate 22 before-retrieval 결과표.
 - `bench/results/current.md` — 현재 실행(B2 포함) 자동 생성 결과표.
+- `bench/results/real-driver-csap-sdk-2026-07-24.md` — 2026-07-24 SDK 경로 유료 실측 기록(N=3 input/output 분리 토큰·비용·태스크별 표·픽스처 건강도·caveat).
+- `bench/results/real-driver-csap-sdk-2026-07-24-grading.md` — 같은 실행의 블라인드 채점 워크시트(arm 라벨 제거·셔플·답변별 루브릭 점수·집계).
 - `GATE_REVIEW.md#section:Impact Measurement Scope Decision` — 수용된 Gate 22 범위·불변식·수용 기준.
 
 ## Review Notes
@@ -230,4 +310,17 @@ append-only `log.md`는 검색은 되지만 get-doc하지 않는다(체인지로
   러너에 `guided-compact` arm(dry)을 추가했다. real 하네스 B3·`B2_empty_wiki` 통제·실제 유료 실행은
   **보류**(사람 예산 결정). 모든 수치는 chars/4 PROXY(진단용)이라 README 헤드라인 금지 규율을 유지한다.
   fabricated 수치 없음. 에이전트(Claude Code) 편집이라 `needs_review` 유지.
+- 2026-07-27에 **2026-07-24 SDK 경로 유료 실측**(커밋 `0e2b012`)을 문서에 반영했다 — 그 커밋은
+  `bench/results/`에만 결과를 남기고 이 위키 문서를 갱신하지 않아 문서가 실행 사실보다 뒤처져
+  있었다. 추가/수정: (1) §실측 2 신설(input B2/B **0.516× −48.4%**, cost 0.581× −41.9%, pooled
+  **−40.7%**, 블라인드 루브릭 채점 B 0.910 vs B2 **0.971**·환각 0, 픽스처 22/22 verified, 비용 $11.15),
+  지는 태스크(routing-map 3.17×)와 2026-07-22 −10%와의 **미해결 불일치**, 미실행 통제
+  (`B2_empty_wiki`)를 함께 명시. (2) §규율에 2026-07-24 이후 규율 추가 — **README/런치 토큰·속도
+  헤드라인은 계속 금지**(단일 레포·단일 모델·N=3·에이전트 채점·통제 미실행), 인용은 pooled −40.7%
+  기준. (3) §토큰-효율 벤치 확장 제목·도입부를 축 기준으로 정정 — 2026-07-24 실행은 **retrieval
+  축**이고 **B3/whole-task real 하네스는 여전히 `executed:false`**임을 분리 명시(이전 제목
+  "(설계, executed:false)"가 "유료 실측이 전혀 없다"로 오독될 수 있었음). (4) §한계의 "답변 품질
+  미측정"을 프록시 하네스 한정으로 한정. (5) frontmatter·§Evidence에 새 근거 2건 등재. 새 수치는
+  전부 원자료에서 전사했고 지어낸 값은 없다. 에이전트(Claude Code) 편집이라 `needs_review` 유지 —
+  사람 검토 후 `verified` 승격 예정(허위 검토 메타 미기입).
 - 2026-07-22에 실측 후속 엄밀성 하네스를 **scaffolded**(미실행)했다: SDK 경로 드라이버 `bench/real/agent.js`(Anthropic SDK tool_runner; read/grep + 읽기 전용 `llm-wiki` retrieval 툴; env로 target-agnostic; 읽기 전용)가 서브에이전트 경로에 없던 **input/output 토큰 분리**를 제공한다. `bench/tasks-csap.json`(6 태스크 재현), `bench/real/package.json`(SDK를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변), `runner.js`의 `BENCH_TASKS` 오버라이드, `DRIVER_RUNBOOK.md` § SDK path 실행법을 함께 추가했다. `--dry`로 배선 검증(모델 호출·비용 0). **유료 실행과 교차 에이전트(GPT) 드라이버는 보류**(유저 지시). 커밋되는 재현 산출물은 tasks-csap.json·package.json·runner.js·runbook이며 `agent.js`는 설계상 git-ignore(SDK dep 격리)다. 에이전트 편집이라 `needs_review` 유지.
