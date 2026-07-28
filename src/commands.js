@@ -163,6 +163,20 @@ async function describeEffectiveConfig(cwd) {
   return parts.length > 0 ? `present (${parts.join(", ")})` : "present (no keys set)";
 }
 
+// One duplicated frontmatter key -> one warning finding (2026-07-27 audit). The
+// parser keeps last-wins semantics (additive — no existing document breaks); this
+// finding makes the silent overwrite visible. The message names only the KEY,
+// never either value, so a duplicated sensitive field cannot leak through a report.
+function duplicateKeyFinding(rel, key) {
+  return {
+    severity: "warning",
+    rule: "frontmatter.duplicate_key",
+    path: rel,
+    message: `Duplicate frontmatter key: ${key} (the last occurrence silently wins).`,
+    params: { key }
+  };
+}
+
 export async function validateFrontmatterCommand(options) {
   const markdownFiles = await listTargetMarkdown(options.cwd);
   const raw = [];
@@ -174,6 +188,9 @@ export async function validateFrontmatterCommand(options) {
 
     for (const message of parsed.errors) {
       raw.push({ severity: "error", rule: "frontmatter.parse", path: rel, message });
+    }
+    for (const key of parsed.duplicateKeys ?? []) {
+      raw.push(duplicateKeyFinding(rel, key));
     }
     for (const finding of validateFrontmatter(parsed.frontmatter, { strict: options.strict })) {
       raw.push({ ...finding, path: rel });
@@ -2129,6 +2146,9 @@ async function summarizeDocumentStatuses(cwd, markdownFiles) {
 
     for (const message of parsed.errors) {
       findings.push({ severity: "error", rule: "frontmatter.parse", path: rel, message });
+    }
+    for (const key of parsed.duplicateKeys ?? []) {
+      findings.push(duplicateKeyFinding(rel, key));
     }
     for (const finding of validateFrontmatter(parsed.frontmatter)) {
       findings.push({ ...finding, path: rel });

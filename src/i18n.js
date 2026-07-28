@@ -117,6 +117,7 @@ const MESSAGE_CATALOG = {
     "frontmatter.contains_sensitive_info": "contains_sensitive_info는 boolean이어야 합니다.",
     "frontmatter.verified_review": "verified 문서는 팀이 해당 정책을 채택하면 reviewed_by와 reviewed_at을 포함해야 합니다.",
     "frontmatter.verified_review.strict": "strict 모드에서 verified 문서는 reviewed_by와 reviewed_at을 반드시 포함해야 합니다.",
+    "frontmatter.duplicate_key": "frontmatter 키가 중복되었습니다: {key} (마지막 값이 조용히 남습니다).",
     // structure
     "structure.wiki_missing": "LLM-WIKI가 초기화되지 않았습니다; 그대로 진행할지 아니면 먼저 init --write를 실행할지 사용자에게 확인하세요.",
     "structure.required_doc": "필수 또는 프로필 권장 LLM-WIKI 문서가 누락되었습니다.",
@@ -172,6 +173,11 @@ const EXPLANATION_CATALOG = {
       meaning: "verified 문서에 리뷰 메타데이터가 없습니다.",
       whyItMatters: "verified 문서는 특히 strict CI에서 누가 언제 검토했는지 밝혀야 합니다.",
       remediation: ["문서가 실제로 검토되었을 때 reviewed_by와 reviewed_at을 추가하세요.", "검토가 안 됐다면 status를 needs_review로 낮추세요.", "경고를 CI 실패로 만들려면 --strict를 사용하세요."]
+    },
+    "frontmatter.duplicate_key": {
+      meaning: "frontmatter 키가 두 번 이상 나타나며, 파서는 마지막 값만 남기고 앞의 값을 조용히 버립니다.",
+      whyItMatters: "중복 키는 눈에 보이는 오류 없이 grounding(앞선 source_files/evidence 리스트)을 버리거나 status·contains_sensitive_info 같은 거버넌스 필드를 뒤집을 수 있어, 문서가 작성자의 의도와 다르게 읽힙니다. finding에는 키 이름만 표시되고 값은 표시되지 않습니다.",
+      remediation: ["보고된 문서를 열어 해당 키가 정확히 한 번만 나타나게 하세요.", "다른 값을 지우기 전에 어느 값이 남아야 하는지 확인하고, 둘 다 의도였다면 리스트 항목을 병합하세요.", "validate-frontmatter를 다시 실행하세요."]
     },
     "source_files.missing": {
       meaning: "source_files 항목이 존재하지 않는 로컬 파일을 가리킵니다.",

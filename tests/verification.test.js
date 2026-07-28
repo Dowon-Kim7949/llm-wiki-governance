@@ -5456,3 +5456,98 @@ test("validate-frontmatter surfaces parse and contract findings with document pa
   assert.ok(seen.has("docs/llm-wiki/bad-status.md:frontmatter.status"));
   assert.equal(result.summary.at(-1), "result: fail");
 });
+
+// ---- frontmatter.duplicate_key (2026-07-27 audit, item B) ----
+//
+// The parser keeps last-wins semantics on a repeated key (additive: no existing
+// document changes shape), but the silent overwrite now surfaces as a warning
+// finding. The four cases below are the reproduced audit rows: scalar->scalar,
+// scalar->empty-list, list->list (drops grounding), and a governance boolean flip.
+
+test("parseFrontmatter reports duplicated keys while keeping last-wins semantics", () => {
+  const scalar = parseFrontmatter("---\nstatus: verified\nstatus: needs_review\n---\n\nBody.\n");
+  assert.equal(scalar.frontmatter.status, "needs_review");
+  assert.deepEqual(scalar.duplicateKeys, ["status"]);
+  assert.deepEqual(scalar.errors, []);
+
+  // A scalar silently replaced by an empty list is still a duplicate.
+  const scalarToList = parseFrontmatter("---\nstatus: verified\nstatus:\n---\n\nBody.\n");
+  assert.deepEqual(scalarToList.frontmatter.status, []);
+  assert.deepEqual(scalarToList.duplicateKeys, ["status"]);
+
+  // Two source_files lists: only the second survives — this silently drops grounding.
+  const lists = parseFrontmatter("---\nsource_files:\n  - src/a.js\nsource_files:\n  - src/b.js\n---\n\nBody.\n");
+  assert.deepEqual(lists.frontmatter.source_files, ["src/b.js"]);
+  assert.deepEqual(lists.duplicateKeys, ["source_files"]);
+
+  // A flipped governance boolean is a duplicate.
+  const flipped = parseFrontmatter("---\ncontains_sensitive_info: true\ncontains_sensitive_info: false\n---\n\nBody.\n");
+  assert.equal(flipped.frontmatter.contains_sensitive_info, false);
+  assert.deepEqual(flipped.duplicateKeys, ["contains_sensitive_info"]);
+
+  // A key repeated three times is reported once.
+  const thrice = parseFrontmatter("---\ntitle: A\ntitle: B\ntitle: C\n---\n\nBody.\n");
+  assert.deepEqual(thrice.duplicateKeys, ["title"]);
+
+  // No duplicates -> empty list; array continuation lines are not duplicates.
+  const clean = parseFrontmatter("---\ntitle: Doc\ntags:\n  - one\n  - two\n---\n\nBody.\n");
+  assert.deepEqual(clean.duplicateKeys, []);
+});
+
+test("duplicate keys surface as warnings naming the key (never a value) on every seam", async () => {
+  const cwd = await makeProject("fm-dup-");
+  // status only enumerates wiki docs once initialized (docs/llm-wiki/index.md exists).
+  await writeWikiDocAt(cwd, "index.md", "Index", "Body.");
+  await writeWikiDocAt(cwd, "dup.md", "Dup Doc", "Body.", (doc) =>
+    doc.replace(
+      "contains_sensitive_info: false",
+      "contains_sensitive_info: false\ncontains_sensitive_info: true\nstatus: some-very-secret-value"
+    ));
+
+  const result = await validateFrontmatterCommand({ cwd, strict: false });
+  const dups = result.findings.filter((f) => f.rule === "frontmatter.duplicate_key");
+  assert.deepEqual(
+    dups.map((f) => ({ path: f.path, severity: f.severity, key: f.params.key })).sort((a, b) => a.key.localeCompare(b.key)),
+    [
+      { path: "docs/llm-wiki/dup.md", severity: "warning", key: "contains_sensitive_info" },
+      { path: "docs/llm-wiki/dup.md", severity: "warning", key: "status" }
+    ]
+  );
+  for (const finding of dups) {
+    assert.ok(finding.message.includes(finding.params.key), "the finding names the duplicated key");
+    assert.ok(!finding.message.includes("some-very-secret-value"), "no duplicated value ever appears in the finding");
+    assert.ok(!finding.message.includes("true") && !finding.message.includes("false"), "boolean values stay out of the message too");
+  }
+
+  // status (summarizeDocumentStatuses seam) surfaces the same finding.
+  const status = await statusCommand(api.normalizeOptions({ cwd }));
+  assert.ok(status.findings.some((f) => f.rule === "frontmatter.duplicate_key" && f.path === "docs/llm-wiki/dup.md"));
+
+  // audit reuses validateFrontmatterCommand, so validate/audit report it as well.
+  const auditResult = await audit(api.normalizeOptions({ cwd }));
+  assert.ok(auditResult.findings.some((f) => f.rule === "frontmatter.duplicate_key"));
+
+  // KO localization goes through the applyRuleConfig seam with {key} interpolation.
+  const ko = await validateFrontmatterCommand({ ...api.normalizeOptions({ cwd }), lang: "ko" });
+  const koDup = ko.findings.find((f) => f.rule === "frontmatter.duplicate_key");
+  assert.ok(koDup.message.includes("frontmatter 키가 중복되었습니다"));
+  assert.ok(koDup.message.includes(koDup.params.key));
+});
+
+test("frontmatter.duplicate_key is toggleable via config rules, and clean docs stay clean", async () => {
+  const cwd = await makeProject("fm-dup-toggle-");
+  await writeWikiDocAt(cwd, "dup.md", "Dup Doc", "Body.", (doc) =>
+    doc.replace("title: Dup Doc", "title: Dup Doc\ntitle: Dup Doc Again"));
+  await writeWikiDocAt(cwd, "clean.md", "Clean Doc", "Body.");
+
+  const base = await validateFrontmatterCommand(api.normalizeOptions({ cwd }));
+  const baseDups = base.findings.filter((f) => f.rule === "frontmatter.duplicate_key");
+  assert.deepEqual(baseDups.map((f) => f.path), ["docs/llm-wiki/dup.md"], "a document without duplicates is never flagged");
+  assert.equal(baseDups[0].severity, "warning");
+
+  const off = await validateFrontmatterCommand({ ...api.normalizeOptions({ cwd }), rules: { "frontmatter.duplicate_key": "off" } });
+  assert.ok(!off.findings.some((f) => f.rule === "frontmatter.duplicate_key"), "config rules can turn the rule off");
+
+  const escalated = await validateFrontmatterCommand({ ...api.normalizeOptions({ cwd }), rules: { "frontmatter.duplicate_key": "error" } });
+  assert.equal(escalated.findings.find((f) => f.rule === "frontmatter.duplicate_key").severity, "error", "config rules can escalate the severity");
+});

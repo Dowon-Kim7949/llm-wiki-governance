@@ -3,16 +3,22 @@ import { schemaEnumValues, schemaRequiredFields } from "./frontmatter-schema.js"
 export function parseFrontmatter(markdown) {
   const normalized = markdown.replace(/^\uFEFF/, "");
   if (!normalized.startsWith("---\n") && !normalized.startsWith("---\r\n")) {
-    return { frontmatter: null, body: markdown, errors: ["missing frontmatter fence"] };
+    return { frontmatter: null, body: markdown, errors: ["missing frontmatter fence"], duplicateKeys: [] };
   }
 
   const match = normalized.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!match) {
-    return { frontmatter: null, body: markdown, errors: ["unterminated frontmatter fence"] };
+    return { frontmatter: null, body: markdown, errors: ["unterminated frontmatter fence"], duplicateKeys: [] };
   }
 
   const errors = [];
   const frontmatter = {};
+  // Duplicated keys (additive, 2026-07-27 audit): the parser keeps last-wins
+  // semantics \u2014 a repeated key silently replaces the earlier value, which can
+  // drop grounding (source_files/evidence) or flip a governance field. Report
+  // which keys were duplicated so callers can surface a finding; consumers that
+  // ignore the field are unaffected.
+  const duplicateKeys = new Set();
   const lines = match[1].split(/\r?\n/);
   let currentArrayKey = null;
 
@@ -33,6 +39,7 @@ export function parseFrontmatter(markdown) {
     }
 
     const [, key, rawValue = ""] = pair;
+    if (Object.prototype.hasOwnProperty.call(frontmatter, key)) duplicateKeys.add(key);
     if (rawValue === "") {
       frontmatter[key] = [];
       currentArrayKey = key;
@@ -46,7 +53,8 @@ export function parseFrontmatter(markdown) {
   return {
     frontmatter,
     body: normalized.slice(match[0].length),
-    errors
+    errors,
+    duplicateKeys: [...duplicateKeys]
   };
 }
 
