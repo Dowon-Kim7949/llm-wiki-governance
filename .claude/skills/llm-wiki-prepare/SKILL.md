@@ -1,6 +1,7 @@
 ---
 name: llm-wiki-prepare
 description: Scope a feature/fix from the LLM-WIKI (relevant docs, source, tests, risks) before implementing (read-only).
+estimated-tokens: 627 # chars/4 proxy of the skill body, not a measured token count
 ---
 
 Get the current wiki map at RUN TIME (not a snapshot): run `llm-wiki onboard` (add --domain <area>), then read the docs it points to and confirm against the source.
@@ -37,4 +38,4 @@ Expected final response:
 
 Read-only workflow: this skill investigates and explains — it does not change files, and it writes no run manifest. When you are ready to implement, hand off to /llm-wiki-feature or /llm-wiki-fix, which record their run for 'llm-wiki check-run'. Never promote a document to verified; that is human-approved only.
 
-<!-- llm-wiki-generated v2 b740bbfe3b60b0d2 -->
+<!-- llm-wiki-generated v3 14a3f8cd07057e71 -->

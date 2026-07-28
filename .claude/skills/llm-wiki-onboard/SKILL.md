@@ -1,6 +1,7 @@
 ---
 name: llm-wiki-onboard
 description: Guide a newcomer through a work area from real code evidence, using the project's LLM-WIKI (read-only).
+estimated-tokens: 634 # chars/4 proxy of the skill body, not a measured token count
 ---
 
 Get the current wiki map at RUN TIME (not a snapshot): run `llm-wiki onboard` (add --domain <area>), then read the docs it points to and confirm against the source.
@@ -36,4 +37,4 @@ Expected final response:
 
 Read-only workflow: this skill investigates and explains — it does not change files, and it writes no run manifest. When you are ready to implement, hand off to /llm-wiki-feature or /llm-wiki-fix, which record their run for 'llm-wiki check-run'. Never promote a document to verified; that is human-approved only.
 
-<!-- llm-wiki-generated v2 8921560ea73a9264 -->
+<!-- llm-wiki-generated v3 b01bac74f3dc658f -->

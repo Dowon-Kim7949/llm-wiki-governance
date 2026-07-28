@@ -1,5 +1,7 @@
 # llm-wiki-docs-sync
 
+<!-- estimated-tokens: 662 (chars/4 proxy of the skill body, not a measured token count) -->
+
 > Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.
 
 Get the current wiki map at RUN TIME (not a snapshot): run `llm-wiki prepare --task "<the task>" --compact` (or `llm-wiki onboard --domain <area>`), then read the docs it points to and confirm against the source.
@@ -42,4 +44,4 @@ Expected final response:
 
 Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-docs-sync-<timestamp>.json with fields: task="docs-sync", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.
 
-<!-- llm-wiki-generated v2 37646fe1e722cecb -->
+<!-- llm-wiki-generated v3 c21f1270fc7a0fa7 -->

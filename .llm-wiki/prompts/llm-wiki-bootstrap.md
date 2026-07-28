@@ -1,5 +1,7 @@
 # llm-wiki-bootstrap
 
+<!-- estimated-tokens: 936 (chars/4 proxy of the skill body, not a measured token count) -->
+
 > Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.
 
 Project domain map: none detected yet — read docs/llm-wiki/index.md and browse docs/llm-wiki/domains/ to find the relevant area.
@@ -47,4 +49,4 @@ Expected final response:
 
 Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-bootstrap-<timestamp>.json with fields: task="bootstrap", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.
 
-<!-- llm-wiki-generated v2 3314245def74fd93 -->
+<!-- llm-wiki-generated v3 8c640d7179e9be85 -->

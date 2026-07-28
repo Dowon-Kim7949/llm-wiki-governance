@@ -1,6 +1,7 @@
 ---
 name: llm-wiki-docs-sync
 description: Sync LLM-WIKI docs with recent code changes (needs_review).
+estimated-tokens: 662 # chars/4 proxy of the skill body, not a measured token count
 ---
 
 Get the current wiki map at RUN TIME (not a snapshot): run `llm-wiki prepare --task "<the task>" --compact` (or `llm-wiki onboard --domain <area>`), then read the docs it points to and confirm against the source.
@@ -43,4 +44,4 @@ Expected final response:
 
 Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-docs-sync-<timestamp>.json with fields: task="docs-sync", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.
 
-<!-- llm-wiki-generated v2 014f64d6503b6b0b -->
+<!-- llm-wiki-generated v3 9f7bb33050af7016 -->

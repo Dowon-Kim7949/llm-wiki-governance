@@ -1,6 +1,7 @@
 ---
 name: llm-wiki-fix
 description: Fix a bug grounded in the project's LLM-WIKI, then update the wiki (needs_review).
+estimated-tokens: 770 # chars/4 proxy of the skill body, not a measured token count
 ---
 
 Get the current wiki map at RUN TIME (not a snapshot): run `llm-wiki prepare --task "<the task>" --compact` (or `llm-wiki onboard --domain <area>`), then read the docs it points to and confirm against the source.
@@ -44,6 +45,6 @@ Expected final response:
 - Wiki docs updated.
 - Remaining review items or caveats.
 
-Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-fix-<timestamp>.json with fields: task="fix", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.
+Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-fix-<timestamp>.json with fields: task="fix", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}, testEvidence {red, green} (test name/summary failing before your change, passing after — red -> green; no secrets). Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.
 
-<!-- llm-wiki-generated v2 e2559f72ae2efe29 -->
+<!-- llm-wiki-generated v3 b12839c90f79f249 -->

@@ -1,5 +1,7 @@
 # llm-wiki-prepare
 
+<!-- estimated-tokens: 627 (chars/4 proxy of the skill body, not a measured token count) -->
+
 > Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.
 
 Get the current wiki map at RUN TIME (not a snapshot): run `llm-wiki onboard` (add --domain <area>), then read the docs it points to and confirm against the source.
@@ -36,4 +38,4 @@ Expected final response:
 
 Read-only workflow: this skill investigates and explains — it does not change files, and it writes no run manifest. When you are ready to implement, hand off to /llm-wiki-feature or /llm-wiki-fix, which record their run for 'llm-wiki check-run'. Never promote a document to verified; that is human-approved only.
 
-<!-- llm-wiki-generated v2 e09735389e5efe3f -->
+<!-- llm-wiki-generated v3 1688b87b617bd188 -->
