@@ -1658,6 +1658,59 @@ built and shipping in 1.25.0 EXCEPT the explicitly-deferred paid bench (see Stat
   B3 arm, and the empty-wiki control. "≥20% total-token reduction" stays an internal stretch target
   only — NOT a product claim until real measurement exists.
 
+## ECC Technique Extraction Scope Decision (maintainer-instructed 2026-07-28 — built, unreleased)
+
+Context: the maintainer asked whether ECC (github.com/affaan-m/ECC — MIT agent-harness toolkit,
+234k stars) could make this package better. Decision: use it as a **technique source**, never as a
+dependency or as this repo's development harness (both were evaluated and declined earlier the same
+day: dependency breaks zero-dep/tool-neutrality/layering; harness adoption breaks bench attribution
+and the dogfood pain-signal loop). Four techniques were re-implemented house-style (zero-dep,
+additive, preview-first), built in four parallel isolated worktrees and serially squash-merged.
+
+### Accepted scope (in) — all additive, unreleased (main only)
+
+1. **Per-gate evidence trail** (from ECC's plan→test→implement→review trail): run manifests gain
+   optional `testEvidence { red, green }`; `check-run` emits `run.test_evidence_missing` (warning,
+   toggleable) only for feature/fix manifests with non-empty `changedSource`; legacy manifests and
+   docs-sync/bootstrap stay warning-free. Feature/fix skill completion contracts name the field.
+2. **Skill token budgets** (from ECC's SKILL.md estimated-tokens frontmatter): generated artifacts
+   carry `estimated-tokens` (chars/4 PROXY, disclaimer inline; Claude/Codex frontmatter, Cursor/
+   neutral HTML comment; marker v2→v3; pre-budget artifacts refresh cleanly via `--refresh`).
+3. **Named rule presets** (from ECC's hook profiles minimal/standard/strict): config
+   `rulesPreset: "relaxed"|"standard"|"strict"`, single source `findings.js#RULE_PRESETS` (frozen),
+   expanded at config-merge time so CLI/API/MCP + monorepo inherit; explicit `rules` always wins;
+   `sensitive.*` remains non-toggleable; unknown preset = config error (exit 3); doctor echoes it.
+4. **`import-memory`** (ECC documents "promote accepted memories into governed project
+   documentation" but provides no governed layer — this command is that hand-off): one-way importer
+   from portable `ecc.memory.v1` Markdown (default vault `.ecc/memory`) to needs_review wiki drafts
+   under `docs/llm-wiki/imported/`. Preview-first (`--apply`), frontmatter only via
+   `renderWikiDocumentTemplate` (verified structurally impossible), sensitive-hit memories skipped
+   by default (no force flag), never overwrites, NOT exposed via MCP. New `import.*` findings.
+
+### Rejected scope (out) — recorded so it is not re-litigated
+
+- **Confidence scoring (0–1) / risk grades**: collides with the deliberate two-orthogonal-axis
+  design (`reference_checked` machine axis vs `human_verified` human axis) and duplicates the
+  stats health score. Fuzzy scores would blur what "verified" means here.
+- **Instincts / session-learning injection**: a competing answer to context persistence; adopting
+  it contaminates bench attribution (the measured value of the wiki's content) and adds
+  non-deterministic prompt state this governance layer exists to avoid.
+- **Deferred, not rejected**: ECC's eval-harness methodology (checkpoint vs continuous, pass@k)
+  as measurement design for the real/paid bench — waiting on the existing paid-bench
+  authorization; unchanged headline ban until then.
+
+### Invariants (non-negotiable) — all held
+
+Zero-dep (Node builtins only) · additive-only (frozen CLI/API maps, `--format json` shape) ·
+preview-first writes · verified stays human-only · sensitive values never in findings/output ·
+MCP read-only · default outputs byte-identical when new options are unused.
+
+### Status
+
+Built 2026-07-28 under maintainer instruction; 380 tests (347→380, +33; each task RED-verified
+pre-implementation) · lint OK (55 files) · validate --strict 0 · dogfood skills regenerated via
+`--refresh`. Unreleased; wiki docs updated and demoted to needs_review pending human re-approval.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

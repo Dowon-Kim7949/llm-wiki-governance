@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-07-27
+last_updated: 2026-07-28
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,31 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-28 - ECC 기법 추출 배치 4건 구현 (병렬 워크트리 → 직렬 통합; 미릴리스)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시 — ECC를 의존성이 아니라 기법 소스로 차용)
+- scope: code + skills + docs
+- changed:
+  - src/commands.js, src/commands/findings.js, src/commands/skills.js, src/i18n.js, src/cli.js — (1) run manifest optional `testEvidence {red, green}` + `check-run`의 `run.test_evidence_missing`(warning; feature/fix+changedSource 있을 때만, 구 manifest 면제) + feature/fix 스킬 완성 계약 갱신
+  - src/commands/skills.js — (2) 생성 스킬 아티팩트 토큰 예산 스탬프(`estimated-tokens`, chars/4 PROXY 명시; Claude/Codex frontmatter·Cursor/중립 HTML 코멘트; 마커 v2→v3)
+  - src/commands/findings.js, src/config-file.js, src/commands.js — (3) config `rulesPreset`(relaxed/standard/strict; `RULE_PRESETS` 단일 소스; 병합 시점 확장; 명시 rules 우선; sensitive.* 보호; unknown exit 3; doctor 에코)
+  - src/commands/import-memory.js(신규 leaf), src/cli.js, src/index.js — (4) `import-memory` 단방향 임포터(ECC `ecc.memory.v1` → needs_review 위키 초안; preview 기본·`--apply`; verified 구조적 불가; 민감 히트 기본 skip; MCP 미노출)
+  - .claude/skills/, .agents/skills/, .cursor/rules/, .llm-wiki/prompts/ — dogfood 스킬 24개 `--refresh` 재생성
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 반영 및 `needs_review` 강등
+  - GATE_REVIEW.md — "ECC Technique Extraction Scope Decision"(수용 4건 + 기각 2건: confidence 스코어링·instincts)
+- summary:
+  - ECC 하네스(github.com/affaan-m/ECC)의 기법 4건을 하우스 방식(zero-dep·additive·preview-first)으로 재구현했다. 4건을 독립 워크트리에서 병렬 구현(각자 RED 선실패 확인) 후 충돌 0으로 직렬 squash-merge했다.
+- verification:
+  - 380 tests(347→380, 신규 33) 전부 pass · lint OK(55 files) · validate --strict 0
+- evidence:
+  - src/commands/import-memory.js
+  - src/commands/findings.js#symbol:RULE_PRESETS
+  - src/commands.js#symbol:checkRunCommand
+  - src/commands/skills.js#symbol:tokenBudgetField
+- caveats:
+  - 미릴리스(main 한정, 푸시 보류 정책 유지). 에이전트 편집 문서는 needs_review — 사람 검토 후 재승인 필요. real/유료 벤치(pass@k)는 이 배치에서 제외(승인 대기).
 
 ## 2026-07-28 - 감사 잔여 3건 반영분 사람 검토·재승인 + 드리프트 재베이스라인
 
