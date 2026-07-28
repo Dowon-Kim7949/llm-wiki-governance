@@ -151,6 +151,9 @@ async function describeEffectiveConfig(cwd) {
   if (Array.isArray(config.profiles) && config.profiles.length > 0) parts.push(`profiles=${config.profiles.join("+")}`);
   if (Array.isArray(config.agents) && config.agents.length > 0) parts.push(`agents=${config.agents.join("+")}`);
   if (config.strict) parts.push("strict=on");
+  // Additive: the applied preset is echoed by name; `rules=N` keeps counting
+  // only the explicit entries (the preset expands at merge time, not here).
+  if (config.rulesPreset) parts.push(`rulesPreset=${config.rulesPreset}`);
   if (config.rules && typeof config.rules === "object" && Object.keys(config.rules).length > 0) {
     parts.push(`rules=${Object.keys(config.rules).length}`);
   }

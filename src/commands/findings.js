@@ -109,6 +109,61 @@ export function findingCategory(rule) {
 // of any per-project override.
 export const NON_TOGGLEABLE_CATEGORIES = new Set(["sensitive"]);
 
+// Named rule-severity presets (bundles), selected via the llm-wiki.config.json
+// `rulesPreset` key. This registry is the single source of what each preset
+// means; src/config-file.js validates the name and expands the bundle into
+// options.rules at config-merge time (a preset is a FLOOR — every explicit
+// `rules` entry overrides its preset entry key-by-key). Expansion happens at
+// merge time rather than in applyRuleConfig so the opt-in lints that gate on
+// options.rules (scanThinBody, scanVisibilityConsistency) see preset-enabled
+// rules too.
+//
+// Presets only preload the same rule-severity toggles `rules` accepts. They are
+// UNRELATED to the --strict CLI flag: --strict keeps its exit-code semantics
+// (fail CI on warnings) and its few push-time severity escalations, with or
+// without a preset. A preset must never name a NON_TOGGLEABLE_CATEGORIES rule
+// (sensitive.*) — applyRuleConfig would refuse the toggle anyway — and must
+// never touch a rule whose default severity is error or blocked.
+//
+//   relaxed  — demotes the heuristic and formatting-alignment warnings that are
+//              noisiest on active repos to info, and drops the info-level BOM
+//              note. Structural, link, and governance-core warnings stay as-is.
+//   standard — empty ON PURPOSE: the registry's defaultSeverity (enforced at
+//              the scan push sites) already is the standard baseline, and
+//              spelling the defaults out here would fight the push-time
+//              --strict escalations (e.g. frontmatter.verified_review,
+//              evidence.*_unverified). An empty bundle keeps
+//              `rulesPreset: "standard"` byte-identical to no preset at all.
+//   strict   — enables the opt-in lints at their designed warning level and
+//              escalates the governance-core warnings (missing review metadata,
+//              silently duplicated frontmatter keys, unresolved grounding
+//              paths) to error.
+export const RULE_PRESETS = Object.freeze({
+  relaxed: Object.freeze({
+    "encoding.bom": "off",
+    "content.not_enriched": "info",
+    "evidence.stale": "info",
+    "impact.source_changed": "info",
+    "evidence.line_range": "info",
+    "evidence.section_missing": "info",
+    "evidence.section_empty": "info",
+    "evidence.section_unlisted": "info",
+    "evidence.symbol_unverified": "info",
+    "evidence.section_unverified": "info",
+    "evidence.ungrounded": "info"
+  }),
+  standard: Object.freeze({}),
+  strict: Object.freeze({
+    "content.thin_body": "warning",
+    "visibility.public_sensitive": "warning",
+    "visibility.declared_mismatch": "warning",
+    "frontmatter.verified_review": "error",
+    "frontmatter.duplicate_key": "error",
+    "source_files.missing": "error",
+    "evidence.missing": "error"
+  })
+});
+
 // Applies per-project rule toggles (options.rules, from llm-wiki.config.json) to a
 // findings array: a rule set to "off" is dropped; any other value overrides that
 // rule's severity. Only registry rules (FINDING_EXPLANATIONS) are toggleable, and

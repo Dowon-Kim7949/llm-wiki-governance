@@ -1,6 +1,7 @@
 import path from "node:path";
 import { pathExists } from "./files.js";
 import { readTextAuto } from "./encoding.js";
+import { RULE_PRESETS } from "./commands/findings.js";
 
 export const CONFIG_FILENAME = "llm-wiki.config.json";
 
@@ -70,6 +71,20 @@ export async function loadProjectConfig(cwd) {
       } else {
         config.rules = { ...rules };
       }
+    }
+  }
+
+  // Named rule-severity preset (bundle) applied as a floor under `rules`. The
+  // bundles are defined once in src/commands/findings.js (RULE_PRESETS), next to
+  // the finding registry they toggle. An unknown or non-string name is rejected
+  // like any other malformed config field (the CLI exits 3 on it) instead of
+  // being silently ignored.
+  if ("rulesPreset" in parsed) {
+    const preset = parsed.rulesPreset;
+    if (typeof preset !== "string" || !Object.prototype.hasOwnProperty.call(RULE_PRESETS, preset)) {
+      errors.push(`${CONFIG_FILENAME}: "rulesPreset" must be one of ${Object.keys(RULE_PRESETS).join(", ")}.`);
+    } else {
+      config.rulesPreset = preset;
     }
   }
 
@@ -146,8 +161,17 @@ export function mergeConfigIntoOptions(options, config) {
   if (options.docLang == null && (config.docLanguage === "ko" || config.docLanguage === "en")) {
     options.docLang = config.docLanguage;
   }
-  if (config.rules && (!options.rules || Object.keys(options.rules).length === 0)) {
-    options.rules = { ...config.rules };
+  // `rulesPreset` (a named bundle from findings.js RULE_PRESETS) expands here,
+  // at config-merge time rather than in applyRuleConfig, so the opt-in lints
+  // that gate on options.rules (scanThinBody, scanVisibilityConsistency) see
+  // preset-enabled rules too. The preset is a floor: explicit `rules` entries
+  // are spread after it and win key-by-key. Like every other config value,
+  // neither fills options.rules when the caller already supplied one. Presets
+  // only preload rule-severity toggles — the --strict flag and its exit-code
+  // semantics are a separate mechanism (see RULE_PRESETS).
+  const presetRules = config.rulesPreset ? RULE_PRESETS[config.rulesPreset] : null;
+  if ((presetRules || config.rules) && (!options.rules || Object.keys(options.rules).length === 0)) {
+    options.rules = { ...(presetRules ?? {}), ...(config.rules ?? {}) };
   }
   if (Array.isArray(config.requiredDocs) && (!options.requiredDocs || options.requiredDocs.length === 0)) {
     options.requiredDocs = [...config.requiredDocs];
