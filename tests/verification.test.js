@@ -4819,8 +4819,9 @@ test("skill generation: init --write --agent codex writes four Codex skills with
     const abs = path.join(cwd, ".agents", "skills", slug, "SKILL.md");
     assert.ok(await fileExists(abs), `${slug} SKILL.md created`);
     const content = await readFile(abs, "utf8");
-    // 4: valid name/description frontmatter.
-    assert.ok(content.startsWith(`---\nname: ${slug}\ndescription: ${descBySlug[slug]}\n---\n`), `${slug} frontmatter`);
+    // 4: valid name/description frontmatter (plus the estimated-tokens budget line,
+    // a chars/4 proxy — see tests/skill-token-budget.test.js for its contract).
+    assert.ok(content.startsWith(`---\nname: ${slug}\ndescription: ${descBySlug[slug]}\nestimated-tokens: `), `${slug} frontmatter`);
     // Portability/privacy: no machine-absolute path / username baked in.
     assert.ok(!content.includes(cwd) && !/[A-Za-z]:\\Users\\/.test(content), "no absolute machine path leaked");
   }

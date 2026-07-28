@@ -8,8 +8,11 @@
 // Each body embeds a generation-time snapshot of the project's domain map (from the
 // generated wiki) so the agent knows which docs to read. Recognize-don't-run: this
 // module only WRITES the artifacts; the agent runs them. Existing files are never
-// overwritten. Depends only on the Node stdlib, files.js, encoding.js, frontmatter.js,
-// and task-prompts.js; no back-dependency on commands.js.
+// overwritten. Every artifact also carries token-budget metadata (estimated-tokens,
+// a chars/4 PROXY reused from retrieval.js) so an agent can budget the load before
+// reading the body. Depends only on the Node stdlib and leaf modules (files.js,
+// encoding.js, frontmatter.js, task-prompts.js, i18n.js, retrieval.js); no
+// back-dependency on commands.js.
 import { mkdir, writeFile, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -18,11 +21,12 @@ import { readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { buildTaskPrompt } from "../task-prompts.js";
 import { normalizeLang } from "../i18n.js";
+import { estimateTokens } from "./retrieval.js";
 
 // Bumped when the generated skill format changes. Recorded in each artifact's
 // trailing marker (informational — refresh detection uses the content hash, not
 // this version). See withGeneratedMarker / isManagedUnmodified.
-const SKILL_ARTIFACT_VERSION = "2";
+const SKILL_ARTIFACT_VERSION = "3";
 
 // The workflows exposed as skills, and their invocable slug/description.
 export const SKILL_TASKS = [
@@ -181,22 +185,49 @@ function forArtifact(prompt) {
     .replace(/ Target agent context: [^.\n]*\./, "");
 }
 
+// --- token-budget metadata ------------------------------------------------
+// Every generated artifact is stamped with an estimated token budget so an
+// agent (or a loader harness) can weigh a skill BEFORE loading its body. The
+// figure reuses estimateTokens from retrieval.js and is a chars/4 PROXY, never
+// a measured token count (this repo publishes no measured token figures). It is
+// computed over the artifact BODY only — frontmatter and the trailing refresh
+// marker are excluded — so the stamped number can never feed back into its own
+// measurement and re-rendering stays hash-stable for --refresh.
+const TOKEN_PROXY_NOTE = "chars/4 proxy of the skill body, not a measured token count";
+
+// Frontmatter form for the SKILL.md contracts (Claude/Codex): both loaders
+// ignore unknown keys, and kebab-case matches the SKILL.md house style
+// (name/description/allowed-tools). The proxy caveat rides inline as a YAML
+// comment so the number is never quoted without it.
+function tokenBudgetField(body) {
+  return `estimated-tokens: ${estimateTokens(body)} # ${TOKEN_PROXY_NOTE}`;
+}
+
+// Body-comment form for artifacts whose frontmatter we do not control: the
+// Cursor .mdc contract is third-party (an unknown key risks breaking its rule
+// parser), and the neutral prompt has no frontmatter at all. A Markdown
+// comment at the head of the body is inert everywhere and still lets a loader
+// read the budget without consuming the whole file.
+function tokenBudgetComment(body) {
+  return `<!-- estimated-tokens: ${estimateTokens(body)} (${TOKEN_PROXY_NOTE}) -->`;
+}
+
 function renderClaudeSkill(entry, body) {
-  return `---\nname: ${entry.slug}\ndescription: ${entry.description}\n---\n\n${body}`;
+  return `---\nname: ${entry.slug}\ndescription: ${entry.description}\n${tokenBudgetField(body)}\n---\n\n${body}`;
 }
 
 // Codex native skill: .agents/skills/<name>/SKILL.md with name/description
 // frontmatter. Same shape as the Claude skill body (both are SKILL.md contracts).
 function renderCodexSkill(entry, body) {
-  return `---\nname: ${entry.slug}\ndescription: ${entry.description}\n---\n\n${body}`;
+  return `---\nname: ${entry.slug}\ndescription: ${entry.description}\n${tokenBudgetField(body)}\n---\n\n${body}`;
 }
 
 function renderCursorRule(entry, body) {
-  return `---\ndescription: ${entry.description}\nalwaysApply: false\n---\n\n${body}`;
+  return `---\ndescription: ${entry.description}\nalwaysApply: false\n---\n\n${tokenBudgetComment(body)}\n\n${body}`;
 }
 
 function renderNeutralPrompt(entry, body) {
-  return `# ${entry.slug}\n\n> Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.\n\n${body}`;
+  return `# ${entry.slug}\n\n${tokenBudgetComment(body)}\n\n> Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.\n\n${body}`;
 }
 
 // Plan/write helpers return { path, content } artifacts for the active formats.
