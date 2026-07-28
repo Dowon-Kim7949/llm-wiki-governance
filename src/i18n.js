@@ -103,6 +103,8 @@ const MESSAGE_CATALOG = {
     "evidence.stale": "verified 문서가 {reference}를 참조하는데 {baseline} 이후 변경되었습니다; 재검토·갱신하거나 needs_review로 강등하세요.",
     // impact
     "impact.source_changed": "verified 문서가 {sources}에 의존하는데 이번 diff에서 변경되었지만 문서 자신은 변경되지 않았습니다; 재검토·갱신하거나 needs_review로 강등하세요.",
+    // run
+    "run.test_evidence_missing": "코드를 변경한 {task} 실행의 run manifest에 테스트 증거가 불완전합니다(누락: {missing}); 변경 전 실패한 테스트(red)와 변경 후 통과(green)를 기록하세요.",
     // okf
     "okf.type_required": "OKF v0.1 프로필은 frontmatter 필드 type을 요구합니다.",
     "okf.type_shape": "OKF v0.1 frontmatter 필드 type은 문자열이어야 합니다.",
@@ -273,6 +275,11 @@ const EXPLANATION_CATALOG = {
       meaning: "run manifest를 파싱할 수 없거나 필수 필드가 없습니다.",
       whyItMatters: "잘못된 manifest는 검사할 수 없고, 보통 실행이 계약을 완료하지 못했음을 뜻합니다.",
       remediation: ["manifest가 task·changedSource·touchedDocs·logAppended·validated 필드를 가진 유효한 JSON인지 확인하세요.", "스킬 워크플로에서 manifest를 재생성하세요.", "--run <path>로 의도한 manifest를 가리키세요."]
+    },
+    "run.test_evidence_missing": {
+      meaning: "소스를 변경한 feature/fix 실행의 run manifest에 완전한 테스트 증거(testEvidence.red와 testEvidence.green)가 없습니다.",
+      whyItMatters: "변경 전 실패(red)→변경 후 통과(green) 트레일은 코드 변경 실행이 주장만이 아니라 실제로 검증했음을 보여주는 가장 값싼 감사 증거이며, 없으면 check-run이 그 단계가 있었는지 확인할 수 없습니다. 이 optional 필드는 additive라 구 manifest는 유효한 채 warning만 받습니다.",
+      remediation: ["변경 전에 관련 테스트를 실행하고 실패한 테스트 이름과 짧은 실패 요약을 testEvidence.red에 기록하세요.", "변경 후 다시 실행해 통과 요약을 testEvidence.green에 기록하세요.", "문서 전용 태스크(docs-sync·bootstrap)는 제외됩니다; llm-wiki.config.json rules에서 \"run.test_evidence_missing\": \"off\"로 프로젝트별로 끄세요.", "check-run --strict로 CI 실패를 켜세요."]
     },
     "related.missing": {
       meaning: "related frontmatter 항목이 존재하지 않는 로컬 문서를 가리킵니다.",

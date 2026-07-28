@@ -882,8 +882,11 @@ Purpose:
   under .llm-wiki/runs/ (the newest, or --run <path>) — that the code change it
   claims was reflected in the wiki. Checks that each changedSource file is
   referenced by some touchedDocs document (source_files/evidence), that the change
-  log was appended, and that validation ran and passed. The intent-anchored
-  complement to impact (diff-anchored). Run it from the repo root.
+  log was appended, and that validation ran and passed. Code-changing feature/fix
+  runs are also expected to record a test-evidence trail (testEvidence {red, green}:
+  the test failing before the change and passing after); a missing or incomplete
+  trail warns as run.test_evidence_missing. The intent-anchored complement to
+  impact (diff-anchored). Run it from the repo root.
 
 Strict / CI (see GATE_REVIEW.md "Agent Update Runner ... Scope Decision", Gate 26):
   - Default warning; --strict makes run.* findings fail (exit 1) so CI catches a

@@ -881,6 +881,26 @@ export async function checkRunCommand(options) {
       message: "Run manifest reports validation did not run or did not pass."
     });
   }
+  // Test-evidence trail (2026-07-28, additive): a code-changing feature/fix run
+  // should record that the relevant test failed before the change and passed
+  // after it (testEvidence: { red, green } — free-form test name/log summaries,
+  // never raw secrets). The field is optional in the manifest shape: legacy
+  // manifests stay valid (run.manifest_invalid semantics untouched) and only
+  // gain this toggleable warning; documentation-only tasks are exempt.
+  const manifestTask = typeof manifest.task === "string" ? manifest.task.trim() : "";
+  if (TEST_EVIDENCE_TASKS.has(manifestTask) && changedSource.length > 0) {
+    const missingParts = missingTestEvidenceParts(manifest.testEvidence);
+    if (missingParts.length > 0) {
+      const missingLabel = missingParts.map((part) => `testEvidence.${part}`).join(", ");
+      findings.push({
+        severity: "warning",
+        rule: "run.test_evidence_missing",
+        path: relManifest,
+        message: `Run manifest for a code-changing ${manifestTask} run has incomplete test evidence (missing: ${missingLabel}); record the failing test before the change (red) and the passing run after (green).`,
+        params: { task: manifestTask, missing: missingLabel }
+      });
+    }
+  }
 
   return finishCheckRun(options, relManifest, applyRuleConfig(findings, options), {
     task: typeof manifest.task === "string" ? manifest.task : null,
@@ -895,6 +915,24 @@ function checkRunValidated(validated) {
     return validated.ran === true && (validated.result === "pass" || validated.result === undefined);
   }
   return false;
+}
+
+// Tasks whose completion contract includes a test-evidence trail: feature and
+// fix runs change code, so their manifest should show the relevant test failed
+// before the change (red) and passed after it (green). docs-sync and bootstrap
+// are documentation-only and stay exempt (as does any unclassifiable task).
+const TEST_EVIDENCE_TASKS = new Set(["feature", "fix"]);
+
+// Which testEvidence parts are missing or blank. Complete evidence is an object
+// with non-empty string `red` and `green`; anything else (absent field, wrong
+// shape, blank strings) reports the offending part names — names only, never
+// manifest values.
+function missingTestEvidenceParts(testEvidence) {
+  if (!testEvidence || typeof testEvidence !== "object" || Array.isArray(testEvidence)) return ["red", "green"];
+  const missing = [];
+  if (typeof testEvidence.red !== "string" || !testEvidence.red.trim()) missing.push("red");
+  if (typeof testEvidence.green !== "string" || !testEvidence.green.trim()) missing.push("green");
+  return missing;
 }
 
 // Local source-file anchors (source_files + non-external evidence bases) a touched

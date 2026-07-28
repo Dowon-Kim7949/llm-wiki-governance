@@ -172,7 +172,14 @@ function readOnlyNote() {
 // code change was reflected in the wiki (no backticks in the body — the artifact is
 // plain Markdown pasted into an agent). Records intent; never replaces human review.
 function manifestContractSection(task) {
-  return `Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-${task}-<timestamp>.json with fields: task="${task}", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.`;
+  // Code-changing tasks (feature/fix) also record a test-evidence trail: the
+  // relevant test failing before the change (red) and passing after (green),
+  // so check-run can audit that the change was actually verified. The field is
+  // optional/additive; documentation-only tasks (docs-sync, bootstrap) omit it.
+  const testEvidence = task === "feature" || task === "fix"
+    ? ", testEvidence {red, green} (test name/summary failing before your change, passing after — red -> green; no secrets)"
+    : "";
+  return `Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-${task}-<timestamp>.json with fields: task="${task}", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}${testEvidence}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.`;
 }
 
 // task-prompts.js is written for one-shot terminal output; strip the two bits that

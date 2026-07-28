@@ -1875,7 +1875,10 @@ test("Gate 26: check-run verifies a run manifest's pipeline (doc gap / log / val
     changedSource: ["src/foo.js"],
     touchedDocs: ["docs/llm-wiki/domains/00_overview.md"],
     logAppended: true,
-    validated: { ran: true, result: "pass" }
+    validated: { ran: true, result: "pass" },
+    // Test-evidence trail (2026-07-28): a clean code-changing manifest now also
+    // records the red -> green proof (see check-run-test-evidence.test.js).
+    testEvidence: { red: "tests/foo.test.js failed before the change", green: "node --test passes after the change" }
   }), { encoding: "utf8" });
   const clean = await checkRunCommand({ cwd, format: "text", strict: false });
   assert.equal(clean.result, "pass");
@@ -2069,7 +2072,10 @@ test("Gate 26: check-run skips external changedSource and strips locators when m
     changedSource: ["src/foo.js#symbol:foo", "https://example.com/x"],
     touchedDocs: ["docs/llm-wiki/domains/00_overview.md"],
     logAppended: true,
-    validated: true
+    validated: true,
+    // Keeps this code-changing manifest clean under the test-evidence rule
+    // (2026-07-28; see check-run-test-evidence.test.js).
+    testEvidence: { red: "tests/foo.test.js failed before the change", green: "node --test passes after the change" }
   }), { encoding: "utf8" });
   const result = await checkRunCommand({ cwd, format: "text", strict: false });
   // foo.js covered after stripping the #symbol locator; the external ref is skipped → no gap
