@@ -28,6 +28,7 @@ import {
   graphCommand,
   handoffCommand,
   impactCommand,
+  importMemoryCommand,
   initCommand,
   listDocsCommand,
   migrateCommand,
@@ -90,6 +91,7 @@ import { TOOL_DEFS as MCP_TOOLS } from "./mcp/tools.js";
  * @property {string|null} findingRule explain target rule.
  * @property {string|null} query     search-docs query.
  * @property {string|null} docPath   get-doc/get-related target document path.
+ * @property {string|null} memoryPath import-memory source file/directory (default .ecc/memory).
  * @property {string|null} status    list-docs/search-docs status filter.
  * @property {string|null} visibility list-docs/search-docs visibility filter.
  * @property {string|null} docType   list-docs/search-docs doc_type filter.
@@ -139,6 +141,7 @@ export const commands = Object.freeze({
   prompt: promptCommand,
   init: initCommand,
   migrate: migrateCommand,
+  "import-memory": importMemoryCommand,
   fix: fixCommand,
   drift: driftCommand,
   impact: impactCommand,
@@ -211,6 +214,7 @@ export {
   graphCommand,
   handoffCommand,
   impactCommand,
+  importMemoryCommand,
   initCommand,
   listDocsCommand,
   migrateCommand,

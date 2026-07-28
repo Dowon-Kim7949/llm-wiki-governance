@@ -1,7 +1,7 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, importMemoryCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { KNOWN_TYPES } from "./detector.js";
@@ -22,6 +22,7 @@ const COMMANDS = new Map([
   ["prompt", promptCommand],
   ["init", initCommand],
   ["migrate", migrateCommand],
+  ["import-memory", importMemoryCommand],
   ["fix", fixCommand],
   ["drift", driftCommand],
   ["impact", impactCommand],
@@ -143,6 +144,7 @@ export function defaultOptions() {
     findingRule: null,
     query: null,
     docPath: null,
+    memoryPath: null,
     status: null,
     visibility: null,
     docType: null,
@@ -432,6 +434,8 @@ export function parseArgs(argv) {
       options.query = arg;
     } else if ((command === "get-doc" || command === "get-related") && options.docPath === null) {
       options.docPath = arg;
+    } else if (command === "import-memory" && options.memoryPath === null) {
+      options.memoryPath = arg;
     } else {
       errors.push(`Unexpected argument: ${arg}`);
     }
@@ -475,6 +479,7 @@ const COMMAND_OPTION_RULES = {
   prompt: new Set(["cwd", "task", "type", "profile", "agent", "format", "out"]),
   init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "dry-run", "write", "format", "out", "with-adapters", "no-adapters"]),
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
+  "import-memory": new Set(["cwd", "dry-run", "apply", "format", "out"]),
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
   drift: new Set(["cwd", "dry-run", "downgrade", "format", "out"]),
   impact: new Set(["cwd", "since", "strict", "format", "out"]),
@@ -622,6 +627,8 @@ Usage:
   llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki import-memory [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki import-memory --apply [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki impact [--since <git-ref>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
@@ -644,6 +651,7 @@ Safety:
   Existing adapter files are never overwritten.
   Generated skills are never overwritten unless --refresh is set — and even then only package-generated skills you have not edited are updated; your edits and custom skills are preserved (a dry-run distinguishes create / refresh / conflict).
   migrate previews by default and writes only with --apply, reusing the fix scope plus wiki_block_version upgrades; it never edits verified documents' content.
+  import-memory previews by default and writes only with --apply. It converts portable ecc.memory.v1 memory files (ECC Memory Vault; defaults to .ecc/memory) into needs_review drafts under docs/llm-wiki/imported/, never overwrites existing files, never touches log.md, and skips memories with sensitive-looking values (reported as counts only — no force flag).
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
   drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated). It never promotes to verified.
   review is read-only by default: it risk-ranks the needs_review backlog for human spot-checking. --approve <path> (or --approve-all --yes) stamps ONLY status: verified + reviewed_by + reviewed_at; it refuses docs with blocking/structural findings and never auto-verifies. verified stays a human decision.
@@ -814,6 +822,39 @@ Scope (see GATE_REVIEW.md "Migration Apply Scope Decision", Gate 8):
     Tier B fields (title/doc_type/project/author), or document status. Documents
     a newer CLI stamped (ahead) are reported, never downgraded. All writes stay
     needs_review; sensitive-matching results are blocked.
+`,
+  "import-memory": `llm-wiki import-memory
+
+Usage:
+  llm-wiki import-memory [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki import-memory --apply [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  One-way importer for ECC Memory Vault files: converts portable ecc.memory.v1
+  Markdown memories (YAML frontmatter + Markdown body) into needs_review
+  LLM-WIKI drafts under docs/llm-wiki/imported/, one document per memory.
+  <path> is a memory file or a directory of them and defaults to .ecc/memory
+  (ECC's project vault). ECC documents memories as unreviewed context whose
+  accepted knowledge a HUMAN promotes into governed documentation — this
+  command is that promotion on-ramp on the LLM-WIKI side; the drafts still
+  require human review (llm-wiki review) before they can become verified.
+
+Safety (conservative write policy):
+  - Preview by default; files are written only with --apply.
+  - Generated frontmatter comes from the shared wiki template: always
+    status: needs_review (an import can never mint verified),
+    doc_type: imported_memory, empty source_files/evidence (memory provenance
+    is not code evidence — ground the draft during review).
+  - Existing files are never overwritten (skip + report). log.md is never
+    touched; append it yourself when integrating the drafts.
+  - Memories with sensitive-looking values are SKIPPED entirely and reported
+    as counts only (values are never shown). There is no force flag.
+  - Only ECC status: active memories are imported (rejected/superseded skip).
+    Unknown frontmatter keys are reported by name, and the memory body is
+    preserved verbatim under ## Memory Body with an Import Provenance section.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, apply, dryRun, source, planned[], imported[], skipped[], findings[].
 `,
   fix: `llm-wiki fix
 

@@ -98,6 +98,7 @@ export { driftTargets, evidenceTier, scanUngroundedVerified } from "./commands/s
 export { driftCommand, fixCommand } from "./commands/fix-migrate.js";
 export { getDocCommand, getRelatedCommand, listDocsCommand, searchDocsCommand } from "./commands/retrieval.js";
 export { onboardCommand, prepareCommand } from "./commands/guided.js";
+export { importMemoryCommand } from "./commands/import-memory.js";
 
 export async function doctor(options) {
   const cwd = options.cwd;
