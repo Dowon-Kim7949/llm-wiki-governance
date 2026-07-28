@@ -3,14 +3,14 @@ title: Architecture Conventions
 tags:
   - llm-wiki
   - verified
-status: needs_review
+status: verified
 doc_type: architecture_conventions
 project: llm-wiki-governance
 last_updated: 2026-07-27
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-27
+reviewed_at: 2026-07-28
 wiki_block_version: v1
 source_files:
   - src/cli.js

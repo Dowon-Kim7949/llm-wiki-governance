@@ -24,6 +24,23 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-28 - 감사 잔여 3건 반영분 사람 검토·재승인 + 드리프트 재베이스라인
+
+- status: verified (approved docs) / append by agent under maintainer instruction
+- actor: 유지보수자(Dowon-Kim) 검토·승인 지시, Claude Code 실행
+- scope: docs (frontmatter 스탬프만)
+- changed:
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 사람 검토 완료 후 `review --approve --reviewer Dowon-Kim`으로 `needs_review`→`verified` 재승인(도구가 status·reviewed_by·reviewed_at 3필드만 스탬프; body/source_files/evidence/last_updated 미변경)
+  - docs/llm-wiki/{domains/00_overview,EXAMPLES,GLOSSARY,index,profiles/library,project-profile}.md — `reviewed_at`만 2026-07-28로 재베이스라인(GLOSSARY는 2026-07-24부터). 직전 커밋(d3c492b·0985a33·46304de)의 additive 소스 변경이 date-앵커 drift(`evidence.stale` 8건)를 활성화했으나, 해당 문서들의 주장은 이번 변경으로 달라지지 않았음을 유지보수자가 확인.
+- summary:
+  - 감사 잔여 3건(A/B/C) 커밋 후 남은 거버넌스 정리: 강등됐던 3문서를 사람 검토를 거쳐 재승인하고, diff/date 드리프트가 flag한 6문서를 재베이스라인해 `validate --strict`를 0으로 복귀시켰다(1.26.3 전례와 동일한 처리).
+- verification:
+  - `validate --strict` 0 findings · `drift` pass · `validate-frontmatter --strict` pass · 347 tests(직전 실행 기준, 이 커밋은 frontmatter 스탬프만이라 코드 불변)
+- evidence:
+  - src/commands.js#symbol:reviewCommand
+- caveats:
+  - 푸시는 유지보수자 지시로 계속 보류(main 로컬 4커밋 ahead). 릴리스 프레이밍(MINOR 1.27.0 제안)·CHANGELOG·버전 범프는 릴리스 결정 시점에 처리한다.
+
 ## 2026-07-27 - 감사 잔여 3건: frontmatter 테스트 공백 · 중복 키 last-wins · MCP inputSchema 미강제
 
 - status: needs_review
