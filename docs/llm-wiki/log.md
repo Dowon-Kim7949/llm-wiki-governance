@@ -24,6 +24,42 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-27 - 감사 잔여 3건: frontmatter 테스트 공백 · 중복 키 last-wins · MCP inputSchema 미강제
+
+- status: needs_review
+- actor: Claude Code (야간 자율 실행; 커밋/배포는 사람 승인 대기)
+- scope: src + tests + docs
+- changed:
+  - tests/verification.test.js — (A) `parseFrontmatter`/`validateFrontmatter` negative-path 유닛 테스트 7건(rule별·parse-error별 + `validateFrontmatterCommand` 배선 증명), (B) duplicate-key 3건, (C) CLI `--type` 검증 1건
+  - src/frontmatter.js — `parseFrontmatter`가 additive `duplicateKeys: string[]` 반환(last-wins 의미론 유지)
+  - src/commands.js — 두 seam(`validateFrontmatterCommand`·`summarizeDocumentStatuses`)에 `duplicateKeyFinding` push
+  - src/commands/findings.js — `frontmatter.duplicate_key` 레지스트리 등록(warning, toggleable)
+  - src/i18n.js — 동 rule의 KO message/explanation 카탈로그 항목
+  - src/mcp/validate-args.js — 신규 순수·zero-dep 검증기 `validateToolArguments`(TOOL_DEFS가 쓰는 JSON-Schema 서브셋만)
+  - src/mcp/dispatch.js — `handleToolCall`이 실행 전 인자 검증, 위반 시 `-32602 Invalid params`(`data:{tool,errors}`)
+  - src/mcp/tools.js — stale enum을 단일 소스에서 파생(`KNOWN_TYPES`[mobile/infra 포함]·`SUPPORTED_TASK_PROMPTS`·`SUPPORTED_LANGS`·visibility) + `all` 미수용 명시
+  - src/detector.js — `KNOWN_TYPES` export(= `KNOWN_PROFILES` − `okf-v0.1`)
+  - src/cli.js — `--type`을 `KNOWN_TYPES`로 검증(미지원 유형 usage error, exit 3)
+  - tests/mcp.test.js — 위반 클래스별 6건(-32602) + valid-call·enum 회귀
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 반영 후 `verified`→`needs_review` 강등
+- summary:
+  - 2026-07-27 저장소 품질 감사의 미착수 3건을 구현했다(결정 4건은 유지보수자가 감사 세션에서 확정: warning rule 신설 · `-32602`+unknown-arg 거부 · CLI `--type` 검증 · 게이트 불필요).
+  - **(A)** 파서/검증기의 **negative path**(파스 오류 4종 + rule별 위반: exists/status/last_updated/visibility/contains_sensitive_info + tags/source_files/related의 array 형태)에 표적 테스트가 0건이던 공백을 메웠다(소스 변경 없음). 기존 `tests/frontmatter.test.js`는 positive path·OKF alias·aliases/evidence array·verified_review 분기를 이미 커버하고 있었고, 이번 추가는 그와 상보적이다.
+  - **(B)** 중복 frontmatter 키의 silent last-wins를 `frontmatter.duplicate_key`(warning)로 표면화했다 — 중복 키는 grounding 리스트를 조용히 버리거나 `contains_sensitive_info`를 뒤집을 수 있다. 파서 의미론·기존 문서 형태는 불변, message에 값 미노출.
+  - **(C)** 선언만 되고 강제되지 않던 MCP `inputSchema`를 실행 전 검증으로 만들었다(`validate {strict:"true"}`가 non-strict로 실행되던 류의 silent 오동작 제거). 강제 전에 스키마 자체를 감사해 stale enum(mobile/infra 누락)을 단일 소스 파생으로 교정했다. CLI `--type`도 같은 정신으로 검증한다 — 작은 동작 변경(이전 `--type banana` exit 0 → 이제 exit 3)이라 릴리스 시 Fixed 항목감.
+- verification:
+  - 347 tests pass(신규 17; B 3건·C 7건이 수정 전 소스에서 실패함을 stash로 확인) · lint OK(50 files) · `validate --strict` findings 0 · `validate-frontmatter` pass
+- evidence:
+  - src/frontmatter.js
+  - src/mcp/validate-args.js
+  - src/mcp/dispatch.js
+  - src/detector.js
+  - src/cli.js
+- caveats:
+  - 미릴리스(main 한정, 커밋도 사람 승인 대기). 신규 rule + 새로 거부되는 MCP 호출/`--type`은 1.19 전례상 MINOR(1.27.0) 프레이밍이 정직하다 — 판단은 유지보수자 몫.
+  - config 파일의 `type` 키는 여전히 문자열 검증만 한다(enum 미검증) — 이번 합의 범위(CLI 플래그) 밖이라 남겼다. 후속 후보.
+  - 세 문서는 에이전트 편집이라 `needs_review`로 강등했다. tags의 `verified`는 알려진 비동기(도구가 tags를 건드리지 않음) — 재승인 때 손으로 맞추는 기존 관례를 따른다.
+
 ## 2026-07-27 - 릴리스 1.26.3 + 버그 수정 반영분 재승인
 
 - changed:

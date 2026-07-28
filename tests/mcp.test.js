@@ -365,3 +365,107 @@ test("mcp stdio server: recovers from a malformed line and keeps serving", async
     });
   }
 });
+
+// ---- inputSchema enforcement (2026-07-27 audit, item C) --------------------
+//
+// The published inputSchema (additionalProperties:false, required, enum, type,
+// minimum) is now enforced BEFORE the command runs: a violation is a JSON-RPC
+// -32602 protocol error carrying { tool, errors }, never a silent coercion.
+// One test per reproduced violation class from the audit.
+
+test("tools/call rejects a wrong-typed argument with -32602 (strict:'true' used to run non-strict)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 70, method: "tools/call", params: { name: "validate", arguments: { cwd: repoRoot, strict: "true" } } },
+    {}
+  );
+  assert.equal(res.result, undefined, "a schema violation is a protocol error, not a tool result");
+  assert.equal(res.error.code, -32602);
+  assert.match(res.error.message, /strict/);
+  assert.equal(res.error.data.tool, "validate");
+  assert.deepEqual(res.error.data.errors, ['argument "strict" must be of type boolean, got string.']);
+});
+
+test("tools/call rejects a missing required argument with -32602 (get_doc {} used to run)", async () => {
+  const getDoc = await handleMessage(
+    { jsonrpc: "2.0", id: 71, method: "tools/call", params: { name: "get_doc", arguments: {} } },
+    {}
+  );
+  assert.equal(getDoc.error.code, -32602);
+  assert.deepEqual(getDoc.error.data.errors, ["missing required argument: path."]);
+
+  // The same holds when `arguments` is omitted entirely.
+  const prepare = await handleMessage(
+    { jsonrpc: "2.0", id: 72, method: "tools/call", params: { name: "prepare" } },
+    {}
+  );
+  assert.equal(prepare.error.code, -32602);
+  assert.deepEqual(prepare.error.data.errors, ["missing required argument: task."]);
+});
+
+test("tools/call rejects an enum violation with -32602 (type:'banana' used to become a profile)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 73, method: "tools/call", params: { name: "status", arguments: { cwd: repoRoot, type: "banana" } } },
+    {}
+  );
+  assert.equal(res.error.code, -32602);
+  assert.match(res.error.data.errors[0], /argument "type" must be one of: /);
+
+  // Array-item enums are enforced too.
+  const agents = await handleMessage(
+    { jsonrpc: "2.0", id: 74, method: "tools/call", params: { name: "handoff", arguments: { cwd: repoRoot, agents: ["banana"] } } },
+    {}
+  );
+  assert.equal(agents.error.code, -32602);
+  assert.match(agents.error.data.errors[0], /argument "agents" items must be one of: /);
+});
+
+test("tools/call rejects a minimum violation with -32602 (maxChars:-5 used to be ignored)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 75, method: "tools/call", params: { name: "get_doc", arguments: { cwd: repoRoot, path: "GLOSSARY.md", maxChars: -5 } } },
+    {}
+  );
+  assert.equal(res.error.code, -32602);
+  assert.deepEqual(res.error.data.errors, ['argument "maxChars" must be >= 1.']);
+});
+
+test("tools/call rejects unknown arguments with -32602 (additionalProperties:false is real now)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 76, method: "tools/call", params: { name: "status", arguments: { cwd: repoRoot, bogusArgument: 1 } } },
+    {}
+  );
+  assert.equal(res.error.code, -32602);
+  assert.deepEqual(res.error.data.errors, ["unknown argument: bogusArgument."]);
+
+  // Non-object arguments are rejected rather than silently replaced with {}.
+  const nonObject = await handleMessage(
+    { jsonrpc: "2.0", id: 77, method: "tools/call", params: { name: "audit", arguments: "strict" } },
+    {}
+  );
+  assert.equal(nonObject.error.code, -32602);
+  assert.deepEqual(nonObject.error.data.errors, ["arguments must be an object."]);
+});
+
+test("the type enum is no longer stale: mobile and infra are valid, and valid calls still run", async () => {
+  // Regression guard for the audited staleness: the hand-kept MCP enum was
+  // missing mobile (1.12) and infra (1.13). It now derives from KNOWN_TYPES.
+  const status = TOOL_DEFS.find((t) => t.name === "status");
+  for (const knownType of ["frontend", "backend", "fullstack", "library", "mobile", "infra", "mixed", "unknown"]) {
+    assert.ok(status.inputSchema.properties.type.enum.includes(knownType), `type enum includes ${knownType}`);
+  }
+
+  const mobile = await handleMessage(
+    { jsonrpc: "2.0", id: 78, method: "tools/call", params: { name: "status", arguments: { cwd: repoRoot, type: "mobile" } } },
+    {}
+  );
+  assert.equal(mobile.error, undefined);
+  assert.equal(mobile.result.isError, false);
+  assert.equal(mobile.result.structuredContent.detection.projectType, "mobile");
+
+  // A fully valid strict call runs strict (the coerced call above never ran at all).
+  const strict = await handleMessage(
+    { jsonrpc: "2.0", id: 79, method: "tools/call", params: { name: "validate", arguments: { cwd: repoRoot, strict: true } } },
+    {}
+  );
+  assert.equal(strict.error, undefined);
+  assert.equal(strict.result.structuredContent.command, "validate");
+});

@@ -5,6 +5,13 @@ import { readTextAuto } from "./encoding.js";
 
 const KNOWN_PROFILES = new Set(["frontend", "backend", "fullstack", "library", "mobile", "infra", "mixed", "unknown", "okf-v0.1"]);
 
+// The project types an explicit `--type` (CLI) or `type` argument (MCP) may
+// force: every known profile except okf-v0.1, which is a documentation profile,
+// not a project type. Single source of truth for CLI usage validation and the
+// MCP inputSchema enum (2026-07-27 audit: the MCP enum had gone stale — it was
+// missing mobile (1.12) and infra (1.13) because it was a second, hand-kept list).
+export const KNOWN_TYPES = Object.freeze([...KNOWN_PROFILES].filter((profile) => profile !== "okf-v0.1"));
+
 // Detects npm/yarn workspace packages from the root package.json `workspaces`
 // field (an array, or { packages: [] }). Expands a trailing `/*` glob to the
 // immediate subdirectories and accepts literal paths; deeper globs and pnpm/YAML

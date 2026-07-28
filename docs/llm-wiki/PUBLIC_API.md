@@ -3,7 +3,7 @@ title: Public Api
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: public_api
 project: llm-wiki-governance
 last_updated: 2026-07-27
@@ -23,6 +23,8 @@ source_files:
   - src/report.js
   - src/mcp/tools.js
   - src/mcp/dispatch.js
+  - src/mcp/validate-args.js
+  - src/frontmatter.js
   - package.json
 evidence:
   - src/cli.js#symbol:COMMANDS
@@ -47,6 +49,9 @@ evidence:
   - src/report.js#symbol:dashboardDocHref
   - src/mcp/tools.js#symbol:TOOL_DEFS
   - src/mcp/dispatch.js#symbol:handleMessage
+  - src/mcp/validate-args.js#symbol:validateToolArguments
+  - src/detector.js#symbol:KNOWN_TYPES
+  - src/frontmatter.js#symbol:parseFrontmatter
   - src/git.js#symbol:changedFiles
 related:
   - docs/llm-wiki/index.md
@@ -69,7 +74,7 @@ contains_sensitive_info: false
 | `next` | audit 결과 기반 다음 조치 추천(advisory) | 없음 |
 | `explain <finding>` | finding 규칙 의미와 안전한 조치법 설명 | 없음 |
 | `validate` | audit 커버리지 재사용 구조/안전 검증(CI용) | 없음 |
-| `validate-frontmatter` | 필수 frontmatter 필드/값만 검증 | 없음 |
+| `validate-frontmatter` | 필수 frontmatter 필드/값만 검증. 2026-07-27 감사부터 중복 frontmatter 키를 `frontmatter.duplicate_key`(warning, config `rules`로 토글 가능)로 보고한다 — 파서는 last-wins 유지, finding에는 키 이름만(값 미노출). `audit`/`validate`/`status`도 같은 finding을 상속(미릴리스, main 한정) | 없음 |
 | `monorepo` | npm/yarn workspaces 감지 후 패키지별 validate를 집계(additive `packages[]`; 단일 레포 출력 불변)(1.10) | 없음 |
 | `audit` | detection/structure/frontmatter/related/evidence/link/adapter/enrichment findings | 없음 |
 | `quickstart --dry-run\|--write` | doctor+init+frontmatter+handoff 프롬프트 | `--write` 시 |
@@ -94,7 +99,7 @@ contains_sensitive_info: false
 
 ## Key Options
 
-- `--cwd <path>`, `--type <frontend|backend|fullstack|library|mixed|unknown>`, `--profile <p>...`, `--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; 나머지는 명시 선택. writable: codex/claude/cursor/copilot/windsurf/gemini, candidate: jetbrains/antigravity)
+- `--cwd <path>`, `--type <frontend|backend|fullstack|library|mobile|infra|mixed|unknown>`(2026-07-27 감사부터 `--format`/`--lang`처럼 **검증**된다 — 미지원 유형은 usage error, exit 3; 단일 소스는 `src/detector.js#symbol:KNOWN_TYPES`. 이전 표기는 mobile/infra가 빠진 stale 목록이었다), `--profile <p>...`, `--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...` (`all`은 codex/claude/antigravity 세 개만 확장; 나머지는 명시 선택. writable: codex/claude/cursor/copilot/windsurf/gemini, candidate: jetbrains/antigravity)
 - `--format <text|json|markdown|html>`(대부분 명령), `graph`는 `--format <text|json|mermaid|dot>`(mermaid/dot는 graph 전용). `--out <path>`, `--strict`, `--minimal`
 - `--lang <en|ko>`(전역 옵션, 1.22, 기본 `en`) — 사람이 읽는 findings **프로즈**(finding `message` + `explain`의 meaning/why/remediation)를 한국어로 지역화한다. config `lang`으로도 설정 가능(CLI 우선). rule ID·`--format json` 키/shape·CLI 명령·경로는 항상 영어; `--format json`의 `message`는 `--lang ko`에서만 한국어가 되고 `rule` 키·shape는 불변(소비자는 `rule`로 매칭). 기본 `en`은 모든 포맷에서 byte-identical.
 - `--doc-lang <en|ko>`(전역 옵션, 1.24, 기본 `en`) — `init`/`quickstart`이 **생성하는 위키 문서 본문**과 handoff/`prompt`/생성 스킬의 **에이전트 문서 작성 지시** 언어를 고른다. config `docLanguage`로도 설정 가능(CLI 우선). `--lang`과 독립적이다(하나는 findings 언어, 하나는 생성 문서 언어). 잘못된 값은 usage error(exit 3). 기술 식별자(경로·코드 심볼·JSON 키·frontmatter 필드·status 값·CLI 명령·evidence locator)는 두 언어 모두 번역하지 않는다. `init`/`quickstart` 결과는 선택된 문서 언어를 `docLanguage` 필드(및 텍스트)로 표시한다. 기본 `en`은 이미 영어였던 문서에 대해 byte-identical.
@@ -183,7 +188,7 @@ MCP 클라이언트 등록 예시:
 
 ### 노출 툴 (모두 읽기 전용)
 
-`validate` · `audit` · `next` · `status` · `doctor` · `stats` · `graph` · `explain` · `handoff` · `prompt` · `list_docs` · `search_docs` · `get_doc` · `get_related` · `onboard` · `prepare` · `review`(`list_docs`/`search_docs`/`get_doc`/`get_related`는 1.18 읽기 전용 retrieval — 거버넌스 리포트가 아니라 문서 **본문**을 반환; `onboard`/`prepare`는 1.24 guided; `review`는 Gate 20 needs_review 백로그의 **LIST만** 노출. MCP 툴 이름은 snake_case, CLI 명령은 kebab-case `list-docs` 등). **쓰기/변경 명령(init/fix/migrate/drift/quickstart)과 `review`의 승격(`--approve`)은 MCP로 노출하지 않는다** — 에이전트는 위키를 조회·점검할 뿐 바꾸지 않는다(`annotations.readOnlyHint: true`); `verified` 승격은 사람의 CLI 액션으로만 일어난다. 각 툴 인자는 `inputSchema`(JSON Schema)로 검증되며 `cwd`(기본=서버 실행 위치)·`type`·`profiles`·`strict`, retrieval 툴은 `query`/`path`/`status`/`visibility`/`docType`/`includeSensitive`/`limit` 등을 받는다.
+`validate` · `audit` · `next` · `status` · `doctor` · `stats` · `graph` · `explain` · `handoff` · `prompt` · `list_docs` · `search_docs` · `get_doc` · `get_related` · `onboard` · `prepare` · `review`(`list_docs`/`search_docs`/`get_doc`/`get_related`는 1.18 읽기 전용 retrieval — 거버넌스 리포트가 아니라 문서 **본문**을 반환; `onboard`/`prepare`는 1.24 guided; `review`는 Gate 20 needs_review 백로그의 **LIST만** 노출. MCP 툴 이름은 snake_case, CLI 명령은 kebab-case `list-docs` 등). **쓰기/변경 명령(init/fix/migrate/drift/quickstart)과 `review`의 승격(`--approve`)은 MCP로 노출하지 않는다** — 에이전트는 위키를 조회·점검할 뿐 바꾸지 않는다(`annotations.readOnlyHint: true`); `verified` 승격은 사람의 CLI 액션으로만 일어난다. 각 툴 인자는 `inputSchema`(JSON Schema)로 선언되며 `cwd`(기본=서버 실행 위치)·`type`·`profiles`·`strict`, retrieval 툴은 `query`/`path`/`status`/`visibility`/`docType`/`includeSensitive`/`limit` 등을 받는다. **2026-07-27 감사부터 이 스키마가 실제로 강제된다**: 위반 호출(잘못된 type, enum 밖 값, 필수 인자 누락, `minimum` 미만, unknown 인자[`additionalProperties:false`], 비객체 `arguments`)은 명령 실행 **전에** JSON-RPC `-32602 Invalid params`(`error.data = {tool, errors}`)로 거부된다 — 이전에는 조용히 강제 변환/무시돼 그대로 실행됐다(예: `validate {strict:"true"}`가 non-strict로 실행). `type` enum은 `KNOWN_TYPES` 단일 소스에서 파생돼 mobile/infra를 포함한다(이전 enum은 stale). `agents`는 명시 나열만 수용한다 — CLI 전용 `all` 별칭은 MCP에서 미수용(확장 경로 없음). 검증기는 순수·zero-dep `src/mcp/validate-args.js`.
 
 ### 툴 결과 형태
 
@@ -227,7 +232,10 @@ MCP 클라이언트 등록 예시:
 - `src/config.js#symbol:JSON_SCHEMA_VERSION` — 결과 객체·`--format json`의 `schemaVersion` 단일 소스.
 - `src/report.js#symbol:dashboardDocHref` — HTML 대시보드 Document Index 링크를 `--out` 위치 기준 상대경로로 계산.
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — MCP로 노출하는 읽기 전용 툴 정의(commands 위 얇은 래퍼).
-- `src/mcp/dispatch.js#symbol:handleMessage` — MCP JSON-RPC 핸들러(initialize/tools.list/tools.call/ping; 프로토콜 준수).
+- `src/mcp/dispatch.js#symbol:handleMessage` — MCP JSON-RPC 핸들러(initialize/tools.list/tools.call/ping; 프로토콜 준수). 2026-07-27부터 `tools/call`이 실행 전에 인자를 스키마 검증한다.
+- `src/mcp/validate-args.js#symbol:validateToolArguments` — MCP 툴 인자 검증기(순수·zero-dep; TOOL_DEFS가 쓰는 JSON-Schema 서브셋만). 위반은 `-32602 Invalid params`(`data:{tool,errors}`)(2026-07-27 감사).
+- `src/detector.js#symbol:KNOWN_TYPES` — `--type`(CLI)·MCP `type` enum이 수용하는 프로젝트 유형의 단일 소스(mobile/infra 포함)(2026-07-27 감사).
+- `src/frontmatter.js#symbol:parseFrontmatter` — additive `duplicateKeys` 반환 → `frontmatter.duplicate_key`(warning, toggleable) finding의 근원(2026-07-27 감사).
 - `src/commands.js#symbol:impactCommand` — `impact` 명령: diff 기준 reverse-impact(read-only; Gate 23, 1.17).
 - `src/commands.js#symbol:checkRunCommand` — `check-run` 명령: `.llm-wiki/runs/` run manifest로 스킬 실행 파이프라인(changedSource↔touchedDocs·log·validate)을 검증(read-only; `run.*` findings; Gate 26, 1.19).
 - `src/commands/retrieval.js` — read-only retrieval 4개 핸들러(`listDocsCommand`/`searchDocsCommand`/`getDocCommand`/`getRelatedCommand`): 문서 본문 반환, visibility 존중 + sensitive-info redaction, zero-dep 키워드 검색(Gate 24, 1.18).
@@ -265,3 +273,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-24에 Gate 20 read-only `review` 워크플로(GATE_REVIEW "Review Workflow Scope Decision", accepted 2026-07-24)를 반영했다: Commands 표에 `review [--approve <path>]... [--approve-all --yes] [--reviewer <name>] [--include-sensitive]` 행을, Key Options에 `--approve`/`--approve-all`/`--yes`/`--reviewer`/`--include-sensitive`를, MCP 노출 툴 목록에 `review`(LIST만; 승격은 CLI 전용)을, Evidence에 `src/commands.js#symbol:reviewCommand` 포인터를 등재했다. needs_review 백로그를 위험도 정렬해 나열(read-only)하고 명시적 `--approve`/`--approve-all --yes`로만 `status: verified`+`reviewed_by`+`reviewed_at`을 스탬프하며 자동 승격은 절대 없다(blocking/구조적 finding 문서 거부; reviewed_by 미해소 시 스탬프 거부). 동결 프로그래매틱 API `commands` 맵에 `review` 키를 additive로 추가(`src/index.js`). additive·`1.0.0` 계약·`--format json` shape·zero-dep 불변. 319 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-27에 저장소 품질 감사에서 재현한 버그 2건의 수정을 옵션 표면 문서에 반영했다: (1) Commands 표 `init` 행에 그동안 **문서화되지 않았던** `--with-adapters`/`--no-adapters`를 등재하고, `--no-adapters`가 선언적(플래그 순서 무관)이며 명시적 opt-out이라 config `agents`가 목록을 되채우지 않음을 명시했다 — 수정 전에는 순서에 따라 결과가 달랐고 비워진 목록을 config가 되살렸다. (2) Contract Notes의 config 항목에 config 파일이 **BOM 인식**으로 읽힌다는 점(UTF-8 BOM·UTF-16 로드 성공, 진짜 malformed만 exit 3)을 추가했다. 공개 계약 관점: 명령/JSON shape/exit code 의미/동결 `commands` 맵 키 집합 불변이고, `defaultOptions()`에 `noAdapters: false`가 **additive**로 늘었다(`normalizeOptions`가 spread하므로 프로그래매틱 API 반환 객체에 키 1개 추가). 330 tests·lint OK·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-27에 위 버그 수정 2건 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27)를 거쳐 `verified`로 재승인했다. 옵션 표면 서술이 현재 소스와 일치함을 확인했다: `--no-adapters`는 `src/cli.js`에서 `options.noAdapters`만 세우고 argv 순회 후 일괄 적용되며(선언적), `src/config-file.js`의 config 병합이 그 플래그를 가드로 존중한다. config 읽기는 `readTextAuto`(BOM 인식)다. 이 재승인은 1.26.3 릴리스의 일부다(330 tests·lint OK·validate --strict 0).
+- 2026-07-27(야간)에 같은 날 품질 감사의 잔여 3건을 공개 계약 문서에 반영했다(미릴리스, main 한정). **(1) MCP inputSchema 강제**: `tools/call` 인자가 실행 전에 검증되어 위반은 `-32602 Invalid params`(`error.data={tool,errors}`)로 거부된다(이전엔 조용히 강제 변환/무시). stale했던 `type` enum을 `KNOWN_TYPES` 단일 소스로 교정(mobile/infra 포함), `agents`의 CLI 전용 `all` 미수용을 명시, `prompt`의 `task` enum을 `SUPPORTED_TASK_PROMPTS`(onboard/prepare 포함)로 정렬. **(2) CLI `--type` 검증**: Key Options의 stale 목록(mobile/infra 누락)을 교정하고 미지원 유형이 usage error(exit 3)임을 명시 — **작은 동작 변경**(이전엔 `--type banana`가 exit 0). **(3) `frontmatter.duplicate_key`**: `validate-frontmatter` 행에 신규 warning rule(toggleable, 값 미노출)을 등재. 계약 관점: 신규 명령/JSON shape 변경/동결 `commands` 맵 키 변경 없음, `parseFrontmatter` 반환에 additive `duplicateKeys` 키 1개 추가, 스키마 위반 MCP 호출과 미지원 `--type`만 새로 거부된다. 347 tests·lint OK·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.

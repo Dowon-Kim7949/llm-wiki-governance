@@ -1,4 +1,4 @@
-import test from "node:test";
+﻿import test from "node:test";
 import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -5550,4 +5550,23 @@ test("frontmatter.duplicate_key is toggleable via config rules, and clean docs s
 
   const escalated = await validateFrontmatterCommand({ ...api.normalizeOptions({ cwd }), rules: { "frontmatter.duplicate_key": "error" } });
   assert.equal(escalated.findings.find((f) => f.rule === "frontmatter.duplicate_key").severity, "error", "config rules can escalate the severity");
+});
+
+// ---- CLI --type validation (2026-07-27 audit, item C) ----
+
+test("--type is validated like --format/--lang: unknown types are usage errors", async () => {
+  const bad = parseArgs(["status", "--type", "banana"]);
+  assert.deepEqual(bad.errors, [
+    "Unsupported project type: banana (supported: frontend, backend, fullstack, library, mobile, infra, mixed, unknown)."
+  ]);
+
+  // Every known type parses, including mobile/infra (the two the stale MCP enum had dropped).
+  for (const knownType of ["frontend", "backend", "fullstack", "library", "mobile", "infra", "mixed", "unknown"]) {
+    const parsed = parseArgs(["status", "--type", knownType]);
+    assert.deepEqual(parsed.errors, [], knownType);
+    assert.equal(parsed.options.type, knownType);
+  }
+
+  // End-to-end: the usage error exits 3, matching --format/--lang/--agent.
+  assert.equal(await runCliSilently(["status", "--type", "banana"]), 3);
 });

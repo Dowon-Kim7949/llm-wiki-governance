@@ -7,8 +7,21 @@
 // conservative-write safety ethos of the CLI (GATE_REVIEW.md).
 //
 // A tool declares a JSON-Schema `inputSchema` for its arguments; the dispatcher
-// maps those arguments to a normalized options object via buildToolOptions()
-// and then runs commands[tool.command](options).
+// VALIDATES the arguments against that schema (src/mcp/validate-args.js — a
+// violation is a JSON-RPC -32602, 2026-07-27 audit), maps them to a normalized
+// options object via buildToolOptions(), and runs commands[tool.command](options).
+//
+// Enum values are imported from their single sources of truth wherever that does
+// not create an import cycle (KNOWN_TYPES from detector.js, SUPPORTED_TASK_PROMPTS
+// from task-prompts.js, SUPPORTED_LANGS from i18n.js, the visibility enum from
+// frontmatter-schema.js) — the hand-kept type enum had silently gone stale
+// (missing mobile 1.12 / infra 1.13), which is how declared-but-unenforced
+// schemas rot.
+
+import { KNOWN_TYPES } from "../detector.js";
+import { SUPPORTED_TASK_PROMPTS } from "../task-prompts.js";
+import { SUPPORTED_LANGS } from "../i18n.js";
+import { schemaEnumValues } from "../frontmatter-schema.js";
 
 const cwdProp = {
   type: "string",
@@ -16,7 +29,7 @@ const cwdProp = {
 };
 const typeProp = {
   type: "string",
-  enum: ["frontend", "backend", "fullstack", "library", "mixed", "unknown"],
+  enum: [...KNOWN_TYPES],
   description: "Force the project type instead of auto-detecting it."
 };
 const profilesProp = {
@@ -31,17 +44,17 @@ const strictProp = {
 const agentsProp = {
   type: "array",
   items: { type: "string", enum: ["codex", "claude", "cursor", "copilot", "windsurf", "gemini", "jetbrains", "antigravity"] },
-  description: "Adapter/agent targets for the handoff or task prompt. Defaults to claude when omitted."
+  description: "Adapter/agent targets for the handoff or task prompt. Defaults to claude when omitted. List agents explicitly — the CLI-only \"all\" alias is not accepted over MCP (nothing on this path expands it)."
 };
 const statusFilterProp = { type: "string", description: "Filter by document status (for example needs_review or verified)." };
-const visibilityFilterProp = { type: "string", enum: ["internal", "public", "restricted"], description: "Filter by document visibility." };
+const visibilityFilterProp = { type: "string", enum: schemaEnumValues("visibility"), description: "Filter by document visibility." };
 const docTypeFilterProp = { type: "string", description: "Filter by doc_type (or OKF type)." };
 const includeSensitiveProp = { type: "boolean", description: "Include restricted/sensitive documents (excluded from list/search by default)." };
 const docPathProp = { type: "string", description: "Document path: repo-relative (docs/llm-wiki/GLOSSARY.md), wiki-relative (GLOSSARY.md), or a bare name (GLOSSARY)." };
 const domainProp = { type: "string", description: "Work area (domain) to onboard into — a docs/llm-wiki/domains/* name. Omit for a project-wide orientation." };
 const goalProp = { type: "string", description: "Optional free-text learning goal to focus the onboarding." };
 const taskTextProp = { type: "string", description: "Free-text description of the change you intend to make (feature or fix)." };
-const langProp = { type: "string", enum: ["en", "ko"], description: "Language for human-facing guidance prose (default en)." };
+const langProp = { type: "string", enum: [...SUPPORTED_LANGS], description: "Language for human-facing guidance prose (default en)." };
 const sectionProp = { type: "string", description: "Optional focused read: return only the most relevant ## sections (plus the preamble) matching these terms instead of the full body. Falls back to the full body when nothing matches." };
 const strictSectionProp = { type: "boolean", description: "With `section`: withhold the full body when no section matches (returns section.noSectionMatch instead of falling back to a whole-doc read). Token guard; default false." };
 const compactProp = { type: "boolean", description: "Compact result (opt-in). get_doc: omit the frontmatter echo and keep the body only in structuredContent (avoids duplicating it in the text content). prepare: return one bounded context bundle (chosen path, <=3 docs, the top doc's most-relevant section, next-lookup) instead of the full report. Default false." };
@@ -131,10 +144,10 @@ export const TOOL_DEFS = [
   {
     name: "prompt",
     title: "Repeatable task prompt",
-    description: "Produce a repeatable agent workflow prompt for a task (bootstrap for first-time wiki enrichment, or feature, fix, refactor, docs-sync, or okf-extract).",
+    description: "Produce a repeatable agent workflow prompt for a task (bootstrap for first-time wiki enrichment; onboard/prepare for the guided read-only workflows; or feature, fix, refactor, docs-sync, okf-extract).",
     command: "prompt",
     inputSchema: schema({
-      task: { type: "string", enum: ["bootstrap", "feature", "fix", "refactor", "docs-sync", "okf-extract"], description: "The task workflow to generate a prompt for." },
+      task: { type: "string", enum: [...SUPPORTED_TASK_PROMPTS], description: "The task workflow to generate a prompt for." },
       cwd: cwdProp,
       type: typeProp,
       profiles: profilesProp,

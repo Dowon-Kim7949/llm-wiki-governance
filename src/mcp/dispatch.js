@@ -13,6 +13,7 @@
 
 import { commands, resolveOptions } from "../index.js";
 import { TOOL_DEFS, buildToolOptions } from "./tools.js";
+import { validateToolArguments } from "./validate-args.js";
 
 // The MCP protocol version this server pins. On initialize we echo the client's
 // requested version when it sends one (our message set is stable across recent
@@ -106,7 +107,22 @@ async function handleToolCall(id, params, ctx) {
     return jsonrpcError(id, -32602, `Unknown tool: ${typeof name === "string" ? name : "(missing name)"}`);
   }
 
-  const args = params && params.arguments && typeof params.arguments === "object" ? params.arguments : {};
+  // Enforce the published inputSchema before anything runs (2026-07-27 audit):
+  // a violating call used to be silently coerced/field-filtered by
+  // buildToolOptions and executed anyway (e.g. validate {strict:"true"} ran
+  // WITHOUT strict; status {type:"banana"} produced active_profiles core,banana).
+  // Schema violations are protocol-level -32602 Invalid params; the isError:true
+  // result path below stays reserved for execution-level failures.
+  const args = params && Object.prototype.hasOwnProperty.call(params, "arguments")
+    ? params.arguments ?? {}
+    : {};
+  const violations = validateToolArguments(tool.inputSchema, args);
+  if (violations.length > 0) {
+    return jsonrpcError(id, -32602, `Invalid params for tool "${tool.name}": ${violations.join(" ")}`, {
+      tool: tool.name,
+      errors: violations
+    });
+  }
 
   try {
     const partial = buildToolOptions(tool, args);

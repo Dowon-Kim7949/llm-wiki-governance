@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
+import { KNOWN_TYPES } from "./detector.js";
 import { startMcpServer } from "./mcp/server.js";
 import { SUPPORTED_LANGS } from "./i18n.js";
 
@@ -225,7 +226,11 @@ export function parseArgs(argv) {
       usedOptions.add("type");
       const value = readOptionValue(rest, index, arg, errors);
       if (value) {
-        options.type = value;
+        // Validated like --format/--lang/--agent (2026-07-27 audit): an unknown
+        // type used to flow straight into detection ("active_profiles: core,
+        // banana") instead of failing as a usage error.
+        if (KNOWN_TYPES.includes(value)) options.type = value;
+        else errors.push(`Unsupported project type: ${value} (supported: ${KNOWN_TYPES.join(", ")}).`);
         index += 1;
       }
     } else if (arg === "--version") {
