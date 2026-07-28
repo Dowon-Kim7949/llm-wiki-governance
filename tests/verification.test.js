@@ -1,9 +1,10 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import { cp, mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { detectFrontendDomains } from "../src/commands/domains.js";
+import { hasRequiredField, parseFrontmatter, validateFrontmatter } from "../src/frontmatter.js";
 import { enrichmentChecklist } from "../src/commands/scans.js";
 import { audit, checkRunCommand, detectDomainDirectories, doctor, domainDisplayName, driftCommand, driftTargets, evidenceTier, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, initCommand, listDocsCommand, migrateCommand, nextCommand, normalizeDomainSlug, onboardCommand, planDomainDocs, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "../src/commands.js";
 import { applyProjectConfig, parseArgs } from "../src/cli.js";
@@ -5308,4 +5309,150 @@ test("doc-lang #14: Korean documents round-trip as valid UTF-8 (Windows-safe pat
   const text = raw.toString("utf8");
   assert.ok(text.includes("모든 wiki 문서는 YAML frontmatter를 가집니다"), "Korean content decodes cleanly (no mojibake)");
   assert.ok(!text.includes("�"), "no U+FFFD replacement characters");
+});
+
+// ---- Frontmatter parser/validator negative paths (2026-07-27 audit, item A) ----
+//
+// Direct unit tests on the two pure seams (src/frontmatter.js parseFrontmatter /
+// validateFrontmatter): one test per parse-error class and per finding rule, so a
+// regression in any branch fails a test that names it, not a distant snapshot.
+
+// A frontmatter object that satisfies every schema requirement; override or
+// delete fields to build one specific violation per assertion.
+function validFrontmatterFixture(overrides = {}) {
+  return {
+    title: "Fixture Doc",
+    tags: ["llm-wiki"],
+    status: "needs_review",
+    doc_type: "reference",
+    project: "fixture",
+    last_updated: "2026-07-27",
+    author: "test",
+    last_edited_by: "node-test",
+    wiki_block_version: "v1",
+    source_files: ["package.json"],
+    related: [],
+    visibility: "internal",
+    contains_sensitive_info: false,
+    ...overrides
+  };
+}
+
+test("parseFrontmatter reports each parse-error class", () => {
+  const missing = parseFrontmatter("# No frontmatter\n\nBody.\n");
+  assert.equal(missing.frontmatter, null);
+  assert.deepEqual(missing.errors, ["missing frontmatter fence"]);
+
+  const unterminated = parseFrontmatter("---\ntitle: Doc\n");
+  assert.equal(unterminated.frontmatter, null);
+  assert.deepEqual(unterminated.errors, ["unterminated frontmatter fence"]);
+
+  const unsupported = parseFrontmatter("---\ntitle: Doc\n?? not yaml\n---\n\nBody.\n");
+  assert.deepEqual(unsupported.errors, ["unsupported frontmatter line: ?? not yaml"]);
+  // Parsing continues around the bad line; valid keys still land.
+  assert.equal(unsupported.frontmatter.title, "Doc");
+
+  // A stray list item with no owning key is unsupported, not silently attached.
+  const strayItem = parseFrontmatter("---\n- orphan item\ntitle: Doc\n---\n\nBody.\n");
+  assert.deepEqual(strayItem.errors, ["unsupported frontmatter line: - orphan item"]);
+
+  // A leading UTF-8 BOM is tolerated, not treated as a missing fence.
+  const bom = parseFrontmatter("\uFEFF---\ntitle: Doc\n---\n\nBody.\n");
+  assert.deepEqual(bom.errors, []);
+  assert.equal(bom.frontmatter.title, "Doc");
+});
+
+test("validateFrontmatter passes a fully valid document and flags a null one", () => {
+  assert.deepEqual(validateFrontmatter(validFrontmatterFixture()), []);
+
+  const exists = validateFrontmatter(null);
+  assert.deepEqual(exists.map((f) => ({ rule: f.rule, severity: f.severity })), [
+    { rule: "frontmatter.exists", severity: "error" }
+  ]);
+});
+
+test("validateFrontmatter flags each scalar contract violation with its own rule", () => {
+  const missingField = validFrontmatterFixture();
+  delete missingField.project;
+  const required = validateFrontmatter(missingField);
+  assert.deepEqual(required.map((f) => f.rule), ["frontmatter.required"]);
+  assert.equal(required[0].severity, "error");
+  assert.equal(required[0].params.field, "project");
+
+  const status = validateFrontmatter(validFrontmatterFixture({ status: "banana" }));
+  assert.deepEqual(status.map((f) => f.rule), ["frontmatter.status"]);
+  assert.equal(status[0].params.status, "banana");
+
+  const date = validateFrontmatter(validFrontmatterFixture({ last_updated: "07/27/2026" }));
+  assert.deepEqual(date.map((f) => f.rule), ["frontmatter.last_updated"]);
+
+  const visibility = validateFrontmatter(validFrontmatterFixture({ visibility: "secret" }));
+  assert.deepEqual(visibility.map((f) => ({ rule: f.rule, severity: f.severity })), [
+    { rule: "frontmatter.visibility", severity: "warning" }
+  ]);
+  assert.equal(visibility[0].params.visibility, "secret");
+
+  const sensitive = validateFrontmatter(validFrontmatterFixture({ contains_sensitive_info: "false" }));
+  assert.deepEqual(sensitive.map((f) => f.rule), ["frontmatter.contains_sensitive_info"]);
+  assert.equal(sensitive[0].severity, "error");
+});
+
+test("validateFrontmatter flags every scalar list field as frontmatter.array", () => {
+  for (const field of ["tags", "source_files", "related", "aliases", "evidence"]) {
+    const findings = validateFrontmatter(validFrontmatterFixture({ [field]: "not-a-list" }));
+    assert.deepEqual(findings.map((f) => f.rule), ["frontmatter.array"], `${field} as a scalar must be flagged`);
+    assert.equal(findings[0].params.field, field);
+  }
+});
+
+test("frontmatter.verified_review keeps its strict/non-strict severity and messageId split", () => {
+  const verified = validFrontmatterFixture({ status: "verified" });
+
+  const relaxed = validateFrontmatter(verified);
+  assert.deepEqual(relaxed.map((f) => ({ rule: f.rule, severity: f.severity, messageId: f.messageId })), [
+    { rule: "frontmatter.verified_review", severity: "warning", messageId: "frontmatter.verified_review" }
+  ]);
+
+  const strict = validateFrontmatter(verified, { strict: true });
+  assert.deepEqual(strict.map((f) => ({ rule: f.rule, severity: f.severity, messageId: f.messageId })), [
+    { rule: "frontmatter.verified_review", severity: "error", messageId: "frontmatter.verified_review.strict" }
+  ]);
+
+  // Review metadata satisfies the rule in both modes.
+  const reviewed = validFrontmatterFixture({ status: "verified", reviewed_by: "Reviewer", reviewed_at: "2026-07-27" });
+  assert.deepEqual(validateFrontmatter(reviewed, { strict: true }), []);
+});
+
+test("OKF type stays an accepted alias for the required doc_type (1.3 contract)", () => {
+  const okf = validFrontmatterFixture({ type: "concept" });
+  delete okf.doc_type;
+  assert.equal(hasRequiredField(okf, "doc_type"), true);
+  assert.deepEqual(validateFrontmatter(okf), []);
+
+  // A blank type does NOT satisfy the requirement.
+  const blank = validFrontmatterFixture({ type: "   " });
+  delete blank.doc_type;
+  assert.equal(hasRequiredField(blank, "doc_type"), false);
+  assert.deepEqual(validateFrontmatter(blank).map((f) => f.rule), ["frontmatter.required"]);
+});
+
+test("validate-frontmatter surfaces parse and contract findings with document paths", async () => {
+  const cwd = await makeProject("fm-negative-");
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  await mkdir(wikiRoot, { recursive: true });
+  await writeFile(path.join(wikiRoot, "no-fence.md"), "# No frontmatter\n", { encoding: "utf8" });
+  await writeFile(path.join(wikiRoot, "bad-line.md"), "---\ntitle: Bad Line\n?? not yaml\n---\n\n# Bad Line\n", { encoding: "utf8" });
+  await writeWikiDocAt(cwd, "bad-status.md", "Bad Status", "Body.", (doc) => doc.replace("status: needs_review", "status: banana"));
+
+  const result = await validateFrontmatterCommand({ cwd, strict: false });
+  const seen = new Set(result.findings.map((f) => `${f.path}:${f.rule}`));
+
+  // Missing fence: the parse error AND the null-frontmatter contract finding, both anchored to the file.
+  assert.ok(seen.has("docs/llm-wiki/no-fence.md:frontmatter.parse"));
+  assert.ok(seen.has("docs/llm-wiki/no-fence.md:frontmatter.exists"));
+  // The unsupported line is reported verbatim so the author can find it.
+  const badLine = result.findings.find((f) => f.path === "docs/llm-wiki/bad-line.md" && f.rule === "frontmatter.parse");
+  assert.equal(badLine.message, "unsupported frontmatter line: ?? not yaml");
+  assert.ok(seen.has("docs/llm-wiki/bad-status.md:frontmatter.status"));
+  assert.equal(result.summary.at(-1), "result: fail");
 });
