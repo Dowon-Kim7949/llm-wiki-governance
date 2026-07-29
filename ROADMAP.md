@@ -624,6 +624,30 @@ and the Node-runtime hurdle for non-JS teams — remain deferred behind their ow
 pulled only once measurement and the adoption assets above show where adoption actually
 stalls.
 
+## Release Plan (post-1.26) — Audit leftovers, borrowed technique, context discipline — **shipped as 1.27.1 (2026-07-29)**
+
+No new gate proposed this line; it closes work already scoped elsewhere.
+
+- **The 2026-07-27 quality audit's remaining findings** — duplicate frontmatter keys surfaced
+  instead of silently applying last-wins, MCP `inputSchema` actually enforced (`-32602`), and
+  `--type` validated against the `KNOWN_TYPES` single source. Recorded in `GATE_REVIEW.md` under the
+  audit entry.
+- **Four techniques adapted from an external agent harness** (ECC, MIT), decided in `GATE_REVIEW.md`
+  as *"ECC Technique Extraction Scope Decision"*: a `testEvidence` red→green trail on run manifests,
+  `estimated-tokens` budgets on generated skill artifacts, named `rulesPreset` bundles, and the
+  one-way `import-memory` importer. ECC was read as a **source of technique only** — it is neither a
+  dependency nor part of this repository's toolchain, and two of its ideas (confidence scoring,
+  session "instincts") were rejected with reasons recorded.
+- **Context discipline in the generated prompts.** The token-efficiency line (1.25) governed what the
+  CLI *returns*; it never governed what an agent *pulls in*. This closes that half: one shared
+  context budget in every task prompt and skill, and a run-manifest contract that bounds its own
+  payload. It narrows how source is read, never whether — the invariant that the code is the final
+  fact is stated in the prompt text itself.
+
+**The `chars/4` proxy remains a proxy.** The `estimated-tokens` stamps and the ~30% growth in each
+skill's fixed body are reported as proxy figures and a designed trade-off; no token or speed headline
+ships in the README until a real multi-repo / multi-model measurement supports it.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

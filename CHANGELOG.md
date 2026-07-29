@@ -6,6 +6,95 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.27.1 — 2026-07-29
+
+Three batches land together: the remaining findings of the 2026-07-27 quality audit, four
+techniques adapted from an external agent harness (ECC, MIT — read as a source of technique, never
+added as a dependency), and a context-discipline pass on the generated prompts. Everything is
+additive: the frozen programmatic `commands` map, the `--format json` shapes, the frontmatter
+contract, and the zero-dependency invariant are unchanged. Version note: `1.27.0` was never
+published — upgrading from `1.26.3` to `1.27.1` picks up everything below.
+
+### Added
+
+- **`import-memory [<path>] [--apply]`** — converts an agent harness's portable `ecc.memory.v1`
+  Markdown memories into `needs_review` wiki drafts under `docs/llm-wiki/imported/`
+  (`doc_type: imported_memory`). Preview by default. Frontmatter is only ever produced through the
+  template seam, so an import **cannot** create a `verified` document; memories whose text trips the
+  sensitive-info scan are skipped with a redacted count and no values; existing files are never
+  overwritten; inactive (rejected/superseded) memories are skipped. `source_files`/`evidence` are
+  left empty on purpose — grounding belongs to the human review step, and provenance is recorded in
+  the body. Not exposed over MCP (it writes). New findings: `import.source_missing` (error),
+  `import.invalid_memory` · `import.unsupported_schema` · `import.sensitive_skipped` (warning).
+- **`rulesPreset: "relaxed" | "standard" | "strict"`** in `llm-wiki.config.json` — a named severity
+  bundle for projects that do not want to learn individual rule IDs. `relaxed` softens 11
+  heuristic/alignment warnings, `standard` is a deliberate no-op baseline, `strict` enables the
+  opt-in lints (`content.thin_body`, `visibility.*`) and raises four governance rules to `error`.
+  Expansion happens at config-merge time, so CLI, programmatic API, MCP, and per-package monorepo
+  merges all inherit it. An explicit `rules` entry always beats the preset, `sensitive.*` still
+  cannot be switched off, and an unknown value is a config error (exit 3). `doctor` echoes the
+  applied preset. Presets move finding severities only — they are independent of the `--strict` flag,
+  which governs exit codes.
+- **A `testEvidence { red, green }` field on run manifests**, verified by `check-run`: for a
+  `feature`/`fix` run with a non-empty `changedSource`, a missing or incomplete trail raises
+  `run.test_evidence_missing` (warning, toggleable). Documentation-only runs (`docs-sync`,
+  `bootstrap`) and older manifests are exempt and stay warning-free. The finding names the missing
+  keys only, never their values.
+- **`estimated-tokens` on every generated skill artifact** so an agent can weigh a skill *before*
+  loading its body — a frontmatter key for the Claude/Codex `SKILL.md` contracts and a leading HTML
+  comment for the third-party Cursor `.mdc` and the neutral prompt. The figure is a `chars/4`
+  **proxy** and always carries that disclaimer inline; this project publishes no measured token
+  counts. Older managed artifacts are refreshed normally by `--refresh`.
+- **`npm run test:quiet`** — the same suite under the `dot` reporter, so re-running tests during a
+  long agent session does not pull ~380 result lines into context each time. `npm test`, `npm run
+  verify`, and CI keep the verbose reporter for diagnosis.
+
+### Changed
+
+- **The generated skills and task prompts now carry a context budget.** Every workflow
+  (`bootstrap`/`feature`/`fix`/`refactor`/`docs-sync`/`okf-extract`/`onboard`/`prepare`, plus the
+  `handoff` prompt) tells the agent to locate before reading, to read a large file by line range or
+  section rather than whole, to use the compact retrieval flags for wiki documents, and to report
+  tests as failures plus the summary line. The budget narrows **how** source is read and never
+  **whether** it is read: it states outright that evidence outranks brevity and that the answer to a
+  claim you cannot verify narrowly is to read more. One shared source (`contextBudget`), so no
+  workflow drifts. This adds roughly 30% to each skill artifact's fixed body (the `feature` skill's
+  proxy figure goes from 775 to 1010) in exchange for bounding what a run pulls in — a designed
+  trade-off, not a measured saving.
+- **The run-manifest contract now bounds itself.** It states that the listed fields are the whole
+  contract and that `check-run` reads no others, allows an optional summary of at most two
+  sentences, and forbids pasting diffs, file contents, logs, or test output into the manifest. Agents
+  had been writing multi-sentence summaries and extra fields that no check ever reads.
+- Generated-artifact format version `3` → `4`. Refresh detection still uses the content hash, so
+  `--refresh` updates unmodified managed artifacts and never touches user-edited or foreign files.
+
+### Fixed
+
+- **Duplicated YAML frontmatter keys are now surfaced instead of silently applying last-wins.**
+  `parseFrontmatter` keeps its last-wins semantics (no document changes shape) but additionally
+  reports `duplicateKeys`, and both consuming seams raise `frontmatter.duplicate_key` (warning,
+  toggleable). A duplicate key could quietly discard grounding — an earlier `source_files`/`evidence`
+  list — or flip `status`/`contains_sensitive_info` with no visible error. The finding names the key
+  only, never its value.
+- **The MCP server now enforces the `inputSchema` it advertises.** Violating calls — wrong type,
+  out-of-enum value, missing required argument, below `minimum`, unknown argument, non-object
+  arguments — are rejected before the command runs, with JSON-RPC `-32602 Invalid params` and
+  `data: {tool, errors}`. Previously they were silently coerced or filtered and ran anyway
+  (`validate {strict: "true"}` ran non-strict; `status {type: "banana"}` produced
+  `active_profiles: core, banana`). Execution-level failures keep their distinct `isError: true`
+  shape. The validator is a pure, zero-dependency module covering only the JSON-Schema subset the
+  tool definitions actually use. The tool `type` enum is now derived from the single source
+  (`KNOWN_TYPES`), fixing a stale hand-maintained list that had been missing `mobile` (1.12) and
+  `infra` (1.13).
+- **`--type` is now validated like `--format`/`--lang`.** An unsupported value is a usage error
+  (exit 3) against the same `KNOWN_TYPES` single source. **Small behaviour change:** `--type banana`
+  previously flowed into detection and exited 0 with `active_profiles: core, banana`.
+
+### Tests
+
+- 384 tests (up from 330), including negative-path unit tests for the frontmatter parser/validator
+  seams. Each new behaviour was confirmed to fail against the pre-change source before being fixed.
+
 ## 1.26.3 — 2026-07-27
 
 Two bug fixes reproduced by a repository quality audit. No new command or option; the `1.0.0`

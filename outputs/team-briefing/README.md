@@ -1,4 +1,4 @@
-# 팀 발표 자료 (Team Briefing) — 관리 안내
+﻿# 팀 발표 자료 (Team Briefing) — 관리 안내
 
 전 인원 대상 **llm-wiki-governance 소개 발표** 자료 모음입니다. 발표용 슬라이드(덱)와 발표자 노트를 **한 세트로 버전 관리**합니다.
 
@@ -12,7 +12,7 @@
 
 - **온라인 공유용 Artifact 링크**: https://claude.ai/code/artifact/13dfc476-93ab-4d6d-a1c5-fbaec82135a6
   (덱과 동일 내용을 게시한 것. 위 HTML을 고치면 재게시하여 갱신한다.)
-- **대상 버전**: `v1.26.3` (덱 표지·마무리와 노트 상단 표기가 기준. `package.json` 버전과 맞춘다. 22장.)
+- **대상 버전**: `v1.27.1` (덱 표지·마무리와 노트 상단 표기가 기준. `package.json` 버전과 맞춘다. 22장.)
 
 > 이 폴더(`outputs/`)는 `package.json` `files`에 없으므로 **npm 패키지에는 포함되지 않습니다**(사내 자료).
 

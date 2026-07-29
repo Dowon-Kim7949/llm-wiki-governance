@@ -5,6 +5,88 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.27.1 — 2026-07-29
+
+세 배치를 함께 배포한다: 2026-07-27 품질 감사의 잔여 항목, 외부 에이전트 하네스(ECC, MIT)를
+**의존성이 아니라 기법 소스로만** 읽어 차용한 4건, 그리고 생성 프롬프트의 문맥 규율 패스다. 전부
+additive이며 동결된 프로그래매틱 `commands` 맵·`--format json` shape·frontmatter 계약·무의존성
+불변식은 그대로다. 버전 참고: `1.27.0`은 배포되지 않았으므로 `1.26.3`에서 `1.27.1`로 올리면 아래
+내용을 모두 받는다.
+
+### Added
+
+- **`import-memory [<path>] [--apply]`** — 에이전트 하네스의 portable `ecc.memory.v1` Markdown
+  메모리를 `docs/llm-wiki/imported/` 아래 `needs_review` 위키 초안으로 변환한다
+  (`doc_type: imported_memory`). 기본은 미리보기다. frontmatter는 템플릿 seam으로만 생성되므로
+  임포트가 `verified` 문서를 만드는 것은 **구조적으로 불가능**하다. 민감정보 스캔에 걸린 메모리는
+  redacted count만 보고하고 값 없이 skip하며, 기존 파일은 절대 덮지 않고, inactive(rejected/
+  superseded) 메모리는 skip한다. `source_files`/`evidence`는 의도적으로 비워 둔다 — grounding은
+  사람 리뷰 단계의 몫이고 출처는 본문에 기록한다. 쓰기 명령이므로 MCP에는 노출하지 않는다. 신규
+  finding: `import.source_missing`(error), `import.invalid_memory` · `import.unsupported_schema` ·
+  `import.sensitive_skipped`(warning).
+- **`llm-wiki.config.json`의 `rulesPreset: "relaxed" | "standard" | "strict"`** — 개별 rule ID를
+  익히고 싶지 않은 프로젝트를 위한 명명 severity 번들. `relaxed`는 휴리스틱·정렬성 warning 11건을
+  완화하고, `standard`는 의도적인 no-op 베이스라인이며, `strict`는 opt-in lint(`content.thin_body`,
+  `visibility.*`)를 켜고 거버넌스 rule 4건을 `error`로 올린다. 확장이 config 병합 시점에 일어나므로
+  CLI·프로그래매틱 API·MCP·monorepo 패키지별 병합이 모두 이를 상속한다. 명시한 `rules` 항목이 항상
+  프리셋보다 우선하고, `sensitive.*`는 여전히 끌 수 없으며, 알 수 없는 값은 config 오류(exit 3)다.
+  `doctor`가 적용된 프리셋을 에코한다. 프리셋은 finding severity만 건드리므로 exit code를 지배하는
+  `--strict` 플래그와는 별개다.
+- **run manifest의 `testEvidence { red, green }` 필드**와 `check-run`의 검증: `changedSource`가
+  비어있지 않은 `feature`/`fix` 실행에서 트레일이 없거나 불완전하면
+  `run.test_evidence_missing`(warning, 토글 가능)을 낸다. 문서 전용 실행(`docs-sync`, `bootstrap`)과
+  구 manifest는 면제되어 경고가 없다. finding에는 누락된 키 이름만 담기고 값은 담기지 않는다.
+- **모든 생성 스킬 아티팩트의 `estimated-tokens`** — 에이전트가 스킬 본문을 **로드하기 전에** 비용을
+  가늠할 수 있게 한다. Claude/Codex `SKILL.md` 계약에는 frontmatter 키로, 서드파티 Cursor `.mdc`와
+  중립 프롬프트에는 선두 HTML 코멘트로 싣는다. 값은 `chars/4` **프록시**이며 그 사실을 항상 인라인으로
+  함께 표기한다 — 이 프로젝트는 실측 토큰 수치를 공표하지 않는다. 구세대 관리 아티팩트는 `--refresh`가
+  정상적으로 갱신한다.
+- **`npm run test:quiet`** — 같은 테스트 스위트를 `dot` 리포터로 실행한다. 긴 에이전트 세션 중
+  테스트를 재실행할 때 매번 결과 ~380줄이 문맥으로 끌려오지 않는다. `npm test`·`npm run verify`·CI는
+  진단을 위해 기존 리포터를 유지한다.
+
+### Changed
+
+- **생성 스킬과 작업 프롬프트가 문맥 예산(context budget)을 갖는다.** 모든 워크플로
+  (`bootstrap`/`feature`/`fix`/`refactor`/`docs-sync`/`okf-extract`/`onboard`/`prepare` 및 `handoff`
+  프롬프트)가 에이전트에게 읽기 전에 위치를 특정하고, 큰 파일은 통째로가 아니라 라인 범위·섹션으로
+  읽고, 위키 문서에는 compact retrieval 플래그를 쓰고, 테스트는 실패 항목과 요약 줄로 보고하라고
+  지시한다. 이 예산은 소스를 **어떻게** 읽을지만 좁히고 **읽을지 여부**는 건드리지 않는다 — 근거가
+  간결함보다 우선하며, 좁혀 읽어서 확인할 수 없는 주장이 있으면 답은 "더 읽어라"임을 명시한다. 단일
+  소스(`contextBudget`)라 워크플로 간에 갈라지지 않는다. 그 대가로 각 스킬의 고정 본문이 약 30%
+  늘어난다(`feature` 스킬의 프록시 수치 775 → 1010) — 실행이 끌어오는 양을 제한하기 위한 **설계된
+  트레이드오프이며 실측된 절감이 아니다**.
+- **run manifest 계약이 스스로 상한을 갖는다.** 나열된 필드가 계약 전부이고 `check-run`이 그 외에는
+  아무것도 읽지 않는다는 점을 명시하고, 선택적 summary는 두 문장 이하로 제한하며, diff·파일 내용·
+  로그·테스트 출력을 매니페스트에 붙여넣는 것을 금지한다. 그동안 에이전트가 어떤 검사도 읽지 않는
+  여러 문장짜리 summary와 추가 필드를 써 왔다.
+- 생성 아티팩트 형식 버전 `3` → `4`. 갱신 판정은 여전히 content hash를 쓰므로 `--refresh`는 수정되지
+  않은 관리 아티팩트만 갱신하고 사용자가 편집한 파일이나 외부 파일은 건드리지 않는다.
+
+### Fixed
+
+- **중복 YAML frontmatter 키가 조용한 last-wins 대신 표면화된다.** `parseFrontmatter`는 last-wins
+  의미론을 유지하되(어떤 문서의 형태도 바뀌지 않는다) 추가로 `duplicateKeys`를 보고하고, 두 소비
+  seam이 `frontmatter.duplicate_key`(warning, 토글 가능)를 낸다. 중복 키는 눈에 보이는 오류 없이
+  grounding(앞선 `source_files`/`evidence` 목록)을 버리거나 `status`/`contains_sensitive_info`를
+  뒤집을 수 있었다. finding에는 키 이름만 담기고 값은 담기지 않는다.
+- **MCP 서버가 스스로 공표한 `inputSchema`를 실제로 강제한다.** 위반 호출(잘못된 type, enum 밖 값,
+  필수 인자 누락, `minimum` 미만, 알 수 없는 인자, 비객체 arguments)은 명령 실행 **전에** JSON-RPC
+  `-32602 Invalid params`(`data: {tool, errors}`)로 거부된다. 이전에는 조용히 강제 변환·필터링되어
+  그대로 실행됐다(`validate {strict: "true"}`가 non-strict로 실행, `status {type: "banana"}`가
+  `active_profiles: core, banana` 생성). 실행 수준 실패는 기존 `isError: true` 형태를 유지한다.
+  검증기는 순수·무의존성 모듈로, 툴 정의가 실제로 쓰는 JSON-Schema 서브셋만 다룬다. 툴 `type` enum은
+  이제 단일 소스(`KNOWN_TYPES`)에서 파생되어, `mobile`(1.12)·`infra`(1.13)를 빠뜨린 채 수기로
+  관리되던 stale 목록이 교정됐다.
+- **`--type`이 `--format`/`--lang`처럼 검증된다.** 미지원 값은 같은 `KNOWN_TYPES` 단일 소스에 대해
+  usage error(exit 3)다. **작은 동작 변경**: 이전에는 `--type banana`가 그대로 detection에 흘러
+  `active_profiles: core, banana`로 exit 0했다.
+
+### Tests
+
+- 384개 테스트(이전 330개). frontmatter 파서·검증기 seam의 negative-path 유닛 테스트를 포함한다.
+  각 신규 동작은 수정 전 소스에서 실제로 실패함을 확인한 뒤 고쳤다.
+
 ## 1.26.3 — 2026-07-27
 
 저장소 품질 감사에서 재현한 버그 2건을 고쳤다. 신규 명령·옵션은 없고, `1.0.0` 명령 /
