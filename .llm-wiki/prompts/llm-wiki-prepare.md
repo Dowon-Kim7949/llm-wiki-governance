@@ -1,6 +1,6 @@
 # llm-wiki-prepare
 
-<!-- estimated-tokens: 627 (chars/4 proxy of the skill body, not a measured token count) -->
+<!-- estimated-tokens: 788 (chars/4 proxy of the skill body, not a measured token count) -->
 
 > Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.
 
@@ -28,6 +28,11 @@ Required workflow:
 - Do not treat a needs_review or stale document as trusted fact — call out its status.
 - Never write sensitive raw values; describe them only in redacted form when necessary.
 - Read-only by default: do not modify files in this workflow.
+Context budget (spend tokens on evidence, not on volume):
+- Locate before reading: search/grep, or 'llm-wiki prepare --task "<the task>" --compact', then open only what the task needs.
+- Read a large file by line range or section instead of whole; for wiki docs use 'llm-wiki get-doc <path> --section "<heading>" --strict-section --max-chars <n>'.
+- Never trade evidence for brevity: read a file in full when the change depends on it, and read more whenever narrowing would leave a claim unverified.
+- Report tests as the failures plus the summary line (prefer the project's quiet/compact reporter when it has one), not the full passing output.
 
 Expected final response:
 - The restated task.
@@ -38,4 +43,4 @@ Expected final response:
 
 Read-only workflow: this skill investigates and explains — it does not change files, and it writes no run manifest. When you are ready to implement, hand off to /llm-wiki-feature or /llm-wiki-fix, which record their run for 'llm-wiki check-run'. Never promote a document to verified; that is human-approved only.
 
-<!-- llm-wiki-generated v3 1688b87b617bd188 -->
+<!-- llm-wiki-generated v4 133c892162f13962 -->

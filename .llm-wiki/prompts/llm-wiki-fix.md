@@ -1,6 +1,6 @@
 # llm-wiki-fix
 
-<!-- estimated-tokens: 770 (chars/4 proxy of the skill body, not a measured token count) -->
+<!-- estimated-tokens: 1005 (chars/4 proxy of the skill body, not a measured token count) -->
 
 > Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.
 
@@ -24,6 +24,11 @@ Documentation language: write all LLM-WIKI document content — prose, headings,
 9. Keep CLI-created or agent-edited wiki documents as status: needs_review.
 10. Do not promote any document to verified; verified is human-approved only.
 11. Run relevant tests, or explain exactly why they were not run.
+Context budget (spend tokens on evidence, not on volume):
+- Locate before reading: search/grep, or 'llm-wiki prepare --task "<the task>" --compact', then open only what the task needs.
+- Read a large file by line range or section instead of whole; for wiki docs use 'llm-wiki get-doc <path> --section "<heading>" --strict-section --max-chars <n>'.
+- Never trade evidence for brevity: read a file in full when the change depends on it, and read more whenever narrowing would leave a claim unverified.
+- Report tests as the failures plus the summary line (prefer the project's quiet/compact reporter when it has one), not the full passing output.
 
 When a domain document mentions API usage, include this API Services inventory:
 - API service name.
@@ -45,6 +50,6 @@ Expected final response:
 - Wiki docs updated.
 - Remaining review items or caveats.
 
-Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-fix-<timestamp>.json with fields: task="fix", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}, testEvidence {red, green} (test name/summary failing before your change, passing after — red -> green; no secrets). Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.
+Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-fix-<timestamp>.json with fields: task="fix", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}, testEvidence {red, green} (test name/summary failing before your change, passing after — red -> green; no secrets). Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. Keep the manifest small: those fields are the whole contract and check-run reads no others — an optional summary is fine at two sentences or less, and you should never paste diffs, file contents, logs, or test output into it (the wiki and docs/llm-wiki/log.md are where the narrative belongs). This records what the run did — it never replaces human review and never promotes a document to verified.
 
-<!-- llm-wiki-generated v3 a23e4768eb3e6d35 -->
+<!-- llm-wiki-generated v4 1d96b37777f4e2dc -->
