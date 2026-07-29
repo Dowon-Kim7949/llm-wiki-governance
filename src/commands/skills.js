@@ -26,7 +26,7 @@ import { estimateTokens } from "./retrieval.js";
 // Bumped when the generated skill format changes. Recorded in each artifact's
 // trailing marker (informational — refresh detection uses the content hash, not
 // this version). See withGeneratedMarker / isManagedUnmodified.
-const SKILL_ARTIFACT_VERSION = "3";
+const SKILL_ARTIFACT_VERSION = "4";
 
 // The workflows exposed as skills, and their invocable slug/description.
 export const SKILL_TASKS = [
@@ -179,7 +179,7 @@ function manifestContractSection(task) {
   const testEvidence = task === "feature" || task === "fix"
     ? ", testEvidence {red, green} (test name/summary failing before your change, passing after — red -> green; no secrets)"
     : "";
-  return `Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-${task}-<timestamp>.json with fields: task="${task}", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}${testEvidence}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. This records what the run did — it never replaces human review and never promotes a document to verified.`;
+  return `Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-${task}-<timestamp>.json with fields: task="${task}", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}${testEvidence}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. Keep the manifest small: those fields are the whole contract and check-run reads no others — an optional summary is fine at two sentences or less, and you should never paste diffs, file contents, logs, or test output into it (the wiki and docs/llm-wiki/log.md are where the narrative belongs). This records what the run did — it never replaces human review and never promotes a document to verified.`;
 }
 
 // task-prompts.js is written for one-shot terminal output; strip the two bits that

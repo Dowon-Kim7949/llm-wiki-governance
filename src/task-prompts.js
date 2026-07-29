@@ -14,6 +14,26 @@ export function documentLanguageDirective(docLang) {
     : "Documentation language: write all LLM-WIKI document content — prose, headings, summaries, review notes, and the log.md entry — in English. Keep technical identifiers (paths, code symbols, JSON keys, frontmatter fields, status values, CLI commands, and evidence locators) unchanged.";
 }
 
+// The context budget shared by every task prompt — the SINGLE source, so no
+// workflow drifts into either extreme. It exists because the expensive part of an
+// agent run is not the prompt, it is what the run PULLS IN: whole-file reads and
+// full test output dwarf every other cost. Two invariants ride along:
+//   - It narrows HOW source is read, never WHETHER it is read. task-path.js sets
+//     mustReadSource for code changes and risky work, and the code is the final
+//     fact — so the last resort is always "read more", not "guess cheaper".
+//   - It stays project-agnostic: the artifacts are generated into other repos, so
+//     it names llm-wiki's own retrieval flags and "the project's quiet reporter"
+//     rather than any one repo's script names.
+export function contextBudget() {
+  return [
+    "Context budget (spend tokens on evidence, not on volume):",
+    "- Locate before reading: search/grep, or 'llm-wiki prepare --task \"<the task>\" --compact', then open only what the task needs.",
+    "- Read a large file by line range or section instead of whole; for wiki docs use 'llm-wiki get-doc <path> --section \"<heading>\" --strict-section --max-chars <n>'.",
+    "- Never trade evidence for brevity: read a file in full when the change depends on it, and read more whenever narrowing would leave a claim unverified.",
+    "- Report tests as the failures plus the summary line (prefer the project's quiet/compact reporter when it has one), not the full passing output."
+  ];
+}
+
 export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents = [], docLang = null }) {
   if (!SUPPORTED_TASK_PROMPTS.has(task)) {
     return {
@@ -139,6 +159,7 @@ export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints
     "2. Review the init-generated documents and their source_files to see what still needs grounding.",
     "3. Investigate the actual code, config, routing, public APIs, data models, and key workflows before making any claim.",
     ...evidenceFocus(projectType),
+    ...contextBudget(),
     "4. Replace placeholder content with descriptions backed by real source evidence. Do not guess — leave anything uncertain as an explicit review item instead of inventing detail.",
     "5. For backend/fullstack projects, also enrich the related docs/llm-wiki/domains/*.md documents.",
     "When a domain document mentions API usage, include this API Services inventory:",
@@ -187,7 +208,8 @@ function guidedGroundingRules() {
     "- Do not guess. Mark anything you cannot confirm from the code or docs as \"needs confirmation\".",
     "- Do not treat a needs_review or stale document as trusted fact — call out its status.",
     "- Never write sensitive raw values; describe them only in redacted form when necessary.",
-    "- Read-only by default: do not modify files in this workflow."
+    "- Read-only by default: do not modify files in this workflow.",
+    ...contextBudget()
   ].join("\n");
 }
 
@@ -282,6 +304,7 @@ ${documentLanguageDirective(context.docLang)}
 9. Keep CLI-created or agent-edited wiki documents as status: needs_review.
 10. Do not promote any document to verified; verified is human-approved only.
 11. Run relevant tests, or explain exactly why they were not run.
+${contextBudget().join("\n")}
 
 When a domain document mentions API usage, include this API Services inventory:
 ${apiServiceInventoryChecklist(context.docLang).join("\n")}
@@ -314,6 +337,7 @@ ${documentLanguageDirective(context.docLang)}
 7. Keep CLI-created or agent-edited wiki documents as status: needs_review.
 8. Do not promote any document to verified; verified is human-approved only.
 9. Run relevant validation or explain exactly why it was not run.
+${contextBudget().join("\n")}
 
 When a domain document mentions API usage, include this API Services inventory:
 ${apiServiceInventoryChecklist(context.docLang).join("\n")}
@@ -346,6 +370,7 @@ ${documentLanguageDirective(context.docLang)}
 8. Keep AI-extracted documents as status: needs_review when stored in an LLM-WIKI project.
 9. Do not promote any extracted document to verified; verified is human-approved only.
 10. List unresolved concepts, aliases to review, and extraction caveats.
+${contextBudget().join("\n")}
 
 Expected final response:
 - Extracted document list.
