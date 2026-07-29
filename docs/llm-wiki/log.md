@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-07-28
+last_updated: 2026-07-29
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,47 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-29 - 에이전트 문맥 규율 3건 + 1.27.1 릴리스
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "모든 작업을 진행하라. 모든 작업 진행 후, 커밋/푸시하여 1.27.1로 배포하라")
+- scope: code + docs + release
+- changed:
+  - src/task-prompts.js — 신규 순수·export `contextBudget()`, 8개 태스크 프롬프트 전부에 배선
+  - src/commands/skills.js — `manifestContractSection` payload 상한, `SKILL_ARTIFACT_VERSION` 3→4
+  - package.json — `test:quiet` 스크립트(`--test-reporter=dot`) 추가, version 1.26.3→1.27.1
+  - tests/agent-token-discipline.test.js — 신규 4건, tests/verification.test.js — 버전 단언 갱신
+  - .claude/skills/·.agents/skills/·.cursor/rules/·.llm-wiki/prompts/ — 24개 아티팩트 `--refresh` 재생성
+  - CHANGELOG.md·CHANGELOG.ko.md·README.md·README.ko.md·ROADMAP.md·ROADMAP.ko.md — 1.27.1 릴리스 문서
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md, docs/llm-wiki/DOMAIN_FEATURES.md
+- evidence:
+  - src/task-prompts.js#symbol:contextBudget — 문맥 예산 단일 소스
+  - src/commands/skills.js#symbol:manifestContractSection — 매니페스트 계약 + 상한
+  - src/commands.js#symbol:checkRunCommand — 실제로 읽는 필드 집합(대조 검증: summary/actor/timestamp/activeProfiles는 미독)
+- summary: 유지보수자가 실행 화면을 보고 "이 표시가 토큰을 먹는가"를 물은 것이 출발점이다. 조사 결과 터미널
+  렌더링(색상·접기 라벨·`… +43 lines`)은 모델에 들어가지 않아 무료지만 그 안의 내용은 비용이며, UI에서
+  접히거나 잘린 것은 절약이 아니다(모델은 이미 전체를 받았다). 무통제 지점 3곳을 생성기 쪽에서 닫았다:
+  (1) `check-run`이 읽지도 않는 매니페스트 산문 → 계약이 스스로 상한 선언(필드 집합이 전부, summary 두 문장,
+  diff·로그·테스트 출력 금지), (2) 무제한 소스 읽기 → 단일 소스 `contextBudget()`가 8개 프롬프트+handoff+
+  생성 스킬에 위치 특정·라인 범위/섹션·compact retrieval 플래그·테스트 요약 보고를 주입, (3) 테스트 출력
+  전량 → `npm run test:quiet`. 1.25가 CLI가 **돌려주는** 양을 통제했다면 이 배치는 에이전트가 **끌어오는**
+  양을 통제한다.
+- caveats:
+  - **안전 불변식**: 문맥 예산은 소스를 **어떻게** 읽을지만 좁히고 **읽을지 여부**는 건드리지 않는다.
+    "근거가 간결함보다 우선, 좁혀 읽어 확인 못 하면 더 읽어라"를 프롬프트 본문에 명시해 `task-path.js`의
+    `mustReadSource`(코드 변경·위험 작업)와 정합을 유지했다.
+  - **대가는 정직하게**: 스킬 고정 본문이 약 30% 늘어난다(`feature` 프록시 775→1010). 절감은 **측정하지
+    않았으므로 주장하지 않는다** — `estimateTokens`는 chars/4 프록시이고 README 헤드라인 금지 정책은 유지.
+  - 버전: `1.27.0`은 배포되지 않는다(유지보수자가 `1.27.1`을 지정, 결번을 확인 후 선택).
+  - `docs/llm-wiki/BENCHMARK.md`는 GATE_REVIEW.md 변경으로 `evidence.stale`이라 `drift --downgrade`로
+    정직하게 needs_review 강등(에이전트는 verified 승격·재승인 불가).
+- verification: 384 tests(신규 4; `contextBudget` export 부재로 수정 전 소스에서 파일 전체 실패 = RED 확인)
+  · lint OK(56 files) · validate --strict 0 · validate-frontmatter --strict 0 · check-run
+- review items:
+  - ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md(이번 편집)와 BENCHMARK.md(강등), 그리고 1.26.3 이후
+    누적된 needs_review 백로그의 사람 재승인 — `llm-wiki review`로 위험도 순 확인 후 `--approve`.
+  - 문맥 예산의 실효 절감은 미측정. 측정하려면 유료 벤치(보류 중) 또는 whole-task 러너 arm이 필요하다.
 
 ## 2026-07-28 - ECC 기법 추출 배치 4건 구현 (병렬 워크트리 → 직렬 통합; 미릴리스)
 
