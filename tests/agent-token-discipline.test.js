@@ -13,13 +13,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
 import { initCommand } from "../src/commands.js";
 import { SKILL_TASKS } from "../src/commands/skills.js";
 import { buildTaskPrompt, contextBudget } from "../src/task-prompts.js";
 
-const REPO_ROOT = path.resolve(import.meta.dirname, "..");
+// fileURLToPath, not import.meta.dirname: the latter landed in Node 20.11 and this
+// package supports >=18.18.0, where it is undefined (the house pattern is in mcp.test.js).
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // Tasks that write files carry the run-manifest contract; onboard/prepare are
 // read-only and must never gain one.
