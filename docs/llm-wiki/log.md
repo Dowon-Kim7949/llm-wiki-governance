@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-07-29
+last_updated: 2026-07-30
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,33 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-30 - 프롬프트 형태 규율(unhobbling) + 1.27.2 준비
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: Boris Cherny 3원칙 도입 판단 후 "모든 작업을 진행해줘. 이후 1.27.2 버전으로 배포할 수 있도록 하자")
+- scope: code + docs + templates + release-prep
+- changed:
+  - templates/adapters/claude-code/CLAUDE.md — 어댑터 마커 v1→v2: `@`-include를 index+project-profile로 축소, 무거운 문서는 on-demand retrieval 안내
+  - CLAUDE.md — 새 템플릿과 byte-identical로 교체(이 저장소 선적재 ~30.3k→~1.4k 토큰, chars/4 프록시)
+  - src/task-prompts.js — `implementationPrompt`(feature/fix/refactor)·`docsSyncPrompt`를 Goal/Hard lines/Exit criteria 3블록으로 재구성(계약·안전 줄 전부 보존, steering만 제거, 자율성 문구 명시)
+  - src/commands/skills.js — `SKILL_ARTIFACT_VERSION` 4→5
+  - tests/agent-token-discipline.test.js — 신규 2건(3블록 형태+계약 줄 보존 / 절차형 원샷 체크리스트 유지 경계)
+  - .claude/skills/·.agents/skills/·.cursor/rules/·.llm-wiki/prompts/ — feature/fix/docs-sync 12개 아티팩트 `--refresh` 재생성(bootstrap/onboard/prepare는 본문 불변으로 up-to-date)
+  - docs/llm-wiki/REVIEW_HISTORY.md — 신규 아카이브: ARCHITECTURE_CONVENTIONS(40건)·DOMAIN_FEATURES(45건)의 오래된 Review Notes 원문 이전, 원문서는 최근 5건만 유지
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md, docs/llm-wiki/DOMAIN_FEATURES.md — 프롬프트 형태 규율·어댑터 축소·Review Notes 상한 컨벤션 반영
+  - GATE_REVIEW.md — "Prompt-Shape Discipline (Unhobbling) Scope Decision" 기록(수용/기각 범위·계측화된 삭제 기준·미측정 정직 기록)
+- evidence:
+  - src/task-prompts.js#symbol:implementationPrompt — 3블록 프롬프트
+  - templates/adapters/claude-code/CLAUDE.md — 선적재 축소 어댑터 템플릿
+  - tests/agent-token-discipline.test.js — RED 선실패 확인 후 GREEN(386 tests)
+- summary: 검증 기계(validate/check-run/tests)가 종료 시점에 계약을 강제하므로 단계 서술(steering)만 제거해도
+  안전하다는 분류 규칙으로 unhobbling을 적용했다. 프롬프트 재구성의 과제 성과 효과는 미측정이며(벤치 arm 미실행,
+  유지보수자 결정) 절감 주장은 하지 않는다 — 선적재 수치는 파일 크기 산술(chars/4 프록시)일 뿐이다.
+- caveats:
+  - 검증·안전 계약(needs_review/verified 사람 전용·민감정보·mustReadSource·STOP)은 전부 불변.
+  - 기존 사용자 어댑터/스킬 파일은 덮어쓰지 않는다(신 템플릿은 신규 생성에만, 스킬은 관리-미수정 파일만 `--refresh`).
+  - 절차형 원샷 워크플로(bootstrap/onboard/prepare/okf-extract)는 의도적으로 체크리스트 유지.
 
 ## 2026-07-29 - 에이전트 문맥 규율 3건 + 1.27.1 릴리스
 

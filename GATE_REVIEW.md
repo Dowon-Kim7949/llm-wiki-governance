@@ -1711,6 +1711,75 @@ Built 2026-07-28 under maintainer instruction; 380 tests (347→380, +33; each t
 pre-implementation) · lint OK (55 files) · validate --strict 0 · dogfood skills regenerated via
 `--refresh`. Unreleased; wiki docs updated and demoted to needs_review pending human re-approval.
 
+## Prompt-Shape Discipline (Unhobbling) Scope Decision (maintainer-instructed 2026-07-30 — built for 1.27.2)
+
+Context: the maintainer reviewed Boris Cherny's (Claude Code creator) three-point guidance —
+(1) delete unnecessary configuration, (2) give the model the goal / hard lines / exit criteria
+instead of step-by-step orders, (3) no magic tricks: observe where the model fails and patch only
+that — and instructed applying it to this project. Measurement first: this repo's own Claude Code
+adapter preloaded ~121k chars (~30k tokens, chars/4 proxy) of wiki every session via `@`-includes,
+of which ~44k chars were `## Review Notes` audit history (not instructions); and the shipped
+adapter template taught every adopter the same preload-everything pattern. The triage rule applied
+throughout: classify every instruction line as steering / contract / safety, and only steering is
+deletable — unhobbling removes narration because verification (validate / check-run / tests)
+enforces the contract at the exit, never by removing the verification itself.
+
+### Accepted scope (in)
+
+1. **Adapter preload cut** (template + this repo): `templates/adapters/claude-code/CLAUDE.md`
+   (marker v1→v2) now `@`-includes only `index.md` + `project-profile.md` and lists the heavy docs
+   as load-on-demand with the retrieval commands (`search-docs`, `prepare --compact`,
+   `get-doc --section --strict-section`). This repo's `CLAUDE.md` matches the template
+   byte-for-byte. Preload here: ~30.3k → ~1.4k tokens (chars/4 proxy). Other adapter templates
+   already pointed only at `index.md` and are unchanged. `scanAdapters` checks only the
+   `docs/llm-wiki/index.md` entrypoint, so existing user adapters keep validating; existing files
+   are never overwritten (unchanged contract).
+2. **Review-notes archive**: `ARCHITECTURE_CONVENTIONS.md` / `DOMAIN_FEATURES.md` keep the most
+   recent 5 `## Review Notes` entries; the older 83 entries moved verbatim to the new
+   `docs/llm-wiki/REVIEW_HISTORY.md` (needs_review, archive-only) with pointer lines both ways.
+   Frontmatter `reviewed_by`/`reviewed_at` stays the authority for approval state; `log.md` stays
+   the append-only change log. The heading is preserved (the `fix` engine anchors on it).
+3. **Goal / hard-lines / exit-criteria prompts**: the recurring write workflows
+   (`feature`/`fix`/`refactor` via `implementationPrompt`, `docs-sync`) drop the numbered
+   step list and state three blocks — Goal, Hard lines (never cross), Exit criteria — plus an
+   explicit autonomy line ("how you work between those lines is your call"). Every load-bearing
+   line survived: entrypoint read, real-source inspection, STOP on doc/code conflict or scope
+   growth, needs_review / verified-is-human-only, sensitive-info ban, context budget, log append,
+   test/validation reporting. Deleted lines were pure steering ("produce a short implementation
+   plan", "locate related documents before editing"). Marker v4→v5; dogfood skills refreshed;
+   regression-tested in `tests/agent-token-discipline.test.js` (RED-verified pre-implementation).
+4. **Instrumented deletion criteria** (the standing rule replacing calendar-based cleanup):
+   *a steering line is a deletion candidate when no observable signal fires in its absence* —
+   the instruments are `check-run`'s `run.*` findings, `validate`/`audit` findings, and test
+   failures. Review the generated-prompt surface on model upgrades or every few releases (this
+   repo ships too fast for a 6-month calendar). Contract and safety lines are exempt from this
+   rule by definition.
+
+### Rejected / deliberately unchanged scope
+
+- **Verification machinery is not "configuration"**: validate/check-run/impact/evidence scans,
+  `mustReadSource`, sensitive redaction, needs_review⇄verified human gate — untouched. Deleting
+  these would make the product lie, not the model smarter.
+- **One-shot procedural workflows keep their checklists**: bootstrap (shared verbatim with
+  `handoff` via `initialEnrichmentWorkflow`), onboard/prepare (read-only guided), okf-extract
+  (format conversion) — there the numbered sequence IS the content, not micromanagement. Guarded
+  by a dedicated test so the boundary is explicit.
+- **No measured-savings claims**: the preload cut is arithmetic on file sizes (chars/4 proxy);
+  the prompt restructure's effect on task outcomes is UNMEASURED (no bench arm was run — the
+  maintainer chose to ship without one). The README headline ban stays in force.
+
+### Invariants (non-negotiable) — all held
+
+Zero-dep · additive-only (frozen CLI/API maps, `--format json` shape, no new commands/options) ·
+existing adapter/skill files never overwritten (refresh only touches managed-unmodified artifacts) ·
+verified stays human-only · sensitive values never in findings/output.
+
+### Status
+
+Built 2026-07-30 under maintainer instruction; 386 tests (384→386, +2; prompt-shape test
+RED-verified pre-implementation) · lint OK (56 files). Wiki docs updated and kept needs_review
+pending human re-approval. Ships as 1.27.2.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)
