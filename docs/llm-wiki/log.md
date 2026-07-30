@@ -24,6 +24,15 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-30 - 브리핑 덱 슬라이드 11(타임라인) 표시 버그 수정
+
+- status: needs_review
+- actor: Claude Code (유지보수자 보고: 공유 Artifact에서 11장이 빈 화면)
+- scope: team-materials only (위키 문서·코드 변경 없음)
+- changed:
+  - outputs/team-briefing/llm-wiki-briefing.html — 등장 애니메이션 IntersectionObserver 임계값 0.55가 화면보다 긴 슬라이드(타임라인, 14개 항목)에서 영영 충족되지 않아 `.anim` 내용이 opacity:0으로 남던 버그 수정: 노출 임계값을 0.12로 낮추고, 현재 장 카운터/진행바는 스크롤 위치 기반 계산으로 분리. 공유 Artifact 동일 링크로 재게시.
+- summary: 콘텐츠 변경 없음(순수 표시 로직). 버전 라벨·장수(22장) 불변.
+
 ## 2026-07-30 - 1.27.2 사람 재승인 + 브리핑 덱 재정렬
 
 - status: needs_review
