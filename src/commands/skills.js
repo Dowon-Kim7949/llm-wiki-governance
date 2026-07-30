@@ -26,7 +26,7 @@ import { estimateTokens } from "./retrieval.js";
 // Bumped when the generated skill format changes. Recorded in each artifact's
 // trailing marker (informational — refresh detection uses the content hash, not
 // this version). See withGeneratedMarker / isManagedUnmodified.
-const SKILL_ARTIFACT_VERSION = "4";
+const SKILL_ARTIFACT_VERSION = "5";
 
 // The workflows exposed as skills, and their invocable slug/description.
 export const SKILL_TASKS = [

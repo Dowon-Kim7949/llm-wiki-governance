@@ -108,6 +108,56 @@ test("contextBudget is a pure shared source reused by every task prompt", () => 
   }
 });
 
+// Prompt-shape discipline (1.27.2): the recurring write workflows state the goal,
+// the hard lines, and the exit criteria — and stop micromanaging the steps in
+// between. The verification machinery (validate / check-run / tests) is what makes
+// dropping the step list safe: the contract is enforced at the exit, not narrated
+// at every step. One-shot procedural workflows (bootstrap enrichment, guided
+// onboard/prepare, okf-extract format conversion) keep their checklists — there the
+// numbered sequence IS the content, not micromanagement.
+test("recurring write workflows are goal / hard lines / exit criteria, not numbered micro-steps", () => {
+  for (const task of ["feature", "fix", "refactor", "docs-sync"]) {
+    const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
+    assert.equal(built.result, "pass", `${task}: builds`);
+    const p = built.prompt;
+
+    // The three blocks that carry the contract.
+    assert.match(p, /Goal:/, `${task}: has a goal block`);
+    assert.match(p, /Hard lines/, `${task}: has a hard-lines block`);
+    assert.match(p, /Exit criteria/, `${task}: has an exit-criteria block`);
+    // The autonomy statement: the HOW belongs to the agent; the contract does not.
+    assert.match(p, /your call/, `${task}: leaves the how to the agent`);
+    // No numbered micro-steps remain (the old micromanaged workflow shape).
+    assert.doesNotMatch(p, /^\s*\d+\.\s/m, `${task}: no numbered step list`);
+
+    // Every load-bearing contract line survived the restructure.
+    assert.ok(p.includes("Read docs/llm-wiki/index.md first."), `${task}: entrypoint kept`);
+    assert.ok(p.includes("status: needs_review"), `${task}: needs_review kept`);
+    assert.ok(p.includes("verified is human-approved only"), `${task}: verified stays human-only`);
+    assert.ok(p.includes("Append docs/llm-wiki/log.md"), `${task}: log append kept`);
+    assert.match(p, /sensitive raw values/, `${task}: sensitive-info rule kept`);
+    assert.match(p, /Context budget/, `${task}: context budget kept`);
+
+    if (task === "docs-sync") {
+      assert.ok(p.includes("avoid unrelated code edits"), "docs-sync: scope guard kept");
+      assert.ok(p.includes("Detect changed code"), "docs-sync: change detection kept");
+    } else {
+      assert.match(p, /STOP and confirm with a human/, `${task}: conflict/scope STOP kept`);
+      assert.ok(p.includes("Inspect actual source files"), `${task}: source inspection kept`);
+      assert.ok(p.includes("smallest safe scope"), `${task}: smallest safe scope kept`);
+      assert.ok(p.includes("Update every affected LLM-WIKI document"), `${task}: wiki update kept`);
+    }
+  }
+});
+
+test("one-shot procedural workflows deliberately keep their numbered checklists", () => {
+  for (const task of ["bootstrap", "onboard", "prepare", "okf-extract"]) {
+    const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
+    assert.equal(built.result, "pass", `${task}: builds`);
+    assert.match(built.prompt, /^\s*1\.\s/m, `${task}: keeps its checklist (the sequence is the content)`);
+  }
+});
+
 test("the test suite has a quiet reporter script, and the default script keeps the full reporter", async () => {
   const pkg = JSON.parse(await readFile(path.join(REPO_ROOT, "package.json"), "utf8"));
 

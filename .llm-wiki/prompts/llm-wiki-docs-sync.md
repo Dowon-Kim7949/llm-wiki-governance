@@ -1,6 +1,6 @@
 # llm-wiki-docs-sync
 
-<!-- estimated-tokens: 897 (chars/4 proxy of the skill body, not a measured token count) -->
+<!-- estimated-tokens: 976 (chars/4 proxy of the skill body, not a measured token count) -->
 
 > Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.
 
@@ -11,22 +11,26 @@ You are a senior documentation maintenance engineer working in an LLM-WIKI-enabl
 Task:
 Run a docs-sync workflow. The project type is library. Active profiles: core, library.
 
-Required workflow:
+Goal:
+Read docs/llm-wiki/index.md first. Detect changed code and documentation context using git status, git diff, and relevant source files. Inspect actual source files before deciding a wiki document is stale, then bring every stale LLM-WIKI document back in line with what the code actually does.
+
+Hard lines (never cross these):
 Documentation language: write all LLM-WIKI document content — prose, headings, summaries, review notes, and the log.md entry — in English. Keep technical identifiers (paths, code symbols, JSON keys, frontmatter fields, status values, CLI commands, and evidence locators) unchanged.
-1. Read docs/llm-wiki/index.md first.
-2. Detect changed code and documentation context using git status, git diff, and relevant source files.
-3. Locate affected domain, API, component, architecture, workflow, and decision documents.
-4. Inspect actual source files before deciding a wiki document is stale.
-5. Update stale LLM-WIKI documents only; avoid unrelated code edits.
-6. Append docs/llm-wiki/log.md in append-only style with changed docs, source evidence, caveats, and review notes.
-7. Keep CLI-created or agent-edited wiki documents as status: needs_review.
-8. Do not promote any document to verified; verified is human-approved only.
-9. Run relevant validation or explain exactly why it was not run.
+- Update stale LLM-WIKI documents only; avoid unrelated code edits.
+- Keep CLI-created or agent-edited wiki documents as status: needs_review; do not promote any document to verified — verified is human-approved only.
+- Never write sensitive raw values into documents, logs, or reports.
 Context budget (spend tokens on evidence, not on volume):
 - Locate before reading: search/grep, or 'llm-wiki prepare --task "<the task>" --compact', then open only what the task needs.
 - Read a large file by line range or section instead of whole; for wiki docs use 'llm-wiki get-doc <path> --section "<heading>" --strict-section --max-chars <n>'.
 - Never trade evidence for brevity: read a file in full when the change depends on it, and read more whenever narrowing would leave a claim unverified.
 - Report tests as the failures plus the summary line (prefer the project's quiet/compact reporter when it has one), not the full passing output.
+
+Exit criteria (done means all of these):
+- Every stale document found is updated, or explicitly reported as still stale with the reason.
+- Append docs/llm-wiki/log.md in append-only style with changed docs, source evidence, caveats, and review notes.
+- Relevant validation ran, or the reason it was not run is stated exactly.
+
+How you work between those lines is your call; the goal and the exit criteria are the contract.
 
 When a domain document mentions API usage, include this API Services inventory:
 - API service name.
@@ -49,4 +53,4 @@ Expected final response:
 
 Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-docs-sync-<timestamp>.json with fields: task="docs-sync", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. Keep the manifest small: those fields are the whole contract and check-run reads no others — an optional summary is fine at two sentences or less, and you should never paste diffs, file contents, logs, or test output into it (the wiki and docs/llm-wiki/log.md are where the narrative belongs). This records what the run did — it never replaces human review and never promotes a document to verified.
 
-<!-- llm-wiki-generated v4 0feca33dd766175e -->
+<!-- llm-wiki-generated v5 206b50b3ae198183 -->

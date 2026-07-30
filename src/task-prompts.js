@@ -276,6 +276,16 @@ Expected final response:
 - Open questions to confirm before implementing, and the recommended next skill.`;
 }
 
+// The recurring write workflows (feature/fix/refactor, and docs-sync below) are
+// structured as goal / hard lines / exit criteria instead of a numbered step list
+// (prompt-shape discipline, 1.27.2). The verification machinery — validate,
+// check-run, tests — is what makes dropping the step narration safe: the contract
+// is enforced at the exit, not restated at every step. Every load-bearing line of
+// the old list survives (entrypoint, source inspection, STOP on conflict/scope,
+// needs_review, log append, sensitive-info, context budget); only the step-by-step
+// steering ("produce a plan", "locate before editing") is gone. One-shot
+// procedural workflows (bootstrap/onboard/prepare/okf-extract) keep their
+// checklists — there the sequence is the content.
 function implementationPrompt(task, context) {
   const taskTitle = {
     feature: "post-wiki feature development",
@@ -291,20 +301,23 @@ ${context.cwd}
 Task:
 Run a ${taskTitle} workflow. The project type is ${context.projectType}. Active profiles: ${formatList(context.profiles)}. Target agent context: ${formatList(context.agents)}.
 
-Required workflow:
+Goal:
+Read docs/llm-wiki/index.md first. Inspect actual source files before making claims or code changes. Make the requested code change with the smallest safe scope, grounded in the wiki and verified against the actual source. Update every affected LLM-WIKI document in the same task, so the wiki keeps telling the truth about the code.
+
+Hard lines (never cross these):
 ${documentLanguageDirective(context.docLang)}
-1. Read docs/llm-wiki/index.md first.
-2. For a guided or newcomer task, or when the scope is unclear, first run 'llm-wiki prepare --task "<the task>"' (or the /llm-wiki-prepare skill) to scope the work and confirm the current behavior from evidence. If the docs conflict with the code, or the scope is larger than you expected, STOP and confirm with a human before implementing.
-3. Locate related domain, API, component, architecture, workflow, and decision documents before editing.
-4. Inspect actual source files before making claims or code changes.
-5. Produce a short implementation plan.
-6. Make the requested code change with the smallest safe scope.
-7. Update every affected LLM-WIKI document in the same task.
-8. Append docs/llm-wiki/log.md in append-only style with changed files, evidence, caveats, and review notes.
-9. Keep CLI-created or agent-edited wiki documents as status: needs_review.
-10. Do not promote any document to verified; verified is human-approved only.
-11. Run relevant tests, or explain exactly why they were not run.
+- If the docs conflict with the code, or the scope grows beyond what was asked, STOP and confirm with a human before implementing. When the scope is unclear, scope it first with 'llm-wiki prepare --task "<the task>"' (or the /llm-wiki-prepare skill).
+- Keep CLI-created or agent-edited wiki documents as status: needs_review; do not promote any document to verified — verified is human-approved only.
+- Never write sensitive raw values into documents, logs, or reports.
 ${contextBudget().join("\n")}
+
+Exit criteria (done means all of these):
+- The requested change is implemented and verified against the actual source.
+- Every affected LLM-WIKI document is updated in the same task.
+- Append docs/llm-wiki/log.md in append-only style with changed files, evidence, caveats, and review notes.
+- Relevant tests ran, or the reason they were not run is stated exactly.
+
+How you work between those lines — reading order, planning depth, edit sequence — is your call; the goal and the exit criteria are the contract.
 
 When a domain document mentions API usage, include this API Services inventory:
 ${apiServiceInventoryChecklist(context.docLang).join("\n")}
@@ -326,18 +339,22 @@ ${context.cwd}
 Task:
 Run a docs-sync workflow. The project type is ${context.projectType}. Active profiles: ${formatList(context.profiles)}. Target agent context: ${formatList(context.agents)}.
 
-Required workflow:
+Goal:
+Read docs/llm-wiki/index.md first. Detect changed code and documentation context using git status, git diff, and relevant source files. Inspect actual source files before deciding a wiki document is stale, then bring every stale LLM-WIKI document back in line with what the code actually does.
+
+Hard lines (never cross these):
 ${documentLanguageDirective(context.docLang)}
-1. Read docs/llm-wiki/index.md first.
-2. Detect changed code and documentation context using git status, git diff, and relevant source files.
-3. Locate affected domain, API, component, architecture, workflow, and decision documents.
-4. Inspect actual source files before deciding a wiki document is stale.
-5. Update stale LLM-WIKI documents only; avoid unrelated code edits.
-6. Append docs/llm-wiki/log.md in append-only style with changed docs, source evidence, caveats, and review notes.
-7. Keep CLI-created or agent-edited wiki documents as status: needs_review.
-8. Do not promote any document to verified; verified is human-approved only.
-9. Run relevant validation or explain exactly why it was not run.
+- Update stale LLM-WIKI documents only; avoid unrelated code edits.
+- Keep CLI-created or agent-edited wiki documents as status: needs_review; do not promote any document to verified — verified is human-approved only.
+- Never write sensitive raw values into documents, logs, or reports.
 ${contextBudget().join("\n")}
+
+Exit criteria (done means all of these):
+- Every stale document found is updated, or explicitly reported as still stale with the reason.
+- Append docs/llm-wiki/log.md in append-only style with changed docs, source evidence, caveats, and review notes.
+- Relevant validation ran, or the reason it was not run is stated exactly.
+
+How you work between those lines is your call; the goal and the exit criteria are the contract.
 
 When a domain document mentions API usage, include this API Services inventory:
 ${apiServiceInventoryChecklist(context.docLang).join("\n")}
