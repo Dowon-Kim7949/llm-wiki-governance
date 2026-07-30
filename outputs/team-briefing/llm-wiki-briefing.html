@@ -771,15 +771,30 @@
       setActive(i);
     }
 
+    /* 화면보다 긴 슬라이드(타임라인 등)는 가시 비율이 높은 임계값에 도달하지
+       못해 내용이 영영 안 나타날 수 있다 → 낮은 임계값으로 드러내고,
+       현재 장 표시는 스크롤 위치로 계산한다. */
     var io=new IntersectionObserver(function(entries){
       entries.forEach(function(e){
-        if(e.isIntersecting){
-          e.target.classList.add('is-visible');
-          setActive(slides.indexOf(e.target));
-        }
+        if(e.isIntersecting){e.target.classList.add('is-visible');}
       });
-    },{threshold:0.55});
+    },{threshold:0.12});
     slides.forEach(function(s){io.observe(s);});
+
+    var ticking=false;
+    deck.addEventListener('scroll',function(){
+      if(ticking)return;
+      ticking=true;
+      requestAnimationFrame(function(){
+        ticking=false;
+        var top=deck.scrollTop,best=0,bd=Infinity;
+        for(var i=0;i<total;i++){
+          var d=Math.abs(slides[i].offsetTop-top);
+          if(d<bd){bd=d;best=i;}
+        }
+        setActive(best);
+      });
+    },{passive:true});
 
     prev.addEventListener('click',function(){go(current-1);});
     next.addEventListener('click',function(){go(current+1);});
