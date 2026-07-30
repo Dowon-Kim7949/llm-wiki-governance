@@ -1,22 +1,27 @@
 # Antigravity Project Instructions
 
-## LLM-WIKI <!-- llm-wiki-adapter v1 -->
+## LLM-WIKI <!-- llm-wiki-adapter v2 -->
 
-Start from `docs/llm-wiki/index.md` before making code or documentation changes.
+Read the project LLM-WIKI before making code or documentation changes.
 
-Read order:
+Always read first (kept deliberately small):
 
-1. `docs/llm-wiki/index.md`
-2. `docs/llm-wiki/README.md`
-3. `docs/llm-wiki/project-profile.md`
-4. Active profile and domain documents listed by the index.
+- `docs/llm-wiki/index.md` — entrypoint, read order, document status
+- `docs/llm-wiki/project-profile.md` — what this project is and where its boundaries are
 
-Rules:
+Load the rest on demand — do not preload the whole wiki:
+
+- `docs/llm-wiki/README.md` — wiki operating rules
+- `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` — module layout and conventions
+- `docs/llm-wiki/DOMAIN_FEATURES.md` — user-facing features and evidence
+- Locate before reading: `llm-wiki search-docs "<query>"` or `llm-wiki prepare --task "<task>" --compact`, then read only the needed section with `llm-wiki get-doc <path> --section "<heading>" --strict-section`, or open the file directly when the task depends on all of it.
+
+Required rules:
 
 - Keep AI-created or AI-edited wiki documents as `needs_review`.
 - Use `verified` only after human review.
-- Append `docs/llm-wiki/log.md` when code or wiki docs change.
-- Do not record sensitive information.
+- If code or docs change, update related wiki docs and append `docs/llm-wiki/log.md`.
+- Do not record sensitive information in wiki docs, logs, reports, or prompts.
 - Preserve UTF-8 for Markdown and Korean text.
 
 <!-- /llm-wiki-adapter -->

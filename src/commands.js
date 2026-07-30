@@ -109,6 +109,7 @@ export async function doctor(options) {
   const packageReadiness = await inspectPackageReadiness(cwd);
   const blockVersions = wikiExists ? await analyzeBlockVersions(cwd) : null;
   const outputIgnored = isPathIgnored(cwd, "docs/llm-wiki");
+  const ciGovernance = await describeCiGovernance(cwd);
 
   const checks = [
     `node: ${process.version}`,
@@ -121,6 +122,7 @@ export async function doctor(options) {
       ? `wiki_block_version: current=${blockVersions.current}, gap=${blockVersionGapDocs(blockVersions).length}/${blockVersions.docs.length} docs${blockVersionGapDocs(blockVersions).length ? " (run migrate --dry-run)" : ""}`
       : `wiki_block_version: current=${CURRENT_WIKI_BLOCK_VERSION}`,
     `llm_wiki_config: ${configState}`,
+    `ci_governance: ${ciGovernance}`,
     `project_type: ${detection.projectType} (${detection.confidence})`,
     "utf8_policy: explicit read/write helpers enabled",
     "migration_apply: enabled (GATE_REVIEW Gate 8; preview-first, verified-preserving)"
@@ -137,6 +139,62 @@ export async function doctor(options) {
     detection,
     packageReadiness
   }, "LLM-WIKI Doctor", sections);
+}
+
+// doctor reported everything about the wiki and nothing about whether anything
+// ENFORCES it, so a repo could be fully set up with no gate wired and still look
+// healthy — the most common adoption gap. Read-only: it looks for an llm-wiki
+// invocation in a workflow or the pre-commit hook and names what it found. It
+// never writes and never changes the command's exit code.
+//
+// Matches an actual invocation, not a mention: the package/action name followed
+// by a pin, path, or space, or the `llm-wiki` binary followed by a command that
+// belongs in CI. A bare "llm-wiki" substring is NOT enough — a real pilot repo
+// had an unrelated `llm-wiki-review:` job name, and reporting that as governance
+// tells a team it is covered when nothing runs. Over-reporting is the dangerous
+// direction here, so this errs toward missing an exotic invocation.
+const CI_GOVERNANCE_INVOCATION =
+  /llm-wiki-governance[@/\s]|(?:^|[\s"'`(/])llm-wiki\s+(?:validate|validate-frontmatter|audit|impact|check-run|drift|stats|review|doctor|status|next|monorepo)\b/m;
+
+// Deliberately not a YAML parse (zero-dep; a matched invocation is the signal we
+// want). It only reads .git/hooks/pre-commit, so a repo that relocates hooks via
+// core.hooksPath reads as "none detected" — a false negative, the safe direction.
+async function describeCiGovernance(cwd) {
+  const found = [];
+
+  const workflowDir = path.join(cwd, ".github", "workflows");
+  if (await pathExists(workflowDir)) {
+    let entries = [];
+    try {
+      entries = await readdir(workflowDir, { withFileTypes: true });
+    } catch {
+      entries = [];
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() || !/\.ya?ml$/i.test(entry.name)) continue;
+      try {
+        if (CI_GOVERNANCE_INVOCATION.test(await readUtf8(path.join(workflowDir, entry.name)))) {
+          found.push(`.github/workflows/${entry.name}`);
+        }
+      } catch {
+        // An unreadable workflow is not a governance signal; skip it.
+      }
+    }
+  }
+
+  const hook = path.join(cwd, ".git", "hooks", "pre-commit");
+  if (await pathExists(hook)) {
+    try {
+      if (CI_GOVERNANCE_INVOCATION.test(await readUtf8(hook))) found.push(".git/hooks/pre-commit");
+    } catch {
+      // Same: unreadable hook, no signal.
+    }
+  }
+
+  if (found.length === 0) {
+    return "none detected — nothing runs llm-wiki in CI or on commit (see docs/OPERATIONS.md; `impact --since <base> --strict` is the check that fails when source changes without its wiki doc)";
+  }
+  return `${found.length} found (${found.join(", ")})`;
 }
 
 // Echoes the effective project config (llm-wiki.config.json) for doctor so the

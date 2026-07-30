@@ -2,8 +2,8 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-governance
 last_updated: 2026-07-30
@@ -154,6 +154,8 @@ contains_sensitive_info: false
 - `src/task-prompts.js#symbol:contextBudget` — 에이전트 문맥 예산의 단일 소스(순수·export, 1.27.1): 8개 태스크 프롬프트 + `handoff` + 생성 스킬이 공유. 읽기 방식만 좁히고 읽기 자체는 요구 유지(`task-path.js#mustReadSource`와 정합), 프로젝트 중립 문구.
 - `src/task-prompts.js#symbol:implementationPrompt` — 반복 write 워크플로의 3블록(Goal/Hard lines/Exit criteria) 프롬프트(1.27.2, 프롬프트 형태 규율): steering만 제거·계약/안전 줄 보존·자율성 문구 명시; 절차형 원샷은 체크리스트 유지. 형태·경계는 `tests/agent-token-discipline.test.js`가 고정.
 - `templates/adapters/claude-code/CLAUDE.md` — 어댑터 선적재 축소(마커 v1→v2, 1.27.2): `@`-include는 index+project-profile만, 무거운 문서는 on-demand retrieval 안내. 기존 어댑터 호환(`scanAdapters`는 index 진입점만 검사)·기존 파일 미덮어씀 불변.
+- `src/commands.js#symbol:describeCiGovernance` — `doctor`의 `ci_governance` 체크(미릴리스): `.github/workflows/*.yml|yaml`과 `.git/hooks/pre-commit`에서 실제 llm-wiki **호출**을 찾아 이름을 대거나 `none detected`를 낸다. read-only·exit code 무영향·zero-dep(YAML 파싱 없음). 단순 부분문자열이 아니라 호출 정규식(`CI_GOVERNANCE_INVOCATION`)을 쓴다 — 파일럿 저장소의 무관한 `llm-wiki-review:` **잡 이름**이 오탐으로 잡혀 "거버넌스 있음"으로 보고되던 사례 때문. 과다 보고가 위험한 방향(없는 게이트를 있다고 알림)이라 recall보다 precision을 택했고, `core.hooksPath`로 훅을 옮긴 저장소는 `none detected`로 나오는 false negative를 감수한다. 계약은 `tests/ci-governance-check.test.js`가 고정.
+- `templates/adapters/` 나머지 7종(codex·gemini·copilot·cursor·windsurf·jetbrains·antigravity) — 위 v2 형태를 어댑터 전체로 확장(미릴리스). 1.27.2에서는 claude-code 1종만 v2였고 나머지는 `wiki-block v1`(초기 커밋 이후 무변경)이라 선적재 축소가 Claude Code 사용자에게만 도달했다. 각 파일의 고유 형식은 보존한다(cursor `.mdc` frontmatter, jetbrains info-level 안내문, antigravity 마커/UTF-8 문구). 본문은 claude-code 참조 구현에 맞춰 영어로 통일했다 — 1.16.0 English-first 방향과 정합(이전엔 claude만 영어, 7종은 한국어). 마커는 어떤 코드도 파싱하지 않으므로(`scanAdapters`는 `docs/llm-wiki/index.md` 포함 여부만 검사) 호환은 불변.
 - `src/commands/skills.js#symbol:manifestContractSection` — run manifest 완성 계약 + payload 상한(1.27.1): 필드 집합이 계약 전부임을 선언, summary 두 문장 제한, diff·로그·테스트 출력 삽입 금지. `check-run`이 실제로 읽는 필드(`src/commands.js#symbol:checkRunCommand`)와 대조 검증.
 - `src/commands/skills.js#symbol:tokenBudgetField`·`tokenBudgetComment` — 생성 스킬 아티팩트의 `estimated-tokens` 토큰 예산 스탬프(chars/4 PROXY 인라인 명시; Claude/Codex frontmatter·Cursor/중립 HTML 코멘트; 마커 v3·구세대 `--refresh` 갱신)(미릴리스, ECC Technique Extraction).
 - `src/commands.js#symbol:reviewCommand` — needs_review 검토·승인 워크플로(Gate 20): 위험도 정렬 나열(list, read-only)과 `--approve`/`--approve-all --yes` 스탬프(`status: verified`+`reviewed_by`+`reviewed_at`만; 자동 승격 없음; blocking/구조적 finding 문서 거부; `drift --downgrade`의 역방향). reviewed_by는 `--reviewer`>config>`src/git.js#symbol:gitUserName`. 스탬프 seam `src/commands/fix-migrate.js#symbol:upsertFrontmatterScalar`, findings `review.reviewer_unresolved`/`review.confirmation_required`(`src/commands/findings.js`), 열거 `src/commands/retrieval.js`의 `loadContentDocs`/`applyFilters` 재사용. CLI/API 등록 + MCP는 LIST만. additive·read-only 기본·zero-dep(Gate 20, accepted 2026-07-24).
