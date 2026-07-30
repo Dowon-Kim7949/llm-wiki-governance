@@ -4,14 +4,14 @@ tags:
   - llm-wiki
   - benchmark
   - verified
-status: needs_review
+status: verified
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-07-29
+last_updated: 2026-07-30
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-27
+reviewed_at: 2026-07-30
 wiki_block_version: v1
 source_files:
   - bench/run.js
@@ -431,3 +431,4 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   **README 헤드라인 금지는 유지**한다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로
   강등한다 — 사람 검토 후 재승인 예정(허위 검토 메타 미기입).
 - 2026-07-22에 실측 후속 엄밀성 하네스를 **scaffolded**(미실행)했다: SDK 경로 드라이버 `bench/real/agent.js`(Anthropic SDK tool_runner; read/grep + 읽기 전용 `llm-wiki` retrieval 툴; env로 target-agnostic; 읽기 전용)가 서브에이전트 경로에 없던 **input/output 토큰 분리**를 제공한다. `bench/tasks-csap.json`(6 태스크 재현), `bench/real/package.json`(SDK를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변), `runner.js`의 `BENCH_TASKS` 오버라이드, `DRIVER_RUNBOOK.md` § SDK path 실행법을 함께 추가했다. `--dry`로 배선 검증(모델 호출·비용 0). **유료 실행과 교차 에이전트(GPT) 드라이버는 보류**(유저 지시). 커밋되는 재현 산출물은 tasks-csap.json·package.json·runner.js·runbook이며 `agent.js`는 설계상 git-ignore(SDK dep 격리)다. 에이전트 편집이라 `needs_review` 유지.
+- 2026-07-30에 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 2026-07-27 통제군(B2_empty) 실측·비준 이후 벤치 사실관계 변경이 없고, 1.27.1(문맥 규율)·1.27.2(프롬프트 형태 규율)는 벤치를 재실행하지 않았으며 이 문서도 그렇게 주장하지 않음을 확인했다. README 헤드라인 금지 유지.
