@@ -5,6 +5,41 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.27.2 — 2026-07-30
+
+프롬프트 형태 규율("unhobbling"). 생성되는 모든 지시 줄을 steering / 계약 / 안전으로 분류해
+**steering만** 제거한다 — 검증 기계(`validate`·`check-run`·테스트)가 이미 종료 시점에 계약을
+강제하기 때문이다. 신규 명령·옵션 없음; 동결된 프로그래매틱 `commands` 맵·`--format json`
+shape·frontmatter 계약·무의존성 불변식은 그대로다. 범위 결정은 `GATE_REVIEW.md`의
+*"Prompt-Shape Discipline (Unhobbling) Scope Decision"*에 기록했다.
+
+### Changed
+
+- **Claude Code 어댑터 템플릿이 위키 전체 선적재를 중단한다**(블록 마커 v1→v2).
+  `templates/adapters/claude-code/CLAUDE.md`가 `@`-include를 `docs/llm-wiki/index.md`와
+  `project-profile.md`만으로 줄이고, 무거운 문서(`README`·`ARCHITECTURE_CONVENTIONS`·
+  `DOMAIN_FEATURES`)는 retrieval 명령(`search-docs`·`prepare --task ... --compact`·
+  `get-doc --section --strict-section`) 안내와 함께 on-demand 목록으로 둔다. 이 저장소 기준
+  세션당 선적재가 ~30.3k → ~1.4k 토큰으로 줄어든다(`chars/4` 프록시 — 파일 크기 산술이지
+  실측 아님). 기존 어댑터 파일은 여전히 절대 덮어쓰지 않으며, `scanAdapters`는 `index.md`
+  진입점만 검사하므로 기존 어댑터는 계속 통과한다. 다른 어댑터 템플릿은 원래 `index.md`만
+  가리켜 변경이 없다.
+- **반복 write 워크플로가 목표/금지선/종료기준 프롬프트가 된다**(스킬 마커 v4→v5). 생성되는
+  `feature`/`fix`/`refactor`·`docs-sync` 프롬프트/스킬이 번호 단계 목록 대신 세 블록 —
+  *Goal*, *Hard lines(넘지 말 것)*, *Exit criteria(전부 충족해야 완료)* — 과 명시적 자율성
+  문구("그 사이를 어떻게 일할지는 에이전트의 몫")로 서술된다. 하중을 받는 줄은 전부 살아
+  있다: 진입점 읽기, 주장 전 실소스 검사, doc/code 충돌·범위 확대 시 STOP,
+  `needs_review`/verified 사람 전용, 민감정보 금지, 문맥 예산, append-only 로그, 테스트/검증
+  보고. 절차형 원샷 워크플로(`bootstrap` — `handoff`와 verbatim 공유 —, `onboard`,
+  `prepare`, `okf-extract`)는 의도적으로 체크리스트를 유지하며, 이 경계는 회귀 테스트로
+  고정된다. 관리·미수정 스킬 아티팩트는 평소처럼 `init --write --skills --refresh`로 갱신된다.
+
+### 정직성 노트
+
+프롬프트 재구성이 과제 성과에 주는 효과는 **미측정**이다(벤치 arm 미실행; 없이 배포하는 것은
+유지보수자의 결정). 선적재 수치는 `chars/4` 프록시 산술이다. README에 토큰/속도 헤드라인은
+싣지 않는다.
+
 ## 1.27.1 — 2026-07-29
 
 세 배치를 함께 배포한다: 2026-07-27 품질 감사의 잔여 항목, 외부 에이전트 하네스(ECC, MIT)를

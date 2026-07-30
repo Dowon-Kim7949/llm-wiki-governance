@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-07-24
+last_updated: 2026-07-30
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -491,6 +491,30 @@ global-reach 프로그램의 P3 도입 장벽 — 기존 대규모 문서셋의 
 **`chars/4` 프록시는 프록시로 남는다.** `estimated-tokens` 스탬프와 각 스킬 고정 본문의 약 30% 증가는
 프록시 수치이자 설계된 트레이드오프로 보고하며, 실제 다중 레포 / 다중 모델 측정이 뒷받침하기 전까지
 README에 토큰·속도 헤드라인은 배포하지 않는다.
+
+## 릴리스 계획 (post-1.27.1) — 프롬프트 형태 규율(unhobbling) — **1.27.2로 배포(2026-07-30)**
+
+신규 게이트 없음; 범위 결정은 `GATE_REVIEW.md`의 *"Prompt-Shape Discipline (Unhobbling) Scope
+Decision"*에 기록. 유지보수자가 검토한 지침(불필요 설정 삭제 / 목표·금지선·종료기준만 전달 /
+비법 대신 관찰-보완)을 하나의 분류 규칙으로 적용했다: 생성되는 모든 지시 줄을 steering / 계약 /
+안전으로 분류하고 **steering만** 삭제 가능 — `validate`/`check-run`/테스트가 종료 시점에 계약을
+강제하기 때문이다.
+
+- **어댑터 선적재 축소** — Claude Code 어댑터 템플릿(마커 v1→v2)이 `@`-include를
+  `index.md`+`project-profile.md`로 줄이고, 무거운 문서는 retrieval 명령으로 on-demand 로드.
+  이 저장소의 `CLAUDE.md`도 템플릿과 동일(선적재 ~30.3k → ~1.4k 토큰, `chars/4` 프록시).
+- **3블록 프롬프트** — `feature`/`fix`/`refactor`/`docs-sync` 프롬프트/스킬이 Goal / Hard
+  lines / Exit criteria를 서술하고 그 사이는 에이전트에 맡긴다(마커 v4→v5); 계약·안전 줄은
+  전부 보존·회귀 테스트로 고정. 절차형 원샷 워크플로는 의도적으로 체크리스트 유지.
+- **Review Notes 아카이브** — 무거운 위키 문서는 최근 5건만 유지하고 오래된 항목은
+  `docs/llm-wiki/REVIEW_HISTORY.md`로 원문 이전(승인 효력은 frontmatter가 정본; append-only
+  로그는 `log.md`가 소유).
+- **계측화된 삭제 기준** — steering 줄은 부재 시 발화하는 신호(`run.*`·validate/audit
+  findings·테스트 실패)가 없으면 삭제 후보; 프롬프트 표면 재검토는 캘린더가 아니라 모델
+  업그레이드/수 릴리스 주기.
+
+**미측정임을 명시한다.** 재구성이 과제 성과에 주는 효과는 벤치 arm이 없고, 선적재 수치는 파일
+크기 산술(`chars/4` 프록시)이다. README 헤드라인 금지는 유지된다.
 
 ## 비목표 (Non-Goals — 안전 원칙 불변)
 

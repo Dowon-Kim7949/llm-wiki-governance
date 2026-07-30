@@ -6,6 +6,43 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.27.2 — 2026-07-30
+
+Prompt-shape discipline ("unhobbling"). Applies a simple triage to every generated instruction
+line — steering / contract / safety — and removes only steering, on the grounds that the
+verification machinery (`validate`, `check-run`, tests) already enforces the contract at the exit.
+No new commands or options; the frozen programmatic `commands` map, the `--format json` shapes, the
+frontmatter contract, and the zero-dependency invariant are unchanged. Scope decision recorded in
+`GATE_REVIEW.md` as *"Prompt-Shape Discipline (Unhobbling) Scope Decision"*.
+
+### Changed
+
+- **The Claude Code adapter template stops preloading the whole wiki** (block marker v1→v2).
+  `templates/adapters/claude-code/CLAUDE.md` now `@`-includes only `docs/llm-wiki/index.md` and
+  `project-profile.md`, and lists the heavy documents (`README`, `ARCHITECTURE_CONVENTIONS`,
+  `DOMAIN_FEATURES`) as load-on-demand with the retrieval commands (`search-docs`,
+  `prepare --task ... --compact`, `get-doc --section --strict-section`). On this repository the
+  per-session preload drops from ~30.3k to ~1.4k tokens (`chars/4` proxy — file-size arithmetic,
+  not a measurement). Existing adapter files are never overwritten (unchanged contract), and
+  `scanAdapters` still only checks the `index.md` entrypoint, so existing adapters keep validating.
+  The other adapter templates already pointed only at `index.md` and are unchanged.
+- **The recurring write workflows are now goal / hard-lines / exit-criteria prompts** (skill marker
+  v4→v5). The generated `feature`/`fix`/`refactor` and `docs-sync` prompts and skills replace the
+  numbered step list with three blocks — *Goal*, *Hard lines (never cross these)*, *Exit criteria
+  (done means all of these)* — plus an explicit autonomy line ("how you work between those lines is
+  your call"). Every load-bearing line survives: read the entrypoint, inspect actual source before
+  claims, STOP on doc/code conflict or scope growth, `needs_review` / verified-is-human-only, no
+  sensitive values, the context budget, the append-only log, and test/validation reporting. The
+  one-shot procedural workflows (`bootstrap` — shared verbatim with `handoff` —, `onboard`,
+  `prepare`, `okf-extract`) deliberately keep their checklists; that boundary is regression-tested.
+  Managed, unmodified skill artifacts refresh via `init --write --skills --refresh` as usual.
+
+### Honesty note
+
+The effect of the prompt restructure on task outcomes is **unmeasured** (no bench arm was run;
+maintainer's call to ship without one). The preload figures are `chars/4` proxy arithmetic. No
+token or speed headline ships in the README.
+
 ## 1.27.1 — 2026-07-29
 
 Three batches land together: the remaining findings of the 2026-07-27 quality audit, four

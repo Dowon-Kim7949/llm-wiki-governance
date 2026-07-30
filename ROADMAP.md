@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-07-24
+last_updated: 2026-07-30
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -647,6 +647,32 @@ No new gate proposed this line; it closes work already scoped elsewhere.
 **The `chars/4` proxy remains a proxy.** The `estimated-tokens` stamps and the ~30% growth in each
 skill's fixed body are reported as proxy figures and a designed trade-off; no token or speed headline
 ships in the README until a real multi-repo / multi-model measurement supports it.
+
+## Release Plan (post-1.27.1) — Prompt-shape discipline (unhobbling) — **shipped as 1.27.2 (2026-07-30)**
+
+No new gate; the scope decision is recorded in `GATE_REVIEW.md` as *"Prompt-Shape Discipline
+(Unhobbling) Scope Decision"*. Applies the maintainer-reviewed guidance (delete unnecessary
+configuration; give the model goal / hard lines / exit criteria; observe-then-patch instead of
+magic) through one triage rule: classify every generated instruction line as steering / contract /
+safety, and only steering is deletable — because `validate` / `check-run` / tests enforce the
+contract at the exit.
+
+- **Adapter preload cut** — the Claude Code adapter template (marker v1→v2) `@`-includes only
+  `index.md` + `project-profile.md`; heavy docs become load-on-demand via the retrieval commands.
+  This repo's own `CLAUDE.md` matches the template (preload ~30.3k → ~1.4k tokens, `chars/4` proxy).
+- **Three-block prompts** — `feature`/`fix`/`refactor`/`docs-sync` prompts and skills state Goal /
+  Hard lines / Exit criteria and leave the in-between to the agent (marker v4→v5); every contract
+  and safety line is preserved and regression-tested. One-shot procedural workflows keep their
+  checklists on purpose.
+- **Review-notes archive** — the heavy wiki docs keep their 5 most recent review notes; older
+  entries move verbatim to `docs/llm-wiki/REVIEW_HISTORY.md` (frontmatter stays the approval
+  authority; `log.md` stays the append-only log).
+- **Instrumented deletion criteria** — a steering line is a deletion candidate when no signal
+  (`run.*`, validate/audit findings, test failures) fires in its absence; the prompt surface is
+  reviewed on model upgrades or every few releases, not on a calendar.
+
+**Unmeasured, and said so.** The restructure's effect on task outcomes has no bench arm; the
+preload figures are file-size arithmetic (`chars/4` proxy). The README headline ban stays.
 
 ## Non-Goals (unchanged safety ethos)
 
