@@ -1,15 +1,26 @@
-# Project Wiki <!-- wiki-block v1 -->
+# Project Wiki <!-- wiki-block v2 -->
 
-모든 개발 작업은 `docs/llm-wiki/index.md`에서 시작한다. 이 파일은 프로젝트 LLM-WIKI의 공식 진입점이며, 작업 전 참조 순서와 문서 상태를 안내한다.
+Read the project LLM-WIKI before making code or documentation changes.
 
-## 필수 운영 규칙
+Always read first (kept deliberately small):
 
-- 모든 wiki 문서는 YAML frontmatter를 가진다.
-- LLM이 새로 만들거나 수정한 문서의 `status`는 항상 `needs_review`로 둔다.
-- `verified`는 사람 검토가 끝난 뒤에만 사용할 수 있다.
-- 코드 또는 문서를 변경하면 관련 wiki와 `docs/llm-wiki/log.md`를 같은 작업 안에서 갱신한다.
-- 민감정보는 wiki에 기록하지 않는다.
-- Markdown 파일은 UTF-8로 읽고 쓴다.
+- `docs/llm-wiki/index.md` — entrypoint, read order, document status
+- `docs/llm-wiki/project-profile.md` — what this project is and where its boundaries are
+
+Load the rest on demand — do not preload the whole wiki:
+
+- `docs/llm-wiki/README.md` — wiki operating rules
+- `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` — module layout and conventions
+- `docs/llm-wiki/DOMAIN_FEATURES.md` — user-facing features and evidence
+- Locate before reading: `llm-wiki search-docs "<query>"` or `llm-wiki prepare --task "<task>" --compact`, then read only the needed section with `llm-wiki get-doc <path> --section "<heading>" --strict-section`, or open the file directly when the task depends on all of it.
+
+Required rules:
+
+- Keep LLM-created or LLM-edited wiki docs as `needs_review`.
+- Use `verified` only after human review.
+- If code or docs change, update related wiki docs and append `docs/llm-wiki/log.md`.
+- Do not record sensitive information in wiki docs, logs, reports, or prompts.
+- Read and write Markdown as UTF-8.
 
 ## Development Notes
 

@@ -2,8 +2,8 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: public_api
 project: llm-wiki-governance
 last_updated: 2026-07-30
@@ -70,7 +70,7 @@ contains_sensitive_info: false
 
 | 명령 | 목적 | 쓰기 |
 | --- | --- | --- |
-| `doctor` | 런타임/패키지 준비 상태, 초기화 여부, 안전 정책 신호 점검 | 없음 |
+| `doctor` | 런타임/패키지 준비 상태, 초기화 여부, 안전 정책 신호, CI 거버넌스 배선 여부(`ci_governance`) 점검 | 없음 |
 | `status` | 초기화 여부·문서 상태 카운트·구조/링크/adapter 상태 | 없음 |
 | `next` | audit 결과 기반 다음 조치 추천(advisory) | 없음 |
 | `explain <finding>` | finding 규칙 의미와 안전한 조치법 설명 | 없음 |

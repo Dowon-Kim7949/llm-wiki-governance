@@ -2,11 +2,11 @@
 title: Domain Overview
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: domain_overview
 project: llm-wiki-governance
-last_updated: 2026-07-22
+last_updated: 2026-07-30
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
@@ -37,7 +37,7 @@ contains_sensitive_info: false
 
 ## Domains
 
-- **Diagnose (진단)** — `doctor`, `status`: 런타임/패키지 준비 상태, 초기화 여부, 문서 상태 카운트. 근거: `src/commands.js` `doctor`, `statusCommand`.
+- **Diagnose (진단)** — `doctor`, `status`: 런타임/패키지 준비 상태, 초기화 여부, 문서 상태 카운트, CI 거버넌스 배선 여부. 근거: `src/commands.js` `doctor`, `statusCommand`, `describeCiGovernance`.
 - **Validate (검증)** — `validate`, `validate-frontmatter`, `audit`: 구조/frontmatter/source_files/related/evidence/link/adapter/enrichment 스캔. `validate`는 `audit` 커버리지를 재사용한다.
 - **Generate (생성)** — `init --dry-run|--write`, `quickstart`: 누락 문서와 선택 adapter 파일 생성. `--write` 명시 시에만 실제 쓰기.
 - **Guide (안내)** — `handoff`, `prompt`, `next`, `explain`: 에이전트 인수인계 프롬프트, 반복 작업 프롬프트, 다음 조치 추천, finding 규칙 설명.

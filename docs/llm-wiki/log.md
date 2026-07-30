@@ -24,6 +24,50 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-30 - 어댑터 v2 전면 적용 · 액션 CLI 버전 정정 · doctor CI 거버넌스 점검
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: 실사용 검증에서 확인된 P0 3건 처리)
+- scope: templates, ci, src, docs
+- changed:
+  - `templates/adapters/{codex,gemini,copilot,cursor,windsurf,jetbrains,antigravity}/*` (7종)
+  - `.github/actions/validate/action.yml`, `RELEASE_CHECKLIST.md`
+  - `src/commands.js` (`describeCiGovernance`, `CI_GOVERNANCE_INVOCATION`, `doctor`)
+  - `tests/ci-governance-check.test.js` (신규 7 케이스)
+  - docs/llm-wiki: `DOMAIN_FEATURES.md`, `PUBLIC_API.md`, `domains/00_overview.md`, `log.md`
+
+### 1) 어댑터 v2를 8종 전체로 확장
+
+- 1.27.2는 `templates/adapters/claude-code/CLAUDE.md` 1종만 `adapter v2`였고 나머지 7종은 `wiki-block v1`(패키지 초기 커밋 이후 무변경)이었다. **선적재 축소라는 릴리스 간판 기능이 Claude Code 사용자에게만 도달하고 있었다.**
+- 7종을 v2 형태로 재작성했다: 항상 읽는 문서 2개(index·project-profile) + 나머지는 `search-docs`/`prepare --compact`/`get-doc --section --strict-section` 온디맨드 안내.
+- 각 파일 고유 형식은 보존했다(cursor `.mdc` frontmatter, jetbrains info-level 안내문, antigravity 마커와 UTF-8/한국어 보존 문구, codex `# Project Agent Guide` 구조).
+- 본문 언어를 claude-code 참조 구현에 맞춰 영어로 통일했다. 이전 상태(claude만 영어, 7종은 한국어)는 1.16.0 English-first 방향과 어긋났다.
+- 호환성: 마커 문자열은 어떤 코드도 파싱하지 않는다(`src/commands/adapters.js#symbol:scanAdapters`는 `docs/llm-wiki/index.md` 포함 여부만 검사). 기존 어댑터 파일은 여전히 덮어쓰지 않는다.
+
+### 2) composite action의 CLI 버전 기본값 정정
+
+- `.github/actions/validate/action.yml`의 `version` 입력 기본값이 `"1.26"`이었다. 관례는 릴리스마다 `X.Y`를 올리는 것인데(1.25→1.26은 반영됨) 1.27 라인에서 누락됐다. 결과적으로 액션을 `@v1.27.2`로 핀한 소비자도 CLI는 1.26.x를 실행했다.
+- `"1.27"`로 정정하고, 왜 놓쳤는지에 대한 지속 대책으로 `RELEASE_CHECKLIST.md`의 Release Metadata에 이 값과 README의 액션 태그 참조를 확인하는 항목을 추가했다.
+
+### 3) `doctor`에 `ci_governance` 점검 추가
+
+- 위키가 완비돼 있어도 그것을 **강제하는 장치가 있는지**는 `doctor`가 전혀 보고하지 않았다. 가장 흔한 도입 공백인데 제품이 침묵하고 있었다.
+- `.github/workflows/*.yml|yaml`과 `.git/hooks/pre-commit`에서 실제 llm-wiki 호출을 찾아 파일명을 대거나, 없으면 `none detected`와 함께 누락을 실제로 막는 명령(`impact --since <base> --strict`)을 안내한다.
+- read-only이며 exit code에 영향을 주지 않는다. YAML 파싱 없이 정규식만 쓰므로 무의존성 유지.
+- **구현 중 교정:** 처음엔 `"llm-wiki"` 부분문자열로 검사했는데, 파일럿 저장소의 무관한 워크플로 잡 이름 `llm-wiki-review:`가 걸려 **거버넌스가 없는데 있다고 보고**했다. 없는 게이트를 있다고 알리는 것이 위험한 방향이므로 호출 정규식(`CI_GOVERNANCE_INVOCATION`)으로 좁혔다. 대신 `core.hooksPath`로 훅 위치를 옮긴 저장소는 `none detected`로 나오는 false negative를 감수한다(안전한 방향).
+
+### 검증
+
+- `npm test`: 393 tests / 393 pass / 0 fail (신규 `tests/ci-governance-check.test.js` 7 케이스 포함 — 오탐 방지 케이스를 명시적으로 고정).
+- `npm run lint`: 56 files parsed clean.
+- 실측: 이 저장소 `1 found (.github/workflows/ci.yml)`, 파일럿 3개 저장소 전부 `none detected`.
+
+### caveats
+
+- 미릴리스 변경이다. 릴리스 시 `action.yml`의 `version`을 그 릴리스의 `X.Y`로 다시 확인해야 한다.
+- 어댑터 언어를 영어로 통일한 것은 판단이 들어간 변경이다. 한국어 유지가 정책이라면 되돌려야 한다.
+- 이 항목의 편집 문서는 모두 `needs_review`다. 사람 검토 전 `verified` 승격 금지.
+
 ## 2026-07-30 - 브리핑 덱 슬라이드 11(타임라인) 표시 버그 수정
 
 - status: needs_review

@@ -76,6 +76,8 @@ Use this checklist before publishing `llm-wiki-governance@<version>` (the versio
 
 - [ ] Confirm package name is `llm-wiki-governance`.
 - [ ] Confirm `package.json` version matches the release tag.
+- [ ] Confirm `.github/actions/validate/action.yml` pins its `version` input default to this release's `X.Y`. It went stale across 1.27.0–1.27.2 (still `"1.26"`), so a consumer pinning the action by tag ran an older CLI than the tag promised.
+- [ ] Confirm `README.md` / `README.ko.md` reference the composite action at the current tag (`.github/actions/validate@v<version>`).
 - [ ] Confirm `CHANGELOG.md` records the release version at the top.
 - [ ] Confirm package has no `publishConfig` override.
 - [ ] Confirm package-level `.npmrc` is absent.
