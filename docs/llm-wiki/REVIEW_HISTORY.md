@@ -3,7 +3,7 @@ title: Review History
 tags:
   - llm-wiki
   - needs-review
-status: needs_review
+status: verified
 doc_type: review_history
 project: llm-wiki-governance
 last_updated: 2026-07-30
@@ -11,11 +11,15 @@ author: Claude Code
 last_edited_by: Claude Code
 wiki_block_version: v1
 source_files:
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
 related:
   - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
   - docs/llm-wiki/DOMAIN_FEATURES.md
 visibility: internal
 contains_sensitive_info: false
+reviewed_by: Dowon-Kim
+reviewed_at: 2026-07-30
 ---
 
 # Review History
@@ -69,6 +73,7 @@ contains_sensitive_info: false
 - 2026-07-24에 위 1.25.0(토큰 효율: 가장 싼 안전한 경로 + compact retrieval, 스킬 간소화·`--refresh`) 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-24)를 거쳐 `verified`로 재승인했다. Module Layout의 신규 leaf `task-path.js` 항목과 Evidence 포인터(`task-path.js#selectTaskPath`·`classifyTaskRisk`, `retrieval.js#selectSections`·`estimateTokens`·`clampText`) 서술이 현재 소스(HEAD 5fe3aff, npm dist-tags.latest=1.25.0)와 일치함을 확인했다(319 tests·validate --strict 0).
 - 2026-07-24에 Gate 20 read-only `review` 워크플로(GATE_REVIEW "Review Workflow Scope Decision", accepted 2026-07-24)를 반영했다: `src/commands.js`에 `reviewCommand`를 추가해 needs_review 백로그를 위험도 정렬해 나열(list, read-only)하고 `--approve`/`--approve-all --yes`로만 지정 문서에 `status: verified`+`reviewed_by`+`reviewed_at`을 스탬프한다(자동 승격 없음). 스탬프는 `drift --downgrade`의 역방향으로 `src/commands/fix-migrate.js`의 `splitFrontmatter`/`replaceFrontmatterScalar`/신규 `upsertFrontmatterScalar`(replace-or-append) seam을, 열거는 `src/commands/retrieval.js`의 `loadContentDocs`/`applyFilters`를, reviewer 해소는 `src/git.js#symbol:gitUserName`을, 신규 finding은 `src/commands/findings.js`의 `review.reviewer_unresolved`/`review.confirmation_required`를 재사용한다. config는 `src/config-file.js`에 `reviewer` 키를 additive로 추가(CLI `--reviewer`가 우선). `src/cli.js`·`src/index.js`에 `review`를 등록(동결 프로그래매틱 `commands` 맵에 additive), `src/mcp/tools.js`는 LIST 전용으로 노출(승격은 CLI 전용). additive·zero-dep·`1.0.0` 계약 불변. 319 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-27에 저장소 품질 감사에서 재현한 버그 2건을 고치고 반영했다. **(1) config BOM**: `src/config-file.js`의 config 읽기를 `readUtf8`→BOM 인식 `readTextAuto`로 바꿨다 — Windows PowerShell `Out-File -Encoding utf8`/구형 메모장이 붙이는 UTF-8 BOM 때문에 유효한 JSON인데도 `JSON.parse`가 던져 **모든 명령**이 `llm-wiki.config.json is not valid JSON`(exit 3)으로 죽었고, 메시지가 원인을 전혀 알려주지 않았다. 1.14.1이 detector 매니페스트에 이미 적용한 것과 같은 처방이며(UTF-16LE/BE도 함께 해결), 위키 문서 읽기는 mojibake 스캔 보존을 위해 raw `readUtf8` 그대로다. 진짜 malformed JSON은 여전히 exit 3. **(2) `--no-adapters` 순서 의존**: 플래그가 자기 분기에서 `options.agents`를 비우던 것을 선언적으로 바꿔(`options.noAdapters` 세우고 순회 후 일괄 적용) `--agent x --no-adapters`와 `--no-adapters --agent x`가 같은 결과를 내게 했고, 비워진 목록이 "미지정"으로 읽혀 config `agents`가 재주입되던 경로를 `mergeConfigIntoOptions`/`applyProjectConfig`의 `noAdapters` 가드로 막았다(이전엔 이 저장소에서 `init --agent claude --no-adapters`가 `agents=[codex,claude]`를 냈다 — 어댑터를 끄는 플래그가 지정하지도 않은 에이전트를 늘렸다). 영향 범위는 `--no-adapters`를 받는 `init` 뿐. `defaultOptions()`에 `noAdapters: false`를 additive로 추가했다(`normalizeOptions`가 spread하므로 프로그래매틱 API에도 자동 반영). 330 tests(신규 4)·lint OK·validate --strict 0. 신규 테스트 3건이 수정 전 소스에서 실패함을 stash로 확인했다(회귀를 실제로 잡는지 검증). 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-07-27에 위 버그 수정 2건 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27)를 거쳐 `verified`로 재승인했다. 서술을 소스와 대조 확인했다: `src/config-file.js`는 `readTextAuto`로 config를 읽고(BOM 인식), `src/cli.js`는 `--no-adapters`를 `options.noAdapters`로만 표시한 뒤 순회 종료 시점에 `agents`를 비우며, config 병합(`src/cli.js`·`src/config-file.js` 양쪽)이 그 플래그를 가드로 존중한다. 이 재승인은 1.26.3 릴리스의 일부다(330 tests·lint OK·validate --strict 0).
 
 ## Domain Features
 
@@ -119,3 +124,4 @@ contains_sensitive_info: false
 - 2026-07-24에 위 1.25.0 반영분("토큰 효율: 가장 싼 안전한 경로 + compact retrieval" 기능 + "스킬 생성" 기능의 런타임 도메인맵·`--refresh` 갱신)을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-24)를 거쳐 `verified`로 재승인했다. 기능 서술과 근거(`task-path.js`·`selectSections`·`prepareCommand`·`skills.js`)가 현재 소스(HEAD 5fe3aff, npm dist-tags.latest=1.25.0)와 일치함을 확인했다(319 tests·validate --strict 0).
 - 2026-07-24에 "needs_review 검토·승인 워크플로(`review`, Gate 20)" 기능을 추가했다(GATE_REVIEW "Review Workflow Scope Decision", accepted 2026-07-24; 외부 심층분석이 독립적으로 최상위 기능 격차로 지목): 읽기전용 `review`가 needs_review 백로그를 위험도 정렬해 나열하고 명시적 `--approve`/`--approve-all --yes`로만 `status: verified`+`reviewed_by`+`reviewed_at`을 스탬프한다(자동 승격 없음; blocking/구조적 finding 거부; reviewed_by 미해소 시 스탬프 거부). Features·Evidence에 등재하고 근거 `src/commands.js#symbol:reviewCommand`(+ `gitUserName`·`upsertFrontmatterScalar`·`review.*` findings·retrieval 열거 seam 재사용)를 달았다. 동결 프로그래매틱 `commands` 맵에 `review` additive 추가, MCP는 LIST만 노출. additive·read-only 기본·zero-dep·`1.0.0` 계약 불변. 319 tests·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-27에 저장소 품질 감사에서 재현한 버그 2건의 수정을 반영했다. "프로젝트 설정 일관화(config)" 기능에 **config 파일 BOM 인식**을 기술했다 — Windows에서 저장된 UTF-8 BOM(또는 UTF-16) `llm-wiki.config.json` 하나가 모든 명령을 `not valid JSON`(exit 3)으로 멈추던 것을, 1.14.1이 detector 매니페스트에 쓴 `readTextAuto`를 재사용해 고쳤다(위키 문서는 mojibake 스캔 보존을 위해 raw `readUtf8` 유지, malformed JSON은 여전히 exit 3). 함께 `init`의 `--no-adapters`를 선언적으로 만들어 플래그 순서와 무관하게 같은 결과를 내고 비워진 `agents`가 config에서 재주입되지 않게 했다(이전엔 `init --agent claude --no-adapters`가 config의 `[codex,claude]`를 되살렸다). 기능 목록 자체는 불변이고 사용자가 체감하는 동작 교정이라 이 노트로 갈음한다. 330 tests(신규 4; 3건은 수정 전 소스에서 실패함을 확인)·lint OK·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-07-27에 위 버그 수정 2건 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27)를 거쳐 `verified`로 재승인했다. "프로젝트 설정 일관화(config)" 기능의 BOM 인식 서술이 `src/config-file.js`의 `readTextAuto` 사용과, `--no-adapters` 교정 서술이 `src/cli.js`의 선언적 처리 + config 병합 가드와 일치함을 확인했다. 이 재승인은 1.26.3 릴리스의 일부다(330 tests·lint OK·validate --strict 0).

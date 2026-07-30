@@ -24,6 +24,21 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-30 - 1.27.2 사람 재승인 + 브리핑 덱 재정렬
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "1. 재승인 요청 2. 재승인 3. 재정렬 작업 진행하라" — 재승인은 유지보수자의 사람 결정을 세션이 집행)
+- scope: docs + team-materials
+- changed:
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md, REVIEW_HISTORY.md — `review --approve`(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30)로 verified 승격; 두 문서에 재승인 review note 추가(5건 상한 유지, 초과분 아카이브 이동)
+  - docs/llm-wiki/ 내 verified 11개 문서(EXAMPLES·index·profiles/library·project-profile·README·releases/v0.1.7·v0.1.8·RELEASE_FLOW·templates 2종·VERSIONING) — 1.27.1 릴리스일 소스 변경이 남긴 evidence.stale 13건을 reviewed_at 재기준선(2026-07-30)으로 해소(1.26.0 이후 52aa90b 선례; frontmatter reviewed_at만 변경)
+  - outputs/team-briefing/llm-wiki-briefing.html·SPEAKER_NOTES.md·README.md — 버전 라벨 v1.27.1→v1.27.2, 타임라인 1.27 항목에 unhobbling 추가; 공유 Artifact 동일 링크로 재게시
+- evidence:
+  - src/commands.js#symbol:reviewCommand — 승격 스탬프 seam(자동 승격 없음, blocking finding 거부)
+- summary: validate --strict 0 findings(exit 0). REVIEW_HISTORY에는 승격 전 source_files grounding(두 원문서)을 부여해 verified 후 evidence.ungrounded가 나지 않게 했다.
+- caveats:
+  - REVIEW_HISTORY는 아카이브 문서라 향후 이전 항목이 추가될 때마다 다시 needs_review로 강등된다(정상 동작).
+
 ## 2026-07-30 - 프롬프트 형태 규율(unhobbling) + 1.27.2 준비
 
 - status: needs_review

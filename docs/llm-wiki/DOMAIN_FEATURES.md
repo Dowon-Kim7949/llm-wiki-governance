@@ -3,14 +3,14 @@ title: Domain Features
 tags:
   - llm-wiki
   - verified
-status: needs_review
+status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
 last_updated: 2026-07-30
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-28
+reviewed_at: 2026-07-30
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -168,10 +168,10 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (45 entries, 2026-07-14 → 2026-07-27) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (46 entries, 2026-07-14 → 2026-07-27) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-07-27에 위 버그 수정 2건 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27)를 거쳐 `verified`로 재승인했다. "프로젝트 설정 일관화(config)" 기능의 BOM 인식 서술이 `src/config-file.js`의 `readTextAuto` 사용과, `--no-adapters` 교정 서술이 `src/cli.js`의 선언적 처리 + config 병합 가드와 일치함을 확인했다. 이 재승인은 1.26.3 릴리스의 일부다(330 tests·lint OK·validate --strict 0).
 - 2026-07-27(야간)에 같은 날 품질 감사의 잔여 3건을 반영했다(미릴리스, main 한정). "frontmatter 계약 검증" 기능에 **중복 키 감지**(`frontmatter.duplicate_key` warning, toggleable; last-wins 유지, 값 미노출, KO 지역화)를, "에이전트 네이티브(MCP 서버)" 기능에 **inputSchema 강제**(위반 호출을 실행 전에 `-32602`로 거부; stale type enum을 `KNOWN_TYPES` 단일 소스로 교정해 mobile/infra 포함; 순수 zero-dep `src/mcp/validate-args.js`)를, "프로젝트 자동 감지" 기능에 **`--type` 검증**(미지원 유형 usage error exit 3 — 작은 동작 변경: 이전엔 `--type banana`가 exit 0)을 기술하고 Evidence 3건을 추가했다. frontmatter negative-path 유닛 테스트 보강(소스 변경 없음)도 함께다. additive·zero-dep·1.0.0 계약 불변. 347 tests(신규 17; 수정 전 소스 실패를 stash로 확인)·lint OK·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-28에 ECC 기법 추출 배치 4건을 반영했다(유지보수자 지시, GATE_REVIEW "ECC Technique Extraction Scope Decision"; 미릴리스, main 한정). ECC 하네스를 의존성이 아니라 기법 소스로 차용해: "agent update runner" 기능에 **testEvidence(RED→GREEN) 증거 트레일**을, "스킬 생성" 기능에 **estimated-tokens 토큰 예산 스탬프**를, "config rule 토글" 기능에 **rulesPreset 명명 프리셋**(relaxed/standard/strict)을 확장 기술하고, 신규 기능 "**ECC 메모리 임포트(`import-memory`)**"를 등재했다(Evidence 4건 추가). 기각 2건(confidence 스코어링·instincts)은 GATE_REVIEW에 사유와 함께 기록. 4건 모두 워크트리 병렬 구현·직렬 통합·테스트 선실패(RED) 확인을 거쳤고, dogfood 스킬 24개를 `--refresh`로 재생성했다. 380 tests(신규 33)·lint OK(55 files)·validate --strict 0. additive·zero-dep·1.0.0 계약 불변(신규 명령·config 키는 additive; `--type` 검증 같은 동작 변경 없음). 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-29에 "에이전트 문맥 규율(1.27.1)" 기능을 등재했다(유지보수자 지시로 3건 전부 구축 후 1.27.1 배포). 유지보수자가 실제 실행 화면을 보고 "이런 표시가 토큰을 먹는가"를 물은 것이 출발점이며, 조사 결과 UI 렌더링은 무료이지만 그 안의 내용이 비용이고 세 지점이 무통제였다: `check-run`이 읽지도 않는 매니페스트 산문, 무제한 소스 읽기, 테스트 출력 전량. 세 레버(문맥 예산 단일 소스·매니페스트 payload 상한·조용한 리포터)를 모두 생성기 쪽에 넣어 이후 생성되는 모든 아티팩트가 상속하게 했다. 안전 불변식(읽기 방식만 좁히고 읽기 자체는 유지)과 대가(스킬 고정 본문 약 30% 증가, 프록시 수치)를 기능 서술에 함께 적었다 — 절감은 측정하지 않았으므로 주장하지 않는다. Evidence 2건 추가(`contextBudget`·`manifestContractSection`), dogfood 스킬 24개 재생성(마커 v4). 384 tests(신규 4, RED 선실패 확인)·lint OK(56 files). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-30에 "프롬프트 형태 규율 + 어댑터 선적재 축소(unhobbling, 1.27.2)" 기능을 등재했다(유지보수자 지시, GATE_REVIEW "Prompt-Shape Discipline" scope decision). Boris Cherny의 3원칙을 {steering/계약/안전} 분류로 적용: claude-code 어댑터 템플릿(마커 v1→v2)+이 저장소 `CLAUDE.md`의 `@`-include를 index+project-profile로 축소(선적재 ~30.3k→~1.4k 토큰, chars/4 프록시), `implementationPrompt`·`docsSyncPrompt`를 Goal/Hard lines/Exit criteria 3블록으로 재구성(계약·안전 줄 보존, steering만 제거; 마커 v4→v5, dogfood 스킬 12개 재생성; 절차형 원샷은 체크리스트 유지), 무거운 문서 Review Notes를 최근 5건 상한 + `REVIEW_HISTORY.md` 아카이브로 이전, 삭제 기준을 계측화(steering 줄은 부재 시 발화 신호 없으면 삭제 후보). 과제 성과 효과는 미측정(벤치 arm 미실행, 유지보수자 결정)이며 절감 헤드라인 금지 유지. Evidence 3건 추가(`implementationPrompt`·어댑터 템플릿·discipline 테스트). 386 tests(신규 2, RED 선실패 확인)·lint OK(56 files). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-07-30에 위 "프롬프트 형태 규율 + 어댑터 선적재 축소(unhobbling, 1.27.2)" 기능 등재분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 기능 서술과 근거(`src/task-prompts.js#symbol:implementationPrompt`·`templates/adapters/claude-code/CLAUDE.md`·`tests/agent-token-discipline.test.js`)가 현재 소스와 일치함을 확인했다(386 tests·lint OK). 이 재승인은 1.27.2 릴리스의 일부다.
