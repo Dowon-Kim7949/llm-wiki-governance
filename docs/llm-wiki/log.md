@@ -24,6 +24,180 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - fix: monorepo의 CLI 계약을 나머지 28개 명령과 균일화 (exit code 동작 변경, 유지보수자 승인)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 승인: 앞선 보고에서 exit code 계약 변경이라 승인이 필요하다고 알린 뒤 "작업 진행")
+- scope: code, test, docs
+- changed:
+  - `src/cli.js` (`COMMAND_OPTION_RULES`에 `monorepo` 추가, `COMMAND_HELP.monorepo` 신설)
+  - `tests/cli-monorepo-contract.test.js` (신규 6건)
+  - `GATE_REVIEW.md` ("Monorepo CLI Contract Parity" 결정 기록)
+  - docs/llm-wiki: `ARCHITECTURE_CONVENTIONS.md`(verified → **needs_review 강등**), `DOMAIN_FEATURES.md`, `PUBLIC_API.md`, `domains/00_overview.md`, `REVIEW_HISTORY.md`, `log.md`
+
+### 문제
+
+`monorepo`만 29개 명령 중 유일하게 `COMMAND_OPTION_RULES`와 `COMMAND_HELP` **양쪽**에서 빠져 있었다. `validateCommandOptions`는 등록되지 않은 명령에 대해 조기 return하므로 결과적으로 **아무 옵션이나 무검증 통과**했다. 실측: `monorepo --strict --write` → exit 0(다른 명령은 미지원 옵션에 exit 3), `help monorepo` → `Unknown help topic` exit 3.
+
+### 화이트리스트를 코드 경로로 정한 것이 핵심
+
+앞선 문서 작업에서 나는 이 표의 "옵션 없음"이 의도된 계약이라고 적었는데 **그것이 틀렸다**. `monorepoCommand`는 `{ ...options }`를 각 패키지 `validateCommand`로 전파한다.
+
+- `--strict`·`--agent`는 **실제로 적용된다** → 허용. 테스트로 재현 확인: workspaces 픽스처에서 `--strict` 없이 `evidence.missing` warning/`result: warning`, `--strict`로 error/`result: fail`.
+- `--type`·`--profile`은 `monorepoCommand`가 패키지별로 `type: null`·`profiles: []`로 덮어쓰므로 받아도 무효 → 거부.
+- 확정 집합: `cwd`·`strict`·`agent`·`format`·`out`.
+
+`COMMAND_HELP.monorepo`는 나머지 28개와 같은 형식(Usage/Purpose/Notes/JSON)으로 신설하고, JSON 최상위 키와 "workspaces 없는 저장소는 `workspaces_detected: 0`으로 pass" 한계를 함께 적었다.
+
+### 호출자에게 달라지는 것 (동작 변경)
+
+이전에 **exit 0으로 조용히 통과하며 옵션을 무시**했던 호출이 이제 exit 3이다: `monorepo --write`, `--apply`, `--type <t>`, `--profile <p>`, 그 외 허용 집합 밖 옵션. JSON shape·동결 `commands` 맵·MCP 툴·프로그래매틱 export는 불변이다.
+
+### 테스트 (RED → GREEN)
+
+신규 `tests/cli-monorepo-contract.test.js` 6건. 수정 전 실행 결과 **3 fail / 3 pass**:
+
+- RED: 미지원 옵션 거부(`got []`), `--type`/`--profile` 거부, `help monorepo` exit 0
+- 수정 전에도 통과(회귀 가드): 허용 옵션 무오류, **`--strict`가 패키지별 severity를 실제 승격**, findings의 패키지 경로 prefix
+
+수정 후 6/6 통과. 전체 **399 tests / 399 pass / 0 fail**(393 → 399), `npm run lint` OK(58 files).
+
+### 위키 갱신
+
+- `ARCHITECTURE_CONVENTIONS.md`: Conventions에 "허용 옵션 집합은 명령이 실제로 적용하는 옵션과 일치해야 하고, 신규 명령은 두 맵에 함께 등록한다"는 규칙 추가 + Evidence에 `COMMAND_OPTION_RULES` 추가. `src/cli.js`를 참조하는 `verified` 문서라 편집으로 **needs_review 강등**. Review Notes가 6건이 되어 가장 오래된 2026-07-27(야간) 항목을 `REVIEW_HISTORY.md`로 원문 이전(아카이브 41 → 42건).
+- `PUBLIC_API.md`: 같은 날 내가 적은 "옵션 없음이 의도된 계약" 서술을 **정정**하고, Stability의 "알려진 계약 이탈" 항목을 확정 계약 + 동작 변경 고지로 교체.
+- `DOMAIN_FEATURES.md`·`domains/00_overview.md`: monorepo 서술에 허용 옵션 계약 반영(같은 날 기존 2026-07-31 노트에 이어서 기록).
+
+### 검증
+
+- `npm test`: 399 / 399 pass / 0 fail. `npm run lint`: OK(58 files).
+- `validate --strict` / `validate-frontmatter` / `impact` / `check-run` 결과는 아래 caveats 참조.
+
+### caveats
+
+- **`impact`가 `verified` 문서 5건을 flag한다.** 처음 실행에서는 `src/cli.js`를 참조하는 `ARCHITECTURE_CONVENTIONS.md`·`EXAMPLES.md`·`index.md`·`profiles/library.md`·`project-profile.md` 5건이었다. `ARCHITECTURE_CONVENTIONS.md`를 갱신해 해소한 뒤 다시 실행하니 `GATE_REVIEW.md`를 참조하는 `BENCHMARK.md`가 새로 들어와 다시 5건이 됐다(내가 `GATE_REVIEW.md`에 결정을 기록했기 때문). 최종 목록: `BENCHMARK.md`·`EXAMPLES.md`·`index.md`·`profiles/library.md`·`project-profile.md`.
+- 이 5건 중 **내용 갱신이 필요한 것은 없다**(grep으로 확인): 네 문서는 `monorepo`·옵션 검증 표면을 서술하지 않고, `BENCHMARK.md`의 `GATE_REVIEW.md` 참조는 Gate 22(Impact Measurement) 섹션을 가리키는데 내가 추가한 것은 무관한 monorepo CLI 결정이다. 파일 단위 게이트의 과다 flag이며, **재기준선(`reviewed_at` 갱신)은 사람 검토 행위라 에이전트가 하지 않는다** — 유지보수자 판단으로 남긴다.
+- 편집한 위키 문서는 전부 `needs_review`다. 사람 검토 전 `verified` 승격 금지.
+- 미릴리스 변경이다(`main` 한정). 릴리스 시 CHANGELOG에 **동작 변경**으로 기재해야 한다 — additive-only 관례에서 벗어나는 항목이다.
+
+## 2026-07-31 - 승인 후보 문서의 사실 오류 수정 (문서 전용, 코드 변경 없음)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "오류에 대한 모든 수정작업")
+- scope: docs only (제품 코드·공개 계약·테스트 무변경)
+- changed:
+  - `docs/llm-wiki/domains/00_overview.md`
+  - `docs/llm-wiki/DOMAIN_FEATURES.md`
+  - `docs/llm-wiki/PUBLIC_API.md`
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (verified → **needs_review로 강등**)
+  - `docs/llm-wiki/log.md`
+
+### 배경
+
+`review` 백로그 35건 중 릴리스 노트 아카이브 31건을 제외한 실검토 대상 4건의 근거를 대조하다가 사실 오류를 찾았다. 대조 방법이 관건이었다: **문서를 읽는 것으로는 잡히지 않고 명령을 실행해야 드러나는 종류**였다. 직전 재승인 커밋 `95d2f16`이 "after fact-checking them"이었는데도 남아 있었다.
+
+### 1) `domains/00_overview.md` — 도메인 지도의 구조적 누락 교정
+
+- 이 지도는 1.7 시점의 8개 도메인에 멈춰 있었고, `src/cli.js#symbol:COMMANDS`와 대조하니 **명령 11개가 어느 도메인에도 없었다**: `impact`(1.17)·`check-run`(1.19)·retrieval 4종(1.18)·guided 2종(1.24)·`review`(1.26)·`monorepo`(1.10)·`import-memory`. 명령 표면의 38%가 빠진 지도였고, `onboard`가 신입에게 읽히는 문서라 영향이 컸다.
+- Change tracking·Retrieval·Review·Scale·Import 5개 도메인을 추가하고 `onboard`/`prepare`를 Guide에 합류시켰다. frontmatter `evidence` 7건·본문 Evidence 7건을 추가했고, 인용한 심볼 7개는 모두 소스에서 존재를 먼저 확인했다.
+- Agent-native 항목의 MCP 노출 툴 목록을 **10종 → 17종**으로 정정했다.
+
+### 2) `DOMAIN_FEATURES.md` — MCP 툴 목록 정정 + Review Notes 상한 준수
+
+- L80의 MCP 노출 툴 목록이 1.6 시점의 10종이었다. `MCP_TOOLS.length`를 직접 실행해 **17종**을 확인하고 정정했으며, 열거 대신 단일 소스 `TOOL_DEFS`를 함께 가리키도록 해 재발 여지를 줄였다.
+- 이 문서의 다른 서술은 이번 세션에 소스·실행으로 대조했고 부합했다(`--type` 검증 exit 3, `rulesPreset` 3종, `run.*` 6룰, `impact` diff 앵커, retrieval 4종, `review`의 blocked/error 거부, `import-memory` MCP 미노출).
+- Review Notes가 6건이 되어 이 문서 자체 규칙(최근 5건)을 위반하게 되므로, 가장 오래된 2026-07-27(야간) 항목을 `REVIEW_HISTORY.md`로 **원문 그대로** 옮기고 아카이브 포인터를 46 → 47건으로 갱신했다.
+
+### 3) `PUBLIC_API.md` — 사실 오류 3건 + 계약 이탈 2건 기록
+
+실측 exit code로 확인한 내용이다.
+
+- `prompt --task` 지원 값 6종 → **8종**(`onboard`/`prepare` 누락). CLI가 미지원 값에 스스로 출력하는 목록과 대조. `prompt --task banana` → **exit 2**(blocked).
+- Key Options의 `--cwd <path>`가 공통 옵션처럼 제시돼 있었으나 `explain`은 받지 않는다. `explain related.missing --cwd .` → **exit 3**. 예외와 단일 소스(`COMMAND_OPTION_RULES`)를 명시했다.
+- Stability에 **알려진 계약 이탈** 항목을 신설했다: `monorepo --strict --write` → **exit 0**(옵션 무검증, 29개 명령 중 유일), `help monorepo` → **exit 3**(help 토픽 누락). **문서를 실제 동작에 맞춰 정당화하지 않았다** — "옵션 없음"이 의도된 계약이고 그것을 강제하지 못하는 것이 결함이라고 적었다.
+- `monorepo` 행에 workspaces 없는 저장소에서 `pass`를 반환한다는 한계를 추가했다.
+- 이 문서의 MCP 툴 목록(17종)은 이미 정확했다.
+
+### 4) `REVIEW_HISTORY.md` — 아카이브 건수 오류 2건 교정 (신규 발견)
+
+- 이 문서의 두 섹션 헤더가 실제 항목 수와 어긋났다: Architecture Conventions **39 → 41건**, Domain Features **44 → 47건**(옮긴 1건 포함), 날짜 범위도 둘 다 `→ 2026-07-24`에서 `→ 2026-07-27`로 정정했다. 원문서들의 포인터(41건·46건)가 맞고 아카이브 자체의 헤더가 낡아 있었다.
+- 편집했으므로 규칙대로 `verified` → `needs_review`로 강등했다. 승인 대상이 3건에서 4건으로 늘었다.
+
+### 검증
+
+- `npm test`: 393 tests / 393 pass / 0 fail.
+- `npm run lint`: OK.
+- `validate --strict`: findings 1 — `GLOSSARY.md`의 기존 `evidence.stale`(커밋 `0b56a56`이 만든 것, 이번 작업과 무관). **편집한 4개 문서 귀속 finding은 0건**.
+- `validate-frontmatter`: 0 findings.
+- run manifest `.llm-wiki/runs/run-docs-sync-20260731T010000Z.json` → `check-run --run`으로 검증.
+
+### caveats
+
+- 코드는 한 줄도 바꾸지 않았다. `monorepo` 옵션 무검증과 `help monorepo`는 **코드 결함**이며, 수정하면 지금 exit 0으로 통과하는 호출이 exit 3으로 바뀌어 exit code 계약에 영향이 있다 — `AGENTS.md`가 명시적 사람 승인을 요구하는 범주라 **승인 대기**로 남기고 문서에는 결함으로 기록했다.
+- 편집한 4개 문서는 전부 `needs_review`다. 사람 검토 전 `verified` 승격 금지.
+- `ARCHITECTURE_CONVENTIONS.md`의 아카이브 포인터(41건, → 2026-07-27)는 실제와 일치해 손대지 않았다(`verified` 유지).
+
+## 2026-07-31 - 자기관리형 하네스 거버넌스 로드맵 신규 작성 (조사 + 문서, 코드 변경 없음)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: 자기관리형 AI 하네스 거버넌스 시스템의 목표와 로드맵 설계)
+- scope: docs only (제품 코드·공개 계약·테스트 무변경)
+- changed:
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (신규)
+  - `docs/llm-wiki/log.md`
+
+### 무엇을 했나
+
+- 읽기 전용 조사 후 통합 로드맵 문서 1건을 새로 썼다. 별도 ADR은 만들지 않았다 — 승인된 아키텍처 결정이 아직 없기 때문이다.
+- 조사 범위: 도구 실행 12종(`prepare --compact`·`onboard`·`stats`·`validate --strict`·`doctor`·`next`·`review`·`fix` dry-run·`check-run`·`impact --since --strict`·`monorepo`·`help`), 소스 36파일, 테스트 9파일 393건, CI/배포 아티팩트 4종, 그리고 **실사용 저장소 4곳**(`sinkholemonitor-frontend`·`roadmonitor-frontend`·`csap-roadkeeper-frontend`·`dotnine-project`).
+- 읽기 전용 하위 에이전트 5개를 병렬로 돌렸고, 결론은 전부 파일·명령 실행으로 재확인했다.
+
+### 조사에서 확인된 구조적 공백 5건
+
+1. **누락 차단 게이트가 어디에도 배선되지 않았다.** 누락을 exit code로 막는 명령은 `impact --since --strict` 하나인데, 배포 아티팩트 4종(훅 템플릿·composite action·워크플로 템플릿·자기 저장소 CI) 전부 검증 계열만 실행한다. 실사용 4곳 전부 `ci_governance: none detected`(4곳에서 직접 실행 확인).
+2. **낡음 판정이 `verified` 문서에만 걸린다.** `verifiedSourceAnchors`가 비-verified를 즉시 배제하고 `drift`·`impact`가 둘 다 여기서 나온다. 자기 저장소 51문서 중 35(69%)가 사각지대이며, `drift --downgrade`로 강등하면 감시 대상에서 빠지는 역설이 있다.
+3. **`verified` 승격 경계가 강제되지 않는다.** 파일럿에서 API 수정 커밋 하나가 도메인 문서를 `needs_review`에서 `verified`로 되돌렸고 리뷰 메타는 변경되지 않았다(git diff 확인). 매니페스트의 승격 기록 필드는 `check-run`이 읽지 않는다.
+4. **제안자와 검증자가 이미 같다.** 매니페스트는 에이전트 자기신고이고, 변경 소스를 빈 배열로 신고하면 문서 갭 규칙이 원리적으로 뜰 수 없다. Gate 26이 근거로 적은 diff 교차검증은 미구현이다.
+5. **하네스 자체가 거버넌스 밖에 있다.** 스캔 범위가 `docs/llm-wiki/` 하위뿐이라 루트 거버넌스 문서는 검사되지 않고, 어댑터에는 마커가 없어 갱신 경로 자체가 없으며, 길이 상한·중복·충돌 감지가 전무하고 되돌리기 인프라가 없다.
+
+### 새로 확인된 제품 결함 12건 (전부 소스 또는 실행으로 확인)
+
+- `monorepo`가 명령별 옵션 화이트리스트에 누락돼 아무 옵션이나 무검증 통과(29개 명령 중 유일)
+- `help monorepo`가 알 수 없는 토픽으로 exit 3
+- 공개 API 문서와 CLI help의 작업 프롬프트 목록이 6종(실제 8종)
+- `explain`이 `--cwd`를 받지 않는데 문서는 일반 옵션으로 제시
+- 기계적 자동수정 루프에 append-only 로그 가드가 없어 `fix --write`가 로그 frontmatter를 고칠 수 있음(현재 미발화, 잠재)
+- `review --approve`가 warning만 있는 문서를 승격 가능 — 보강되지 않은 스캐폴드도 verified 가능
+- `ci_governance`가 차단력 없는 호출을 게이트로 계수. 자기 저장소에서 스모크 테스트 호출을 게이트로 오인해 `1 found` 보고
+- `check-run`의 최신 매니페스트 선택이 파일명 사전순이라 task 이름이 타임스탬프를 지배. 실측으로 3일 전 매니페스트를 검사 중
+- `drift`가 CI 게이트로 사용 불가 — 드리프트 결과가 findings 배열이 아니라 별도 배열로 가고 result가 pass. 실측: findings 0건 / drift findings 1건
+- `impact --since <ref>`가 미추적 파일을 놓침(`--since` 없는 경로는 포함)
+- run manifest 위치 정책 불일치 — 자기 저장소는 gitignore, 파일럿은 30개 커밋됨
+- 벤치 하네스에 회귀 테스트 0건이고 프록시 arm이 배포 retrieval 코드를 호출하지 않음
+
+### 로드맵의 핵심 제안
+
+- Phase 0의 첫 항목을 기준선 측정이 아니라 **게이트 배선**으로 바꾼다. 지금 상태 위에 5개 층을 얹으면 전부 공허해진다.
+- Phase 1은 읽기 전용 `harness-health`와 `fleet` 롤업. Phase 2는 제안만, Phase 3에서 제안자와 검증자를 분리하고 평가 기준을 동결, Phase 4는 사람 승인 PR, Phase 5는 허용 목록 R1만(되돌리기 인프라 신설이 선행 조건), Phase 6은 지속형 운영.
+- 에이전트 계층은 별도 패키지로 분리할 것을 추천한다(무의존성·동결 계약·Node 하한·실패 격리·보안 경계 근거). 단 Phase 1~2의 대부분은 결정적 계산이라 핵심에 스캐너로 넣는다.
+
+### 검증
+
+- `npm test`: 393 tests / 393 pass / 0 fail(문서 전용 변경이라 무영향 확인).
+- `npm run lint`: OK, 57 files parsed clean.
+- `validate --strict`: result warning, findings 1, exit 1 — 직전 커밋 `0b56a56`이 만든 `GLOSSARY.md`의 실제 드리프트이며 이번 작업과 무관하다. **이번 신규 문서에서 발생한 finding은 0건**이다.
+- `validate-frontmatter`: files_checked 52, findings 0, result pass.
+- `stats`: documents 51 → 52, needs_review 35 → 36, verified 16 유지, health 77 유지.
+- run manifest `.llm-wiki/runs/run-docs-sync-20260731T000000Z.json` 작성 후 `check-run --run`으로 검증: **result warning, `run.unvalidated` 1건, exit 0**. 매니페스트의 `validated.result`를 정직하게 `warning`으로 적었기 때문이다(위 pre-existing 드리프트 때문에 위키 전체 result가 pass가 아니다). 계약에 "통과했으나 무관한 기존 경고가 있음"을 표현할 수단이 없다는 점이 이 실행으로 드러났고, 로드맵 Phase 3 항목으로 반영했다.
+
+### caveats
+
+- 신규 문서는 `needs_review`다. 사람 검토 전 `verified` 승격 금지.
+- 코드 변경은 하나도 하지 않았다. 로드맵은 제안이며 승인 전 구현하지 않는다.
+- orphan 총계는 35건으로 **변하지 않았다**(예상은 36건이었으나 실측이 달랐다). 신규 문서가 orphan에 들어간 대신, 신규 문서의 `related`가 `BENCHMARK.md`에 inbound 링크를 만들어 그 문서가 orphan에서 빠졌다. 신규 문서를 읽기 순서에 넣으려면 `verified`인 `index.md`를 편집해야 하고 그러면 규칙상 강등되므로, 사람 결정 사항으로 백로그에 남겼다.
+- `check-run`이 기본 선택으로는 이 매니페스트를 고르지 못한다(위 결함 8). `--run`으로 명시 지정해 검증했다 — 결함을 실사용으로 재확인한 셈이다.
+- 파일럿 조사는 `sinkholemonitor-frontend` 한 곳만 깊게 했다. 나머지 3곳의 마찰 이력은 미조사이며 로드맵에 근거 부족 항목으로 표기했다.
+
 ## 2026-07-30 - 어댑터 v2 전면 적용 · 액션 CLI 버전 정정 · doctor CI 거버넌스 점검
 
 - status: needs_review

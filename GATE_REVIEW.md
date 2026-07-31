@@ -1780,6 +1780,60 @@ Built 2026-07-30 under maintainer instruction; 386 tests (384→386, +2; prompt-
 RED-verified pre-implementation) · lint OK (56 files). Wiki docs updated and kept needs_review
 pending human re-approval. Ships as 1.27.2.
 
+## Monorepo CLI Contract Parity Scope Decision (maintainer-approved 2026-07-31 — built)
+
+### Why
+
+A documentation review found that `monorepo` was the only command missing from BOTH
+`COMMAND_OPTION_RULES` and `COMMAND_HELP` in `src/cli.js`. Because
+`validateCommandOptions` returns early for a command that has no entry, `monorepo`
+accepted **any** option without validation — `monorepo --strict --write` exited 0 while
+every other command rejects an unsupported option with exit 3 — and `help monorepo`
+answered `Unknown help topic` (exit 3), the only gap among the help topics.
+
+This is a **behavior change to exit codes**, which this project requires explicit human
+approval to make. The maintainer approved it on 2026-07-31 after the deviation was
+reported with reproduced exit codes.
+
+### Decisions
+
+- **The whitelist is derived from the code path, not from the documentation's guess.**
+  `monorepoCommand` spreads `{ ...options }` into each package's `validateCommand`, so
+  `strict` and `agent` genuinely apply per package (`--strict` escalates per-package
+  evidence severities from warning to error). The same function overrides `type: null`
+  and `profiles: []` per package, so `--type`/`--profile` would silently do nothing and
+  are therefore rejected. Accepted set: `cwd`, `strict`, `agent`, `format`, `out`.
+- **`COMMAND_HELP.monorepo` is added** in the same shape as the other 28 topics
+  (Usage / Purpose / Notes / JSON), including the JSON top-level keys and the honest
+  limit that a repository without workspaces reports `workspaces_detected: 0` and
+  `result: pass`.
+- **A convention is recorded** in `ARCHITECTURE_CONVENTIONS.md`: a command's allowed-option
+  set must match what the command actually applies, and a new command must be registered in
+  both maps — a missing `COMMAND_HELP` entry turns `help <command>` into exit 3.
+
+### What changes for a caller
+
+An invocation that previously exited 0 while silently ignoring the option now exits 3.
+Known cases: `monorepo --write`, `monorepo --apply`, `monorepo --type <t>`,
+`monorepo --profile <p>`, and any other option outside the accepted set. No JSON shape,
+frozen `commands` map entry, MCP tool, or programmatic export changes.
+
+### Invariants (all held)
+
+- Zero runtime dependencies; Node `>=18.18.0` floor unchanged.
+- `--format json` shape, `schemaVersion`, the frozen `commands` map, and the MCP tool set
+  are unchanged.
+- `monorepo` stays read-only; no write path was added.
+- Wiki documents edited for this change stay `needs_review`; no document was promoted.
+
+### Status
+
+Built 2026-07-31 under maintainer approval. 399 tests (393→399, +6 in the new
+`tests/cli-monorepo-contract.test.js`; 3 of them RED-verified against the pre-fix source,
+and the `--strict`-is-honored test passes both before and after as a regression guard) ·
+lint OK (58 files). Wiki docs updated in the same task and kept `needs_review` pending
+human re-approval. Unreleased — `main` only.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)
