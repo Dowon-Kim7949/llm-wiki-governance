@@ -1,4 +1,4 @@
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
@@ -855,6 +855,56 @@ export async function impactCommand(options) {
 // can catch a code change whose wiki update was skipped. Read-only: the only
 // write is the manifest the agent authors during its own run (never here).
 // Default warning; --strict (via the shared exit-code rule) fails CI.
+// Picks the genuinely newest run manifest under .llm-wiki/runs/.
+//
+// This used to be a filename sort taking the last entry, but manifests are named
+// run-<task>-<timestamp>.json, so the TASK NAME dominates the timestamp: "fix"
+// sorts after "feature" sorts after "docs-sync", and check-run happily inspected
+// a days-old manifest while calling it the latest. Measured in this repo: the
+// newest manifest was a 2026-07-30 feature run, and check-run selected a
+// 2026-07-27 fix run. That silently verifies the wrong run — the worst failure
+// mode for a completion gate, because it still reports pass.
+//
+// The manifest's own `timestamp` field is the authority: it survives a fresh
+// clone (unlike mtime) and does not depend on the filename convention, which is
+// not uniform in practice (some real manifests carry no parseable timestamp at
+// all). mtime is the fallback for manifests that omit the field, and the
+// filename breaks any remaining tie so selection stays deterministic.
+async function selectLatestManifest(runsDir) {
+  let names = [];
+  try {
+    names = (await readdir(runsDir)).filter((name) => name.endsWith(".json"));
+  } catch {
+    return null;
+  }
+  if (names.length === 0) return null;
+
+  const ranked = [];
+  for (const name of names) {
+    const abs = path.join(runsDir, name);
+    let stamp = null;
+    try {
+      const parsed = JSON.parse(await readUtf8(abs));
+      const value = Date.parse(parsed?.timestamp);
+      if (Number.isFinite(value)) stamp = value;
+    } catch {
+      // Unreadable or malformed JSON still competes on mtime; check-run reports
+      // run.manifest_invalid for it once selected, which is the honest outcome.
+    }
+    if (stamp === null) {
+      try {
+        stamp = (await stat(abs)).mtimeMs;
+      } catch {
+        stamp = 0;
+      }
+    }
+    ranked.push({ name, abs, stamp });
+  }
+
+  ranked.sort((a, b) => (a.stamp - b.stamp) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return ranked[ranked.length - 1].abs;
+}
+
 export async function checkRunCommand(options) {
   const cwd = options.cwd;
   const runsDir = path.join(cwd, ".llm-wiki", "runs");
@@ -863,13 +913,7 @@ export async function checkRunCommand(options) {
   if (typeof options.run === "string" && options.run.trim()) {
     manifestPath = path.isAbsolute(options.run) ? options.run : path.join(cwd, options.run);
   } else {
-    let entries = [];
-    try {
-      entries = (await readdir(runsDir)).filter((name) => name.endsWith(".json")).sort();
-    } catch {
-      entries = [];
-    }
-    if (entries.length > 0) manifestPath = path.join(runsDir, entries[entries.length - 1]);
+    manifestPath = await selectLatestManifest(runsDir);
   }
 
   if (!manifestPath) {
@@ -1134,8 +1178,16 @@ function reviewDocType(frontmatter) {
   return null;
 }
 
+// Findings that make a document unapprovable no matter what severity they carry.
+// Kept narrow on purpose: most warnings (stale evidence, a broken link) are things
+// a human reviewer can legitimately look at and sign off on, and blocking those
+// would make `review` useless. "This document is still a generated scaffold" is
+// different in kind — there is no content to have reviewed.
+const NEVER_APPROVE_RULES = new Set(["content.not_enriched"]);
+
 function buildReviewEntry(doc, findings) {
   const blocking = findings.filter((finding) => finding.severity === "blocked" || finding.severity === "error");
+  const unenriched = findings.filter((finding) => NEVER_APPROVE_RULES.has(finding.rule));
   const findingsBySeverity = {};
   for (const finding of findings) {
     findingsBySeverity[finding.severity] = (findingsBySeverity[finding.severity] ?? 0) + 1;
@@ -1154,7 +1206,8 @@ function buildReviewEntry(doc, findings) {
     lastUpdated: typeof doc.frontmatter.last_updated === "string" ? doc.frontmatter.last_updated : null,
     evidenceBacked,
     riskScore,
-    approvable: blocking.length === 0,
+    // Also gates --approve-all, so a bulk approval cannot sweep up scaffolds.
+    approvable: blocking.length === 0 && unenriched.length === 0,
     blockingFindings: blocking.map((finding) => `${finding.rule}: ${finding.message}`),
     findingCount: findings.length,
     findingsBySeverity,
@@ -1301,6 +1354,23 @@ async function approveReview(options, { cwd, reviewed, docs, findingsByPath, app
           .map((finding) => `${finding.rule}: ${finding.message}`);
     if (blocking.length > 0) {
       refused.push({ path: doc.path, reason: `blocking findings: ${blocking.join("; ")}` });
+      continue;
+    }
+    // Enrichment gate, deliberately separate from the blocked/error gate above.
+    // Matching on the RULE rather than the severity is the point: content.
+    // not_enriched is a warning, so the old gate promoted untouched scaffolds to
+    // verified and the safety line depended on whether the operator passed
+    // --strict. Severity is a reporting concern; "there is nothing here to have
+    // reviewed" is a fact about the document.
+    const unenriched = (findingsByPath.get(doc.path) ?? []).filter((finding) => NEVER_APPROVE_RULES.has(finding.rule));
+    if (unenriched.length > 0) {
+      blockedFindings.push({
+        severity: "error",
+        rule: "review.not_enriched",
+        path: doc.path,
+        message: "Refused: the document is still an unenriched scaffold. Enrich it from source evidence before approving it."
+      });
+      refused.push({ path: doc.path, reason: `unenriched scaffold: ${unenriched.map((finding) => finding.rule).join(", ")}` });
       continue;
     }
     const stamp = await stampVerified(cwd, doc.path, reviewer, today);

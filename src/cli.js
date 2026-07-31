@@ -7,6 +7,7 @@ import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { KNOWN_TYPES } from "./detector.js";
 import { startMcpServer } from "./mcp/server.js";
 import { SUPPORTED_LANGS } from "./i18n.js";
+import { SUPPORTED_TASK_PROMPTS } from "./task-prompts.js";
 
 const COMMANDS = new Map([
   ["doctor", doctor],
@@ -477,7 +478,12 @@ const COMMAND_OPTION_RULES = {
   monorepo: new Set(["cwd", "strict", "agent", "format", "out"]),
   status: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
   next: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
-  explain: new Set(["format", "out"]),
+  // `cwd` is earned, not cosmetic: main() runs applyProjectConfig(options) for
+  // every command, so --cwd selects the llm-wiki.config.json whose `lang` key
+  // decides which language explain renders its prose in. Without it the command
+  // could never be pointed at another project's config, while the docs presented
+  // --cwd as a general option — so the documented invocation exited 3.
+  explain: new Set(["cwd", "format", "out"]),
   audit: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
   quickstart: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "dry-run", "write", "format", "out"]),
   handoff: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
@@ -486,7 +492,11 @@ const COMMAND_OPTION_RULES = {
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
   "import-memory": new Set(["cwd", "dry-run", "apply", "format", "out"]),
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
-  drift: new Set(["cwd", "dry-run", "downgrade", "format", "out"]),
+  // `strict` is what turns drift from a report into a gate: evidence.stale is a
+  // warning, so --strict is the only way to make a drifted wiki fail a build.
+  // Without it the exit code stays 0, so adding drift to an existing pipeline
+  // cannot break that pipeline by accident.
+  drift: new Set(["cwd", "dry-run", "downgrade", "strict", "format", "out"]),
   impact: new Set(["cwd", "since", "strict", "format", "out"]),
   "check-run": new Set(["cwd", "run", "strict", "format", "out"]),
   review: new Set(["cwd", "approve", "approve-all", "yes", "reviewer", "include-sensitive", "format", "out"]),
@@ -501,6 +511,12 @@ const COMMAND_OPTION_RULES = {
   "release-notes": new Set(["cwd", "version", "since", "body-only", "format", "out"]),
   mcp: new Set(["cwd"])
 };
+
+// Rendered from SUPPORTED_TASK_PROMPTS rather than hand-listed, because the
+// hand-listed copy drifted: help advertised 6 of the 8 supported tasks (omitting
+// onboard and prepare) for as long as those presets have existed. Deriving it
+// means adding a preset updates the help text in the same edit.
+const PROMPT_TASK_CHOICES = [...SUPPORTED_TASK_PROMPTS].join("|");
 
 // Options accepted by every command (output-shaping, harmless where inert).
 // `--lang` selects the language for human-facing findings/explain prose (Gate 27).
@@ -627,7 +643,7 @@ Usage:
   llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki prompt --task <bootstrap|feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prompt --task <${PROMPT_TASK_CHOICES}> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
@@ -770,7 +786,7 @@ Purpose:
   prompt: `llm-wiki prompt
 
 Usage:
-  llm-wiki prompt --task <bootstrap|feature|fix|refactor|docs-sync|okf-extract> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prompt --task <${PROMPT_TASK_CHOICES}> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Prints a repeatable agent workflow prompt. Use bootstrap for the first-time enrichment of an init-generated wiki (shares its rules with handoff), feature, fix, or refactor for code-and-doc tasks, docs-sync for stale wiki updates without unrelated code edits, and okf-extract for prompt-assisted OKF v0.1 extraction.

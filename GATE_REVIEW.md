@@ -1834,6 +1834,90 @@ and the `--strict`-is-honored test passes both before and after as a regression 
 lint OK (58 files). Wiki docs updated in the same task and kept `needs_review` pending
 human re-approval. Unreleased — `main` only.
 
+## Phase 0 Defect Batch Scope Decision (maintainer-approved 2026-07-31 — built)
+
+### Why
+
+`HARNESS_GOVERNANCE_ROADMAP.md` (needs_review, 2026-07-31) concluded that this
+project's problem is not missing detection but **missing connection**: the tool can
+see more than it can say. The maintainer approved the "fix the defects first" slice
+of Phase 0 — the half that stays inside this repository and cannot turn an adopting
+project's CI red — and deferred the gate-wiring half (deployment artifacts,
+`ci_governance` redefinition) until the three unconfirmed pilot repos are checked.
+
+Every defect below was reproduced against shipped code before the fix, and each is
+pinned by a test in `tests/phase0-defects.test.js` (16 cases, RED before / GREEN
+after).
+
+### Decisions
+
+- **Severity is a reporting concern; approvability is a fact about the document.**
+  `review --approve` refused only `blocked`/`error` findings, but
+  `content.not_enriched` is a *warning* — so an untouched generated scaffold could be
+  stamped `verified`, and whether that happened depended on whether the operator
+  passed `--strict`. The new gate matches on the **rule id** (`NEVER_APPROVE_RULES`),
+  not the severity, and emits `review.not_enriched` (error) to say why. Kept
+  deliberately narrow to one rule: most warnings (stale evidence, a broken link) are
+  exactly what a human reviewer should look at and may legitimately sign off on, and
+  blocking those would make `review` useless. This also gates `--approve-all`
+  selection, so a bulk approval cannot sweep up scaffolds.
+- **A command that cannot fail is not a gate.** `drift` put stale evidence in a
+  separate `driftFindings` array and always reported `result: pass`, while
+  `exitCodeFor` reads `findings` — so it reported exit 0 on a wiki it had just proved
+  stale, and it rejected `--strict` outright. Stale findings now also go into
+  `findings`, `result` reflects them, and `--strict` is accepted. **The default exit
+  code stays 0**, so adding `drift` to an existing pipeline cannot break it; only
+  `--strict` makes it fail. `driftFindings` is retained so the JSON shape stays
+  additive.
+- **"Latest" must mean latest.** `check-run` selected the lexicographically last
+  manifest filename, and manifests are named `run-<task>-<timestamp>.json`, so the
+  **task name dominated the timestamp** (`fix` > `feature` > `docs-sync`). Measured in
+  this repo: the newest manifest was a 2026-07-30 `feature` run and `check-run`
+  inspected a 2026-07-27 `fix` run — verifying the wrong run while still reporting
+  pass, the worst failure mode for a completion gate. Selection now keys on the
+  manifest's own `timestamp` field (survives a fresh clone, unlike mtime, and does not
+  depend on a filename convention that is **not** uniform in practice), falling back
+  to mtime and then the filename.
+- **The `--since` baseline must include untracked files.** `changedFiles` added them
+  only on the no-ref path, so `impact --since <ref>` — the one command that can fail a
+  build on a missing doc update — went blind to a source file created but not yet
+  committed, which is exactly the state of a PR working tree. `--exclude-standard`
+  still keeps gitignored build output out.
+- **A preset named `strict` must escalate the rule that catches the omission.**
+  `RULE_PRESETS.strict` escalated seven presentational/metadata rules while
+  `impact.source_changed` — the only rule that detects "source moved, docs did not" —
+  stayed at warning. Now `error`. `relaxed` still lowers it to `info`.
+- **The append-only log is append-only for the tool too.** `runMechanicalRemediation`
+  had no guard, so `fix --write` was one qualifying plan away from rewriting
+  `log.md`'s frontmatter, and stubs conjured from links in historical entries would
+  resurrect deleted documents. `scans.js` already skipped it; this loop now does too.
+  Latent, not observed — no plan qualifies today.
+- **A whitelist entry must be earned by a code path.** `explain` now accepts `--cwd`
+  because `main()` runs `applyProjectConfig` for every command, so `--cwd` selects the
+  `llm-wiki.config.json` whose `lang` key decides the prose language — a real effect,
+  verified by test, not a documentation guess. This is the same lesson the Monorepo
+  gate above recorded.
+- **Derive help text from the source of truth.** `prompt --task` help listed 6 of the
+  8 supported presets (omitting `onboard`/`prepare`) and the
+  `prompt.unsupported_task` remediation listed 5. Both now render from
+  `SUPPORTED_TASK_PROMPTS`, so adding a preset updates them in the same edit.
+
+### Scope boundary
+
+Out of scope for this slice and still open: gate wiring into the four deployment
+artifacts, redefining `ci_governance` by blocking power, the run-manifest commit
+policy (reverses Gate 26 — human decision), `check-run` × `git diff` cross-checking
+(behavior change — human decision), and the bench-harness regression tests.
+
+### Verification
+
+415 tests pass (399 + 16 new). `lint` OK (59 files). `validate --strict` reports 5
+findings, all of them the pre-existing `evidence.stale` set awaiting a human
+re-baseline — unrelated to this batch. `validate-frontmatter` 0. `drift --strict` now
+exits 1 on this repo's 5 stale documents, and plain `drift` still exits 0. Wiki docs
+updated in the same task and kept `needs_review` pending human re-approval.
+Unreleased — branch only.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)
