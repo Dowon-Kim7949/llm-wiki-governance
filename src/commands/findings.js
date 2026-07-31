@@ -3,11 +3,15 @@
 // GATE_REVIEW stabilization). FINDING_EXPLANATIONS is the single registry of
 // rule metadata (used by `explain` and by applyRuleConfig's toggle guard); the
 // format* helpers and withText render the human-readable report sections. Self-
-// contained: depends only on config.js (JSON_SCHEMA_VERSION) and report.js
-// (renderTextReport); no back-dependency on commands.js.
+// contained: depends only on config.js (JSON_SCHEMA_VERSION), report.js
+// (renderTextReport), i18n.js, and task-prompts.js (the supported-task set, so
+// the prompt.unsupported_task remediation cannot drift from it); no
+// back-dependency on commands.js. task-prompts.js imports only i18n.js, so this
+// stays acyclic.
 import { JSON_SCHEMA_VERSION } from "../config.js";
 import { renderTextReport } from "../report.js";
 import { localizeFinding, normalizeLang } from "../i18n.js";
+import { SUPPORTED_TASK_PROMPTS } from "../task-prompts.js";
 
 export const FINDING_EXPLANATIONS = {
   "structure.wiki_missing": findingExplanation("structure", "warning", "The project does not have docs/llm-wiki/index.md, so LLM-WIKI is not initialized.", "Agents and CI need a stable wiki entrypoint before they can follow the documentation contract.", ["Ask whether the project should be initialized now.", "Run init --dry-run first when you want to preview files.", "Run init --write when you are ready to create the missing wiki structure."], ["llm-wiki init --dry-run", "llm-wiki init --write", "llm-wiki status"], ["structure.required_doc"]),
@@ -57,13 +61,14 @@ export const FINDING_EXPLANATIONS = {
   "sensitive.redacted": findingExplanation("sensitive", "blocked", "Sensitive-looking content was detected and redacted from the finding message.", "Reports and generated docs must not leak tokens, credentials, or secret-like values.", ["Inspect the reported file and line locally.", "Remove or rotate the sensitive value if it is real.", "Replace examples with clearly fake placeholder values."], ["llm-wiki audit"], []),
   "project.review_item": findingExplanation("project", "warning", "Project detection found something a human should review.", "Detection is conservative; explicit review keeps generated templates aligned with the real project.", ["Read the finding message.", "Pass --type or --profile explicitly when auto-detection is too weak.", "Run status or audit again."], ["llm-wiki status --type frontend", "llm-wiki audit --profile library"], []),
   "handoff.unsupported_agent": findingExplanation("handoff", "blocked", "The selected handoff target is not supported yet.", "Unsupported adapter contracts should not be treated as safe handoff instructions.", ["Use a supported agent such as codex or claude.", "Keep Antigravity blocked until its adapter contract is confirmed.", "Run handoff again with a supported agent."], ["llm-wiki handoff --agent codex", "llm-wiki handoff --agent claude"], ["adapter.missing"]),
-  "prompt.unsupported_task": findingExplanation("prompt", "blocked", "The requested task prompt preset is not supported.", "Prompt presets are intentionally narrow so task workflows stay predictable and reviewable.", ["Choose one of feature, fix, refactor, docs-sync, or okf-extract.", "Use help prompt to review supported task names.", "Add a new preset deliberately if the workflow becomes stable."], ["llm-wiki help prompt", "llm-wiki prompt --task feature"], []),
+  "prompt.unsupported_task": findingExplanation("prompt", "blocked", "The requested task prompt preset is not supported.", "Prompt presets are intentionally narrow so task workflows stay predictable and reviewable.", [`Choose one of ${[...SUPPORTED_TASK_PROMPTS].join(", ")}.`, "Use help prompt to review supported task names.", "Add a new preset deliberately if the workflow becomes stable."], ["llm-wiki help prompt", "llm-wiki prompt --task feature"], []),
   "import.source_missing": findingExplanation("import", "error", "The explicit import-memory source path does not exist.", "An importer must fail loudly on a mistyped source instead of silently importing nothing.", ["Check the path passed to import-memory.", "Point it at an ecc.memory.v1 file or a directory of them (ECC's project vault is .ecc/memory).", "Run import-memory again."], ["llm-wiki import-memory .ecc/memory"], ["import.invalid_memory"]),
   "import.invalid_memory": findingExplanation("import", "warning", "A file in the import source is not a parseable ecc.memory.v1 Markdown memory.", "Only well-formed memories are converted; malformed files are skipped and reported so nothing is imported half-parsed.", ["Open the reported file and check its YAML frontmatter.", "Memories follow the ecc.memory.v1 contract: frontmatter (schema/id/title/kind/...) plus a Markdown body.", "Fix or remove the file, then run import-memory again."], ["llm-wiki import-memory"], ["import.unsupported_schema"]),
   "import.unsupported_schema": findingExplanation("import", "warning", "A file parsed as frontmatter but does not declare schema: ecc.memory.v1.", "The importer is deliberately single-format: silently converting look-alike documents would produce wrong drafts.", ["Check the file's schema frontmatter field.", "Only ecc.memory.v1 memories are supported.", "Export or convert the document to ecc.memory.v1 first if it should be imported."], ["llm-wiki import-memory"], ["import.invalid_memory"]),
   "import.sensitive_skipped": findingExplanation("import", "warning", "A memory was skipped because it contains sensitive-looking values.", "Imported drafts land in docs/llm-wiki, which must never receive tokens, credentials, or secret-like values; the importer skips such memories entirely and reports counts only.", ["Inspect the reported memory file locally (the value is never shown in reports).", "Remove or rotate the sensitive value in the memory, or drop the memory.", "Run import-memory again; there is deliberately no force flag."], ["llm-wiki import-memory", "llm-wiki explain sensitive.redacted"], ["sensitive.redacted"]),
   "review.reviewer_unresolved": findingExplanation("review", "error", "review --approve could not resolve a reviewer name to stamp reviewed_by.", "Verified sign-off must record who approved the document; the tool refuses to write a blank or fabricated reviewer, so promotion is skipped until a name resolves.", ["Set your git identity with git config user.name \"Your Name\".", "Or add \"reviewer\": \"Your Name\" to llm-wiki.config.json.", "Or pass --reviewer \"Your Name\" to the command."], ["llm-wiki review --approve <path> --reviewer \"Your Name\""], ["frontmatter.verified_review"]),
-  "review.confirmation_required": findingExplanation("review", "error", "review --approve-all needs an explicit --yes confirmation.", "Bulk promotion to verified is a broad human sign-off across many documents, so it must be confirmed explicitly rather than triggered by a single flag.", ["Re-run with review --approve-all --yes to confirm promoting every approvable needs_review document.", "Or approve specific documents by name with review --approve <path>."], ["llm-wiki review --approve-all --yes", "llm-wiki review --approve <path>"], [])
+  "review.confirmation_required": findingExplanation("review", "error", "review --approve-all needs an explicit --yes confirmation.", "Bulk promotion to verified is a broad human sign-off across many documents, so it must be confirmed explicitly rather than triggered by a single flag.", ["Re-run with review --approve-all --yes to confirm promoting every approvable needs_review document.", "Or approve specific documents by name with review --approve <path>."], ["llm-wiki review --approve-all --yes", "llm-wiki review --approve <path>"], []),
+  "review.not_enriched": findingExplanation("review", "error", "review --approve refused a document that is still an unenriched scaffold.", "verified is the strongest claim this tool makes: a human read the document and it matches the source. A generated scaffold that still holds placeholder text contains nothing to have read, so promoting it manufactures the exact false confidence the status exists to prevent. The old gate refused only blocked/error findings, and content.not_enriched is a warning — so the safety line depended on whether the operator happened to pass --strict.", ["Enrich the document from source evidence first, then approve it.", "Run llm-wiki next to see which sections still hold generated placeholder text.", "Run llm-wiki handoff --agent codex or --agent claude to get an enrichment prompt."], ["llm-wiki next", "llm-wiki handoff --agent codex", "llm-wiki review --approve <path>"], ["content.not_enriched", "frontmatter.verified_review"])
 };
 
 export function findingExplanation(category, defaultSeverity, meaning, whyItMatters, remediation, commands, relatedRules) {
@@ -164,7 +169,13 @@ export const RULE_PRESETS = Object.freeze({
     "frontmatter.verified_review": "error",
     "frontmatter.duplicate_key": "error",
     "source_files.missing": "error",
-    "evidence.missing": "error"
+    "evidence.missing": "error",
+    // impact.source_changed is the ONLY rule that catches the omission this tool
+    // exists to catch — source moved, the documentation did not. Leaving it at
+    // warning meant the preset named "strict" escalated seven presentational and
+    // metadata rules while the one detection rule that can fail a build stayed
+    // advisory. `relaxed` still lowers it to info, so both ends stay coherent.
+    "impact.source_changed": "error"
   })
 });
 

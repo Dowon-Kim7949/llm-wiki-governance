@@ -24,6 +24,48 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - fix: Phase 0 결함 배치 8건 — 감지는 되는데 말하지 못하던 표면들 (유지보수자 승인)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 승인: 로드맵 Phase 0 중 "결함 수정 먼저" 조각을 선택)
+- scope: code, test, docs
+- changed:
+  - `src/cli.js` (`explain`에 `cwd` 허용, `drift`에 `strict` 허용, `prompt --task` 헬프를 `SUPPORTED_TASK_PROMPTS`에서 렌더)
+  - `src/commands.js` (`selectLatestManifest` 신설, `review`의 `NEVER_APPROVE_RULES` 게이트)
+  - `src/commands/findings.js` (`review.not_enriched` 규칙 신설, `strict` 프리셋에 `impact.source_changed: error`, `prompt.unsupported_task` 목록 파생)
+  - `src/commands/fix-migrate.js` (`drift`의 findings 배선·result 계산, `runMechanicalRemediation`의 append-only 로그 가드)
+  - `src/git.js` (`changedFiles`의 `--since` 경로에 미추적 파일 포함)
+  - `tests/phase0-defects.test.js` (신규 16건, 전건 RED 선실패 확인)
+  - `GATE_REVIEW.md` ("Phase 0 Defect Batch" 결정 기록)
+  - docs/llm-wiki: `PUBLIC_API.md`(verified → **needs_review 강등**), `DOMAIN_FEATURES.md`(강등), `log.md`
+
+### 문제
+
+로드맵의 결론은 "기능 부족이 아니라 **연결 부족**"이었다. 이 배치는 그 진단이 맞는 8곳을 고쳤다 — 도구가 **볼 수 있는 것보다 말할 수 있는 것이 적었다**.
+
+- `drift`는 드리프트를 별도 배열에 담고 `result: pass`·exit 0을 보고했으며 `--strict`를 거부했다 → 어떤 파이프라인도 드리프트로 실패할 수 없었다.
+- `review --approve`는 blocked/error만 거부했는데 `content.not_enriched`는 warning이라, 손대지 않은 스캐폴드가 `verified`가 될 수 있었고 안전선이 `--strict` 사용 여부에 의존했다.
+- `check-run`은 파일명 사전순 마지막을 "최신"으로 골랐고, 이름이 `run-<task>-<타임스탬프>`라 **task 이름이 타임스탬프를 이겼다**. 실측: 이 저장소에서 최신은 2026-07-30 feature 실행인데 2026-07-27 fix 실행을 검사하고도 pass를 보고했다.
+- `impact --since <ref>`는 미추적 파일을 놓쳤다 → 누락을 exit code로 막는 유일한 명령이 PR 작업트리라는 정확히 그 상황에서 눈이 멀었다.
+- `rulesPreset: strict`는 표현·메타데이터 규칙 7건을 올리면서 누락을 잡는 **유일한** 규칙(`impact.source_changed`)은 warning으로 뒀다.
+- `fix --write`에 append-only 로그 가드가 없었다(잠재; 오늘 해당 계획 0건).
+- `explain --cwd`가 exit 3(문서는 일반 옵션으로 제시), `prompt --task` 헬프가 8종 중 6종만 나열.
+
+### 판단
+
+- **severity는 보고의 문제, 승격 가능성은 문서의 사실이다.** 스캐폴드 거부는 severity가 아니라 규칙 id(`NEVER_APPROVE_RULES`)로 판정한다. 규칙 1건으로 좁게 유지했다 — 낡은 근거나 깨진 링크 같은 warning은 사람이 보고 승인해도 되는 것들이고, 그것까지 막으면 `review`가 무용해진다.
+- **기본 exit code는 전부 보존했다.** `drift`는 `--strict` 없이는 여전히 0이라 기존 파이프라인에 넣어도 깨지지 않는다.
+- **화이트리스트는 코드 경로로 정한다.** `explain --cwd`는 `main()`이 모든 명령에 `applyProjectConfig`를 적용해 설정의 `lang`이 산문 언어를 바꾸기 때문에 실효 옵션이며, 테스트로 확인했다(monorepo 배치에서 배운 교훈의 재적용).
+- **헬프는 단일 소스에서 파생한다.** 손으로 옮겨 적은 목록이 드리프트했으므로 `SUPPORTED_TASK_PROMPTS`에서 렌더한다.
+
+### 범위 밖 (여전히 열림)
+
+배포 아티팩트 4종 게이트 배선, `ci_governance` 차단력 기준 재정의, run manifest 커밋 정책(Gate 26 번복 — 사람 결정), `check-run` × `git diff` 교차검증(동작 변경 — 사람 결정), 벤치 하네스 회귀 테스트.
+
+### 검증
+
+415 tests 통과(399 + 신규 16, 전건 RED→GREEN 확인)·lint OK(59 files)·`validate --strict` 5(전부 기존 `evidence.stale` 재기준선 대기분으로 이 배치와 무관)·`validate-frontmatter` 0. `drift --strict`가 이 저장소의 5건에 대해 exit 1, 평시 `drift`는 exit 0.
+
 ## 2026-07-31 - docs: 6건 승인 스탬프 반영 + GLOSSARY의 config 키 목록 오류 수정
 
 - status: needs_review

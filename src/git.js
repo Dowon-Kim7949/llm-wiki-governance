@@ -68,11 +68,15 @@ export function gitUserName(cwd) {
 // Best-effort: throws only if git itself fails; callers treat that as "unknown".
 export function changedFiles(cwd, sinceRef) {
   const toLines = (out) => out.split("\n").map((line) => line.trim()).filter(Boolean);
+  // Untracked files belong in BOTH views. They were previously added only to the
+  // no-ref branch, so `impact --since <ref>` went blind to a source file that had
+  // been created but not yet committed — exactly the state a PR working tree is
+  // in — and the one command that can fail a build on a missing doc update
+  // reported nothing to update. `--exclude-standard` keeps gitignored build
+  // output and local scratch files out of the comparison.
+  const untracked = toLines(runGit(cwd, ["ls-files", "--others", "--exclude-standard"]));
   const changed = sinceRef
-    ? toLines(runGit(cwd, ["diff", "--name-only", sinceRef]))
-    : [
-        ...toLines(runGit(cwd, ["diff", "--name-only", "HEAD"])),
-        ...toLines(runGit(cwd, ["ls-files", "--others", "--exclude-standard"]))
-      ];
+    ? [...toLines(runGit(cwd, ["diff", "--name-only", sinceRef])), ...untracked]
+    : [...toLines(runGit(cwd, ["diff", "--name-only", "HEAD"])), ...untracked];
   return [...new Set(changed)];
 }

@@ -171,6 +171,19 @@ export async function runMechanicalRemediation(cwd, { write, upgradeBlockVersion
 
   for (const file of files) {
     const rel = toPosix(path.relative(cwd, file));
+
+    // The change log is append-only by contract, so no mechanical rewrite may
+    // touch it — not its frontmatter, and not stubs conjured from links in
+    // historical entries (a since-deleted document referenced by a 2026-07 entry
+    // should stay deleted). scans.js already skips it for the same reason; this
+    // loop did not, so `fix --write` was one qualifying plan away from editing
+    // the one file the project promises never to edit. No plan qualifies today,
+    // which is why this never fired — a latent breach, not an observed one.
+    if (isAppendOnlyLog(rel)) {
+      skipped.push(`${rel}: append-only change log; ${label} never rewrites it.`);
+      continue;
+    }
+
     const original = await readUtf8(file);
 
     if (findMojibakeIndicators(original).length > 0) {
@@ -468,7 +481,19 @@ export async function driftCommand(options) {
     changeList.push(`${rel}: downgrade verified → needs_review; refresh last_updated.`);
   }
 
-  const result = blockedFindings.some((finding) => finding.severity === "blocked") ? "blocked" : "pass";
+  // Stale evidence has to live in `findings`, not only in the separate
+  // `driftFindings` array: exitCodeFor reads `findings`, so as long as drift kept
+  // them apart it reported result "pass" with exit 0 on a wiki it had just proved
+  // stale — and it rejected --strict, so no pipeline could ever fail on drift.
+  // Keeping `driftFindings` too preserves the existing JSON shape for consumers.
+  const findings = [...blockedFindings, ...driftFindings];
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
   const summary = [
     `mode: ${downgrade ? "downgrade" : "report"}`,
     `drifted_verified_docs: ${driftedDocs.length}`,
@@ -486,7 +511,7 @@ export async function driftCommand(options) {
     applied,
     planned,
     skipped,
-    findings: blockedFindings
+    findings
   }, "LLM-WIKI Drift", [
     { title: "Summary", body: summary },
     { title: "Drift (evidence.stale)", body: driftFindings.map(formatFinding) },
