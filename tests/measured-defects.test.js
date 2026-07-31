@@ -145,6 +145,25 @@ test("syncStatusTag never invents a status tag and never touches other keys", ()
   assert.equal(syncStatusTag(looksLikeATag, "verified"), looksLikeATag, "only the tags block is in range");
 });
 
+// CodeQL caught this on PR #1 (js/polynomial-redos, high): the inline-list
+// patterns had `[^\r\n]*` before `\[`, so the prefix and the opening bracket were
+// ambiguous and input like `tags:[[[[…` backtracked quadratically. Document bodies
+// are exactly the uncontrolled input this helper runs on.
+// The input has to carry a real status tag, otherwise the rewrite is a no-op and
+// the dedupe pass — where the vulnerable pattern lives — is never reached. Measured
+// against the pre-fix pattern: 25k brackets 350ms, 50k 1692ms (quadratic), versus
+// under a millisecond after. The bound sits far below the old cost and far above
+// the new one, so a slow CI runner cannot flake it.
+test("syncStatusTag stays linear on adversarial bracket input", () => {
+  const hostile = `tags:${"[".repeat(50_000)}\n  - needs-review`;
+  const started = process.hrtime.bigint();
+  const updated = syncStatusTag(hostile, "verified");
+  const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+
+  assert.ok(updated.endsWith("  - verified"), "guard: the rewrite must run, or the dedupe pass is skipped");
+  assert.ok(elapsedMs < 500, `took ${Math.round(elapsedMs)}ms; the quadratic backtracking is back`);
+});
+
 test("review --approve syncs the status tag with the status field", async () => {
   const { cwd, wiki } = await makeWiki(docWithDuplicateKey().replace("last_edited_by: claude\n", ""));
   const result = await reviewCommand(normalizeOptions({

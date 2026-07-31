@@ -2059,12 +2059,29 @@ backlog 13 and belongs with the Phase 5 prerequisite. **N-5** (`reviewed_by` acc
 three spellings of one person) and **N-6** (`check-run` picks its manifest from the
 working tree, so a local dry run does not predict CI) are queued behind them.
 
+### The fix needed a fix: CodeQL caught a ReDoS in the new helper
+
+`syncStatusTag`'s two inline-list patterns wrote `[^\r\n]*` before `\[`, which makes
+the prefix and the opening bracket ambiguous — quadratic backtracking on input like
+`tags:[[[[…`, and document bodies are exactly the uncontrolled input this helper runs
+on. CodeQL flagged it as `js/polynomial-redos` (high) on PR #1; the local gates could
+not have. Excluding `[` from the prefix class gives the bracket one possible position
+and makes the match linear. Measured against the pre-fix pattern: 25k brackets 350ms,
+50k 1692ms, versus under a millisecond after.
+
+The regression test for it was **wrong on the first try and the measurement caught
+that too**: the first hostile input carried no status tag, so the rewrite was a no-op
+and the dedupe pass — where the vulnerable pattern actually lives — was never reached.
+It passed against the unfixed source, which is the definition of a vacuous guard. The
+committed version is confirmed RED against the unfixed source and GREEN with the fix.
+
 ### Verification
 
-437 tests pass (429 + 8 new, RED first). `validate --strict` 0, `validate-frontmatter`
-0, `drift` 0, and `impact --since origin/main --strict` 0 — run against `origin/main`
-rather than local `main`, which is the trap PR #1 taught. Wiki docs updated in the
-same task and kept `needs_review` pending human re-approval. Unreleased — branch only.
+438 tests pass (429 + 9 new, RED first). `lint` OK (61 files). `validate --strict` 0,
+`validate-frontmatter` 0, `drift` 0, and `impact --since origin/main --strict` 0 — run
+against `origin/main` rather than local `main`, which is the trap PR #1 taught. Wiki
+docs updated in the same task and kept `needs_review` pending human re-approval.
+Unreleased — branch only.
 
 ## Release Caveats
 
