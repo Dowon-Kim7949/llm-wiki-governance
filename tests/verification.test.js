@@ -1246,9 +1246,13 @@ test("strict validation requires verified review metadata", async () => {
   const strictFrontmatter = await validateFrontmatterCommand({ cwd, type: null, format: "text", strict: true });
   const strictValidation = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: true });
 
-  assert.equal(standardFrontmatter.result, undefined);
+  // These two assertions used to pin the old two-state ladder (fail/pass) and a
+  // payload with no `result` at all. Both changed on purpose in the 2026-07-31
+  // measured-defect batch (N-3): a warning-only run must not read as `pass` while
+  // --strict exits 1 on the same findings. See tests/measured-defects.test.js.
+  assert.equal(standardFrontmatter.result, "warning");
   assert.equal(standardFrontmatter.findings.find((finding) => finding.rule === "frontmatter.verified_review")?.severity, "warning");
-  assert.ok(standardFrontmatter.summary.includes("result: pass"));
+  assert.ok(standardFrontmatter.summary.includes("result: warning"));
   assert.equal(strictFrontmatter.findings.find((finding) => finding.rule === "frontmatter.verified_review")?.severity, "error");
   assert.equal(strictFrontmatter.findingSummary.byCategory.frontmatter, 1);
   assert.equal(strictFrontmatter.findingSummary.bySeverity.error, 1);

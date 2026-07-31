@@ -579,12 +579,14 @@ flowchart LR
 | --- | --- | --- | --- |
 | N-1 | **허브 파일 팬아웃** — `impact.source_changed`가 파일 단위라 배럴 파일 1개 변경이 문서 9~10건을 동시에 발화 | csap 10건 중 9건이 `src/utils/api/index.ts`; roadmonitor `545ea15` 1파일 → 10건 | 설계 |
 | N-2 | **`scanAdapters`가 어댑터 마커 버전을 읽지 않음** → v1 어댑터가 audit에서 영구 clean | 도입 3곳 중 2곳이 v1인데 finding 0 | 결함 |
-| N-3 | **`validate-frontmatter --strict`의 보고와 종료코드 불일치** — 본문은 `result: pass`를 출력하는데 exit 1 | dotnine 실측 | 결함 |
-| N-4 | **`review --approve`의 태그 미동기화가 도입처에서 실증됨** — dotnine의 `verified` 12건 **전부**가 `tags`에 `needs-review`를 그대로 달고 있음 | dotnine 12/22 문서 | 결함(기존 기록의 실증) |
+| N-3 | ~~**`validate-frontmatter --strict`의 보고와 종료코드 불일치** — 본문은 `result: pass`를 출력하는데 exit 1~~ **→ 수정됨(2026-07-31)**: 다른 명령과 같은 4단계 사다리로 통일 | dotnine 실측 | 결함 |
+| N-4 | ~~**`review --approve`의 태그 미동기화가 도입처에서 실증됨** — dotnine의 `verified` 12건 **전부**가 `tags`에 `needs-review`를 그대로 달고 있음~~ **→ 수정됨(2026-07-31)**: `review --approve`와 `drift --downgrade` 양쪽이 `syncStatusTag`로 상태 태그를 맞춘다(강등 경로에 따른 비대칭 해소) | dotnine 12/22 문서 | 결함(기존 기록의 실증) |
 | N-5 | **`reviewed_by` 표기가 검증되지 않아 세 갈래로 갈림** — 같은 사람이 `Dowon-Kim`·`Dowon-Kim7949`·`KIM DOWON`으로 스탬프됨 | 3개 저장소 프론트매터 | 결함 |
 | N-6 | **`check-run`의 매니페스트 선택이 워킹트리에 의존** — csap 로컬은 **미추적** 최신 매니페스트로 초록, CI 클린 체크아웃은 최신 tracked를 집어 빨간불 | csap 실측 | 설계 |
 
 N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는** 같은 부류이며, PR #1에서 배운 "기준 ref를 틀리면 통과했다고 착각한다"와 함께 **로컬↔CI 재현성**이라는 하나의 주제를 이룹니다.
+
+**N-3·N-4는 같은 날 수정했습니다**(GATE_REVIEW "Measured Defect Batch", `tests/measured-defects.test.js` 8건). 나머지 4건은 열려 있고, 그중 **N-1이 사람 결정 21번을 실질적으로 막고 있습니다** — 완화안이 전부 미설계라 여기서 임의로 하나를 고르는 것보다 열어 두는 편이 낫습니다.
 
 **남은 Phase 0 항목**: 사람 승인 3건(`impact --strict` 기본화·run manifest 커밋 정책·어댑터 본문 언어 정책). `needs_review` 승인 10건은 2026-07-31에 유지보수자가 `review --approve`로 직접 처리했습니다(11건 승인, 거부 0, finding 0) — `verified` 20/52(38%), `validate --strict` finding 0으로 회복됐습니다.
 
@@ -985,8 +987,8 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 
 ### 이번 측정으로 새로 올라온 항목 (2026-07-31)
 
-37. **N-3 `validate-frontmatter --strict`의 `result`/exit 불일치 수정** — 본문은 `pass`인데 exit 1. CI 로그를 읽는 사람이 오독합니다. 지금 해야 함
-38. **N-4 `review --approve`의 `tags` 동기화** — 도입처 한 곳에서 `verified` 12건 전부가 `needs-review` 태그를 달고 있습니다. 지금 해야 함
+37. ~~**N-3 `validate-frontmatter --strict`의 `result`/exit 불일치 수정**~~ — **2026-07-31 완료.** 4단계 사다리로 통일하고 JSON에 `result`를 additive로 실었습니다. 보고 값의 변경이라 GATE_REVIEW "Measured Defect Batch"에 계약 변경으로 기록했습니다
+38. ~~**N-4 `review --approve`의 `tags` 동기화**~~ — **2026-07-31 완료.** `review --approve`와 `drift --downgrade` 양쪽이 같은 `syncStatusTag`를 호출합니다. 이미 있는 상태 태그만 고치고 없으면 만들지 않으며, 승격 게이트는 손대지 않았습니다
 39. **N-5 `reviewed_by` 표기 검증 또는 정규화** — 같은 사람이 `Dowon-Kim`·`Dowon-Kim7949`·`KIM DOWON` 세 이름으로 스탬프됩니다. 다음 단계
 40. **N-1 허브 파일 팬아웃 완화 설계** — 배럴 파일 1개 변경이 문서 10건을 발화시킵니다. **사람 결정 21번(`impact --strict` 기본화)의 실질 선행 조건**이며, 완화안이 전부 미설계라 근거가 더 필요합니다
 41. **N-6 `check-run`의 워킹트리 의존 제거** — 추적 파일만 보도록. 사람 결정 22번(매니페스트 커밋 정책)과 묶어서 결정해야 합니다

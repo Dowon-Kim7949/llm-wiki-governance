@@ -2006,6 +2006,66 @@ where it previously reported `1 found` for two invocations that only ever
 inspected an empty scratch directory. Wiki docs updated in the same task and kept
 `needs_review`. Unreleased — branch only.
 
+## Measured Defect Batch Scope Decision (maintainer-approved 2026-07-31 — built)
+
+### Why
+
+The Gate Wiring decision above closed with an admission: pilot-repo confirmation was
+skipped, so nobody knew whether the newly wired gate turns an adopting project's CI
+red. It has now been run read-only against all four adopting repositories, and the
+result is recorded in `HARNESS_GOVERNANCE_ROADMAP.md`. Two of the six defects that
+measurement surfaced are small and unambiguous, and the maintainer approved fixing
+them in this slice. Both were invisible from inside this repository: one needs a wiki
+with a warning-level frontmatter finding, the other needs a document that has been
+through an approval or a downgrade.
+
+Each is pinned by `tests/measured-defects.test.js` (8 cases, RED before / GREEN after).
+
+### Decisions
+
+- **A report that says `pass` must not exit 1.** `validate-frontmatter` was the only
+  command reporting a two-state ladder (`fail`/`pass`); every other command reports
+  four (`blocked`/`fail`/`warning`/`pass`). So a run whose worst finding was a warning
+  printed `result: pass` while `--strict` exited 1 on the very same findings, and the
+  CI log read as "passed but failed" (measured in an adopting repo, on
+  `frontmatter.duplicate_key`). It now uses the same ladder as everything else, and
+  the JSON payload carries `result` the way the other commands do. **This is a change
+  to a reported value**, not just a bug fix — two assertions in
+  `tests/verification.test.js` pinned the old behavior and were updated with the
+  reason written next to them. Exit-code semantics are unchanged: the report says what
+  was found, `--strict` decides whether a warning gates the build.
+- **The status tag and the status field are one fact, so one write must set both.**
+  `review --approve` and `drift --downgrade` each rewrote `status:` and left `tags:`
+  alone, so a document could sit at `status: verified` while still tagged
+  `needs-review` — and which way it broke depended on which path did the downgrade.
+  Measured in an adopting repo: **12 of 22 documents** carry the mismatch. Both paths
+  now call one helper, `syncStatusTag`, deliberately conservative in two ways — it
+  rewrites a status tag that is **already present** and never adds one, so documents
+  whose tags do not track status keep their own convention; and it collapses the
+  duplicate a rewrite can create (`[verified, needs-review]` must not become
+  `[verified, verified]`). This does **not** widen what `review --approve` can promote:
+  the approval gates are untouched, and an agent still must not run it at all.
+
+### Scope boundary
+
+Four measured defects stay open and are recorded as N-1, N-2, N-5 and N-6 in the
+roadmap. **N-1 (hub-file fanout)** is the important one: `impact.source_changed`
+matches per file, so one barrel file lights up nine or ten documents at once, seen
+independently in two repositories. That is the practical cost of making
+`impact --strict` the default (human decision 21), every mitigation is undesigned, and
+guessing at one here would be worse than leaving it open. **N-2** (adapter marker
+versions are never checked, so a v1 adapter passes audit forever) is the same item as
+backlog 13 and belongs with the Phase 5 prerequisite. **N-5** (`reviewed_by` accepts
+three spellings of one person) and **N-6** (`check-run` picks its manifest from the
+working tree, so a local dry run does not predict CI) are queued behind them.
+
+### Verification
+
+437 tests pass (429 + 8 new, RED first). `validate --strict` 0, `validate-frontmatter`
+0, `drift` 0, and `impact --since origin/main --strict` 0 — run against `origin/main`
+rather than local `main`, which is the trap PR #1 taught. Wiki docs updated in the
+same task and kept `needs_review` pending human re-approval. Unreleased — branch only.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

@@ -89,6 +89,7 @@ import {
   replaceFrontmatterScalar,
   runMechanicalRemediation,
   splitFrontmatter,
+  syncStatusTag,
   upsertFrontmatterScalar
 } from "./commands/fix-migrate.js";
 import { applyFilters, loadContentDocs } from "./commands/retrieval.js";
@@ -355,15 +356,28 @@ export async function validateFrontmatterCommand(options) {
   }
 
   const findings = applyRuleConfig(raw, options);
+  // Every other command reports the four-state ladder; this one reported only
+  // fail/pass, so a warning-level finding printed `result: pass` while --strict
+  // exited 1 and the CI log read as "passed but failed" (2026-07-31 measurement,
+  // frontmatter.duplicate_key in an adopting repo). The report states what was
+  // found; --strict decides whether a warning gates the build.
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
   const summary = [
     `files_checked: ${markdownFiles.length}`,
     `findings: ${findings.length}`,
-    `result: ${findings.some((finding) => finding.severity === "error") ? "fail" : "pass"}`
+    `result: ${result}`
   ];
   const findingSummary = summarizeFindings(findings);
 
   return withText({
     command: "validate-frontmatter",
+    result,
     summary,
     findingSummary,
     findings
@@ -1380,6 +1394,7 @@ async function stampVerified(cwd, rel, reviewer, today) {
   if (inner === null) inner = upsertFrontmatterScalar(split.inner, "status", "verified", split.eol);
   inner = upsertFrontmatterScalar(inner, "reviewed_by", reviewer, split.eol);
   inner = upsertFrontmatterScalar(inner, "reviewed_at", today, split.eol);
+  inner = syncStatusTag(inner, "verified");
 
   const newContent = `${split.bom}${split.open}${inner}${split.close}${split.body}`;
   if (newContent === original) return { changed: false, blocked: false, reason: "no change (already verified with this reviewer)" };
