@@ -470,6 +470,11 @@ const COMMAND_OPTION_RULES = {
   doctor: new Set(["cwd", "format", "out"]),
   validate: new Set(["cwd", "type", "profile", "agent", "strict", "changed", "since", "format", "out"]),
   "validate-frontmatter": new Set(["cwd", "strict", "format", "out"]),
+  // monorepo spreads its options into each package's validateCommand, so `strict`
+  // and `agent` genuinely apply per package. `type`/`profile` are deliberately
+  // absent: monorepoCommand overrides them per package (type: null, profiles: []),
+  // so accepting them would silently do nothing.
+  monorepo: new Set(["cwd", "strict", "agent", "format", "out"]),
   status: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
   next: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
   explain: new Set(["format", "out"]),
@@ -696,6 +701,21 @@ Purpose:
 
 JSON (--format json):
   Top-level keys: schemaVersion, command, checks[], detection, packageReadiness. schemaVersion pins the output contract.
+`,
+  monorepo: `llm-wiki monorepo
+
+Usage:
+  llm-wiki monorepo [--cwd <path>] [--strict] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Detects npm/yarn workspaces from the root package.json and validates every workspace package that has its own docs/llm-wiki, aggregating the results. Read-only. Each package honors its own llm-wiki.config.json, and findings are prefixed with the package path. pnpm/YAML workspaces are reported as unsupported rather than parsed, to keep the zero-dependency rule.
+
+Notes:
+  --strict and --agent are passed through to each package's validate. --type and --profile are not accepted, because this command overrides them per package.
+  A repository without workspaces reports workspaces_detected: 0 and result: pass — this command aggregates one repository's packages, not several separate repositories.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, packages[], skipped[], unsupported, findings[]. packages[] items are { path, result, findings, configError }; findings[] items are { severity, rule, path, message } with path prefixed as <package>::<doc>.
 `,
   status: `llm-wiki status
 
