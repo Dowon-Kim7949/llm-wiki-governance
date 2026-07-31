@@ -3,10 +3,10 @@ title: Release Flow
 tags:
   - llm-wiki
   - verified
-status: verified
+status: needs_review
 doc_type: release_flow
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-07-31
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim

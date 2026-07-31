@@ -4,10 +4,10 @@ tags:
   - llm-wiki
   - benchmark
   - verified
-status: verified
+status: needs_review
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-07-30
+last_updated: 2026-07-31
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim

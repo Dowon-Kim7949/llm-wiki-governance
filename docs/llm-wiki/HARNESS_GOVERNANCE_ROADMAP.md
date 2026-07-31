@@ -495,9 +495,20 @@ flowchart LR
 - ⚠️ **파일럿 초록 확인은 유지보수자 지시로 생략** — 3곳이 이 템플릿을 도입했을 때 초록으로 남는지는 **미측정**입니다. 이 조건은 충족되지 않았고, 충족된 척하지 않습니다
 - ✅ 측정하지 않은 개선 효과 주장 0건
 - ✅ 공개 계약 변경은 승인된 2건만 (`review` 승격 거부, `check-run` 선택 기준)
-- ⚠️ `npm test` 전건 통과·`validate-frontmatter` 0은 충족. **`validate --strict`는 6건**(전부 사람 재기준선 대기분)이라 미충족
+- ✅ `npm test` 전건 통과·`validate --strict` 0·`validate-frontmatter` 0
 
-**남은 Phase 0 항목은 전부 사람 몫입니다**: `verified` 6건 재기준선, 그리고 사람 승인 3건(`impact --strict` 기본화·run manifest 커밋 정책·어댑터 본문 언어 정책).
+> **`validate --strict` 0을 어떻게 달성했는지 정확히 적습니다.** 드리프트된 `verified` 6건을 `drift --downgrade`로 `needs_review`로 내려서 0이 됐습니다 — **주장을 낮춰서 0이 된 것이지, 확신이 올라가서 0이 된 것이 아닙니다.** 그 대가로 verified 비율이 33%→19%, health 78→73으로 떨어졌고, 이 수치가 현재의 진짜 상태입니다. 사람이 `review --approve`로 재승인하면 되돌아옵니다. 이 방향(주장 제거)은 자동화가 해도 되는 안전한 방향이고, 반대 방향(승격)은 R3-1·R3-2·R3-3으로 금지돼 있습니다.
+
+#### Phase 0에서 발견된 미기록 결함: `verified` 문서의 재기준선 경로가 없다
+
+`reviewed_at`만 갱신하는(내용은 그대로인) **재기준선을 지원하는 명령이 없습니다.** `review --approve`는 이미 `verified`인 문서를 `already verified`로 거부하고 목록에도 넣지 않습니다. 그래서 실무에서 남는 선택지는 둘뿐입니다:
+
+1. `drift --downgrade` → 사람이 `review --approve` (2단계 왕복, 도구 지원). 이번에 쓴 경로입니다.
+2. frontmatter 직접 편집 — **이것이 사례집 GAP 3의 우회 경로 그 자체**입니다. 도구가 감지하지 못합니다.
+
+즉 도구가 **정상 경로를 제공하지 않아서 사람을 우회 경로로 미는 구조**입니다. A-6에 없던 결함이며 Phase 1 후보(`review --rebaseline` 같은 명시적 재기준선 표면)로 올립니다.
+
+**남은 Phase 0 항목은 전부 사람 몫입니다**: `needs_review` 10건 승인(재기준선 6건 + 이번 라인이 강등한 4건), 그리고 사람 승인 3건(`impact --strict` 기본화·run manifest 커밋 정책·어댑터 본문 언어 정책).
 
 ---
 
