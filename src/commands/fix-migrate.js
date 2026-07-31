@@ -461,6 +461,7 @@ export async function driftCommand(options) {
     }
     const refreshed = replaceFrontmatterScalar(inner, "last_updated", todayIsoDate());
     if (refreshed) inner = refreshed;
+    inner = syncStatusTag(inner, "needs_review");
 
     const newContent = `${split.bom}${split.open}${inner}${split.close}${split.body}`;
     if (newContent === original) continue;
@@ -559,6 +560,72 @@ export function upsertFrontmatterScalar(inner, key, value, eol = "\n") {
   if (replaced !== null) return replaced;
   const trimmed = inner.replace(/[\r\n]+$/, "");
   return `${trimmed}${eol}${key}: ${value}`;
+}
+
+// The status TAG and the status FIELD are two records of the same fact, and
+// until now only one of them was maintained. `review --approve` and
+// `drift --downgrade` both rewrite `status:` and neither touched `tags:`, so a
+// document could sit at `status: verified` while still tagged needs-review.
+// This is not hypothetical: one adopting repository carries the mismatch on 12
+// of its 22 documents (2026-07-31 measurement), and which way it breaks depends
+// on which downgrade path was taken.
+//
+// Deliberately conservative in two ways. It rewrites a status tag that is
+// ALREADY present and never adds one, so documents whose tags do not track
+// status keep their own convention. And it collapses the duplicate that a
+// rewrite can create (tags: [verified, needs-review] must not become
+// [verified, verified]).
+const STATUS_TAGS = { verified: "verified", needs_review: "needs-review" };
+
+export function syncStatusTag(inner, status) {
+  const target = STATUS_TAGS[status];
+  if (!target) return inner;
+  const stale = Object.values(STATUS_TAGS).filter((tag) => tag !== target);
+
+  // The `tags:` key plus the block-list items under it. Anything else — a
+  // `- verified` under source_files, a tags key inside the body — is out of range.
+  const block = inner.match(/^tags:[^\r\n]*(?:(?:\r?\n)[ \t]*-[^\r\n]*)*/m);
+  if (!block) return inner;
+
+  let updated = block[0];
+  for (const tag of stale) {
+    const pattern = escapeRegex(tag);
+    updated = updated.replace(new RegExp(`^([ \t]*-[ \t]*)${pattern}[ \t]*$`, "gm"), `$1${target}`);
+    // Inline flow form: tags: [llm-wiki, needs-review]
+    updated = updated.replace(new RegExp(`(^tags:[^\r\n]*\\[[^\\]\r\n]*?)\\b${pattern}\\b`, "m"), `$1${target}`);
+  }
+  if (updated === block[0]) return inner;
+
+  updated = dedupeStatusTag(updated, target);
+  return `${inner.slice(0, block.index)}${updated}${inner.slice(block.index + block[0].length)}`;
+}
+
+// Drops every status-tag entry after the first one, in both list shapes.
+function dedupeStatusTag(block, target) {
+  const pattern = escapeRegex(target);
+  const itemPattern = new RegExp(`^[ \t]*-[ \t]*${pattern}[ \t]*$`);
+  let seen = false;
+  const kept = block.split(/\r?\n/).filter((line, index) => {
+    if (index === 0 || !itemPattern.test(line)) return true;
+    if (seen) return false;
+    seen = true;
+    return true;
+  });
+  const eol = block.includes("\r\n") ? "\r\n" : "\n";
+  let result = kept.join(eol);
+
+  const inline = result.match(/^tags:[^\r\n]*\[([^\]\r\n]*)\]/m);
+  if (inline) {
+    let first = true;
+    const items = inline[1].split(",").map((item) => item.trim()).filter((item) => {
+      if (item !== target) return true;
+      if (!first) return false;
+      first = false;
+      return true;
+    });
+    result = result.replace(inline[0], inline[0].replace(`[${inline[1]}]`, `[${items.join(", ")}]`));
+  }
+  return result;
 }
 
 export function reconcileEvidenceSection(body, frontmatterEvidence, eol) {

@@ -24,6 +24,35 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - fix: 측정으로만 보이던 결함 2건(N-3·N-4)을 고쳤다
+
+- status: needs_review
+- actor: Claude Code
+- scope: code+docs
+- changed:
+  - `src/commands.js` (`validateFrontmatterCommand`, `stampVerified`)
+  - `src/commands/fix-migrate.js` (신규 `syncStatusTag`, `driftCommand`)
+  - `tests/measured-defects.test.js` (신규 8건), `tests/verification.test.js` (단언 2건 갱신)
+  - `docs/llm-wiki/PUBLIC_API.md`, `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`, `GATE_REVIEW.md`, `docs/llm-wiki/log.md`
+
+### 내용
+
+둘 다 **이 저장소 안에서는 보이지 않던** 결함이다. 하나는 warning급 frontmatter finding이 있는 위키가 있어야 보이고, 다른 하나는 승인이나 강등을 거친 문서가 있어야 보인다.
+
+- **N-3**: `validate-frontmatter`만 2단계 사다리(`fail`/`pass`)를 써서, warning만 있는 실행이 본문에 `result: pass`를 찍으면서 `--strict` exit는 1이었다. 다른 모든 명령과 같은 4단계(`blocked`/`fail`/`warning`/`pass`)로 통일하고 JSON 페이로드에 `result`를 additive로 실었다. **보고 값의 변경**이라 계약 변경으로 기록했다 — 구 동작을 고정하던 `tests/verification.test.js`의 단언 2건은 이유를 옆에 적고 갱신했다. exit code 의미는 불변이다.
+- **N-4**: `review --approve`와 `drift --downgrade`가 각각 `status:`만 고치고 `tags:`를 두어, 문서가 `status: verified`인 채 `needs-review` 태그를 유지할 수 있었다. **어느 경로로 강등했느냐에 따라 결과가 갈리던 비대칭**을 양쪽 모두 `syncStatusTag` 하나를 호출하게 해서 없앴다. 의도적으로 보수적이다 — **이미 있는** 상태 태그만 고치고 없으면 만들지 않으며, 재작성이 만들 수 있는 중복도 접는다. 승격 게이트는 손대지 않았고, 에이전트가 `review --approve`를 실행하지 않는다는 규칙도 그대로다.
+
+### 남은 것
+
+측정이 찾은 6건 중 4건은 열려 있다. **N-1(허브 파일 팬아웃)** 이 그중 중요한 것이고 사람 결정 21번(`impact --strict` 기본화)을 실질적으로 막고 있다 — 완화안이 전부 미설계라 여기서 임의로 고르지 않았다. N-2는 백로그 13번과 같은 항목이고, N-5·N-6은 그 뒤에 있다.
+
+- evidence:
+  - src/commands.js#symbol:validateFrontmatterCommand
+  - src/commands/fix-migrate.js#symbol:syncStatusTag
+- caveats:
+  - 437 tests(429+신규 8, 전건 RED→GREEN 확인)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0·`impact --since origin/main --strict` 0.
+  - `PUBLIC_API.md`를 편집해 `verified`→`needs_review`로 강등했다. 사람 재승인 필요.
+
 ## 2026-07-31 - measure: 게이트를 도입처 4곳에 예행하고 백로그 17·18·19를 닫았다
 
 - status: needs_review
