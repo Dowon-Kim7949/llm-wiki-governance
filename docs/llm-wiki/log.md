@@ -24,6 +24,29 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - chore: 드리프트된 verified 6건을 needs_review로 강등 (재승인 준비)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "reviewed_at 올려" → 도구 지원 경로인 `drift --downgrade` 선택)
+- scope: docs
+- changed:
+  - `BENCHMARK.md`·`EXAMPLES.md`·`index.md`·`profiles/library.md`·`project-profile.md`·`RELEASE_FLOW.md` (verified → **needs_review**, `last_updated` 갱신)
+  - `HARNESS_GOVERNANCE_ROADMAP.md` (Phase 0 완료 조건 갱신 + 신규 결함 기록)
+
+### 왜 이 경로인가
+
+유지보수자가 `reviewed_at` 갱신을 지시했으나 **에이전트는 `review --approve`를 실행하지 않는다**(`AGENTS.md`: "the one thing this project exists to protect"; 이번 라인에서 R3-3으로 성문화). 확인해 보니 **그 명령으로는 애초에 불가능**하기도 했다 — 이미 `verified`인 문서를 `already verified`로 거부하고 목록에도 넣지 않는다.
+
+그래서 도구가 지원하는 유일한 왕복 경로인 `drift --downgrade`(주장을 **제거**하는 안전한 방향)를 실행했다. 승격은 사람이 `review --approve`로 한다.
+
+### 정직성 표기
+
+`validate --strict`가 6건 → **0건**이 됐고 CI 게이트도 초록이 됐지만, **주장을 낮춰서 0이 된 것이지 확신이 올라가서 0이 된 것이 아니다.** verified 비율 33%→19%, health 78→73이 현재의 진짜 상태다. 사람이 재승인하면 되돌아온다.
+
+### 발견된 미기록 결함
+
+**`verified` 문서의 재기준선(내용 불변, `reviewed_at`만 갱신) 지원 명령이 없다.** 남는 선택지는 2단계 왕복이거나 frontmatter 직접 편집인데, 후자는 **사례집 GAP 3의 우회 경로 그 자체**다. 도구가 정상 경로를 주지 않아 사람을 우회 경로로 미는 구조다. Phase 1 후보로 로드맵에 올렸다.
+
 ## 2026-07-31 - docs: Phase 0 잔여 — 기준선·R3 금지 목록·실패 사례집 (유지보수자 지시)
 
 - status: needs_review
