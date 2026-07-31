@@ -42,6 +42,12 @@ contains_sensitive_info: false
 - **N-3**: `validate-frontmatter`만 2단계 사다리(`fail`/`pass`)를 써서, warning만 있는 실행이 본문에 `result: pass`를 찍으면서 `--strict` exit는 1이었다. 다른 모든 명령과 같은 4단계(`blocked`/`fail`/`warning`/`pass`)로 통일하고 JSON 페이로드에 `result`를 additive로 실었다. **보고 값의 변경**이라 계약 변경으로 기록했다 — 구 동작을 고정하던 `tests/verification.test.js`의 단언 2건은 이유를 옆에 적고 갱신했다. exit code 의미는 불변이다.
 - **N-4**: `review --approve`와 `drift --downgrade`가 각각 `status:`만 고치고 `tags:`를 두어, 문서가 `status: verified`인 채 `needs-review` 태그를 유지할 수 있었다. **어느 경로로 강등했느냐에 따라 결과가 갈리던 비대칭**을 양쪽 모두 `syncStatusTag` 하나를 호출하게 해서 없앴다. 의도적으로 보수적이다 — **이미 있는** 상태 태그만 고치고 없으면 만들지 않으며, 재작성이 만들 수 있는 중복도 접는다. 승격 게이트는 손대지 않았고, 에이전트가 `review --approve`를 실행하지 않는다는 규칙도 그대로다.
 
+### 수정이 또 수정을 필요로 했다 (CodeQL)
+
+`syncStatusTag`의 인라인 리스트 패턴 2개가 `[^\r\n]*` 다음에 `\[`를 두어 접두부와 여는 대괄호가 모호해졌다 — `tags:[[[[…` 같은 입력에서 **2차 백트래킹**이고, 이 헬퍼가 도는 대상이 바로 문서 본문(비신뢰 입력)이다. PR #1의 CodeQL이 `js/polynomial-redos`(high)로 잡았고 **로컬 게이트로는 잡을 수 없었다**. 접두부에서 `[`를 빼 대괄호 위치를 유일하게 만들어 선형으로 되돌렸다(실측: 구 25k 350ms·50k 1692ms → 신 1ms 미만).
+
+**회귀 테스트는 첫 판이 틀렸고 그것도 측정이 잡았다.** 처음 쓴 적대적 입력에는 상태 태그가 없어 재작성이 no-op이 되고, 정작 취약 패턴이 있는 dedupe 단계에 도달하지 못했다 — 수정 전 소스에서도 통과하는 공허한 가드였다. 커밋된 버전은 수정 전 RED·수정 후 GREEN을 확인했다.
+
 ### 남은 것
 
 측정이 찾은 6건 중 4건은 열려 있다. **N-1(허브 파일 팬아웃)** 이 그중 중요한 것이고 사람 결정 21번(`impact --strict` 기본화)을 실질적으로 막고 있다 — 완화안이 전부 미설계라 여기서 임의로 고르지 않았다. N-2는 백로그 13번과 같은 항목이고, N-5·N-6은 그 뒤에 있다.
@@ -50,7 +56,7 @@ contains_sensitive_info: false
   - src/commands.js#symbol:validateFrontmatterCommand
   - src/commands/fix-migrate.js#symbol:syncStatusTag
 - caveats:
-  - 437 tests(429+신규 8, 전건 RED→GREEN 확인)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0·`impact --since origin/main --strict` 0.
+  - 438 tests(429+신규 9, 전건 RED→GREEN 확인)·lint OK(61)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0·`impact --since origin/main --strict` 0.
   - `PUBLIC_API.md`를 편집해 `verified`→`needs_review`로 강등했다. 사람 재승인 필요.
 
 ## 2026-07-31 - measure: 게이트를 도입처 4곳에 예행하고 백로그 17·18·19를 닫았다

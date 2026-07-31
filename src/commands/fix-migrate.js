@@ -591,8 +591,11 @@ export function syncStatusTag(inner, status) {
   for (const tag of stale) {
     const pattern = escapeRegex(tag);
     updated = updated.replace(new RegExp(`^([ \t]*-[ \t]*)${pattern}[ \t]*$`, "gm"), `$1${target}`);
-    // Inline flow form: tags: [llm-wiki, needs-review]
-    updated = updated.replace(new RegExp(`(^tags:[^\r\n]*\\[[^\\]\r\n]*?)\\b${pattern}\\b`, "m"), `$1${target}`);
+    // Inline flow form: tags: [llm-wiki, needs-review]. The prefix class excludes
+    // `[` so the opening bracket can match in exactly one place; allowing it there
+    // makes the prefix and the bracket ambiguous, which is quadratic backtracking
+    // on input like `tags:[[[[…` (CodeQL js/polynomial-redos, caught on PR #1).
+    updated = updated.replace(new RegExp(`(^tags:[^[\r\n]*\\[[^\\]\r\n]*?)\\b${pattern}\\b`, "m"), `$1${target}`);
   }
   if (updated === block[0]) return inner;
 
@@ -614,7 +617,9 @@ function dedupeStatusTag(block, target) {
   const eol = block.includes("\r\n") ? "\r\n" : "\n";
   let result = kept.join(eol);
 
-  const inline = result.match(/^tags:[^\r\n]*\[([^\]\r\n]*)\]/m);
+  // Same reason as above: `[` is excluded from the prefix so the bracket has one
+  // possible position and the match stays linear.
+  const inline = result.match(/^tags:[^[\r\n]*\[([^\]\r\n]*)\]/m);
   if (inline) {
     let first = true;
     const items = inline[1].split(",").map((item) => item.trim()).filter((item) => {
