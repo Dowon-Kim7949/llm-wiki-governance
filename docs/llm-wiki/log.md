@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-07-30
+last_updated: 2026-07-31
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,40 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-07-31 - measure: 게이트를 도입처 4곳에 예행하고 백로그 17·18·19를 닫았다
+
+- status: needs_review
+- actor: Claude Code (읽기 전용 측정 4건 병렬 실행)
+- scope: docs
+- changed:
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+Phase 0의 유일한 미충족 완료 조건이던 **"파일럿 초록 확인"** 을 측정으로 닫았다. 도입 저장소 4곳(`sinkholemonitor-frontend`·`roadmonitor-frontend`·`csap-roadkeeper-frontend`·`dotnine-project`)에 이 브랜치의 CLI를 읽기 전용으로 실행했다 — **쓰기·커밋·체크아웃 0건**. 함께 백로그 17번(`needs_review` 감시 폭발 반경)과 18번(파일럿 마찰 이력)도 측정했다.
+
+- **게이트**: 새로 배선한 `impact --strict`·`drift --strict`는 4곳 전부 exit 0. 그러나 `roadmonitor-frontend`의 초록은 **무의미하다**(위키 33개가 전부 diff 안이라 볼 대상이 없다). 문서를 갱신하지 않은 실존 커밋 9건을 시뮬레이션하면 **전부 RED** — 다음 PR부터 울리는 것이 정상이다. dotnine의 빨간불은 새 게이트가 아니라 기존 검사 2건(중복 YAML 키, 테스트 근거 누락)이고 둘 다 실재 결함이다.
+- **팬아웃**: 두 저장소에서 독립적으로 `src/utils/api/index.ts` 같은 배럴 파일 1개 변경이 문서 9~10건을 동시에 발화시켰다. `impact --strict` 기본화(사람 결정 21번)의 비용 대부분이 여기에 있다.
+- **옵트인 비용**: `needs_review`까지 신선도를 넓히면 우리 저장소 추가분 **+65건인데 100%가 릴리스 노트**이고 살아있는 문서는 0건이다. 릴리스 노트는 `package.json`을 앵커로 잡아 재승인으로만 지워지는 영구 트레드밀이다. `doc_type: release_notes` 면제를 함께 내보내면 3개 저장소 전부 추가분 0.
+- **마찰 이력 세 패턴**: 3곳 모두 게이트 0개(규율이 사람 기억에 의존, 동일 커밋 위키 갱신률이 100%/94%/0%로 갈림) · 도입처 어댑터 동결(3곳 중 2곳이 v1인데 `scanAdapters`가 마커를 안 봐서 audit은 영구 clean) · 위키의 브랜치 격리와 1회 전면 폐기(csap의 38파일이 머지 없이 버려지고 22파일로 재구축).
+
+### 신규 결함 6건 (N-1~N-6)
+
+허브 파일 팬아웃 · `scanAdapters` 마커 미검사 · `validate-frontmatter --strict`의 `result`/exit 불일치 · `review --approve` 태그 미동기화의 도입처 실증(12/22 문서) · `reviewed_by` 표기 3종 분열 · `check-run`의 워킹트리 의존. 백로그 37~41번으로 올렸다.
+
+### 남긴 한계
+
+백로그 16번(중복·충돌 오탐률)은 **여전히 미측정**이다. RED 9건은 재구현 시뮬레이션이며 현재 앵커 기준의 예측이지 과거 재현이 아니다. 세 저장소 모두 히스토리가 정지해 있어 **활발히 개발 중인 저장소의 정상 상태 추가분은 못 쟀다**.
+
+- evidence:
+  - src/commands/scans.js#symbol:verifiedSourceAnchors
+  - src/commands/scans.js#symbol:scanReverseImpact
+  - src/commands/adapters.js#symbol:scanAdapters
+  - src/git.js#symbol:lineRangeChangedSince
+- caveats:
+  - 에이전트 편집이므로 `HARNESS_GOVERNANCE_ROADMAP.md`는 `verified`에서 `needs_review`로 강등했다. 사람 재승인 필요.
 
 ## 2026-07-31 - review: 유지보수자가 11건을 verified로 승인 (사람이 직접 실행)
 
