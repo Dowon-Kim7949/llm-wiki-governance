@@ -24,6 +24,28 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - review: 유지보수자가 11건을 verified로 승인 (사람이 직접 실행)
+
+- status: needs_review
+- actor: **유지보수자 Dowon-Kim**(`review --approve` 직접 실행) + Claude Code(태그 동기화·검증·커밋)
+- scope: docs
+- changed:
+  - 재기준선 7건: `BENCHMARK`·`EXAMPLES`·`index`·`profiles/library`·`project-profile`·`RELEASE_FLOW`·`VERSIONING`
+  - 이번 라인이 강등했던 4건: `GLOSSARY`·`PUBLIC_API`·`DOMAIN_FEATURES`·`HARNESS_GOVERNANCE_ROADMAP`
+  - `log.md`
+
+### 내용
+
+11건 전부 `verified` + `reviewed_by: Dowon-Kim` + `reviewed_at: 2026-07-31` 스탬프. 거부 0건, finding 0건. **에이전트는 이 라인 전체에서 `review --approve`를 한 번도 실행하지 않았다** — 유지보수자가 두 차례 지시했으나 `AGENTS.md`의 유일한 금지이자 이번 라인에서 R3-3으로 성문화한 규칙이라, 대신 `drift --downgrade`로 강등해 두고 승격만 사람에게 넘겼다.
+
+### 후속 정리 1건
+
+`review --approve`는 `status`·`reviewed_by`·`reviewed_at`만 찍고 **`tags`는 동기화하지 않는다**(기존 확인된 동작). 손으로 강등했던 5건이 `status: verified` + `needs-review` 태그로 불일치 상태가 되어 태그를 `verified`로 맞췄다. `drift --downgrade`를 거친 6건은 status만 바뀌고 태그가 `verified`로 남아 있어 영향이 없었다 — **강등 경로에 따라 결과가 갈리는 비대칭**이며, 재기준선 경로 부재와 같은 묶음의 후속 과제다.
+
+### 상태 회복
+
+verified 19%→**38%**(20/52), health 73→**79**. 강등 이전(33%·78)보다도 높다 — 이번 라인이 보강한 `GLOSSARY`·`HARNESS_GOVERNANCE_ROADMAP`가 새로 verified가 됐기 때문이다. `validate --strict` 0·`validate-frontmatter` 0·게이트(`origin/main` 기준) pass·429 tests·lint OK.
+
 ## 2026-07-31 - chore: CI 게이트가 처음으로 잡은 문서(VERSIONING) 해소 + 배운 것 기록
 
 - status: needs_review
