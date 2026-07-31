@@ -29,7 +29,7 @@ The same lifecycle applies everywhere; only the dial settings change:
 
 - **Setup:** `init --write` detects domains and scaffolds `domains/NN_<name>.md`. If detection is quiet, name them explicitly: `init --write --domains billing,auth,search`.
 - **Everyday:** `prepare --task "<change>"` before implementing (scopes the relevant docs, source, and risks from the wiki); the `feature`/`fix` skills to keep docs in sync; `onboard --domain <name>` for newcomers.
-- **Freshness:** wire `impact --strict` (or `validate --changed --since <base>`) into PR CI so a change to governed code that doesn't update its `verified` doc fails the build. Run `drift` periodically; `drift --downgrade` flips stale `verified` docs back to `needs_review`.
+- **Freshness:** wire `impact --since <base> --strict` into PR CI so a change to governed code that doesn't update its `verified` doc fails the build — see [Wiring the gate](#wiring-the-gate-the-step-most-repos-skip) for why `--strict` is what makes it block. Run `drift` periodically (`drift --strict` to gate on it); `drift --downgrade` flips stale `verified` docs back to `needs_review`.
 - **CI cost:** still one read-only pass; it scales with document count, not repo size (the scan reads the wiki, not your whole source tree). Scope with `--changed` on large PRs to report only findings on changed docs.
 - **Doc-count strategy:** one doc per meaningful domain/subsystem. Split a doc when it stops fitting in a reviewer's head; merge two when they always change together. Keep `source_files`/`evidence` precise so drift detection stays meaningful.
 
@@ -39,6 +39,53 @@ The same lifecycle applies everywhere; only the dial settings change:
 - **Per-package config:** each package honors its own `llm-wiki.config.json` (rule toggles, required docs, reviewer, language). A single repo's output is byte-identical whether or not the monorepo command is used.
 - **CI cost:** proportional to the number of wiki-bearing packages. Validate changed packages only where your CI can scope by path; otherwise the full `monorepo` pass is still just N read-only passes.
 - **Doc-count strategy:** keep each package's wiki small and local. Cross-package references use the reserved `repo:<name>/<path>` scheme (recognized as external, never fetched) so a link between packages doesn't read as a broken local link.
+
+## Wiring the gate (the step most repos skip)
+
+A wiki that nothing enforces drifts back to fiction. `doctor` reports this
+directly as `ci_governance`, and since 2026-07-31 it reports it by **blocking
+power** rather than by counting invocations — a workflow whose only `llm-wiki`
+step is `doctor` or `status` now reads as `0 blocking`, because a report cannot
+fail a build.
+
+The distinction that matters:
+
+| Check | Catches | Blocks when |
+| --- | --- | --- |
+| `validate` / `validate-frontmatter` | a malformed or missing **document** | always (error findings) |
+| `validate --strict` | the above, plus warnings | always |
+| `impact --since <base> --strict` | **source changed, its `verified` doc did not** | only with `--strict` |
+| `drift --strict` | a `verified` doc whose source moved after its review date | only with `--strict` |
+| `check-run --strict` | a skill run that claimed a pipeline it did not complete | only with `--strict` |
+
+The validate family checks the documents that **exist**. Only the `impact` /
+`drift` / `check-run` family can see the document that **should have been
+touched** — so a repo with a green `validate` step and no `impact` step has no
+omission gate at all. That is what `doctor` now says out loud.
+
+`--strict` is load-bearing: `impact.source_changed` is a warning, so without it
+the step prints the omission and the build still passes.
+
+Three ready-made channels:
+
+- **PR CI** — copy `templates/github-actions/llm-wiki-validate.yml`. It runs
+  `validate-frontmatter`, `validate --strict`, then the gate:
+  `impact --since "origin/$GITHUB_BASE_REF" --strict`. It sets
+  `fetch-depth: 0` on checkout, which `--since` needs; a shallow checkout makes
+  the gate degrade quietly instead of failing loudly.
+- **Composite action** — `Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@<tag>`
+  takes a `command` input (`validate` by default). Set `command: impact`,
+  `since: origin/main`, `strict: "true"` for the gate. Only read-only commands
+  are accepted; each flag is passed only to commands that accept it.
+- **pre-commit** — copy `templates/git-hooks/pre-commit`. It runs
+  `validate --changed` then `impact --strict` against the working tree, so an
+  undocumented change fails before it becomes a commit. Drop `--strict` to
+  soften it during adoption — deliberately, not by accident.
+
+Known limitation of the `ci_governance` check: it sees the **invocation**, not
+the directory it runs in, so a step validating a scratch directory (a packaging
+smoke test, say) still counts. It names the files it matched so you can check;
+read the counts as an upper bound.
 
 ## Cost & safety notes
 

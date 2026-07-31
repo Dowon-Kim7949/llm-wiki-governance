@@ -1918,6 +1918,94 @@ exits 1 on this repo's 5 stale documents, and plain `drift` still exits 0. Wiki 
 updated in the same task and kept `needs_review` pending human re-approval.
 Unreleased — branch only.
 
+## Phase 0 Gate Wiring Scope Decision (maintainer-approved 2026-07-31 — built)
+
+### Why
+
+The roadmap's headline finding: **the alarm was wired to nothing.** The only
+command that fails a build on an omission is `impact --since --strict`, and none
+of the four channels this project ships ran it.
+
+| Channel | Ran | Could block an omission |
+| --- | --- | --- |
+| `templates/git-hooks/pre-commit` | `validate --changed` | no |
+| `.github/actions/validate/action.yml` | `validate`, hardcoded as `args[0]` | no — no other command was reachable |
+| `templates/github-actions/llm-wiki-validate.yml` | `validate-frontmatter`, `validate --strict` | no |
+| `.github/workflows/ci.yml` | `validate-frontmatter`, `doctor` | no |
+
+The validate family checks the documents that **exist**. Only the impact/drift/
+check-run family can see the document that **should have been touched**. So this
+project sold governance while shipping four channels that could not enforce it,
+and its own CI had no gate either.
+
+The maintainer approved the wiring and directed that the three unconfirmed pilot
+repositories be skipped for this slice.
+
+### Decisions
+
+- **An invocation is not a gate.** `ci_governance` counted any `llm-wiki`
+  invocation, so a workflow whose only step was `doctor` — a report that always
+  exits 0 — read as governance. It now classifies each invocation as blocking or
+  advisory, and when no omission gate exists it says so in a sentence rather than
+  leaving a reassuring number. Omission commands (`impact`, `check-run`, `drift`)
+  count as blocking **only with `--strict`**, because their findings are warnings;
+  structure commands (`validate`, `validate-frontmatter`, `audit`, `monorepo`)
+  block on error findings without it.
+- **The detector must see the invocation form this repo actually uses.**
+  `node bin/llm-wiki.js <command>` did not match, so this project's own gate was
+  invisible to its own check. Fixed; the shape is now covered by a test.
+- **Stated limitation instead of a silent one.** The check reads invocations, not
+  the working directory they run in, so a packaging smoke test against a scratch
+  directory still counts. A YAML parse would be needed to do better, and that
+  costs the zero-dependency stance. It reports the matched file paths so a human
+  can judge, and both `doctor` and `docs/OPERATIONS.md` say the counts are an
+  upper bound. Over-reporting remains the dangerous direction; this narrows it
+  substantially without pretending it is gone.
+- **The action's command is an input, not a constant.** `args=(validate ...)`
+  made an omission gate physically unreachable through the action. `command` now
+  defaults to `validate` (existing users unaffected), accepts only the eleven
+  read-only commands, and refuses a write command with exit 3 rather than
+  delegating that judgment to the CLI. Each optional flag is passed only to
+  commands that accept it — newly required, since every command now rejects an
+  unsupported option with exit 3.
+- **`--strict` is load-bearing everywhere.** Each wired gate carries it
+  explicitly, because `impact.source_changed` is a warning and the step would
+  otherwise print the omission and pass.
+- **`fetch-depth: 0` is part of the gate.** Without it `--since` cannot resolve
+  the base ref and the check degrades quietly — a gate that breaks silently is
+  worse than no gate.
+- **We dogfood it in a separate job.** The `governance` job sits outside the
+  `verify` matrix: gate coverage is a property of the repository, not of a Node
+  version or an OS, so twelve runs would be twelve identical answers.
+
+### Known state at acceptance
+
+The gate **fails on this branch**, correctly: five `verified` documents are
+grounded in `src/cli.js`, which this line changed, and they are awaiting the
+human `reviewed_at` re-baseline that has been outstanding since 2026-07-30. This
+is a true positive on day one — the re-baseline moves from a background chore to
+a merge blocker, which is what a gate is for. Recorded here rather than softened,
+because weakening a gate to make its first real finding go away is precisely the
+failure this project exists to prevent.
+
+### Scope boundary
+
+Still open from Phase 0: the baseline measurement and the R3 no-automation list
+(backlog 8), plus the human decisions (`impact --strict` as a default, run
+manifest commit policy, adapter body language). Pilot-repo confirmation was
+skipped by direction, so whether the three unconfirmed repos stay green when they
+adopt these templates is **unmeasured**.
+
+### Verification
+
+424 tests pass (415 + 9 new, RED first). `lint` OK (59 files). The action's
+argument builder was exercised directly for flag/command combinations, and each
+resulting argument list was run against the real CLI to confirm none produces a
+usage error (exit 3). `doctor` on this repo now reports `omission gate present`,
+where it previously reported `1 found` for two invocations that only ever
+inspected an empty scratch directory. Wiki docs updated in the same task and kept
+`needs_review`. Unreleased — branch only.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

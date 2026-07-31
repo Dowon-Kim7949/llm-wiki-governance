@@ -1,6 +1,5 @@
 #!/bin/sh
-# LLM-WIKI pre-commit hook — validates only the wiki documents changed in this
-# commit (via `validate --changed`), so the check stays fast in large repos.
+# LLM-WIKI pre-commit hook — two checks, in the order that fails fastest.
 #
 # Install (pick one):
 #   cp templates/git-hooks/pre-commit .git/hooks/pre-commit
@@ -9,6 +8,24 @@
 #   git config core.hooksPath templates/git-hooks
 #
 # Requires the llm-wiki CLI; `npx --no-install` resolves it from a local
-# devDependency. Errors block the commit; warnings do not. Add --strict to the
-# command below to block on warnings too.
-exec npx --no-install llm-wiki validate --changed
+# devDependency.
+set -e
+
+# 1. Structure of the wiki documents in this commit. Scoped with --changed so it
+#    stays fast in large repos. Errors block the commit; warnings do not.
+npx --no-install llm-wiki validate --changed
+
+# 2. The omission gate. This is the check that catches the failure this project
+#    exists to catch: you changed a source file that a `verified` document is
+#    grounded in, and did not touch the document. `impact.source_changed` is a
+#    warning, so --strict is what makes it block rather than merely mention it —
+#    without --strict this line would print the problem and let the commit
+#    through, which is how every shipped channel behaved before 2026-07-31.
+#
+#    No --since here: with no ref, impact compares the working tree against HEAD,
+#    which is exactly the set of changes about to be committed.
+#
+#    To soften this while a team adopts the wiki, drop --strict (it becomes a
+#    report) or comment the line out. Do that deliberately, not by accident: a
+#    hook that cannot block is a hook that cannot govern.
+exec npx --no-install llm-wiki impact --strict
