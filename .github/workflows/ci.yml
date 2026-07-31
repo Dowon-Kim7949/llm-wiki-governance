@@ -61,6 +61,44 @@ jobs:
       - name: Check package contents
         run: npm pack --dry-run
 
+  # Dogfooding the gate we ship. Kept out of the `verify` matrix on purpose: this
+  # is a property of the repository, not of a Node version or an OS, so running
+  # it twelve times would be twelve identical answers.
+  #
+  # Until 2026-07-31 this workflow ran only validate-frontmatter and doctor —
+  # neither of which can fail when a source file changes and its `verified`
+  # document does not. The project shipped a governance tool whose own CI had no
+  # governance gate.
+  governance:
+    name: "LLM-WIKI governance gate"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # impact --since needs the base ref; the default shallow checkout does
+          # not have it, and the gate would degrade quietly instead of failing.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Gate on undocumented source changes
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # On a pull request compare against its base; on a push there is no
+          # base_ref, so compare against the previous commit.
+          if [ -n "$BASE_REF" ]; then BASE="origin/$BASE_REF"; else BASE="HEAD~1"; fi
+          echo "Comparing against $BASE"
+          node bin/llm-wiki.js impact --since "$BASE" --strict
+
+      - name: Report governance coverage
+        run: node bin/llm-wiki.js doctor --format markdown
+
   consumer-install:
     name: "Consumer install · ${{ matrix.os }}"
     needs: verify

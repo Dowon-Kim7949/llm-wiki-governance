@@ -153,14 +153,98 @@ export async function doctor(options) {
 // had an unrelated `llm-wiki-review:` job name, and reporting that as governance
 // tells a team it is covered when nothing runs. Over-reporting is the dangerous
 // direction here, so this errs toward missing an exotic invocation.
+// `llm-wiki(.js)?` covers both the installed binary and a repo running the CLI
+// from source as `node bin/llm-wiki.js <command>` — which is how this project
+// dogfoods its own gate, and which the first version of this check could not see.
 const CI_GOVERNANCE_INVOCATION =
-  /llm-wiki-governance[@/\s]|(?:^|[\s"'`(/])llm-wiki\s+(?:validate|validate-frontmatter|audit|impact|check-run|drift|stats|review|doctor|status|next|monorepo)\b/m;
+  /llm-wiki-governance[@/\s]|(?:^|[\s"'`(/])llm-wiki(?:\.js)?\s+(?:validate|validate-frontmatter|audit|impact|check-run|drift|stats|review|doctor|status|next|monorepo)\b/m;
+
+// Extracts the llm-wiki COMMAND from one line, in the three shapes a workflow or
+// hook actually uses: a composite-action reference, an npx package invocation,
+// and a bare binary call.
+const CI_COMMAND_ON_LINE =
+  /llm-wiki-governance\/\.github\/actions\/([a-z-]+)@|llm-wiki-governance@\S*\s+([a-z-]+)|(?:^|[\s"'`(/])llm-wiki(?:\.js)?\s+([a-z-]+)/;
+
+// Commands that detect an OMISSION — source moved and its documentation did not.
+// Their findings are warnings by default, so each one only becomes a gate with
+// --strict; without it the step reports the omission and lets the build pass.
+const CI_OMISSION_COMMANDS = new Set(["impact", "check-run", "drift"]);
+
+// Commands that exit non-zero on an error/blocked finding without needing
+// --strict. They gate STRUCTURE (a malformed or missing document), which is real
+// governance but cannot see a source change that skipped its doc.
+const CI_STRUCTURE_COMMANDS = new Set(["validate", "validate-frontmatter", "audit", "monorepo"]);
+
+// Classifies every llm-wiki invocation in one file by whether it can fail a
+// build. Counting invocations was the original defect: `doctor` and `status` are
+// reports that always exit 0, so a repo whose only "governance" was a doctor step
+// read as covered while nothing could block anything.
+//
+// Deliberately line-based rather than a YAML parse (zero-dep). The one lookahead
+// is for a composite-action reference, whose deciding inputs (`command`,
+// `strict`) live in the `with:` block on following lines rather than on the
+// `uses:` line itself.
+//
+// Known limitation, stated because over-reporting is the dangerous direction: it
+// sees the invocation, not the directory it runs in. A step that validates a
+// scratch directory (a packaging smoke test, say) still counts. The reported
+// paths let a human check that; the counts should be read as an upper bound.
+function classifyCiInvocations(text) {
+  const lines = text.split(/\r?\n/);
+  const result = { blocking: 0, advisory: 0, omissionGate: false };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = CI_COMMAND_ON_LINE.exec(lines[index]);
+    if (!match) continue;
+    const isActionReference = Boolean(match[1]);
+    const command = match[1] ?? match[2] ?? match[3];
+
+    // Flags come from the rest of the line, plus — for an action reference — the
+    // indented `with:` block beneath it, where `command:`/`strict:` really live.
+    let flags = lines[index].slice(match.index + match[0].length);
+    let effectiveCommand = command;
+    if (isActionReference) {
+      for (let ahead = index + 1; ahead < Math.min(index + 12, lines.length); ahead += 1) {
+        const line = lines[ahead];
+        // Stop at the next step in the list; the `with:` block is done.
+        if (/^\s*-\s/.test(line)) break;
+        const named = line.match(/^\s*command:\s*["']?([a-z-]+)/);
+        if (named) effectiveCommand = named[1];
+        if (/^\s*strict:\s*["']?true/.test(line)) flags += " --strict";
+      }
+    }
+
+    const strict = /(?:^|\s)--strict\b/.test(flags);
+    if (CI_OMISSION_COMMANDS.has(effectiveCommand)) {
+      if (strict) {
+        result.blocking += 1;
+        result.omissionGate = true;
+      } else {
+        result.advisory += 1;
+      }
+    } else if (CI_STRUCTURE_COMMANDS.has(effectiveCommand)) {
+      result.blocking += 1;
+    } else {
+      result.advisory += 1;
+    }
+  }
+
+  return result;
+}
 
 // Deliberately not a YAML parse (zero-dep; a matched invocation is the signal we
 // want). It only reads .git/hooks/pre-commit, so a repo that relocates hooks via
 // core.hooksPath reads as "none detected" — a false negative, the safe direction.
 async function describeCiGovernance(cwd) {
   const found = [];
+  const totals = { blocking: 0, advisory: 0, omissionGate: false };
+  const record = (rel, text) => {
+    found.push(rel);
+    const counts = classifyCiInvocations(text);
+    totals.blocking += counts.blocking;
+    totals.advisory += counts.advisory;
+    totals.omissionGate = totals.omissionGate || counts.omissionGate;
+  };
 
   const workflowDir = path.join(cwd, ".github", "workflows");
   if (await pathExists(workflowDir)) {
@@ -173,9 +257,8 @@ async function describeCiGovernance(cwd) {
     for (const entry of entries) {
       if (!entry.isFile() || !/\.ya?ml$/i.test(entry.name)) continue;
       try {
-        if (CI_GOVERNANCE_INVOCATION.test(await readUtf8(path.join(workflowDir, entry.name)))) {
-          found.push(`.github/workflows/${entry.name}`);
-        }
+        const text = await readUtf8(path.join(workflowDir, entry.name));
+        if (CI_GOVERNANCE_INVOCATION.test(text)) record(`.github/workflows/${entry.name}`, text);
       } catch {
         // An unreadable workflow is not a governance signal; skip it.
       }
@@ -185,7 +268,8 @@ async function describeCiGovernance(cwd) {
   const hook = path.join(cwd, ".git", "hooks", "pre-commit");
   if (await pathExists(hook)) {
     try {
-      if (CI_GOVERNANCE_INVOCATION.test(await readUtf8(hook))) found.push(".git/hooks/pre-commit");
+      const text = await readUtf8(hook);
+      if (CI_GOVERNANCE_INVOCATION.test(text)) record(".git/hooks/pre-commit", text);
     } catch {
       // Same: unreadable hook, no signal.
     }
@@ -194,7 +278,18 @@ async function describeCiGovernance(cwd) {
   if (found.length === 0) {
     return "none detected — nothing runs llm-wiki in CI or on commit (see docs/OPERATIONS.md; `impact --since <base> --strict` is the check that fails when source changes without its wiki doc)";
   }
-  return `${found.length} found (${found.join(", ")})`;
+
+  // Report blocking power, not invocation count. A repo whose only llm-wiki step
+  // is `doctor` reads as 0 blocking — which is the truth, and used to read as
+  // "1 found". Naming the missing omission gate matters more than the totals:
+  // that is the state where a team believes an undocumented source change cannot
+  // land, and it can.
+  const counts = `${totals.blocking} blocking, ${totals.advisory} advisory`;
+  const where = `(${found.join(", ")})`;
+  if (totals.omissionGate) {
+    return `${counts} — omission gate present ${where}`;
+  }
+  return `${counts} — NO omission gate: nothing fails when source changes without its wiki doc; add \`impact --since <base> --strict\` (see docs/OPERATIONS.md) ${where}`;
 }
 
 // Echoes the effective project config (llm-wiki.config.json) for doctor so the

@@ -19,6 +19,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # Required by the omission gate below: `impact --since <ref>` compares
+          # against the PR base, and the default shallow checkout does not have
+          # that ref. Without this the gate degrades silently rather than failing
+          # loudly, which is the worst way for a gate to break.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -37,3 +43,15 @@ jobs:
 
       - name: Validate LLM-WIKI strictly
         run: npx llm-wiki validate --strict --agent codex
+
+      # The omission gate: fails when a source file a `verified` document is
+      # grounded in changed in this diff and the document did not. validate and
+      # validate-frontmatter above cannot see this — they check the documents
+      # that exist, not the documents that should have been touched. Until
+      # 2026-07-31 no shipped channel ran this, so nothing this project handed an
+      # adopter could block an undocumented change.
+      #
+      # `--strict` is what makes it block: impact.source_changed is a warning, so
+      # without it the step reports the omission and the build still passes.
+      - name: Gate on undocumented source changes
+        run: npx llm-wiki impact --since "origin/${{ github.base_ref || 'main' }}" --strict

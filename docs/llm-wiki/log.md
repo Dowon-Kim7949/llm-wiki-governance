@@ -24,6 +24,48 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - feat: Phase 0 게이트 배선 — 경보기를 처음으로 스피커에 연결 (유지보수자 승인)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 승인: "다음 후보 작업 진행, 파일럿 3곳에 대한 것은 PASS")
+- scope: code, ci, test, docs
+- changed:
+  - `src/commands.js` (`classifyCiInvocations` 신설, `describeCiGovernance` 재정의, 호출 정규식에 `llm-wiki.js` 형태 추가)
+  - `.github/actions/validate/action.yml` (`command`·`run` 입력 추가, `validate` 하드코딩 해체, 명령별 플래그 허용)
+  - `templates/git-hooks/pre-commit` (`impact --strict` 추가)
+  - `templates/github-actions/llm-wiki-validate.yml` (`impact --since origin/<base> --strict` + `fetch-depth: 0`)
+  - `.github/workflows/ci.yml` (`governance` 잡 신설)
+  - `tests/ci-governance-check.test.js` (9건 추가·기존 재작성, 배포 아티팩트 계약 테스트 4건 포함)
+  - `docs/OPERATIONS.md` ("Wiring the gate" 절 신설)
+  - `GATE_REVIEW.md` ("Phase 0 Gate Wiring" 결정 기록)
+  - docs/llm-wiki: `PUBLIC_API.md`·`DOMAIN_FEATURES.md`(둘 다 needs_review 유지), `log.md`
+
+### 문제
+
+**경보기는 있는데 벨이 안 울렸다.** 누락을 exit code로 막는 명령은 `impact --since --strict` 하나인데, 이 프로젝트가 배포하는 채널 4종 전부 그것을 실행하지 않았다. 검증 계열은 **존재하는 문서**를 검사하지, **손댔어야 할 문서**를 볼 수 없다. 즉 거버넌스 도구를 팔면서 도입자에게 건네는 4개 채널 전부가 거버넌스를 강제하지 못했고, 우리 CI에도 게이트가 없었다.
+
+거기에 `ci_governance` 점검 자체가 **호출 존재를 게이트 존재로 오인**했다 — 항상 exit 0인 `doctor` 호출도 "1 found"로 셌다.
+
+### 판단
+
+- **호출은 게이트가 아니다.** blocking/advisory로 나누고, 누락 게이트가 없으면 안심되는 숫자 대신 그 사실을 문장으로 말한다. 누락 계열(`impact`/`check-run`/`drift`)은 finding이 warning이라 **`--strict`가 있어야** blocking이다.
+- **검출기가 우리 자신의 호출 형태를 못 봤다.** `node bin/llm-wiki.js <command>`가 정규식에 안 걸려 이 저장소의 게이트가 스스로에게 보이지 않았다.
+- **한계를 숨기지 않고 적었다.** 호출은 보지만 실행 디렉터리는 못 본다(YAML 파싱은 zero-dep 정체성 비용). 매칭 파일을 보고하고 수치를 상한으로 읽으라고 `doctor`와 OPERATIONS 양쪽에 명시했다.
+- **`fetch-depth: 0`은 게이트의 일부다.** 없으면 `--since`가 base ref를 못 찾아 **조용히 퇴화한다** — 게이트가 깨지는 최악의 방식.
+- **액션의 명령은 상수가 아니라 입력이다.** 읽기 전용 11종만 허용하고 쓰기 명령은 exit 3. 기본값 `validate`라 기존 사용자 무변경.
+
+### 알려진 상태 (중요)
+
+**게이트가 이 브랜치에서 실제로 exit 1이다.** `verified` 5건이 이번에 바꾼 `src/cli.js`에 근거를 두고 있고, 2026-07-30부터 밀려 있던 사람 재기준선을 아직 안 받았다 — **진짜 양성**이다. 게이트를 켠 첫날 자기 저장소에서 울린 셈이고, 재기준선이 배경 잡무에서 머지 차단 요인으로 승격됐다. 첫 진짜 finding을 없애려고 게이트를 약화시키는 것이야말로 이 프로젝트가 막으려는 실패라 그대로 뒀다.
+
+### 범위 밖 / 미측정
+
+**파일럿 3곳 확인은 유지보수자 지시로 생략했다** — 이 템플릿을 도입했을 때 그 3곳이 초록으로 남는지는 **미측정**이다. Phase 0에서 남은 것: 기준선 수치 기록과 R3 금지 목록(백로그 8번), 사람 결정 3건(`impact --strict` 기본화·run manifest 커밋 정책·어댑터 언어 정책).
+
+### 검증
+
+424 tests 통과(415 + 신규 9, RED 선실패 확인)·lint OK(59 files). 액션의 인자 조립 로직을 직접 실행해 조합별로 확인하고, 만들어진 인자열을 실제 CLI에 통과시켜 usage error(exit 3)가 없음을 확인했다. `doctor`가 이 저장소에 대해 `omission gate present`를 보고한다(그 전에는 빈 임시 디렉터리만 검사하는 호출 2건을 "1 found"로 보고).
+
 ## 2026-07-31 - fix: Phase 0 결함 배치 8건 — 감지는 되는데 말하지 못하던 표면들 (유지보수자 승인)
 
 - status: needs_review
