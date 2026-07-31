@@ -24,6 +24,30 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - chore: CI 게이트가 처음으로 잡은 문서(VERSIONING) 해소 + 배운 것 기록
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - `VERSIONING.md` (verified → **needs_review 강등**)
+  - `HARNESS_GOVERNANCE_ROADMAP.md` (게이트 실전 교훈 + `impact`의 비대칭 결함 기록)
+
+### 무슨 일
+
+PR #1의 `governance` 잡이 실패했다. 로컬에서는 `impact --since main --strict`가 통과했는데 CI는 실패 — **로컬 `main`이 `origin/main`보다 2커밋 앞서 있어서 기준이 달랐다**(`0b56a56`·`949d21b`가 미push 상태였고, 이 PR에 함께 들어간다).
+
+CI가 잡은 것은 진짜였다: `0b56a56`이 `RELEASE_CHECKLIST.md`에 2줄을 더했는데 그것을 근거로 삼는 `VERSIONING.md`가 그대로였다. 내용을 대조하니 **version-agnostic 정책 서술은 여전히 정확**하다(2026-07-15에 같은 상황을 같은 결론으로 처리한 선례가 이 문서 Review Notes에 있다). 그래서 강등으로 해소했다 — 주장을 **제거**하는 안전한 방향이고, 승격은 사람 몫이다.
+
+### 배운 것 2가지
+
+1. **`drift`와 `impact`의 상보성이 실물로 확인됐다.** `VERSIONING.md`는 `drift`에 안 걸리고 `impact`에만 걸렸다. `RELEASE_CHECKLIST.md` 변경일과 문서 `reviewed_at`이 같은 날(2026-07-30)이라 날짜 앵커는 덮은 것으로 보지만 diff 앵커는 pre-merge에서 본다. 설계 의도가 맞았다.
+2. **기준 ref를 틀리면 게이트 통과를 착각한다.** 로컬 예행은 CI와 같은 ref(`origin/<base>`)로 해야 한다. 게이트를 켜지 않았다면 이 함정은 영원히 안 보였을 것이다.
+
+### 발견된 비대칭
+
+**`drift`에는 `--downgrade`가 있는데 `impact`에는 대응 수단이 없다.** `impact`가 지목해도 해소 명령이 없어 frontmatter 직접 편집(GAP 3 우회 경로)밖에 남지 않는다. 재기준선 경로 부재와 함께 Phase 1 후보로 묶었다.
+
 ## 2026-07-31 - chore: 드리프트된 verified 6건을 needs_review로 강등 (재승인 준비)
 
 - status: needs_review
