@@ -24,6 +24,31 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - measure(후속): 게이트가 이 측정의 커밋에서 울렸고, 다시 옳았다
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - `docs/llm-wiki/DOMAIN_FEATURES.md` (Review Notes 8건 → 5건, 오래된 3건을 아카이브로 원문 이전)
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (Domain Features 섹션에 3건 수신; `verified`→`needs_review`)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (이 관측을 N-1 절에 기록)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+앞 항목의 측정 결과를 커밋한 뒤 CI와 같은 기준으로 예행했다(`impact --since origin/main --strict`). **exit 1 / 1건.** 잡힌 문서는 `REVIEW_HISTORY.md`이고, 그 문서가 `DOMAIN_FEATURES.md`를 `source_files`로 인용하는데 이번에 그 문서를 편집했기 때문이다 — **문서→문서 앵커**라 허브 파일과 똑같은 방식으로 팬아웃을 만든다.
+
+처음엔 노이즈로 보였다. 아카이브는 원문서의 과거 Review Notes를 원문 그대로 담을 뿐이라, 원문서에 새 항목이 붙는 것이 아카이브의 주장을 무효화하지 않는다. **그런데 아니었다.** 아카이브 계약이 "원문서는 최근 5건만 유지하고 오래된 항목은 여기로 옮긴다"인데 Review Note를 덧붙여 `DOMAIN_FEATURES.md`가 8건이 됐으므로 **실제로 아카이브 부채가 생겼다.** 오래된 3건(2026-07-28 ECC · 07-29 1.27.1 · 07-30 unhobbling)을 아카이브 섹션 끝으로 원문 그대로 옮겨 5건으로 되돌렸다. **참 양성이다.**
+
+기준선 오탐률 측정의 **첫 데이터 포인트로 기록한다(1/1 참 양성).** 함께 남길 것 세 가지.
+
+1. **팬아웃이 크다는 것과 노이즈라는 것은 다른 진술이다.** 문서→문서 앵커는 팬아웃 원인이면서 동시에 진짜 의무를 가리킬 수 있다 — N-1 완화안을 "발화 억제"가 아니라 "심각도·정렬 신호"로 쓰라는 권고의 근거다.
+2. **해소 수단이 여전히 비대칭이다.** 이 finding은 `impact`에서 나왔고 `impact`에는 `--downgrade` 같은 대응 수단이 없다. 내용 갱신으로 해소할 수 있었던 것은 운이 좋았고, 내용이 이미 정확한 경우라면 남는 선택지는 손으로 강등하는 것뿐이다(기록된 미해결 결함).
+3. **5건 상한이 과소 집행되고 있다.** 상한은 일반 규칙으로 적혀 있는데 아카이브 섹션이 있는 문서는 2건뿐이다 — `HARNESS_GOVERNANCE_ROADMAP.md`(8건)·`domains/00_overview.md`(7건)는 상한을 넘었지만 아카이브 대상이 아니라 아무 신호도 나지 않는다. 규칙과 집행 범위가 어긋나 있고, Phase 1의 길이 상한 항목과 같은 부류다.
+
+강등이 4건이 됐다(`verified` 20/52 → **16/52**). 전부 사람 재승인 대기이며 `review --approve`는 이번에도 실행하지 않았다.
+
 ## 2026-07-31 - measure: 완화안을 고를 수 없다는 것도 결론이다 (N-1 근거 · 백로그 16 · 결정 브리프 11건)
 
 - status: needs_review
