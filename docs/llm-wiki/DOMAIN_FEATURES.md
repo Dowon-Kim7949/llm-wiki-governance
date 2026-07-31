@@ -2,15 +2,15 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
 last_updated: 2026-07-31
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-30
+reviewed_at: 2026-07-31
 wiki_block_version: v1
 source_files:
   - src/commands.js

@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-07-31 - docs: 6건 승인 스탬프 반영 + GLOSSARY의 config 키 목록 오류 수정
+
+- status: needs_review
+- actor: 유지보수자(Dowon-Kim, `review --approve` 스탬프) + Claude Code(GLOSSARY 수정)
+- scope: docs
+- changed:
+  - `ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`·`PUBLIC_API.md`·`REVIEW_HISTORY.md`·`domains/00_overview.md`·`HARNESS_GOVERNANCE_ROADMAP.md` (needs_review → **verified**, reviewed_by: Dowon-Kim, reviewed_at: 2026-07-31 — 사람이 직접 실행)
+  - `GLOSSARY.md` (verified → **needs_review 강등**; 내용 수정)
+
+### 내용
+
+- 유지보수자가 앞선 monorepo 계약 배치의 문서 6건을 `review --approve`로 승인했다. 에이전트는 승인 명령을 실행하지 않는다.
+- 남은 `evidence.stale` 6건을 근거 대조하던 중 `GLOSSARY.md`에서 **재기준선만으로는 해소되지 않는 실제 오류**를 찾았다: `llm-wiki.config.json` 항목이 인식 키를 4개(`type`/`profiles`/`agents`/`strict`)로 적고 있었으나 `src/config-file.js`는 11개를 받는다(`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage` 누락). 키 목록을 소스와 맞추고, 상세 계약 소유권은 PUBLIC_API Configuration 절로 넘겼으며, `rules`/`rulesPreset` 용어 항목을 신설했다.
+- 나머지 5건(`BENCHMARK`·`EXAMPLES`·`index`·`profiles/library`·`project-profile`)은 근거 대조 결과 **내용 갱신 불필요**다: staleness를 유발한 `0b56a56`·`49fc3ea`는 `src/`에 순수 additive(+132/-0)이고, 이 문서들은 monorepo 옵션 검증 표면이나 어댑터 v2 프롬프트 형태를 서술하지 않는다. `reviewed_at` 재기준선만 남았고 그것은 사람 검토 행위다.
+
+### 근거
+
+- `src/config-file.js#symbol:loadProjectConfig` — 인식 키 11개.
+- `git diff --stat 0b56a56^..HEAD -- src/` — 132 insertions, 0 deletions.
+
 ## 2026-07-31 - fix: monorepo의 CLI 계약을 나머지 28개 명령과 균일화 (exit code 동작 변경, 유지보수자 승인)
 
 - status: needs_review
