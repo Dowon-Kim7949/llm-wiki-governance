@@ -2,11 +2,11 @@
 title: Versioning
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: versioning
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-07-31
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
@@ -52,3 +52,4 @@ contains_sensitive_info: false
 
 - 2026-07-14에 버전 정책을 version-agnostic으로 전환하고(특정 버전 숫자 표기 제거 → `package.json` 단일 소스 참조) 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.7.0 릴리스 준비로 인용 소스(`package.json` 버전 bump·`RELEASE_CHECKLIST.md` version-agnostic 갱신)가 바뀌어 evidence.stale이 떴으나, version-agnostic 정책 내용은 그대로 정확함을 확인하고 검토 기준일을 갱신해 해소했다(사람 검토 reviewed_by: Dowon-Kim). 내용 변경 없음.
+- 2026-07-31에 **CI 게이트가 처음으로 이 문서를 잡았다**. `0b56a56`이 `RELEASE_CHECKLIST.md`에 2줄(액션 `version` 입력값과 README 액션 태그 참조를 Release Metadata 점검 대상에 추가)을 더했는데 이 문서는 그대로였다. 내용 대조 결과 **version-agnostic 정책 서술은 그대로 정확하다** — 위 2026-07-15 항목과 같은 상황이다(내용 변경 불필요, 재기준선만 필요). 다만 이번에는 `drift`가 아니라 `impact`가 잡았다: `drift`는 날짜 앵커라 같은 날(2026-07-30) 변경을 검토가 "덮은" 것으로 보지만, `impact`는 diff 앵커라 pre-merge에서 본다 — 두 명령이 상보적이라는 설계가 실제로 작동한 사례다. `verified`→`needs_review`로 강등해 게이트를 해소했다(주장을 **제거**하는 안전한 방향). 사람이 `review --approve`로 재승인할 대상이다.
