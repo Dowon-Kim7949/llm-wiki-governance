@@ -2,7 +2,7 @@
 title: Public Api
 tags:
   - llm-wiki
-  - needs_review
+  - verified
 status: verified
 doc_type: public_api
 project: llm-wiki-governance

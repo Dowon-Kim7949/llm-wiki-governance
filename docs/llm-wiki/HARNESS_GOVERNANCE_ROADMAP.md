@@ -5,7 +5,7 @@ tags:
   - roadmap
   - harness
   - governance
-  - needs_review
+  - verified
 status: verified
 doc_type: roadmap
 project: llm-wiki-governance
@@ -883,6 +883,17 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 | N-9 | **`impact`의 자기제외가 PR 범위 전체에 걸린다** — 무관한 승인 스탬프 커밋 1건이 그 문서를 그 PR 내내 면제시킨다 | `DOMAIN_FEATURES.md`가 승인 스탬프로 PR 범위에 들어가 면제된 사이 낡은 계약 서술이 통과했다(C-1) | 설계 |
 
 잠재 결함 1건(현재 발생 0건이라 표에 넣지 않음): `source_files`에 로케이터를 쓰면 `scanSourceFiles`는 원문 그대로 `pathExists`해 `source_files.missing`을 내는데 `verifiedSourceAnchors`는 `#` 앞을 잘라 받아준다 — 같은 필드를 두 스캔이 다르게 해석한다(실측 843/843이 순수 경로라 미발화).
+
+##### 2026-08-03에 새로 기록한 결함 (N-11 ~ N-12)
+
+| # | 결함 | 근거 | 성격 |
+| --- | --- | --- | --- |
+| N-11 | **드리프트 해소의 표준 경로가 같은 날 두 번째 배치에서 no-op이 된다** — 정책이 규정한 해소 경로는 강등 후 `review --approve-all`로 `reviewed_at`을 재스탬프하는 것인데, `reviewed_at`이 **이미 오늘**이면 왕복 결과가 원본과 byte-identical이라 `impact`가 계속 "문서는 안 바뀌었다"고 판정한다 | 이 배치에서 실측: 첫 커밋 후 `impact --since origin/main --strict` 24건 → 정책 경로로 해소 → **23건이 그대로 남음**(해소된 1건은 내용을 실제로 고친 `00_overview.md`뿐) | 결함 |
+| N-12 | **문서가 자기 상태를 두 곳(`status`, `tags`)에 적는데 두 값의 일치를 아무 게이트도 검사하지 않는다** — `syncStatusTag`는 자기가 아는 상태 태그만 고치므로 알 수 없는 철자는 조용히 남고, 그 위에 `review --approve`가 `status`를 찍는다 | 이 배치에서 13개 문서가 `status: verified` + `tags: needs_review`가 됐는데 469 tests·lint·`validate --strict`·`validate-frontmatter --strict`·`drift --strict`·`audit` 전부 초록이었다. 신규 저장소 가드 `tests/status-tag-consistency.test.js`로 고정 | 결함 |
+
+**N-11이 자기승격 정책의 직접적 귀결이라는 점이 중요합니다.** 사람 검토 체제에서는 `reviewed_at`이 오늘인 문서가 소수라 이 상황이 드물지만, 배치마다 전체를 스탬프하는 체제에서는 **하루에 두 번째 배치를 하는 순간 항상 발생**합니다. 즉 이 저장소에서 `impact --strict`를 0으로 만드는 도구 경로는 **하루 한 배치까지만 존재**합니다. 우회 수단(내용 없는 `last_updated` 갱신 등)은 문서가 바뀌지 않았는데 바뀐 것처럼 만드는 것이므로 채택하지 않았습니다 — 게이트를 초록으로 만들려고 기록을 위조하는 것이 이 로드맵이 막으려는 바로 그 행위입니다.
+
+**대신 이번 배치에서 확인한 것**: CI의 push 게이트는 `impact --since HEAD~1`(직전 커밋 1건)이므로 누적 diff를 보지 않습니다. 로컬의 `--since origin/main` 숫자와 CI의 숫자는 **원리적으로 다르며**, 둘을 같은 값으로 기대하면 안 됩니다. 이번 23건의 대부분(16건)은 변경 불가능한 과거 릴리스 노트가 `src/commands.js`를 인용해 생기는 **N-1 허브 팬아웃**이고, 결정 21번이 기다리는 정책 판단의 대상입니다.
 
 ---
 

@@ -2,7 +2,7 @@
 title: Domain Features
 tags:
   - llm-wiki
-  - needs_review
+  - verified
 status: verified
 doc_type: domain_overview
 project: llm-wiki-governance

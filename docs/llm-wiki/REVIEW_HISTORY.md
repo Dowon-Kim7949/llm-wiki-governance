@@ -2,7 +2,7 @@
 title: Review History
 tags:
   - llm-wiki
-  - needs_review
+  - verified
 status: verified
 doc_type: review_history
 project: llm-wiki-governance
@@ -173,12 +173,13 @@ reviewed_at: 2026-08-03
   사람 검토 후 `verified` 승격 예정(허위 검토 메타 미기입).
 ## Domain Overview
 
-원문서: [00_overview.md](domains/00_overview.md) — 4건(2026-07-14 → 2026-07-16), 2026-08-03 이전분.
+원문서: [00_overview.md](domains/00_overview.md) — 5건(2026-07-14 → 2026-07-16), 2026-08-03 이전분.
 
 - 2026-07-14에 1.3.0 명령어군과 공통 관심사를 기준으로 재검토했다.
 - 2026-07-14에 도메인 지도를 현행화했다: 누락됐던 Knowledge(`graph`/`stats`, 1.4)·Release(`release-notes`)·Agent-native(`mcp`, 1.6)를 추가하고, stale했던 "migrate --apply 안정판 차단" 서술을 Gate 8(해금, preview-first) 기준으로 정정했으며, `drift`(Gate 9)를 반영했다. 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.7 CI/CD 도입을 반영했다: Release 도메인에 `release-notes --body-only`(GitHub Release 본문용, 민감정보 스캔·차단)를 추가하고, 컴포지트 validate Action·태그 트리거 Release 잡은 저장소/CI 표면임을 명시했다(Gate 12). 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 도메인 지도는 불변이며, Evidence의 `fixCommand` 포인터를 `src/commands/fix-migrate.js`로 갱신했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
+- 2026-07-20에 1.14.1 노출-테스트 fix 배치에 따라 재검토했다: 도메인 지도는 불변이며(`src/commands.js`·`src/commands/fix-migrate.js`의 handoff 진입점·`needsWriteFlag` 변경은 명령 도메인 구조에 영향 없음), 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)로 재승인하고 review baseline을 갱신해 `evidence.stale`을 해소했다.
 ## Examples
 
 원문서: [EXAMPLES.md](EXAMPLES.md) — 4건(2026-07-13 → 2026-07-23), 2026-08-03 이전분.

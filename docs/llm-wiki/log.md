@@ -24,6 +24,31 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - fix(후속): 문서가 자기 상태를 두 곳에 적는데, 두 값이 어긋나도 아무 게이트가 보지 않았다
+
+- status: verified (에이전트 승격)
+- actor: Claude Code
+- scope: docs, tests
+- changed:
+  - `docs/llm-wiki/` 13개 문서의 `tags` 상태 태그 복구
+  - `tests/status-tag-consistency.test.js` (신규 가드 2건)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+앞 항목의 `impact` 24건을 정책대로 해소하면서 **내가 직접 만든 결함**이다. 강등 헬퍼가 상태 태그를 `needs_review`(언더바)로 썼는데 이 저장소의 태그 어휘는 `needs-review`(하이픈)다. `syncStatusTag`는 **자기가 아는 상태 태그만** 고치므로 알 수 없는 값을 조용히 그대로 두었고, 이어서 `review --approve`가 그 위에 `status: verified`를 찍었다. 결과적으로 **13개 문서가 `status: verified`와 `tags: needs_review`를 동시에 주장**하게 됐다.
+
+**그리고 게이트 5종 전부가 이것을 보지 못했다** — 467 tests · lint · `validate --strict` · `validate-frontmatter --strict` · `drift --strict` · `audit` 전부 초록이었다. 문서가 자기 상태를 두 곳에 적는데 **두 값의 일치를 검사하는 곳이 없다.** 발견 경위도 우연이 아니라 규율이었다: 승인 스윕 뒤 프론트매터를 표본 확인하다 걸렸다. 자동 해소가 표준이 된 저장소에서는 스윕 결과를 눈으로 한 번 보는 절차가 유일한 관측점이다.
+
+신규 가드 `tests/status-tag-consistency.test.js` 2건(전건 RED 선확인 — 실제로 문서 하나를 깨뜨려 실패를 본 뒤 되돌렸다. `git checkout --`이 아니라 되돌리는 편집으로 복구했다): 상태 태그와 `status` 필드의 일치, 그리고 언더바 철자의 재유입 금지. 후자를 따로 고정한 이유는 그 철자가 **`syncStatusTag`에 보이지 않아 승격/강등 왕복을 그대로 통과**하기 때문이다.
+
+**제품 규칙(`content.*` finding)으로 올리지 않았다** — finding 표면 추가는 동결 계약이라 별도 결정이 필요하다. 도입처에도 같은 일이 생길 수 있으므로 그 결정 후보로 남긴다.
+
+### 검증
+
+- 신규 가드 2건 RED 선확인 → 복구 후 GREEN.
+- 52문서 전수 재검사: 모순 0건.
+
 ## 2026-08-03 - feat: 하네스 자신을 보는 첫 번째 눈 (`harness-health`, Phase 1 R0) + J장 전제 재검토
 
 - status: verified (에이전트 승격)

@@ -2,7 +2,7 @@
 title: Architecture Conventions
 tags:
   - llm-wiki
-  - needs_review
+  - verified
 status: verified
 doc_type: architecture_conventions
 project: llm-wiki-governance
