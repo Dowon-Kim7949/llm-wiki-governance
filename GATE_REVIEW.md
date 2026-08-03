@@ -2131,26 +2131,45 @@ human found it rather than a prototype.
 
 ### A second data point for the baseline false-positive rate
 
-Changing three source files fired `impact` on **10 verified documents**. Labelled by
-reading each one: **4 true positives / 6 noise (TP 40%)**. The four (ARCHITECTURE_
-CONVENTIONS, DOMAIN_FEATURES, PUBLIC_API, HARNESS_GOVERNANCE_ROADMAP) each held a
-present-tense false sentence; the six cite `src/cli.js` or `src/commands.js` broadly and
-assert nothing that changed. This is the census of one commit rather than a random sample
-of the 332-finding baseline, and the commit's nature (editing contract sentences) plausibly
-pushes TP upward — both caveats are recorded next to the number in
-`HARNESS_GOVERNANCE_ROADMAP.md`. Decision 21 still needs the random-30 labelling.
+This batch's full diff fired `impact` on **11 verified documents**. Labelled by reading
+each one: **4 true positives / 7 noise (TP 36%)**. The four (ARCHITECTURE_CONVENTIONS,
+DOMAIN_FEATURES, PUBLIC_API, HARNESS_GOVERNANCE_ROADMAP) each held a present-tense false
+sentence; six of the seven cite `src/cli.js` or `src/commands.js` broadly and assert
+nothing that changed.
+
+The seventh is the interesting one. `BENCHMARK.md` cites
+`GATE_REVIEW.md#section:Impact Measurement Scope Decision` — a **section** anchor — and
+what changed is a different section of that file (this one). `scanReverseImpact` drops the
+locator and compares base paths, so the section never enters the decision. N-7 (line
+ranges) and N-8 (directories) reported that root cause; this is the first evidence it holds
+for **section** anchors too. Concretely: **one of this commit's seven noise findings
+disappears if the locator is respected, and six do not** — they are pure path anchors,
+unavoidable at file granularity. Note also that this finding exists because the batch
+documented itself here: writing down the evidence enlarged the gate's blast radius.
+
+This is the census of one commit rather than a random sample of the 332-finding baseline,
+and the commit's nature (editing contract sentences) plausibly pushes TP upward — both
+caveats are recorded next to the number in `HARNESS_GOVERNANCE_ROADMAP.md`. Decision 21
+still needs the random-30 labelling.
 
 ### Verification
 
-442 tests pass (438 + 4 new, RED first). `lint` OK (61 files). `validate --strict` 0,
-`validate-frontmatter` 0, `drift` 0. **`impact` still warns on 6 documents** — the six
-labelled noise above. Their content needs no change, so what remains is a `reviewed_at`
-re-baseline, which is a human review act (precedent `52aa90b`); `review --approve` refuses
-an already-verified document, so no tool path exists (a recorded open defect). A PR from
-this state turns CI's `impact --since origin/main --strict` red until the maintainer
-re-baselines. Five wiki documents were edited and all five kept `needs_review` pending
-human re-approval (`verified` 20/52 → 15/52, health 79 → 76). The agent did not run
-`review --approve`. Unreleased.
+442 tests pass (438 + 4 new, RED first). `lint` OK (61 files). `validate-frontmatter` 0.
+
+Measured **after** committing, which is the only honest place to measure it: `evidence.stale`
+reads `git log`, so an uncommitted source change is invisible to it and both gates read 0
+before the commit. After: **`impact --since origin/main --strict` 7 findings / exit 1** and
+**`validate --strict` 6** — the documents labelled noise above. (`domains/00_overview.md`
+appears in `impact` but not in `validate`: its `reviewed_at` is 2026-08-03, so the date
+anchor covers it while the diff anchor does not. Another live instance of the drift/impact
+complementarity.)
+
+Their content needs no change, so what remains is a `reviewed_at` re-baseline, which is a
+human review act (precedent `52aa90b`); `review --approve` refuses an already-verified
+document, so no tool path exists (a recorded open defect). A PR from this state turns CI
+red until the maintainer re-baselines. Five wiki documents were edited and all five kept
+`needs_review` pending human re-approval (`verified` 20/52 → 15/52, health 79 → 76). The
+agent did not run `review --approve`. Unreleased.
 
 ## Release Caveats
 
