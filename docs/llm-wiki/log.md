@@ -53,13 +53,15 @@ contains_sensitive_info: false
 
 **같은 계약이 소스 8곳 + 위키 5문서 7곳에 재서술돼 있고, 두 차례의 수정이 각각 일부에만 도달했다**(N-4 → 백로그 16 프로토타입 → 이번). 백로그 16(중복·충돌 후보 탐지)의 근거가 세 번째로, 가장 강하게 확인됐다.
 
-**기준선 오탐률의 두 번째 데이터 포인트(결정 21번의 유일한 공백)**: 소스 3파일 변경에 `impact`가 `verified` 10문서를 발화했고, 문서를 직접 대조해 **참 양성 4 / 노이즈 6 = TP 40%**로 분류했다. 상세와 분류 근거는 로드맵 N-10 절에 있다. 첫 데이터 포인트(1/1)와 합쳐 5건 중 5건이 아니라 **11건 중 5건**이 참이다.
+**기준선 오탐률의 두 번째 데이터 포인트(결정 21번의 유일한 공백)**: 이 배치의 전체 diff에 `impact`가 `verified` 11문서를 발화했고, 문서를 직접 대조해 **참 양성 4 / 노이즈 7 = TP 36%**로 분류했다. 상세와 분류 근거는 로드맵 N-10 절에 있다. 첫 데이터 포인트(1/1)와 합치면 **12건 중 5건**이 참이다.
+
+노이즈 7건 중 **`BENCHMARK.md` 1건은 기계적으로 예방 가능하다**: 인용이 `GATE_REVIEW.md#section:Impact Measurement Scope Decision`인데 바뀐 것은 같은 파일의 **다른 절**이고, `scanReverseImpact`가 로케이터를 버려서(`scans.js:584-587`) 섹션 정보가 판정에 쓰이지 않는다. N-7(라인 범위)·N-8(디렉터리)과 같은 뿌리가 **섹션 앵커에서도** 성립한다는 첫 실물이다. 나머지 6건은 순수 경로 앵커라 파일 단위로는 피할 수 없다. 아울러 이 11건 중 1건은 소스 때문이 아니라 **이 배치가 `GATE_REVIEW.md`에 절을 추가했기 때문에** 발화했다 — 근거를 남기는 행위가 발화 수를 늘린다.
 
 테스트는 4건 전부 수정 전 소스에서 RED임을 먼저 확인했다(list caveat · approve caveat · drift caveat · help 4표면). 문자열 단언은 텍스트가 이동하면 조용히 아무것도 검사하지 않게 되므로, 각 단언에 **가드**(해당 문장이 실제로 필드 열거인지 먼저 확인)를 붙였다. 442 tests(신규 4)·lint OK(61 files)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0.
 
 **열린 상태 2건을 정직하게 남긴다.**
 
-1. `impact`가 아직 **6건** 경고한다(`domains/00_overview.md`·`EXAMPLES.md`·`GLOSSARY.md`·`index.md`·`profiles/library.md`·`project-profile.md`). 전부 위 분류에서 **노이즈**로 판정한 문서이고 내용 갱신이 필요 없다 — 남은 것은 `reviewed_at` 재기준선이며 **그것은 사람 검토 행위다**(선례: `52aa90b`). `review --approve`는 이미 `verified`인 문서를 거부하므로 도구 경로가 없다(기록된 미해결 결함). 이 상태로 PR을 올리면 CI의 `impact --since origin/main --strict`가 빨갛다.
+1. **커밋 후 재측정으로 `impact --since origin/main --strict`가 7건 / exit 1이다**(`domains/00_overview.md`·`EXAMPLES.md`·`GLOSSARY.md`·`index.md`·`profiles/library.md`·`project-profile.md`·`BENCHMARK.md`). 전부 위 분류에서 **노이즈**로 판정한 문서이고 내용 갱신이 필요 없다 — 남은 것은 `reviewed_at` 재기준선이며 **그것은 사람 검토 행위다**(선례: `52aa90b`). `review --approve`는 이미 `verified`인 문서를 거부하므로 도구 경로가 없다(기록된 미해결 결함). 이 상태로 PR을 올리면 CI가 빨갛다. `validate --strict`도 같은 이유로 6건(`evidence.stale`)이다 — `00_overview.md`만 빠지는데 `reviewed_at`이 2026-08-03이라 날짜 앵커가 덮기 때문이고, 이것이 drift·impact 상보성의 또 하나의 실물이다. **커밋 전 두 명령이 0이었던 것은 미커밋 소스 변경을 `git log`가 못 보기 때문이며, 이 저장소에 이미 기록된 함정이다.**
 2. Review Notes 5건 상한: `ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`는 아카이브 이전으로 5건을 유지했지만, `PUBLIC_API.md`는 **38건**, `HARNESS_GOVERNANCE_ROADMAP.md`는 **9건**으로 상한을 넘어 있다(아카이브 섹션 없음). 33건 이전은 이 배치 범위 밖이라 별도 배치가 필요하다 — 2026-07-31에 기록한 "상한 과소 집행"이 그대로다.
 
 강등 5건으로 `verified` 20/52 → **15/52(29%)**, health 79 → 76, `stale_verified` 0. **`review --approve`는 이번에도 실행하지 않았다.**
