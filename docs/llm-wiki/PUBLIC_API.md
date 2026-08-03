@@ -2,11 +2,11 @@
 title: Public Api
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: public_api
 project: llm-wiki-governance
-last_updated: 2026-07-31
+last_updated: 2026-08-03
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
@@ -245,7 +245,7 @@ MCP 클라이언트 등록 예시:
 - `src/commands.js#symbol:checkRunCommand` — `check-run` 명령: `.llm-wiki/runs/` run manifest로 스킬 실행 파이프라인(changedSource↔touchedDocs·log·validate)을 검증(read-only; `run.*` findings; Gate 26, 1.19).
 - `src/commands/retrieval.js` — read-only retrieval 4개 핸들러(`listDocsCommand`/`searchDocsCommand`/`getDocCommand`/`getRelatedCommand`): 문서 본문 반환, visibility 존중 + sensitive-info redaction, zero-dep 키워드 검색(Gate 24, 1.18).
 - `src/git.js#symbol:changedFiles` — 변경집합 프리미티브(working tree / `--since <ref>`); `impact`와 `validate --changed`가 공유.
-- `src/commands.js#symbol:reviewCommand` — `review` 명령: needs_review 백로그를 위험도 정렬해 나열(read-only)하고 `--approve`/`--approve-all --yes`로 지정 문서에 `status: verified`+`reviewed_by`+`reviewed_at`만 스탬프(자동 승격 없음; blocking/구조적 finding 문서 거부; `drift --downgrade`의 역방향). reviewed_by는 `--reviewer`>config>`gitUserName`. seam 재사용: `src/git.js#symbol:gitUserName`·`src/commands/fix-migrate.js#symbol:upsertFrontmatterScalar`·`src/commands/findings.js`의 `review.reviewer_unresolved`/`review.confirmation_required` 규칙(Gate 20).
+- `src/commands.js#symbol:reviewCommand` — `review` 명령: needs_review 백로그를 위험도 정렬해 나열(read-only)하고 `--approve`/`--approve-all --yes`로 지정 문서에 `status: verified`+`reviewed_by`+`reviewed_at`+`tags`의 상태 태그(이미 있는 경우만)를 스탬프(자동 승격 없음; blocking/구조적 finding 문서 거부; `drift --downgrade`의 역방향). reviewed_by는 `--reviewer`>config>`gitUserName`. seam 재사용: `src/git.js#symbol:gitUserName`·`src/commands/fix-migrate.js#symbol:upsertFrontmatterScalar`·`syncStatusTag`·`src/commands/findings.js`의 `review.reviewer_unresolved`/`review.confirmation_required` 규칙(Gate 20).
 
 ## Review Notes
 
@@ -286,3 +286,4 @@ MCP 클라이언트 등록 예시:
 - 2026-07-31(Phase 0 게이트 배선)에 로드맵 "지금 해야 함" 1~2번을 처리했다. **(1) `doctor`의 `ci_governance`를 차단력 기준으로 재정의**했다 — 그 전에는 호출 존재만 세어 `doctor`/`status` 같은 항상 exit 0인 리포트도 게이트로 계수했다(호출 존재 ≠ 게이트 존재). 이제 `N blocking, M advisory`로 나누고 **누락 게이트(`impact`/`check-run`/`drift` + `--strict`)가 없으면 그 사실을 명시**한다. 검출 정규식이 `node bin/llm-wiki.js <command>` 형태를 못 봐서 이 저장소 자신의 게이트가 안 보이던 것도 고쳤다. 알려진 한계: 호출은 보지만 **실행 디렉터리는 보지 않는다**(zero-dep·YAML 미파싱) — 매칭된 파일 경로를 함께 보고하므로 사람이 판별할 수 있고, 수치는 상한으로 읽어야 한다. **(2) composite action(`.github/actions/validate/action.yml`)에 `command` 입력을 추가**했다 — 그 전에는 `args=(validate ...)`로 하드코딩돼 있어 이 액션으로는 누락 게이트를 **물리적으로 걸 수 없었다**. 읽기 전용 명령 11종만 허용(쓰기 명령은 exit 3)하고, 각 플래그는 그 명령이 실제로 받는 경우에만 붙인다(`COMMAND_OPTION_RULES`가 이제 미지원 옵션을 exit 3으로 거부하므로 필수). 기본값 `validate`라 기존 사용자는 무변경. 424 tests·lint OK(59 files). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-31(Phase 0 결함 배치)에 하네스 거버넌스 로드맵의 "지금 해야 함" 3~7번을 코드로 처리하고 공개 계약 표면을 갱신했다: `explain`이 `--cwd`를 받고(설정의 `lang`이 산문 언어를 정하므로 실효 옵션), `drift`가 `--strict`를 받고 드리프트를 `findings`에 실어 `result: warning`을 보고하며(그 전엔 항상 `pass`+exit 0이라 CI 게이트 불가), `impact --since`가 미추적 파일을 포함하고, `check-run`의 "최신" 매니페스트가 파일명 사전순이 아니라 `timestamp` 기준이 됐고, `review --approve`가 보강되지 않은 스캐폴드를 `review.not_enriched`로 거부하며, `rulesPreset: strict`가 `impact.source_changed`를 error로 올린다. `--strict` 없는 exit code는 전부 보존했다(drift는 0 유지). 신규 finding 규칙 1건(`review.not_enriched`)·신규 옵션 2건(`explain --cwd`, `drift --strict`)은 additive이고, `review`의 승격 거부와 `check-run`의 선택 변경은 **의도된 동작 변경**이라 GATE_REVIEW "Phase 0 Defect Batch"에 기록했다. 415 tests·lint OK(59 files)·validate --strict 5(사람 재기준선 대기분, 이 배치와 무관)·validate-frontmatter 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-31(측정 결함 배치)에 도입 저장소 4곳 실측에서 나온 결함 2건을 반영했다. **(1) `validate-frontmatter`의 `result`가 다른 모든 명령과 같은 4단계 사다리**(`blocked`/`fail`/`warning`/`pass`)를 쓰고 JSON 페이로드에 `result` 필드가 additive로 실린다 — 그 전에는 이 명령만 2단계라 warning만 있는 실행이 본문에 `result: pass`를 찍으면서 `--strict` exit는 1이었고, CI 로그를 읽는 사람에게 "통과인데 실패"로 보였다. 이것은 **보고 값의 변경**이라 계약 변경으로 기록한다(exit code 의미는 불변). **(2) `review --approve`와 `drift --downgrade`가 `status`와 함께 `tags`의 상태 태그도 맞춘다** — 그 전에는 `status`만 바뀌어 문서가 `status: verified`인 채 `needs-review` 태그를 유지했고, 어느 경로로 강등했느냐에 따라 결과가 갈렸다(도입 저장소 한 곳에서 22개 중 12개가 불일치). 이미 있는 상태 태그만 고치고 없으면 만들지 않으므로, 태그로 상태를 추적하지 않는 문서는 그대로다. 신규 명령·옵션 0건, 동결 `commands` 맵·exit code 의미 불변. 부수로, 새 헬퍼의 인라인 리스트 정규식이 2차 백트래킹(`js/polynomial-redos`, CodeQL이 PR #1에서 검출)이라 선형으로 고쳤다 — 계약 표면 영향 없음. 438 tests(신규 9)·validate --strict 0·validate-frontmatter 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-08-03에 **도구가 인쇄하는 텍스트가 자기 쓰기 범위를 거짓으로 말하던 것을 고쳤다**(N-10, N-4의 네 번째 여진). `review --approve`의 caveat·help는 "ONLY status + reviewed_by + reviewed_at", `drift --downgrade`의 caveat·help는 "status + last_updated only"라고 단정했지만, 2026-07-31 N-4 수정 이후 두 명령은 공유 `syncStatusTag`로 `tags`의 상태 태그도 쓴다. 발견 경로가 중요하다 — **유지보수자의 실제 승인 실행**에서 리포트의 주장과 diff(문서당 3줄)가 어긋났고, 배포된 어떤 검증 명령도 이것을 보지 못했다. 소스 8곳(`src/commands.js` 3 · `src/cli.js` 4 · `src/commands/fix-migrate.js` 1)을 고쳤고 신규 테스트 4건이 수정 전 소스에서 전건 RED임을 확인했다(list caveat · approve caveat · drift caveat · help 4표면). 442 tests(신규 4)·lint OK(61 files)·`validate --strict` 0. 명령 표(2026-07-31에 갱신됨)는 이미 정확했지만 **같은 문서의 `## Evidence` 재서술이 거짓**이었다 — 같은 계약이 한 문서 안에 두 번 서술돼 있고 수정이 표에만 닿았다. 함께 고치고 seam 목록에 `syncStatusTag`를 추가했다. 별건으로 기록한다: 이 문서의 Review Notes는 37건으로 무거운 문서 5건 상한(`ARCHITECTURE_CONVENTIONS.md` 규칙)을 이미 크게 넘겨 있으며 이 노트로 38건이 된다 — 아카이브 이전은 이 배치 범위 밖이라 별도 배치가 필요하다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.

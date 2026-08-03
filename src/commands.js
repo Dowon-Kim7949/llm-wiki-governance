@@ -1218,10 +1218,12 @@ function finishCheckRun(options, relManifest, findings, extra = {}) {
 // it risk-ranks needs_review content docs (never-enriched / thin body / missing
 // ## Evidence / broken links / no-evidence first) with a per-doc quality + evidence
 // summary so a human can spot-check quickly. APPROVE mode (--approve <path>... or
-// --approve-all --yes) stamps ONLY status: verified + reviewed_by + reviewed_at on
-// the named docs; it NEVER auto-verifies, refuses any doc with blocking/structural
-// findings (blocked/error severity), and never edits body / source_files / evidence /
-// last_updated. reviewed_by resolves explicit --reviewer > config reviewer > git
+// --approve-all --yes) stamps ONLY the review stamp on the named docs — status:
+// verified + reviewed_by + reviewed_at, plus the tags: status tag when the doc
+// already carries one (syncStatusTag, added 2026-07-31 for N-4); it NEVER
+// auto-verifies, refuses any doc with blocking/structural findings (blocked/error
+// severity), and never edits body / source_files / evidence / last_updated.
+// reviewed_by resolves explicit --reviewer > config reviewer > git
 // user.name, and the command refuses to stamp (never blank/fabricated) when none
 // resolves. Scope: GATE_REVIEW.md ("Review Workflow Scope Decision", Gate 20). MCP
 // exposes the LIST surface only (buildToolOptions copies no approve fields).
@@ -1354,7 +1356,7 @@ function renderReviewList(reviewed, totalScanned, includeSensitive) {
     { title: "Needs Review (risk-ranked)", body: docLines.length ? docLines : ["none"] },
     { title: "Caveats", body: [
       "Read-only list. Risk-ranks needs_review docs (never-enriched / thin / no-evidence / broken-link first) for fast spot-checking. Restricted/sensitive docs are excluded unless --include-sensitive.",
-      "Promotion to verified is human-only: run review --approve <path> (or review --approve-all --yes) to stamp verified + reviewed_by + reviewed_at. Docs with blocking/structural findings are refused until fixed; verified is never set automatically."
+      "Promotion to verified is human-only: run review --approve <path> (or review --approve-all --yes) to stamp verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one. Docs with blocking/structural findings are refused until fixed; verified is never set automatically."
     ] }
   ]);
 }
@@ -1377,10 +1379,11 @@ function resolveContentDocPath(docs, given) {
   return docs.find((doc) => doc.path.endsWith(`/${clean}`) || doc.path.endsWith(`/${clean}.md`))?.path ?? null;
 }
 
-// Stamp status: verified + reviewed_by + reviewed_at on one document. Mirrors the
-// drift --downgrade discipline in reverse: touches ONLY those three fields, never
-// body / source_files / evidence / last_updated. Skips mojibake and re-scans the
-// result for sensitive content (blocking the write if it matches), like fix/drift.
+// Stamp status: verified + reviewed_by + reviewed_at on one document, and sync the
+// tags: status tag when the doc already carries one. Mirrors the drift --downgrade
+// discipline in reverse: touches ONLY those fields, never body / source_files /
+// evidence / last_updated. Skips mojibake and re-scans the result for sensitive
+// content (blocking the write if it matches), like fix/drift.
 async function stampVerified(cwd, rel, reviewer, today) {
   const abs = path.join(cwd, rel);
   const original = await readUtf8(abs);
@@ -1525,7 +1528,7 @@ function finishReview(reviewed, { mode, approved, refused, reviewer, findings })
     { title: "Refused", body: refused.length ? refused.map((entry) => `${entry.path}: ${entry.reason}`) : ["none"] },
     { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
     { title: "Caveats", body: [
-      "review --approve stamps ONLY status: verified + reviewed_by + reviewed_at; it never edits body, source_files, evidence, or last_updated.",
+      "review --approve stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it never edits body, source_files, evidence, or last_updated.",
       "verified is a human decision: the tool refuses any doc with blocking/structural findings and never auto-verifies. Run validate --strict to confirm."
     ] }
   ]);

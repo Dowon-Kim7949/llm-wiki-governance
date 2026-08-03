@@ -2083,6 +2083,75 @@ against `origin/main` rather than local `main`, which is the trap PR #1 taught. 
 docs updated in the same task and kept `needs_review` pending human re-approval.
 Unreleased — branch only.
 
+## Shipped-Text Honesty Batch Scope Decision (maintainer-instructed 2026-08-03 — built)
+
+### Why
+
+The N-4 fix taught `review --approve` and `drift --downgrade` to sync the `tags:` status
+tag. It did not teach either command to say so. Both kept printing, in the caveat block
+of the very run that had just written the tag, that they touch ONLY the old field list —
+`review --approve` claimed "ONLY status + reviewed_by + reviewed_at", `drift --downgrade`
+claimed "status + last_updated only".
+
+For a governance tool this is not a typo. The caveat block is where this product states
+the boundary of its own write, and the boundary it stated was false. Nothing shipped
+could see it: strings are not in `validate`'s scan surface, a post-merge working tree
+gives `impact` no diff to read, and a same-day `reviewed_at` covers the date anchor
+`evidence.stale` uses (N-9). **The maintainer's own approval run is what exposed it** —
+the report claimed two or three writes and the diff carried three lines per document.
+
+### Decisions
+
+- **A command that writes must describe the write it performs.** All eight places were
+  corrected together, not just the two the hand-off had catalogued: the `review` LIST
+  caveat (also the MCP-exposed read-only surface), the `review` APPROVE caveat, the
+  `drift --downgrade` caveat, both `helpText` lines, `COMMAND_HELP.review`,
+  `COMMAND_HELP.drift`, and two code comments. The hand-off had missed the entire
+  `drift` side — N-4 joined the two commands through one shared helper, so the
+  aftershock landed on both.
+- **The wording names the conditional, because the write is conditional.** `syncStatusTag`
+  rewrites a status tag that is already present and never adds one, so every corrected
+  string says "plus the `tags:` status tag when the document already carries one". A
+  flat "and tags" would have been a second false statement in the opposite direction.
+- **String assertions get a guard.** A test that greps for a sentence silently stops
+  checking anything once that sentence moves. Each of the four new cases first asserts
+  that the located statement really is the field enumeration, then asserts it names
+  `tags`. All four are confirmed RED against the unfixed source.
+
+### The same contract was restated fifteen times, and two rounds of fixing reached parts of it
+
+This is the third pass over one fact. N-4 (2026-07-31) updated the `PUBLIC_API.md`
+command table. The backlog-16 prototype then caught the prose in `domains/00_overview.md`
+and `DOMAIN_FEATURES.md`. Neither pass reached the `## Evidence` restatement **inside
+those same documents**, nor the shipped text. `DOMAIN_FEATURES.md` carried a Review Note
+saying the stamp field list had been corrected while its own Evidence line was still
+false. Final count: **8 places in source, 7 places across 5 wiki documents.** Backlog 16
+(duplicate/conflict candidate detection) now has its strongest evidence, and this time a
+human found it rather than a prototype.
+
+### A second data point for the baseline false-positive rate
+
+Changing three source files fired `impact` on **10 verified documents**. Labelled by
+reading each one: **4 true positives / 6 noise (TP 40%)**. The four (ARCHITECTURE_
+CONVENTIONS, DOMAIN_FEATURES, PUBLIC_API, HARNESS_GOVERNANCE_ROADMAP) each held a
+present-tense false sentence; the six cite `src/cli.js` or `src/commands.js` broadly and
+assert nothing that changed. This is the census of one commit rather than a random sample
+of the 332-finding baseline, and the commit's nature (editing contract sentences) plausibly
+pushes TP upward — both caveats are recorded next to the number in
+`HARNESS_GOVERNANCE_ROADMAP.md`. Decision 21 still needs the random-30 labelling.
+
+### Verification
+
+442 tests pass (438 + 4 new, RED first). `lint` OK (61 files). `validate --strict` 0,
+`validate-frontmatter` 0, `drift` 0. **`impact` still warns on 6 documents** — the six
+labelled noise above. Their content needs no change, so what remains is a `reviewed_at`
+re-baseline, which is a human review act (precedent `52aa90b`); `review --approve` refuses
+an already-verified document, so no tool path exists (a recorded open defect). A PR from
+this state turns CI's `impact --since origin/main --strict` red until the maintainer
+re-baselines. Five wiki documents were edited and all five kept `needs_review` pending
+human re-approval (`verified` 20/52 → 15/52, health 79 → 76). The agent did not run
+`review --approve`. Unreleased.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)
