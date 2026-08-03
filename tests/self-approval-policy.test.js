@@ -49,6 +49,58 @@ test("the configured reviewer names the agent, not the git identity", async () =
   }
 });
 
+// The tool cannot know who is at the keyboard, so it must not claim to. Five shipped
+// surfaces used to assert that a human decides — two `review` caveats, two help
+// surfaces, and the MCP tool description — and an agent approving 40 documents made
+// every one of them read as false. They were softened to what is actually
+// guaranteed: nothing promotes on its own, only an explicit --approve stamps, and
+// `reviewed_by` records whoever ran it.
+//
+// Deliberately NOT banned: `task-prompts.js` still tells agents "verified is
+// human-approved only". That is a directive inside a generated prompt, correct under
+// the shipped default, and a repository that delegates approval overrides it in its
+// own adapter — not by editing what every adopter's agent is told.
+const OVERCLAIMS = [
+  "verified is a human decision",
+  "verified is human-only",
+  "verified stays a human decision",
+  "Promotion to verified is human-only",
+  "human CLI action",
+  "verified is never set automatically"
+];
+
+test("no shipped surface claims the tool guarantees a human approver", async () => {
+  const files = ["src/commands.js", "src/cli.js", "src/mcp/tools.js"];
+  const offenders = [];
+  for (const rel of files) {
+    const text = await readFile(path.join(repoRoot, rel), "utf8");
+    for (const phrase of OVERCLAIMS) {
+      if (text.includes(phrase)) offenders.push(`${rel}: "${phrase}"`);
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `the tool cannot know who ran it; say what is guaranteed instead (never automatic, only --approve stamps, reviewed_by records the approver):\n${offenders.join("\n")}`
+  );
+});
+
+test("the review surfaces still state what IS guaranteed", async () => {
+  const commands = await readFile(path.join(repoRoot, "src", "commands.js"), "utf8");
+  const cli = await readFile(path.join(repoRoot, "src", "cli.js"), "utf8");
+  const mcp = await readFile(path.join(repoRoot, "src", "mcp", "tools.js"), "utf8");
+
+  // Guards: without these the softening could be deleted outright and the banned-
+  // phrase test above would still pass on an empty caveat.
+  assert.match(commands, /Promotion to verified is never automatic/, "the review list caveat lost its promotion statement");
+  assert.match(commands, /verified is an explicit decision, never an automatic one/, "the approve caveat lost its promotion statement");
+  assert.match(commands, /reviewed_by records whoever did/, "the approve caveat no longer says who the stamp records");
+  assert.match(cli, /never auto-verifies/, "the review help summary lost the no-auto-verify guarantee");
+  assert.match(cli, /Promotion is never\s+automatic/, "the help review topic lost the no-auto-promotion guarantee");
+  assert.match(mcp, /promotion to verified stays a CLI action .* never available over MCP/, "the MCP review tool no longer states that promotion is unavailable over MCP");
+});
+
 // The shipped rule and this repo's local rule are allowed to disagree — that is the
 // whole point — so the shipped one is pinned here.
 test("every shipped adapter template still requires human review", async () => {

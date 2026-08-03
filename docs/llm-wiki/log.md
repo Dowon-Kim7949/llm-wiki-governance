@@ -24,6 +24,40 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - fix: 도구는 키보드 앞에 누가 있는지 알 수 없다 (배포 텍스트 5곳 완화)
+
+- status: needs_review → 같은 작업 안에서 에이전트 승격
+- actor: Claude Code
+- scope: src, docs, tests
+- changed:
+  - `src/commands.js` (review list caveat · approve caveat)
+  - `src/cli.js` (`--help` 요약 1곳 · `help review` 토픽 1곳)
+  - `src/mcp/tools.js` (`review` 툴 설명 — 좁은 census에서 빠졌던 다섯 번째)
+  - `tests/self-approval-policy.test.js` (신규 가드 2건)
+  - `tests/measured-defects.test.js` (needle 갱신 — 문장이 바뀌었으므로)
+  - `docs/llm-wiki/PUBLIC_API.md` · `HARNESS_GOVERNANCE_ROADMAP.md` · `REVIEW_HISTORY.md` · `log.md`
+
+### 내용
+
+자기승격 정책(직전 항목)이 배포 텍스트를 거짓으로 만들었다. `review`가 인쇄하는 caveat 2곳과 help 2곳, MCP 툴 설명 1곳이 **"사람이 결정한다"를 도구의 보장처럼 단정**하고 있었는데, 같은 날 에이전트가 40건을 승격한 직후에는 전부 거짓으로 읽힌다. N-10과 같은 계열의 다섯 번째다.
+
+**고친 방향: 도구는 키보드 앞에 누가 있는지 알 수 없으므로 알 수 있는 것만 말한다.** 스스로 승격하는 경로는 없고, 명시적 `--approve`만이 스탬프하며, `reviewed_by`가 실행자를 기록한다. 사람 검토가 기본값이라는 것과, 승인 실행을 위임하는 프로젝트는 config `reviewer`를 실제 승인자 이름으로 두라는 안내를 함께 넣었다.
+
+**census를 두 번 돌렸고 그게 결정적이었다.** 좁은 패턴(`human decision`·`human-only`·`human review`…)으로는 **4곳**이 나왔다. 넓게(`human` 전수) 다시 훑어 **5곳**이 됐다 — 빠진 것은 `src/mcp/tools.js`의 `promotion to verified stays a human CLI action`이고, MCP 표면은 애초에 후보로 떠올리지도 않았다. **N-10의 "3곳 예상 → 8곳"과 같은 실패를 같은 주에 두 번 겪지 않은 유일한 이유가 패턴을 넓힌 것이다.**
+
+**바꾸지 않은 것과 그 이유.** `src/task-prompts.js`의 "verified is human-approved only"(5곳)·`doc-content.js`/`doc-templates.js`의 생성 문서 안내·`findings.js`/`i18n.js`의 remediation·`report.js` 푸터는 **도입처를 향한 권고**이며 도구 동작에 대한 거짓 주장이 아니다. 특히 task-prompts는 모든 도입처의 에이전트가 읽는 지시문이므로, 이 저장소의 충돌은 그 파일을 고쳐서가 아니라 `AGENTS.md`가 우선한다는 **선후관계를 명시**해서 해소했다(`AGENTS.md` "Wiki discipline"에 precedence note 추가).
+
+`PUBLIC_API.md`의 명령 표는 이미 정확했다(`자동 승격 절대 없음`, reviewed_by 해소 순서) — 손대지 않고 노트로만 기록했다.
+
+**로드맵에는 열린 항목을 표시했다.** 자기승격 정책이 그 문서의 설계 전제를 최소 네 곳에서 제거했다(공백 3 · R2 사람 관문 · F장 R3 목록 · 용어표 "사람만"). 740행의 "사정거리는 활동량에 따라 감쇠하고 사람만 복구할 수 있다"도 이 저장소에는 더 이상 성립하지 않는다. J장 결정 21·22·25번은 전제를 공유하므로 재검토가 필요하지만 **본문 재작성은 별도 배치로 남겼다** — 아직 사람 결정을 기다리는 브리프를 에이전트가 다시 쓰는 것이 되기 때문이다.
+
+### 검증
+
+- `npm test`: **451 tests / 451 pass / 0 fail**(신규 2). `npm run lint`: OK(64 files).
+- 신규 가드 2건은 양방향이다: 금지 문구 6개가 `src/commands.js`·`src/cli.js`·`src/mcp/tools.js`에 재유입되면 실패하고, 완화 문구가 삭제되면 실패한다(빈 caveat으로 전자를 우회하는 것을 막는다). 과잉 주장을 실제로 재주입해 RED을 확인했다.
+- 기존 `tests/measured-defects.test.js`의 needle을 갱신했다 — 그 테스트의 `statement()` 가드가 "문장이 이동하면 아무것도 검사하지 않는다"고 즉시 알려줬고, 이 저장소가 문자열 단언에 가드를 붙이기로 한 규율이 값을 냈다.
+- 계약 표면 불변: 명령·옵션·`--format json` shape·exit code·동결 `commands` 맵 무변경(프로즈만).
+
 ## 2026-08-03 - policy: 이 저장소는 자기 문서를 스스로 승격한다 (유지보수자 결정)
 
 - status: needs_review → 같은 작업 안에서 에이전트 승격

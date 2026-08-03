@@ -2,8 +2,8 @@
 title: Review History
 tags:
   - llm-wiki
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: review_history
 project: llm-wiki-governance
 last_updated: 2026-08-03
@@ -187,7 +187,7 @@ reviewed_at: 2026-08-03
 - 2026-07-23에 "스킬 생성 + 최초 보강(bootstrap)" 예시 섹션을 추가했다(`--agent codex`→`.agents/skills/`, `--agent claude`→`.claude/skills/`, `--skills`→모든 형식, `prompt --task bootstrap`). 예시 명령은 현재 CLI 표면과 일치한다. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 ## Harness Governance Roadmap
 
-원문서: [HARNESS_GOVERNANCE_ROADMAP.md](HARNESS_GOVERNANCE_ROADMAP.md) — 6건(2026-07-31 → 2026-07-31), 2026-08-03 이전분.
+원문서: [HARNESS_GOVERNANCE_ROADMAP.md](HARNESS_GOVERNANCE_ROADMAP.md) — 7건(2026-07-31 → 2026-07-31), 2026-08-03 이전분.
 
 - 2026-07-31: 2026-07-31 조사(도구 실행 12종, 소스 36파일, 실사용 저장소 4곳, 파일럿 git 이력)를 근거로 신규 작성했다. 에이전트(Claude Code) 작성이므로 `needs_review`다. 승인 전에는 확정 계획으로 인용하지 않는다.
 - 2026-07-31: 가설 문장을 수정 제안했다. 조사에서 확인된 최대 실패는 자동 수정의 부재가 아니라 사람 승인 경계의 미강제였다(B-1).
@@ -195,9 +195,10 @@ reviewed_at: 2026-08-03
 - 2026-07-31: 이 문서는 아직 어떤 문서에서도 링크되지 않아 orphan에 들어간다. 다만 실측 결과 orphan 총계는 35건으로 변하지 않았다 — 이 문서의 `related`가 `BENCHMARK.md`에 inbound 링크를 만들어 그 문서를 orphan에서 빼냈기 때문이다. `index.md` 읽기 순서에 넣으려면 `verified` 문서를 편집해야 하므로 규칙상 `needs_review`로 강등된다 — 백로그 30번의 사람 결정 사항으로 남겼다.
 - 2026-07-31: 이 문서를 작성한 실행 자체가 계약의 빈틈 하나를 드러냈다. 이번 작업이 만든 finding은 0건인데 위키 전체에는 무관한 기존 경고가 1건 있어, 매니페스트의 검증 결과를 정직하게 적으면 `run.unvalidated`가 뜬다. Phase 3 범위에 반영했다.
 - 2026-07-31(백로그 17·18·19 측정): 게이트를 도입 저장소 4곳에 읽기 전용으로 예행하고(쓰기·커밋·체크아웃 0건), `needs_review` 감시 옵트인의 폭발 반경을 재고, 파일럿 3곳의 마찰 이력을 git 이력에서 조사했다. **Phase 0의 마지막 미충족 완료 조건("파일럿 초록 확인")이 이것으로 닫혔다.** 핵심 결과 네 가지: (1) 새 게이트는 4곳 전부 오늘 초록이지만 **roadmonitor의 초록은 무의미**하고(위키 33개가 전부 diff 안), 문서를 갱신하지 않은 실존 커밋 9건은 **전부 RED**다 — 즉 다음 PR부터 울리는 것이 정상이다. (2) **허브 파일 팬아웃**이 두 저장소에서 독립적으로 확인됐다(배럴 파일 1개 → 문서 10건) — 사람 결정 21번의 실질 선행 조건으로 올렸다. (3) `needs_review` 옵트인 추가분 65건이 **100% 릴리스 노트**이고 살아있는 문서는 0건 — `doc_type: release_notes` 면제를 기능의 일부로 함께 내보내면 3곳 전부 0이다. (4) 마찰 이력에서 세 패턴이 나왔고, 그중 **도입처 어댑터 동결을 도구가 영구히 탐지하지 못한다**는 사실에 코드 앵커(`scanAdapters`)를 붙였다. 신규 결함 6건(N-1~N-6)과 백로그 37~41번을 신설했다. 측정 한계를 그대로 남겼다: 백로그 16번은 여전히 미측정, 실존 커밋 RED 9건은 재구현 시뮬레이션이자 현재 앵커 기준 예측이며, 세 저장소 모두 히스토리가 정지해 정상 상태 추가분은 못 쟀다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-07-31(Phase 0 잔여 완료, 유지보수자 지시): 백로그 8번(기준선 기록·R3 금지 목록·실패 사례집)을 채우고 Phase 0 진행 상황 표를 추가했다. **A-3b**(Phase 0 완료 시점 읽기 전용 실측, 5개 저장소), **F장 R3 자동 변경 금지 목록 12항목**(항목별로 "자동화가 할 수 있는 최대치"를 함께 적었고, 12건 중 6건은 관례로만 지켜진다는 사실을 명시), **G-2 실패 사례집**(요구된 6건 전부 실행 가능한 테스트로 고정 — 3건은 이번 라인에서 해결됐고 3건은 신규 `tests/known-gaps.test.js`의 characterization test로 고정)을 작성했다. 측정에서 새로 드러난 것 3가지: (1) 도입 4곳이 **차단력 기준으로 재판정해도 여전히 `none detected`** — 자문용 호출조차 없다, (2) **도입 저장소의 선적재가 우리보다 크다**(최대 ~3.8k vs 우리 ~1.44k; `index.md`가 주범) — 1.27.2의 선적재 축소가 도입처로 전파되지 않았다는 뜻이고 공백 5와 같은 뿌리다, (3) **"방치된 `needs_review`"는 실측상 문제가 아니다**(csap 1일·dotnine 4일; 우리 median 15일도 35건 중 31건이 릴리스 노트) — 백로그 11번의 근거를 이 수치가 약화시킨다. A-3의 "약 8.9k 토큰"과 A-3b의 선적재 수치는 **분모가 달라 비교 불가**임을 문서에 명시했다. 429 tests. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 ## Public API
 
-원문서: [PUBLIC_API.md](PUBLIC_API.md) — 34건(2026-07-14 → 2026-07-31), 2026-08-03 이전분.
+원문서: [PUBLIC_API.md](PUBLIC_API.md) — 35건(2026-07-14 → 2026-07-31), 2026-08-03 이전분.
 
 - 2026-07-14에 1.3.0 CLI 명령·옵션 계약(migrate --apply, drift, 신규 --agent, OKF type alias 포함)을 기준으로 재검토하고 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.4.0의 새 명령(`graph`, `stats`)과 graph 전용 `--format mermaid|dot`을 반영하고, stale했던 "migrate --apply 차단" 서술을 정정한 뒤, 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
@@ -233,3 +234,4 @@ reviewed_at: 2026-08-03
 - 2026-07-30에 1.26.3 이후 누적분(2026-07-27 야간 감사 잔여 3건 + 2026-07-28 ECC 기법 추출 배치 — 모두 1.27.1로 배포됨)을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 스탬프 전에 낡은 배포 상태 표기를 교정했다: `import-memory` 행과 `rulesPreset` 항목의 "(미릴리스)"를 1.27.1 배포 사실로 갱신. 동결 `commands` 맵 28키가 현재 `src/index.js`와 일치하고, 1.27.2는 명령/옵션/JSON shape 표면 무변경(프롬프트 산문·어댑터 템플릿만)임을 확인했다. 386 tests·validate --strict 0.
 - 2026-07-31에 **문서를 읽는 대신 명령을 실행해 대조한 결과 사실 오류 3건과 계약 이탈 2건을 찾아 반영했다**(코드 변경 없음). 직전 재승인(2026-07-30)이 "fact-checking 후"였는데도 남아 있던 것들이며, 공통점은 **문서를 읽는 방식으로는 잡히지 않고 명령을 실행해야 드러난다**는 점이다. **(1)** `prompt --task` 지원 값을 6종에서 실제 **8종**으로 정정했다(`onboard`/`prepare` 누락) — CLI가 미지원 값에 대해 스스로 출력하는 목록과 대조했고, 열거 대신 단일 소스 `SUPPORTED_TASK_PROMPTS`를 함께 가리키도록 했다(미지원 값은 blocked, exit 2로 실측). **(2)** Key Options의 `--cwd <path>`가 공통 옵션처럼 제시돼 있었으나 `explain`은 받지 않는다(`explain <rule> --cwd .` → exit 3 실측) — 예외와 단일 소스(`COMMAND_OPTION_RULES`)를 명시했다. **(3)** Stability에 **알려진 계약 이탈** 항목을 신설해 `monorepo`의 옵션 무검증(`monorepo --strict --write` → exit 0 실측)과 `help monorepo`의 exit 3을 결함으로 기록했다 — 문서를 실제 동작에 맞춰 정당화하지 않고, 이 표의 "옵션 없음"이 의도된 계약이며 그것을 강제하지 못하는 것이 결함임을 명시했다. 이 둘의 코드 수정은 exit code 계약을 건드리므로(지금 통과하는 호출이 exit 3으로 바뀐다) **사람 승인 대기**로 남겼다. **(4)** `monorepo` 행에 workspaces 없는 저장소에서 `pass`를 반환한다는 한계도 함께 적었다. 이 문서의 MCP 툴 목록(17종)은 이미 정확했다. 386 tests·lint OK·validate --strict 0(이 문서 귀속 finding 0건). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-31(이어서)에 위 계약 이탈 2건이 **유지보수자 승인으로 수정되어** 서술을 결함 기록에서 확정 계약으로 바꿨다. 그 과정에서 **같은 날 내가 적은 서술 하나가 틀렸음을 확인하고 정정했다**: Commands 표에 `monorepo`의 "옵션 없음"이 의도된 계약이라고 적었으나, `monorepoCommand`가 `{ ...options }`를 각 패키지의 `validateCommand`로 전파하므로 `--strict`(패키지별 evidence severity warning→error)와 `--agent`(패키지별 adapter 스캔)는 **실제로 적용된다**. 테스트로 재현해 확인했다(`--strict` 없이 warning/result warning, `--strict`로 error/result fail). 따라서 화이트리스트는 "옵션 없음"이 아니라 `cwd`·`strict`·`agent`·`format`·`out`이고, `--type`/`--profile`은 패키지별로 `type: null`·`profiles: []`로 덮어써져 무효이므로 거부한다. `help monorepo` 토픽도 신설해 다른 28개와 같은 형식(Usage/Purpose/Notes/JSON)을 갖췄다. **exit code 동작 변경**임을 Stability에 명시했다. 399 tests(신규 6, RED 3건 선실패 확인)·lint OK(58 files). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-07-31(Phase 0 게이트 배선)에 로드맵 "지금 해야 함" 1~2번을 처리했다. **(1) `doctor`의 `ci_governance`를 차단력 기준으로 재정의**했다 — 그 전에는 호출 존재만 세어 `doctor`/`status` 같은 항상 exit 0인 리포트도 게이트로 계수했다(호출 존재 ≠ 게이트 존재). 이제 `N blocking, M advisory`로 나누고 **누락 게이트(`impact`/`check-run`/`drift` + `--strict`)가 없으면 그 사실을 명시**한다. 검출 정규식이 `node bin/llm-wiki.js <command>` 형태를 못 봐서 이 저장소 자신의 게이트가 안 보이던 것도 고쳤다. 알려진 한계: 호출은 보지만 **실행 디렉터리는 보지 않는다**(zero-dep·YAML 미파싱) — 매칭된 파일 경로를 함께 보고하므로 사람이 판별할 수 있고, 수치는 상한으로 읽어야 한다. **(2) composite action(`.github/actions/validate/action.yml`)에 `command` 입력을 추가**했다 — 그 전에는 `args=(validate ...)`로 하드코딩돼 있어 이 액션으로는 누락 게이트를 **물리적으로 걸 수 없었다**. 읽기 전용 명령 11종만 허용(쓰기 명령은 exit 3)하고, 각 플래그는 그 명령이 실제로 받는 경우에만 붙인다(`COMMAND_OPTION_RULES`가 이제 미지원 옵션을 exit 3으로 거부하므로 필수). 기본값 `validate`라 기존 사용자는 무변경. 424 tests·lint OK(59 files). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.

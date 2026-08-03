@@ -62,6 +62,11 @@ policy — is in [`docs/ORCA_PARALLEL_DEV.md`](./docs/ORCA_PARALLEL_DEV.md).
     fix the document.
   - **Never relax this outside `docs/llm-wiki/`.** Templates and shipped assets must
     keep seeding `needs_review`; `tests/shipped-assets.test.js` holds that line.
+  - Precedence note: the generated skills (`/llm-wiki-feature`, `/llm-wiki-fix`,
+    `/llm-wiki-docs-sync`) carry the shipped prompt line *"verified is
+    human-approved only"*, which is the adopter default and stays. **In this
+    repository this section overrides it.** Do not edit `src/task-prompts.js` to
+    resolve the conflict — that text is what every adopter's agent reads.
 - `evidence.stale` / `impact` drift is cleared by re-stamping `reviewed_at`, with no
   source cross-check (maintainer's decision, same day). Recorded consequence: these
   gates can no longer stay red in this repository, so they are **not an observation

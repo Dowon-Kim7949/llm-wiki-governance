@@ -675,7 +675,7 @@ Safety:
   import-memory previews by default and writes only with --apply. It converts portable ecc.memory.v1 memory files (ECC Memory Vault; defaults to .ecc/memory) into needs_review drafts under docs/llm-wiki/imported/, never overwrites existing files, never touches log.md, and skips memories with sensitive-looking values (reported as counts only — no force flag).
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
   drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated, plus the tags: status tag when the document already carries one). It never promotes to verified.
-  review is read-only by default: it risk-ranks the needs_review backlog for human spot-checking. --approve <path> (or --approve-all --yes) stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it refuses docs with blocking/structural findings and never auto-verifies. verified stays a human decision.
+  review is read-only by default: it risk-ranks the needs_review backlog for human spot-checking. --approve <path> (or --approve-all --yes) stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it refuses docs with blocking/structural findings and never auto-verifies — promotion happens only on an explicit --approve, and reviewed_by records who ran it.
   graph is read-only: it emits the wiki knowledge graph (documents + resolved doc-to-doc links) as text, JSON, Mermaid, or Graphviz DOT.
   stats is read-only: it reports a wiki health snapshot (verified %, enrichment %, evidence coverage, staleness, orphans).
   list-docs/search-docs/get-doc/get-related are read-only retrieval: they return document content (not governance reports). search-docs is keyword/substring only (not semantic). Restricted/sensitive docs are excluded from list/search unless --include-sensitive, and returned bodies/snippets redact sensitive-looking lines.
@@ -1000,7 +1000,10 @@ Approve (writes ONLY the review stamp; see GATE_REVIEW.md "Review Workflow Scope
     resolves.
   - It NEVER auto-verifies, refuses any doc with blocking/structural findings
     (blocked/error severity such as frontmatter.required or sensitive-info), and
-    never edits body, source_files, evidence, or last_updated. verified is human-only.
+    never edits body, source_files, evidence, or last_updated. Promotion is never
+    automatic — only an explicit --approve stamps it. Human review is the default;
+    reviewed_by records whoever actually approved, so a project that delegates the
+    approval run should set a "reviewer" that names the approver.
 
 JSON (--format json):
   Top-level keys: schemaVersion, command, result, mode, needsReview, documents[] (list mode) or approved[]/refused[]/reviewer (approve mode), findingSummary, findings[]. documents[] items carry path, title, docType, visibility, lastUpdated, evidenceBacked, riskScore, approvable, findingCount, findingsBySeverity, topFindings[].

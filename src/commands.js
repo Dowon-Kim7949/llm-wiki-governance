@@ -1356,7 +1356,7 @@ function renderReviewList(reviewed, totalScanned, includeSensitive) {
     { title: "Needs Review (risk-ranked)", body: docLines.length ? docLines : ["none"] },
     { title: "Caveats", body: [
       "Read-only list. Risk-ranks needs_review docs (never-enriched / thin / no-evidence / broken-link first) for fast spot-checking. Restricted/sensitive docs are excluded unless --include-sensitive.",
-      "Promotion to verified is human-only: run review --approve <path> (or review --approve-all --yes) to stamp verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one. Docs with blocking/structural findings are refused until fixed; verified is never set automatically."
+      "Promotion to verified is never automatic: run review --approve <path> (or review --approve-all --yes) to stamp verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one. Docs with blocking/structural findings are refused until fixed. Human review is the default; if your project delegates the approval run, set llm-wiki.config.json \"reviewer\" so reviewed_by names whoever actually approves."
     ] }
   ]);
 }
@@ -1529,7 +1529,7 @@ function finishReview(reviewed, { mode, approved, refused, reviewer, findings })
     { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
     { title: "Caveats", body: [
       "review --approve stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it never edits body, source_files, evidence, or last_updated.",
-      "verified is a human decision: the tool refuses any doc with blocking/structural findings and never auto-verifies. Run validate --strict to confirm."
+      "verified is an explicit decision, never an automatic one: nothing promotes on its own — only --approve/--approve-all stamps — and any doc with blocking/structural findings is refused. Who may run it is your project's policy; reviewed_by records whoever did. Run validate --strict to confirm."
     ] }
   ]);
 }

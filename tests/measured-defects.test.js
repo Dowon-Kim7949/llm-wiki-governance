@@ -269,7 +269,7 @@ test("the review list caveat names every field the approve stamp writes", async 
   const { cwd } = await makeWiki(docWithDuplicateKey().replace("last_edited_by: claude\n", ""));
   const result = await reviewCommand(normalizeOptions({ cwd }));
 
-  const caveat = statement(result.text, "Promotion to verified is human-only");
+  const caveat = statement(result.text, "Promotion to verified is never automatic");
   assert.ok(caveat.includes("reviewed_at"), "guard: this is the field enumeration");
   assert.ok(caveat.includes("tags"), `the list caveat omits the tags write: ${caveat}`);
 });
