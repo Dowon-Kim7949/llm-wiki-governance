@@ -15,6 +15,7 @@ source_files:
   - docs/llm-wiki/BENCHMARK.md
   - docs/llm-wiki/DOMAIN_FEATURES.md
   - docs/llm-wiki/EXAMPLES.md
+  - docs/llm-wiki/GLOSSARY.md
   - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md
   - docs/llm-wiki/PUBLIC_API.md
   - docs/llm-wiki/domains/00_overview.md
@@ -150,7 +151,7 @@ reviewed_at: 2026-08-03
 - 2026-07-31(Phase 0 결함 배치, 유지보수자 승인)에 세 기능의 서술을 **결함 수정에 맞춰 갱신했다**: (1) `review` 워크플로가 보강되지 않은 스캐폴드(`content.not_enriched`)를 severity와 무관하게 거부하게 됐다 — 그 규칙이 warning이라 안전선이 `--strict` 사용 여부에 달려 있었고, 손대지 않은 스캐폴드가 `verified`가 될 수 있었다. (2) `impact --since <ref>`가 미추적 파일을 포함하게 됐다 — PR 작업트리의 갓 만든 소스를 못 봐서 누락 차단이 정작 그 상황에서 무력했다. (3) `check-run`의 "최신" 매니페스트 선택이 파일명 사전순에서 `timestamp` 기준으로 바뀌었다 — task 이름이 타임스탬프를 이겨 엉뚱한 실행을 검증하고도 pass를 보고했다(실측). 같은 배치에서 `drift`가 `--strict`와 `findings` 배선을 얻어 처음으로 CI 게이트가 될 수 있게 됐고(기본 exit code는 0 유지), `rulesPreset: strict`가 `impact.source_changed`를 error로 올리며, `fix --write`가 append-only 로그를 건드리지 못하게 막혔고, `explain`이 `--cwd`를 받는다. 415 tests(신규 16, 전건 RED 선실패 확인)·lint OK(59 files)·validate --strict 5(기존 재기준선 대기분)·validate-frontmatter 0. 범위와 판단 근거는 `GATE_REVIEW.md`(Phase 0 Defect Batch, accepted 2026-07-31). 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 ## Benchmark
 
-원문서: [BENCHMARK.md](BENCHMARK.md) — 4건(2026-07-22 → 2026-07-27), 2026-08-03 이전분.
+원문서: [BENCHMARK.md](BENCHMARK.md) — 5건(2026-07-22 → 2026-07-27), 2026-08-03 이전분.
 
 - 2026-07-22에 Gate 22 베이스라인 + Gate 24 재측정(정직/불리) + B2 retrieval 델타를 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 승인했다(최초 verified 승격). **핵심 불변 조건**: 이 문서의 모든 수치(특히 B2 −81.5%/−80.5%)는 `chars/4` **프록시**이지 실제 LLM 실행 결과가 아니다. 따라서 README·런치 카피에 토큰/속도/생산성 수치를 싣는 것은 **여전히 금지**이며, 실측(`bench/real/` 실행)이 뒷받침될 때까지 이 규율을 유지한다. 실측 방법은 `bench/REAL_LLM_METHODOLOGY.md` 참조.
 - 2026-07-22에 **실제 LLM N=3 실측**(외부 프로젝트 `csap-roadkeeper-frontend`@`aws-global`, Opus 4.8)을 반영했다: "실측 · Real-LLM measurement" 섹션 추가(최신 위키에서 B2 −10% 토큰·−5% wall·정확도 18/18 동률·소스 fallback 0; stale 위키는 보안 오답 → 신선도-종속 정확도가 핵심)와 규율 갱신(스코프 명시 정직 수치 허용, 볼드 헤드라인·`chars/4` 프록시 수치는 계속 금지). 원자료: `bench/results/real-driver-csap-aws-global-pilot-2026-07-22.md`. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
@@ -173,6 +174,14 @@ reviewed_at: 2026-08-03
   미측정"을 프록시 하네스 한정으로 한정. (5) frontmatter·§Evidence에 새 근거 2건 등재. 새 수치는
   전부 원자료에서 전사했고 지어낸 값은 없다. 에이전트(Claude Code) 편집이라 `needs_review` 유지 —
   사람 검토 후 `verified` 승격 예정(허위 검토 메타 미기입).
+- 2026-07-27에 **채점 기준을 사람이 비준**했다(승인, reviewed_by: Dowon-Kim). 결론을 무효화할 수
+  있는 유일한 질문(arm 간 잣대 일관성)을 겨냥해 불리하게 고른 7개 표본을 매칭 3중쌍으로 제시하고
+  민감도 분석(가장 논쟁적 판정 제외 시 B 0.942·B2_empty 0.953·B2 0.978, 결론 불변)을 함께 냈으며,
+  점수 변경 사유는 없었다. 표기를 **"agent-graded, 채점 기준 사람 비준(표본)"**으로 통일하고
+  README(EN/KO)·bench 기록·배포 자료의 관련 문구를 모두 맞췄다. **독립 재채점이 아님을 어디서도
+  흐리지 않는다.** 이로써 벤치 라인의 마지막 방법론 갭이 닫혔으나 **README 헤드라인 금지는 유지**
+  된다(비준은 신뢰도를 올릴 뿐 표본을 늘리지 않는다). 신규 기록
+  `bench/results/…-empty-control-2026-07-27-ratification.md`.
 ## Domain Overview
 
 원문서: [00_overview.md](domains/00_overview.md) — 6건(2026-07-14 → 2026-07-16), 2026-08-03 이전분.
@@ -185,12 +194,19 @@ reviewed_at: 2026-08-03
 - 2026-07-31에 **도메인 지도의 구조적 누락을 교정했다**(문서 검토 중 발견, 코드 변경 없음). 이 지도는 1.7 시점의 8개 도메인에 멈춰 있어서, `src/cli.js#symbol:COMMANDS`와 대조했을 때 **명령 11개가 어느 도메인에도 없었다**: `impact`(1.17)·`check-run`(1.19)·retrieval 4종(1.18)·guided 2종(1.24)·`review`(1.26)·`monorepo`(1.10)·`import-memory`. 명령 표면의 38%가 빠진 지도였고, `onboard`가 신입에게 읽히는 문서라 영향이 컸다. Change tracking·Retrieval·Review·Scale·Import 5개 도메인을 추가하고 `onboard`/`prepare`를 Guide에 합류시켰으며, 각 도메인에 구현 심볼 근거를 붙였다(frontmatter `evidence` 7개·본문 Evidence 7개 추가, 전부 소스에서 심볼 존재 확인). 또한 Agent-native 항목이 MCP 노출 툴을 **10종으로 나열**하던 것을 실제 **17종**으로 정정했다 — `MCP_TOOLS.length`를 직접 실행해 확인했고, 1.6 시점 목록이 1.18/1.24/1.26을 거치며 갱신되지 않은 것이었다. **같은 날 이어서** Scale 도메인에 `monorepo`의 허용 옵션 계약을 적었다(유지보수자 승인으로 CLI 계약을 나머지 28개 명령과 균일화 — 미지원 옵션 exit 3, help 토픽 신설; exit code 동작 변경). 에이전트(Claude Code) 편집이라 `needs_review`를 유지한다 — 사람 검토 후 재승인 예정.
 ## Examples
 
-원문서: [EXAMPLES.md](EXAMPLES.md) — 4건(2026-07-13 → 2026-07-23), 2026-08-03 이전분.
+원문서: [EXAMPLES.md](EXAMPLES.md) — 5건(2026-07-13 → 2026-07-23), 2026-08-03 이전분.
 
 - 2026-07-13에 CLI 도움말과 공개 명령 표면을 기준으로 검토했다.
 - 2026-07-16에 1.12.0 release-prep에서 `README.md`가 변경되어(감지 대상 행 추가) `evidence.stale`이 발생했다. 이 문서 내용은 무관하며 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
 - 2026-07-20에 1.14.3 release-prep에서 `src/cli.js`가 변경되어(bare 명령/`--help` 오리엔테이션 헤더 추가) `evidence.stale`이 발생했다. 이 문서의 명령 예시는 그대로 유효하며 내용은 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
 - 2026-07-23에 "스킬 생성 + 최초 보강(bootstrap)" 예시 섹션을 추가했다(`--agent codex`→`.agents/skills/`, `--agent claude`→`.claude/skills/`, `--skills`→모든 형식, `prompt --task bootstrap`). 예시 명령은 현재 CLI 표면과 일치한다. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
+- 2026-07-23에 위 bootstrap/Codex 반영분을 release-prep 1.23.0의 일부로 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. 1.23.0 `package.json` 범프로 생긴 evidence.stale 드리프트도 reviewed_at 갱신으로 함께 해소했다(284 tests·validate --strict 0).
+## Glossary
+
+원문서: [GLOSSARY.md](GLOSSARY.md) — 1건(2026-07-13 → 2026-07-13), 2026-08-03 이전분.
+
+- 2026-07-13에 현재 frontmatter 및 CLI 용어 계약을 기준으로 검토했다.
+
 ## Harness Governance Roadmap
 
 원문서: [HARNESS_GOVERNANCE_ROADMAP.md](HARNESS_GOVERNANCE_ROADMAP.md) — 9건(2026-07-31 → 2026-07-31), 2026-08-03 이전분.

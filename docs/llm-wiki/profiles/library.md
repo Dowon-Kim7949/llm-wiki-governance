@@ -47,3 +47,4 @@ contains_sensitive_info: false
 ## Review Notes
 
 - 2026-07-13에 패키지 진입점과 배포 형태를 기준으로 검토했다.
+- 2026-08-03에 HEAD의 `src/cli.js` 변경(`--watch-needs-review` 신설·drift 전용 등록, impact 도움말의 error-by-default 재서술)을 대조했다 — 이 문서는 명령 개수나 게이트 기본 심각도를 주장하지 않고 근거도 이번 커밋에서 변경되지 않은 `package.json`(`bin.llm-wiki`·`type: module`·의존성 부재)뿐이라 본문 불변.

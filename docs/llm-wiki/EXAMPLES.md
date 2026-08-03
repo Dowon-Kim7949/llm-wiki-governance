@@ -91,9 +91,22 @@ node bin/llm-wiki.js validate --type library
 ```bash
 npx llm-wiki validate-frontmatter
 npx llm-wiki validate --strict --agent codex
+npx llm-wiki impact --since origin/main     # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx llm-wiki drift --strict                 # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
 
 `--strict`는 warning을 실패로 처리하므로 `related.missing`·`content.not_enriched`·`evidence.*`가 릴리스 게이트에서 CI를 실패시킬 수 있다.
+
+`impact`는 예외다. 2026-08-03(결정 21)부터 `impact.source_changed`의 기본 severity가 warning이 아니라 **error**라, `--strict` 없이 exit 1이고 이 규칙에 대해 `--strict`는 no-op이다 — 즉 위 블록의 `impact` 줄을 필수 체크에 넣는 순간, 자기를 인용하는 문서를 함께 건드리지 않고 소스만 바꾼 첫 커밋에서 빌드가 빨개진다. 되돌리는 길은 코드가 아니라 설정이다: `llm-wiki.config.json`의 `rules`에 `"impact.source_changed": "warning"`(또는 `"info"`/`"off"`)을 두거나, `rulesPreset: "relaxed"`(이 규칙을 `info`로 유지)를 쓴다. `strict` 프리셋은 이 규칙을 더 이상 나열하지 않는다(no-op이라서다). `drift`·`check-run`의 규칙은 아직 warning이라 두 명령은 계속 `--strict`가 있어야 빌드를 실패시킨다 — 의도된 비대칭이다.
+
+## 드리프트 감시 범위 넓히기 (--watch-needs-review, 결정 28)
+
+```bash
+llm-wiki drift                        # 기본: verified 문서만 date-앵커 최신성 검사
+llm-wiki drift --watch-needs-review   # needs_review 문서까지 함께 본다(기본 off)
+```
+
+`--watch-needs-review`는 **`drift`만** 받는다. `impact`에는 의도적으로 넓히지 않는데, 그 규칙은 결정 21 이후 error라 자문용 opt-in이 검토되지 않은 문서에게 빌드를 실패시킬 권한을 주게 되기 때문이다. `doc_type: release_notes` 문서는 `evidence.stale`·`impact.source_changed` 양쪽에서 면제되며, 이 면제가 위 opt-in보다 우선한다.
 
 ## 다음 조치 추천 / 규칙 설명
 
@@ -108,10 +121,10 @@ llm-wiki explain content.not_enriched
 
 ## Review Notes
 
-Older review notes (4 entries, 2026-07-13 → 2026-07-23) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (5 entries, 2026-07-13 → 2026-07-23) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-07-23에 위 bootstrap/Codex 반영분을 release-prep 1.23.0의 일부로 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. 1.23.0 `package.json` 범프로 생긴 evidence.stale 드리프트도 reviewed_at 갱신으로 함께 해소했다(284 tests·validate --strict 0).
 - 2026-07-23에 Guided Onboarding and Task Preparation(1.24 대상; 읽기 전용 `onboard`/`prepare` 명령·스킬, 검색 랭킹 `rankDocsByQuery` 재사용)을 반영했다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등한다 — 사람 검토 전까지 미확정이며 허위 검토 메타를 넣지 않는다. 이번 소스 변경(`src/commands/guided.js` 신규 등)으로 소스를 참조하는 다른 verified 문서도 재검토가 필요하다(그 문서들은 `drift --downgrade`로 정직하게 needs_review 처리).
 - 2026-07-23에 "생성 문서 언어 선택(--doc-lang, 1.24)" 예시 섹션을 추가했다(`quickstart --write --agent claude` 영어 기본 / `--doc-lang ko` 한국어 / config `docLanguage`). 예시 명령은 현재 CLI 표면과 일치한다. 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정.
 - 2026-07-23에 위 1.24.0(doc-language i18n + guided onboarding) 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. `--doc-lang` 예시가 현재 CLI 표면(HEAD c7a1a7a, npm dist-tags.latest=1.24.0)과 일치함을 확인했다.
 - 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-13 → 2026-07-23)을 `REVIEW_HISTORY.md`의 신규 `Examples` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서도 인수인계의 위반 목록에서 빠져 있었다**(`BENCHMARK.md`와 함께) — 손으로 적은 목록 대신 전 문서를 계수해서야 드러났고, 이제 `tests/review-notes-cap.test.js`가 그 계수를 대신한다. 예제 본문·명령 표기는 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-08-03에 결정 21·28로 바뀐 `src/cli.js`(신규 `--watch-needs-review`, `impact` 도움말 재작성)와 `README.md`(Upgrading 절)를 대조했다: 기존 예시 중 거짓이 된 문장은 하나도 없었고(이 문서는 `impact --strict`를 쓴 적이 없고 `--strict` 설명은 `validate` 한정이라 그 문장은 **불변**), 대신 CI 절에 `impact --since`가 플래그 없이 exit 1이라는 계약과 되돌리는 설정 두 가지(`rules`의 `warning`/`info`/`off`, `rulesPreset: "relaxed"`)를 더하고 `drift --watch-needs-review` 예시 절을 신설했다 — 두 예시 모두 실제 실행으로 확인했다(`impact --since HEAD~1` → error 6건·exit 1).

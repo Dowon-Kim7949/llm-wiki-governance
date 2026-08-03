@@ -43,3 +43,7 @@ contains_sensitive_info: false
 - 민감정보 raw value는 기록하지 않습니다.
 - 변경 기록은 [log.md](log.md)에 append-only로 남깁니다.
 - 문서가 아직 보강되지 않으면 `llm-wiki validate`가 `content.not_enriched`로 표시합니다.
+
+## Review Notes
+
+- 2026-08-03에 HEAD의 루트 `README.md` 변경(impact 기본 error Upgrading 절·`drift --watch-needs-review`·release_notes 면제·adapter 본문 영어 고정)을 이 문서 전 항목과 대조했다. 이 문서는 impact/drift 게이트와 adapter 언어에 대해 아무 주장도 하지 않고(게이트 계약은 `AGENTS.md`·index.md에 위임), EN/KO 짝 갱신 규칙은 이번 커밋에서 `README.md`·`README.ko.md`가 함께 바뀌어 지켜졌으며, `review --approve-all --yes`와 `content.not_enriched`도 소스에서 재확인돼 **불변** — 본문 무수정(`package.json`은 이번 커밋에서 변경 없음).
