@@ -6,6 +6,199 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.28.0 — 2026-08-03
+
+**Read the Breaking section before upgrading.** This release turns the omission gate on by
+default: `llm-wiki impact --since <ref>` now fails a build with no flag at all. By SemVer that
+is a MAJOR; it ships as a **MINOR by the maintainer's explicit decision**, which means a project
+depending on `^1.27.2` **picks it up automatically**. There are two documented ways back, both
+config-only — put one in place *before* upgrading if you are not ready for the gate.
+
+Otherwise: the four channels this project ships (pre-commit hook, workflow template, composite
+action, our own CI) finally run the gate they were selling, the v2 adapter shape reaches the seven
+adapters it missed in 1.27.2, a new read-only `harness-health` inspects the agent harness itself,
+and eight detectors that could see but could not report are connected. Scope decisions are recorded
+in `GATE_REVIEW.md` ("Phase 0 Gate Wiring", "Phase 0 Defect Batch", "Monorepo CLI Contract Parity")
+and in `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` chapter J.
+
+### Breaking
+
+- **`impact.source_changed` is now an `error` (was `warning`).** `llm-wiki impact --since <ref>`
+  exits **1 with no flag**, and `--strict` is a **no-op** for this rule. In practice: after
+  upgrading, the first commit that changes source without touching a document citing it turns the
+  build red. It was turned on because it is the only rule that catches the omission this tool
+  exists to catch, and the only detection rule a project had to opt into before it could block.
+
+  **Two ways back**, per project, neither a code change:
+
+  ```json
+  { "rules": { "impact.source_changed": "warning" } }
+  ```
+
+  `"warning"` (or `"info"` / `"off"`) in the `rules` map of `llm-wiki.config.json` restores the
+  advisory behaviour. Or:
+
+  ```json
+  { "rulesPreset": "relaxed" }
+  ```
+
+  which holds the rule at `info`. An explicit `rules` entry still beats the preset. The `strict`
+  preset no longer lists the rule, since escalating an error is a no-op; the preset invariant was
+  restated from "never touch an error-or-blocked default" to "never touch a safety rule or anything
+  that blocks", with an explicit allow-list (`PRESET_DIALABLE_ERROR_RULES`) for error defaults a
+  preset may dial.
+
+  **On the record:** this rule's baseline false-positive rate was measured at **27% or 57%**
+  depending on one policy call that is still unmade (whether a shifted line anchor counts as a true
+  positive), and a hub file cited by many documents fans out to as many as **14 findings**. On the
+  commit that enabled it, the gate produced **6 findings of which 1 was actionable**. The default
+  was turned on with those numbers known.
+- **`doc_type: release_notes` documents are exempt from `evidence.stale` and
+  `impact.source_changed`** (OKF `type: release_notes` too). A release note is an immutable record
+  of a release that already shipped, and it anchors `package.json`, which changes every release —
+  so without this the new default would fail builds on documents nobody should edit. State the cost
+  plainly: this **removes documents from a check they were previously inside** (33 of 52 here), and
+  a release note will no longer be flagged when the source it cites moves. On the enabling commit
+  it took the finding count from 23 to 9.
+- **`monorepo` validates its options like every other command.** It was the only command missing
+  from the option and help tables, so `monorepo --strict --write` exited 0 while silently ignoring
+  the option, and `help monorepo` answered "Unknown help topic". Accepted set, derived from the code
+  path rather than from documentation: `--cwd`, `--strict`, `--agent`, `--format`, `--out`.
+  `--write`, `--apply`, `--type`, `--profile` and anything else now **exit 3**. No JSON shape,
+  frozen `commands` entry, MCP tool, or programmatic export changed.
+- **`validate-frontmatter` reports on the four-state ladder** every other command uses. A run whose
+  worst finding was a warning printed `result: pass` and exited 1 on the same findings — which in a
+  CI log reads as passed-but-failed.
+- **`review --approve` refuses an unenriched scaffold** (`content.not_enriched`), matching on the
+  rule id rather than on severity. That rule is a warning, so previously whether a placeholder
+  document could be stamped `verified` depended on whether the operator happened to pass `--strict`.
+  Stale evidence and broken links are still approvable — those are what a reviewer signs off on.
+- **`check-run` selects the manifest by its own `timestamp` field**, not by the lexicographically
+  last filename. Manifests are named `run-<task>-<timestamp>`, so the task name beat the timestamp:
+  measured here, the newest was a 2026-07-30 feature run while `check-run` inspected a 2026-07-27
+  fix run and reported pass — the worst failure mode for a completion gate.
+
+### Added
+
+- **`llm-wiki harness-health [--agent <agent>] [--preload-budget <n>] [--skill-token-cap <n>]
+  [--strict]`** — the 30th command, and the first that inspects the **harness** (agent adapters,
+  generated skill artifacts, the always-preloaded context surface) rather than the wiki. Read-only,
+  deterministic, zero-dependency, writes nothing; CLI-only (not exposed over MCP, like `impact` /
+  `check-run` / `drift` / `monorepo`). Four toggleable rules, all `warning` by default and `error`
+  under `--strict`: `harness.marker_drift` (an artifact stamped below the version this package
+  ships), `harness.user_modified` (a skill artifact that no longer hashes to its own marker, or
+  carries none), `harness.preload_budget` and `harness.skill_too_long` (both **silent until you
+  supply a number** via the flags or `"harnessHealth": { "preloadBudget": <n>, "skillTokenCap":
+  <n> }` in config). It exists because of two defects confirmed in the shipped tool: `scanAdapters`
+  never reads the adapter marker, so an adapter generated by an old version passes `audit` clean
+  forever; and `init --refresh` compares artifact *bodies*, not stamped versions, so a v4-stamped
+  artifact from a v5 generator reports "already up to date". Adapters report `userModified: null`
+  on purpose — they carry a version marker but no content hash, and diffing against the shipped
+  template would flag every deliberate customization.
+- **`drift --watch-needs-review`** (off by default, accepted by `drift` only) widens the
+  date-anchored freshness check to `needs_review` documents as well as `verified` ones. It
+  deliberately does not widen `impact`.
+- **`drift` accepts `--strict`**, and **`explain` accepts `--cwd`** (earned by a code path:
+  `applyProjectConfig` runs for every command and config `lang` decides `explain`'s prose language).
+- **`run.change_set_undeclared` (warning)** — cross-checks the manifest's self-reported
+  `changedSource` against the working tree, because an agent that declares an empty or partial
+  change set makes `run.doc_gap` structurally unable to fire. Compares against **tracked**
+  modifications only (the first cut fired on `.obsidian/` config and a personal note) and is quiet
+  when git reports no changes at all.
+- **`run.manifest_untracked` (info)** — says when the selected manifest is not tracked by git, so a
+  clean checkout would not see it. Informational on purpose: gitignoring manifests is a legitimate
+  policy, and two of five measured repositories do it.
+- **`doctor` reports `ci_governance`** — which workflow or hook actually *invokes* `llm-wiki`, and
+  whether anything can **block**. A workflow whose only step was `doctor` (a report that always
+  exits 0) used to read as governance. Omission commands count as blocking only with `--strict`;
+  when no omission gate exists it says so in a sentence instead of printing a reassuring number.
+  Detection matches an invocation, not a mention (an unrelated `llm-wiki-review:` job name used to
+  count), and it learns the `node bin/llm-wiki.js` form.
+- **The composite action takes a `command` input** instead of hardcoding `validate` as `args[0]`,
+  which had made an omission gate physically unreachable through it. It accepts only the eleven
+  read-only commands, refuses a write command with exit 3, and passes each flag only to commands
+  that accept it.
+
+### Changed
+
+- **The four channels we ship now run the omission gate.** `templates/git-hooks/pre-commit` runs
+  `impact --strict` after `validate --changed`; `templates/github-actions/llm-wiki-validate.yml`
+  runs `impact --since origin/<base> --strict` with `fetch-depth: 0` (without it `--since` cannot
+  resolve the base ref and the gate degrades quietly, which is the worst way for a gate to break);
+  this repository grew a `governance` job so it passes the gate it sells.
+- **The v2 prompt shape reaches all eight adapters.** 1.27.2 bumped only
+  `templates/adapters/claude-code/CLAUDE.md`; the other seven were still `wiki-block v1`, untouched
+  since the package's first commit — so the release's headline benefit only ever reached Claude Code
+  users. Codex, Gemini, Copilot, Cursor, Windsurf, JetBrains and Antigravity now carry the same
+  small-core-plus-on-demand-retrieval shape, each keeping its own idiom (the Cursor `.mdc`
+  frontmatter, the JetBrains info-level caveat, Antigravity's marker and UTF-8 rule, the Codex
+  `# Project Agent Guide` structure). Bodies are unified to English to match the reference
+  implementation and the 1.16.0 English-first direction. Compatibility is unchanged: `scanAdapters`
+  still only checks for a `docs/llm-wiki/index.md` reference, and existing adapter files are still
+  never overwritten.
+- **`check-run` prefers a git-tracked manifest**, so a local run predicts CI. Not tracked-only —
+  repositories that gitignore manifests fall back to the untracked one and get the `info` finding
+  above rather than a permanently red `--strict`.
+- **The composite action's `version` input defaults to `1.28`** (it was left at `1.26` through the
+  whole 1.27 line, so consumers pinned at `@v1.27.2` ran CLI 1.26.x). `RELEASE_CHECKLIST.md` now
+  verifies this value so it stops going stale.
+- **The write-scope caveats now name every field written.** `review --approve` printed "stamps ONLY
+  status + reviewed_by + reviewed_at" and `drift --downgrade` printed "status + last_updated only";
+  since both started writing the `tags:` status tag through a shared helper, the boundary they
+  stated was false. Corrected in eight places across `commands.js`, `cli.js` and `fix-migrate.js`.
+- **The tool stopped claiming to know who is at the keyboard.** Five shipped surfaces (two `review`
+  caveats, the `--help` summary, the `help review` topic, the MCP `review` tool description)
+  asserted that "verified is a human decision". What is actually guaranteed is narrower: nothing
+  promotes on its own, only an explicit `--approve` stamps, and `reviewed_by` records whoever ran
+  it. Each surface now also points at the mechanism — a project delegating the approval run should
+  set config `reviewer` to name the real approver. The recommendations *to adopters* in the
+  generated prompts are deliberately unchanged.
+- **`prompt --task` help renders from `SUPPORTED_TASK_PROMPTS`** instead of a hand-copied list that
+  had drifted to 6 of 8 values, and `help drift` / the usage summary now list `--strict` and
+  `--watch-needs-review`.
+
+### Fixed
+
+- **`drift` reported `result: pass` and exit 0 on a wiki it had just proved stale** — it put stale
+  evidence in a separate array while `exitCodeFor` reads `findings` — and it rejected `--strict`
+  outright. It now reports through `findings`. The default exit code stays 0, so adding `drift` to
+  an existing pipeline still cannot break it.
+- **A document could sit at `status: verified` while still tagged `needs-review`.**
+  `review --approve` and `drift --downgrade` each rewrote `status:` and left `tags:` alone, and
+  which way it broke depended on which path ran. In one adopting repository that was 12 of 22
+  documents. Both paths now go through one helper that rewrites a status tag already present and
+  never invents one.
+- **Polynomial backtracking in that same tag helper** (found by CodeQL, not by the local gates):
+  the inline-list patterns allowed `[` in the prefix before the opening bracket, so document bodies
+  — exactly the uncontrolled input this helper runs on — could backtrack quadratically. Measured
+  before the fix: 25k brackets 350ms, 50k 1692ms; after: under a millisecond.
+- **`impact --since` was blind to source created but not yet committed** — `changedFiles` added
+  untracked files only on the no-ref path, which is the state of every PR working tree.
+- **`fix --write` can no longer rewrite the append-only log** (latent: no plan qualifies today).
+
+### Honesty note
+
+The SemVer call is the maintainer's: a change that flips an exit-code contract is a MAJOR, and it
+ships as `1.28.0`. That is recorded here rather than smoothed over, and it is why both escape
+hatches appear in the CHANGELOG, both READMEs and the release notes.
+
+`harness-health` was measured read-only across five real repositories — 91 artifacts inspected, 33
+findings, **0 false positives**, and one repository genuinely clean. Two limits travel with that
+number: "true" means the reported fact is correct, not that it is worth acting on; and the run used
+this working tree's templates, so adopters on the released 1.27.2 will see fewer adapter findings.
+All size figures anywhere in this release are the product's existing `chars/4` **proxy**, not
+measured token counts, and they under-count non-English text — no token or speed headline ships.
+
+`doctor`'s `ci_governance` counts are an **upper bound**: the check sees invocations, not the
+directory they run in, so a packaging smoke test against a scratch directory still counts. Doing
+better needs a YAML parser, which costs the zero-dependency stance. A repository that relocates
+hooks via `core.hooksPath` reads as "none detected", which is the safe error.
+
+One decision that was recommended was **measured and not shipped**: gating on approvals that skip
+the `review` command fired 42 times across 129 verified documents with **zero live bypasses**, so
+its precondition failed. Pilot-repo confirmation of the new CI templates was skipped by direction,
+so whether the three unconfirmed adopting repositories stay green after adopting them is unmeasured.
+
 ## 1.27.2 — 2026-07-30
 
 Prompt-shape discipline ("unhobbling"). Applies a simple triage to every generated instruction

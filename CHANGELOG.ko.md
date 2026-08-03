@@ -5,6 +5,187 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.28.0 — 2026-08-03
+
+**업그레이드 전에 Breaking 절을 먼저 읽으세요.** 이번 릴리스는 누락 게이트를 기본으로 켠다:
+`llm-wiki impact --since <ref>`가 **아무 플래그 없이도 빌드를 실패**시킨다. SemVer로는 MAJOR에
+해당하지만 **유지보수자의 명시적 결정으로 MINOR로 배포**한다. 즉 `^1.27.2`에 의존하는 프로젝트는
+이 버전을 **자동으로 받는다.** 돌아가는 길은 두 가지이고 둘 다 설정만 바꾸면 되니, 아직 게이트를
+받을 준비가 안 됐다면 **업그레이드 전에** 먼저 넣어 두라.
+
+그 외: 이 프로젝트가 출하하는 네 채널(pre-commit 훅·워크플로 템플릿·컴포지트 액션·우리 CI)이
+드디어 자기가 팔던 게이트를 실제로 돌리고, 1.27.2에서 한 개만 받았던 v2 어댑터 형태가 나머지 7종에
+도달하며, 에이전트 **하네스 자체**를 검사하는 읽기 전용 `harness-health`가 추가되고, 감지는 했지만
+보고하지 못하던 8건이 연결된다. 범위 결정은 `GATE_REVIEW.md`("Phase 0 Gate Wiring", "Phase 0
+Defect Batch", "Monorepo CLI Contract Parity")와
+`docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` J장에 기록했다.
+
+### Breaking
+
+- **`impact.source_changed`가 이제 `error`다**(기존 `warning`). `llm-wiki impact --since <ref>`가
+  **플래그 없이 exit 1**이고, 이 규칙에 대해 `--strict`는 **no-op**이다. 실제로는: 업그레이드한 뒤
+  어떤 문서가 인용하는 소스를 바꾸면서 그 문서는 건드리지 않은 첫 커밋에서 빌드가 빨개진다. 켠
+  이유는 이 도구가 존재하는 이유 그 자체(소스는 움직였는데 문서는 안 움직임)를 잡는 유일한 규칙이면서,
+  빌드를 막을 수 있는 감지 규칙 중 **프로젝트가 직접 opt-in해야만 했던** 유일한 규칙이었기 때문이다.
+
+  **돌아가는 길 두 가지**, 프로젝트 단위 설정이며 코드 수정이 아니다:
+
+  ```json
+  { "rules": { "impact.source_changed": "warning" } }
+  ```
+
+  `llm-wiki.config.json`의 `rules` 맵에 `"warning"`(또는 `"info"`/`"off"`)을 주면 종전의 권고형
+  동작으로 돌아간다. 또는:
+
+  ```json
+  { "rulesPreset": "relaxed" }
+  ```
+
+  이 프리셋은 규칙을 `info`로 유지한다. 명시한 `rules` 항목은 여전히 프리셋보다 우선한다. `strict`
+  프리셋은 이 규칙을 더 이상 나열하지 않는다(error를 상향해봐야 no-op). 프리셋 불변식도
+  "error-or-blocked 기본값은 절대 건드리지 않는다"에서 **"안전 규칙과 차단하는 것은 건드리지
+  않는다"**로 다시 서술했고, 프리셋이 조절해도 되는 error 기본값은 명시적 allow-list
+  (`PRESET_DIALABLE_ERROR_RULES`)로 관리한다.
+
+  **기록으로 남기는 반론:** 이 규칙의 기준선 오탐률은 **27% 또는 57%**로 측정됐다(아직 내려지지 않은
+  정책 판단 하나 — 라인 앵커가 밀린 경우를 true positive로 볼 것인가 — 에 따라 갈린다). 여러 문서가
+  인용하는 허브 파일 하나는 최대 **14건**의 finding으로 퍼진다. 이 기본값을 켠 커밋 자신에 대해서는
+  **finding 6건 중 실제 조치 대상 1건**이 나왔다. 유지보수자는 이 숫자들을 알고서 켰다.
+- **`doc_type: release_notes` 문서는 `evidence.stale`과 `impact.source_changed`에서 면제된다**
+  (OKF `type: release_notes`도 동일). 릴리스 노트는 이미 나간 릴리스의 불변 기록이고 매 릴리스마다
+  바뀌는 `package.json`을 앵커로 삼기 때문에, 면제가 없으면 새 기본값이 **아무도 고쳐선 안 되는
+  문서** 때문에 빌드를 실패시킨다. 대가는 분명히 적는다: 이 면제는 **문서를 지금 들어 있는 검사에서
+  빼낸다**(이 저장소 기준 52건 중 33건). 즉 릴리스 노트가 인용하는 소스가 움직여도 더는 flag되지
+  않는다. 기본값을 켠 커밋 기준으로 finding이 23건 → 9건이 됐다.
+- **`monorepo`가 다른 모든 명령과 같은 옵션 계약을 갖는다.** 옵션 표와 도움말 표 양쪽에서 빠져 있던
+  유일한 명령이라 `monorepo --strict --write`가 옵션을 조용히 무시하며 exit 0이었고,
+  `help monorepo`는 "Unknown help topic"이었다. 허용 집합은 문서 추측이 아니라 코드 경로에서
+  도출했다: `--cwd`·`--strict`·`--agent`·`--format`·`--out`. `--write`·`--apply`·`--type`·
+  `--profile` 및 그 밖의 옵션은 이제 **exit 3**이다. JSON shape·동결된 `commands` 항목·MCP 툴·
+  프로그래매틱 export는 불변.
+- **`validate-frontmatter`가 다른 명령과 같은 4단계 사다리로 보고한다.** 최악 finding이 warning인
+  실행이 같은 finding으로 `result: pass`를 찍으면서 exit 1이었다 — CI 로그에서는 "통과했는데
+  실패"로 읽힌다.
+- **`review --approve`가 미보강 스캐폴드(`content.not_enriched`)를 거부한다.** severity가 아니라
+  rule id로 판정한다. 이 규칙은 warning이라, 전에는 placeholder 문서가 `verified`로 찍히는지가
+  운영자가 우연히 `--strict`를 줬는지에 달려 있었다. stale evidence와 깨진 링크는 계속 승인
+  가능하다 — 그건 리뷰어가 보고 판단할 몫이다.
+- **`check-run`이 매니페스트를 파일명이 아니라 자기 `timestamp` 필드로 고른다.** 매니페스트 이름이
+  `run-<task>-<timestamp>`라 사전순에서는 task 이름이 timestamp를 이겼다: 여기서 실측한 결과,
+  최신은 2026-07-30 feature 실행인데 `check-run`은 2026-07-27 fix 실행을 검사하고 pass를 보고했다 —
+  완료 게이트로서 최악의 실패 양상이다.
+
+### Added
+
+- **`llm-wiki harness-health [--agent <agent>] [--preload-budget <n>] [--skill-token-cap <n>]
+  [--strict]`** — 30번째 명령이자, 위키가 아니라 **하네스**(에이전트 어댑터·생성된 스킬 아티팩트·
+  항상 선적재되는 문맥 표면)를 검사하는 첫 명령이다. 읽기 전용·결정적·무의존성이며 아무 파일도 쓰지
+  않는다. `impact`/`check-run`/`drift`/`monorepo`와 마찬가지로 CLI 전용(MCP 미노출). 토글 가능한
+  규칙 4종, 전부 기본 `warning`·`--strict`에서 `error`: `harness.marker_drift`(이 패키지가 지금
+  배포하는 버전보다 낮게 스탬프된 아티팩트), `harness.user_modified`(스킬 아티팩트가 자기 마커의
+  해시와 어긋나거나 마커가 아예 없음), `harness.preload_budget`·`harness.skill_too_long`(둘 다
+  **숫자를 주기 전까지 침묵** — 위 플래그 또는 config `"harnessHealth": { "preloadBudget": <n>,
+  "skillTokenCap": <n> }`). 동기는 배포된 도구에서 소스로 확인된 결함 2건이다: `scanAdapters`는
+  어댑터 마커를 아예 읽지 않아 구버전이 만든 어댑터가 `audit`에서 **영원히** clean으로 통과하고,
+  `init --refresh`는 스탬프된 버전이 아니라 아티팩트 **본문**을 비교해 v5 생성기가 v4로 스탬프한
+  아티팩트를 "already up to date"라고 보고한다. 어댑터 행의 `userModified`는 의도적으로 `null`이다 —
+  버전 마커는 있지만 콘텐츠 해시가 없고, 배포 템플릿과 diff하는 대안은 **의도적 커스터마이즈를 전부**
+  flag하게 된다.
+- **`drift --watch-needs-review`**(기본 꺼짐, `drift`만 받는 옵션)가 date 기준 신선도 검사를
+  `verified`뿐 아니라 `needs_review` 문서까지 넓힌다. `impact`는 의도적으로 넓히지 않는다.
+- **`drift`가 `--strict`를 받고**, **`explain`이 `--cwd`를 받는다**(추측이 아니라 코드 경로로
+  도출: `applyProjectConfig`가 모든 명령에서 돌고 config `lang`이 `explain`의 서술 언어를 정한다).
+- **`run.change_set_undeclared`(warning)** — 매니페스트가 자기 보고한 `changedSource`를 워킹트리와
+  대조한다. 빈 값이나 일부만 선언하는 에이전트는 `run.doc_gap`을 구조적으로 발화 불가능하게 만들기
+  때문이다. **추적 중인** 수정만 비교하고(첫 구현은 `.obsidian/` 설정과 개인 메모에 발화했다),
+  git이 변경 없음을 보고할 때는 조용하다.
+- **`run.manifest_untracked`(info)** — 선택된 매니페스트가 git 추적 대상이 아니라 clean checkout에서는
+  보이지 않는다는 사실을 알린다. 정보성인 것은 의도다: 매니페스트를 gitignore하는 것도 정당한 정책이고,
+  실측한 5개 저장소 중 2곳이 그렇게 한다.
+- **`doctor`가 `ci_governance`를 보고한다** — 어떤 워크플로/훅이 실제로 `llm-wiki`를 **호출**하는지,
+  그리고 **차단할 수 있는 것이 있는지**. `doctor` 한 스텝만 있는 워크플로(항상 exit 0인 리포트)가
+  거버넌스로 읽히곤 했다. 누락 계열 명령은 `--strict`가 있어야 차단으로 세고, 누락 게이트가 없으면
+  안심되는 숫자 대신 문장으로 없다고 말한다. 탐지는 언급이 아니라 호출을 매칭하며(무관한
+  `llm-wiki-review:` job 이름이 거버넌스로 잡히던 문제), `node bin/llm-wiki.js` 형태도 인식한다.
+- **컴포지트 액션이 `command` 입력을 받는다** — `validate`를 `args[0]`에 박아두는 바람에 누락 게이트를
+  이 경로로는 물리적으로 실행할 수 없었다. 읽기 전용 11개 명령만 허용하고, 쓰기 명령은 exit 3으로
+  거부하며, 각 플래그를 그 옵션을 받는 명령에만 전달한다.
+
+### Changed
+
+- **우리가 출하하는 네 채널이 이제 누락 게이트를 돌린다.** `templates/git-hooks/pre-commit`은
+  `validate --changed` 다음에 `impact --strict`를, `templates/github-actions/llm-wiki-validate.yml`은
+  `fetch-depth: 0`과 함께 `impact --since origin/<base> --strict`를 돌린다(이게 없으면 `--since`가
+  base ref를 해석하지 못해 게이트가 **조용히** 무력화된다 — 게이트가 깨지는 방식 중 최악). 이
+  저장소에도 `governance` 잡을 만들어, 파는 게이트를 스스로 통과한다.
+- **v2 프롬프트 형태가 어댑터 8종 전부에 도달한다.** 1.27.2는 `templates/adapters/claude-code/
+  CLAUDE.md` 한 종만 올렸고 나머지 7종은 패키지 최초 커밋 이후 손대지 않은 `wiki-block v1`이었다 —
+  즉 그 릴리스의 간판 이득이 Claude Code 사용자에게만 도달했다. Codex·Gemini·Copilot·Cursor·
+  Windsurf·JetBrains·Antigravity가 이제 같은 형태(작은 상시 코어 + on-demand retrieval)를 갖고,
+  각자의 고유 형식은 보존한다(Cursor `.mdc` frontmatter, JetBrains info-level 안내문, Antigravity
+  마커·UTF-8 규칙, Codex `# Project Agent Guide` 구조). 본문은 참조 구현과 1.16.0 English-first
+  방향에 맞춰 영어로 통일했다. 호환은 불변이다: `scanAdapters`는 여전히 `docs/llm-wiki/index.md`
+  참조 여부만 검사하고, 기존 어댑터 파일은 여전히 절대 덮어쓰지 않는다.
+- **`check-run`이 git 추적 매니페스트를 우선한다** — 로컬 실행이 CI를 예측하도록. 추적 전용은
+  아니다: 매니페스트를 gitignore하는 저장소는 미추적 매니페스트로 폴백하고, `--strict`에서 영구
+  RED가 되는 대신 위의 info finding을 받는다.
+- **컴포지트 액션의 `version` 입력 기본값이 `1.28`**(1.27 라인 내내 `1.26`에 머물러 있어
+  `@v1.27.2`로 핀한 소비자도 CLI 1.26.x를 돌렸다). 다시 낡지 않도록 `RELEASE_CHECKLIST.md`가 이
+  값을 검증한다.
+- **쓰기 범위 caveat이 실제로 쓰는 필드를 전부 말한다.** `review --approve`는 "status +
+  reviewed_by + reviewed_at **만**", `drift --downgrade`는 "status + last_updated only"이라고
+  출력했는데, 두 명령 모두 공유 헬퍼로 `tags:` 상태 태그까지 쓰게 된 뒤로는 그 경계 서술이 거짓이었다.
+  `commands.js`·`cli.js`·`fix-migrate.js` 8곳을 수정했다.
+- **도구가 "누가 키보드 앞에 있는지" 안다고 주장하기를 멈췄다.** 출하 표면 5곳(`review` caveat 2건,
+  `--help` 요약, `help review` 토픽, MCP `review` 툴 설명)이 "verified는 사람의 결정"이라고 단언했다.
+  실제로 보장되는 것은 그보다 좁다: 무엇도 스스로 승격하지 않고, 명시적 `--approve`만 스탬프하며,
+  `reviewed_by`는 실행한 주체를 기록한다. 각 표면은 이제 메커니즘도 함께 가리킨다 — 승인 실행을
+  위임하는 프로젝트는 config `reviewer`로 실제 승인자를 지목해야 한다. 생성 프롬프트에 들어가는
+  **도입처 대상 권고**는 의도적으로 그대로 뒀다.
+- **`prompt --task` 도움말이 `SUPPORTED_TASK_PROMPTS`에서 렌더된다**(손으로 복사한 목록이 8개 중
+  6개로 밀려 있었다). `help drift`와 usage 요약도 이제 `--strict`·`--watch-needs-review`를 나열한다.
+
+### Fixed
+
+- **`drift`가 방금 stale이라고 증명한 위키에 대해 `result: pass`·exit 0을 보고했다** — stale
+  evidence를 별도 배열에 담는데 `exitCodeFor`는 `findings`를 읽었다 — 그리고 `--strict`를 아예
+  거부했다. 이제 `findings`로 보고한다. 기본 exit code는 0 그대로라, 기존 파이프라인에 `drift`를
+  추가해도 여전히 깨지지 않는다.
+- **문서가 `status: verified`인데 태그는 `needs-review`로 남을 수 있었다.** `review --approve`와
+  `drift --downgrade`가 각각 `status:`만 고치고 `tags:`는 두었고, 어느 쪽으로 깨지는지는 어느 경로가
+  돌았는지에 달려 있었다. 한 도입 저장소에서 22건 중 12건이 그 상태였다. 이제 두 경로가 하나의
+  헬퍼를 지나며, 이미 있는 상태 태그만 고치고 없던 태그를 만들지는 않는다.
+- **같은 태그 헬퍼의 다항 백트래킹**(로컬 게이트가 아니라 CodeQL이 잡았다): 인라인 리스트 패턴이
+  여는 대괄호 앞 prefix에 `[`를 허용해, 이 헬퍼가 실제로 다루는 입력인 문서 본문에서 2차식으로
+  백트래킹할 수 있었다. 수정 전 실측 25k 대괄호 350ms·50k 1692ms, 수정 후 1ms 미만.
+- **`impact --since`가 생성됐지만 아직 커밋되지 않은 소스를 못 봤다** — `changedFiles`가 미추적
+  파일을 ref 없는 경로에서만 더했는데, 그게 모든 PR 워킹트리의 상태다.
+- **`fix --write`가 append-only 로그를 다시 쓸 수 없게 했다**(잠재적 결함 — 오늘 조건을 만족하는
+  plan은 없다).
+
+### 정직성 노트
+
+SemVer 판단은 유지보수자의 것이다: exit code 계약을 뒤집는 변경은 MAJOR이고, 그것이 `1.28.0`으로
+나간다. 이 사실을 덮지 않고 여기 적어 두며, 그래서 돌아가는 길 두 가지가 CHANGELOG·README 양쪽·
+릴리스 노트에 모두 실린다.
+
+`harness-health`는 실제 저장소 5곳에 읽기 전용으로 실측했다 — 아티팩트 91건 검사, finding 33건,
+**오탐 0**, 그중 한 곳은 진짜 0. 이 숫자와 함께 다녀야 하는 한계 2가지: 여기서 "참"은 **보고된 사실이
+맞다**는 뜻이지 **조치할 가치가 있다**는 뜻이 아니고, 이 실행은 이 워킹트리의 (미배포) 템플릿을 썼기
+때문에 배포된 1.27.2를 쓰는 도입처는 어댑터 finding을 더 적게 본다. 이 릴리스 어디에 나오든 크기
+수치는 제품이 이미 쓰는 `chars/4` **프록시**이지 실측 토큰 수가 아니며 비영어 텍스트를 과소 추정한다 —
+토큰·속도 헤드라인은 싣지 않는다.
+
+`doctor`의 `ci_governance` 수치는 **상한**이다: 이 검사는 호출을 볼 뿐 그것이 어느 디렉터리에서
+도는지는 모르므로, 스크래치 디렉터리를 대상으로 하는 패키징 스모크 테스트도 세어진다. 더 정확히
+하려면 YAML 파서가 필요하고 그건 무의존성 입장을 포기하는 값이다. `core.hooksPath`로 훅을 옮긴
+저장소는 "none detected"로 읽히는데, 이는 안전한 쪽의 오류다.
+
+권고됐지만 **측정 후 출하하지 않은** 결정이 하나 있다: `review` 명령을 거치지 않은 승인을 게이트하는
+안은 verified 문서 129건에 대해 42회 발화했지만 **실제 우회는 0건**이라, 권고의 전제 조건이
+실패했다. 새 CI 템플릿의 파일럿 저장소 확인은 지시에 따라 건너뛰었으므로, 미확인 도입 저장소 3곳이
+이 템플릿을 채택한 뒤에도 초록으로 남는지는 미측정이다.
+
 ## 1.27.2 — 2026-07-30
 
 프롬프트 형태 규율("unhobbling"). 생성되는 모든 지시 줄을 steering / 계약 / 안전으로 분류해

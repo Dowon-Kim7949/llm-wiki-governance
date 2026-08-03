@@ -144,12 +144,14 @@ $ npx llm-wiki-governance validate --strict
 - **드리프트를 조기에.** 모든 문서가 `source_files`/정밀 `evidence`를 인용하고, 그게 바뀌면 `evidence.stale`·`drift`가 표시합니다. `drift --downgrade`로 낡은 `verified` 문서를 `needs_review`로 되돌리고, `drift --watch-needs-review`(기본 꺼짐, `drift` 전용)로 date 기준 검사를 `needs_review` 문서까지 넓힙니다. **릴리스 노트는 면제됩니다:** `doc_type`(또는 OKF `type`)이 `release_notes`인 문서는 `evidence.stale`과 `impact.source_changed` 양쪽에서 건너뜁니다 — 릴리스 노트는 이미 나간 릴리스의 불변 기록이고, 매 릴리스마다 바뀌는 `package.json`을 앵커로 삼기 때문입니다. 대가는 분명히 적어 둡니다: 이 면제는 **릴리스 노트를 지금 들어 있는 검사에서 빼냅니다.** 즉 릴리스 노트가 인용하는 소스가 움직여도 더는 flag되지 않습니다.
 - **같은 변경에서 최신 유지.** 코드와 같은 변경에서 위키도 갱신(`prompt --task docs-sync` 또는 `docs-sync` 스킬)하고, pre-commit/CI에서 `validate --changed` 실행.
 - **에이전트가 스스로 쓰게.** `mcp` 서버를 연결하면 에이전트가 코드를 다시 훑는 대신 위키를 툴로 질의합니다.
-- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.27.2`(정확한 태그로 고정). `impact`를 필수 체크에 넣기 전에 바로 아래 *업그레이드* 안내를 읽으세요 — 이제 `--strict` 없이도 빌드를 실패시킵니다.
+- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.28.0`(정확한 태그로 고정). `impact`를 필수 체크에 넣기 전에 바로 아래 *업그레이드* 안내를 읽으세요 — 이제 `--strict` 없이도 빌드를 실패시킵니다.
 - **눈에 보이게.** `graph --format mermaid`·`stats`·`audit --format html`로 사람이 코퍼스를 봅니다. GitHub/GitLab·Obsidian·MkDocs에서 그대로 렌더(정적 사이트 생성기가 아니라 Markdown-in-git 유지).
 
 ### 업그레이드: `impact`가 이제 빌드를 실패시킵니다
 
-**Breaking — exit code 계약이 바뀝니다.** `impact.source_changed`의 기본값이 **`error`로 바뀌었습니다**. 이전에는 warning이라 `--strict`를 주지 않으면 `impact`가 exit 0이었지만, 이제는 **플래그 없이 exit 1**이고 이 규칙에 대해 `--strict`는 no-op입니다. 실제로는: 업그레이드한 뒤, 어떤 문서가 인용하는 소스를 바꾸면서 그 문서는 건드리지 않은 첫 커밋에서 빌드가 빨개집니다. 그래서 다음 릴리스는 SemVer **MAJOR**입니다 — 이 변경은 아직 릴리스되지 않았습니다(버전 bump 없음, 태그 없음).
+**Breaking — exit code 계약이 바뀝니다.** `impact.source_changed`의 기본값이 **`error`로 바뀌었습니다**. 이전에는 warning이라 `--strict`를 주지 않으면 `impact`가 exit 0이었지만, 이제는 **플래그 없이 exit 1**이고 이 규칙에 대해 `--strict`는 no-op입니다. 실제로는: 업그레이드한 뒤, 어떤 문서가 인용하는 소스를 바꾸면서 그 문서는 건드리지 않은 첫 커밋에서 빌드가 빨개집니다.
+
+**이 변경은 `1.28.0` — MINOR로 배포됐습니다.** SemVer로는 exit code 계약 변경이 MAJOR이지만, MINOR로 내보내는 것은 유지보수자의 명시적 결정이며 여기 덮지 않고 적어 둡니다. 결과는 구체적입니다: **`^1.27.2`에 의존하는 프로젝트는 이 변경을 자동으로 받습니다.** 아직 게이트를 받을 준비가 안 됐다면, 아래 두 가지 탈출구 중 하나를 **업그레이드 전에** 설정에 넣으세요.
 
 켠 이유: 이 도구가 존재하는 이유 그 자체 — 소스는 움직였는데 문서는 안 움직인 상황 — 를 잡는 유일한 규칙이면서, 빌드를 실패시킬 수 있는 감지 규칙 중 프로젝트가 **직접 opt-in해야만** 했던 유일한 규칙이었기 때문입니다.
 

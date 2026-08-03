@@ -674,6 +674,45 @@ contract at the exit.
 **Unmeasured, and said so.** The restructure's effect on task outcomes has no bench arm; the
 preload figures are file-size arithmetic (`chars/4` proxy). The README headline ban stays.
 
+## Release Plan (post-1.27.2) — Harness governance Phase 0 + the omission gate turned on — **shipped as 1.28.0 (2026-08-03)**
+
+The line that came out of `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`: Phase 0 (fix the defects,
+then wire the gate into the channels we actually ship) plus the eleven chapter-J decisions the
+maintainer settled on 2026-08-03. Scope decisions are recorded in `GATE_REVIEW.md` as *"Phase 0 Gate
+Wiring"*, *"Phase 0 Defect Batch"*, and *"Monorepo CLI Contract Parity"*.
+
+- **The omission gate is on by default (decision 21)** — `impact.source_changed` moves from
+  `warning` to `error`, so `impact --since <ref>` fails a build with no flag and `--strict` is a
+  no-op for it. Shipped as a **MINOR by maintainer decision** despite being a SemVer MAJOR by shape;
+  the two config escape hatches (`rules` or `rulesPreset: "relaxed"`) are documented in both READMEs,
+  both CHANGELOGs, and the release notes precisely because `^1.27.2` upgrades into it automatically.
+- **Release notes are exempt (decision 28)** — `doc_type: release_notes` is skipped by both
+  `evidence.stale` and `impact.source_changed`. This is what made decision 21 livable (23 findings →
+  9 on the enabling commit), and it is a **coverage decrease**, stated as one.
+- **The four shipped channels run the gate** — pre-commit hook, workflow template (with
+  `fetch-depth: 0`, without which `--since` degrades quietly), the composite action (a `command`
+  input, so an omission gate is reachable through it at all), and this repository's own CI.
+- **Phase 1 `harness-health`** — the first command that inspects the harness rather than the wiki
+  (adapters, generated skills, the always-preloaded surface). Read-only, four toggleable rules, two
+  of them inert until the project supplies a budget. Approved as Phase 1 only; the `fleet` rollup
+  stays unbuilt until this signal proves useful (brief J-27 recommendation (b)).
+- **Eight detectors connected** — `drift` reporting pass on a wiki it proved stale, `review
+  --approve` accepting an unenriched scaffold, `check-run` picking a manifest by filename, `impact
+  --since` blind to uncommitted new source, and four smaller ones. All were detections that existed
+  and could not speak.
+- **Measured and NOT shipped (decision 24)** — gating on approvals that bypass the `review` command
+  fired 42 times across 129 verified documents with **zero live bypasses**, so the recommendation's
+  own precondition failed. The measurement pointed at a narrower rule (fire when `reviewed_at`
+  predates the promotion commit — one genuine candidate in the whole corpus), which is left as its
+  own decision.
+
+**The numbers travel with the gate.** `impact.source_changed`'s baseline false-positive rate is
+**27% or 57%** depending on an unmade policy call, a hub file fans out to as many as 14 findings, and
+on the commit that enabled it the gate produced 6 findings of which 1 was actionable.
+`harness-health` measured 0 false positives over 33 findings in 5 repositories — where "true" means
+the reported fact is correct, not that it is worth acting on. Pilot-repo confirmation of the new CI
+templates was skipped by direction. The `chars/4` proxy and the README headline ban are unchanged.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

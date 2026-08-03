@@ -24,6 +24,60 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - release: 1.28.0 준비 (동작 파괴 변경을 MINOR로 — 유지보수자 결정)
+
+- status: verified (에이전트 승격)
+- actor: Claude Code (유지보수자 지시: "배포를 진행하되 1.x.x 버전으로")
+- scope: release, docs
+- changed:
+  - `package.json`(1.27.2 → **1.28.0**) · `tests/verification.test.js`(버전 단언) ·
+    `.github/actions/validate/action.yml`(`version` 입력 기본값 `1.27` → `1.28`)
+  - `CHANGELOG.md` · `CHANGELOG.ko.md` — 1.28.0 절 신규(Breaking / Added / Changed / Fixed / 정직성 노트)
+  - `README.md` · `README.ko.md` — Upgrading 절의 "다음 릴리스는 MAJOR·미릴리스" 서술을
+    "1.28.0(MINOR)로 배포됨"으로 교정, 액션 핀 `@v1.27.2` → `@v1.28.0`
+  - `ROADMAP.md` · `ROADMAP.ko.md` — post-1.27.2 라인을 shipped로 등재
+  - `src/cli.js` — `drift`의 usage 요약과 `help drift`가 `--strict`·`--watch-needs-review`를 나열
+  - `docs/llm-wiki/` — `ARCHITECTURE_CONVENTIONS` · `DOMAIN_FEATURES` · `PUBLIC_API`의
+    "미릴리스" 표기를 실제 버전(1.27.1 / 1.28.0)으로 확정, `VERSIONING`(예외 절 신규),
+    `index`(게이트 기본값 안내 1줄), 재검토 노트 11건 + `REVIEW_HISTORY`(회전 6건), `log`
+  - `outputs/team-briefing/` — 덱·노트·README 버전 라벨 v1.27.2 → v1.28.0, 타임라인 1.28 항목 추가
+
+### 내용
+
+- **SemVer 판단은 유지보수자의 것이다.** `impact.source_changed`를 warning → error로 바꾼 것은
+  exit code 계약 변경이라 MAJOR(2.0.0)에 해당한다고 보고했고, 유지보수자가 1.x.x를 지시했다.
+  그래서 이 배포의 핵심 작업은 **위험을 문서로 상쇄하는 것**이다: `^1.27.2`를 쓰는 도입처가
+  자동으로 올라온다는 사실과 **돌아가는 길 2가지**(config `rules`의
+  `"impact.source_changed": "warning"|"info"|"off"`, 또는 `rulesPreset: "relaxed"`)를
+  CHANGELOG 2종·README 2종·ROADMAP 2종에 모두 적었다. 숨기지 않고 "MINOR인데 동작이 깨진다"고 쓴다.
+- **출하 표면의 공백 1건을 배포 전에 막았다.** 이번 라인이 `drift`에 `--watch-needs-review`를
+  추가하고 `--strict`를 받게 했는데, `src/cli.js`의 usage 요약과 `help drift` 어느 쪽도 두 옵션을
+  나열하지 않았다. 옵션 검증 표(`COMMAND_OPTION_RULES`)만 갱신되고 도움말이 뒤처진 상태 —
+  이 라인이 반복해서 고쳐 온 "명령이 자기 표면을 잘못 말한다" 계열의 6번째 사례다.
+- **"미릴리스" 표기 확정.** 위키가 `import-memory`·`rulesPreset`·`testEvidence`·`estimated-tokens`를
+  아직 미릴리스라고 적고 있었는데 이들은 **1.27.1에 이미 나갔다**(사실과 다른 서술). 1.28.0에
+  나가는 항목(`harness-health`·`ci_governance`·어댑터 7종 v2)과 함께 실제 버전으로 확정했다.
+  `HARNESS_GOVERNANCE_ROADMAP.md`의 "미릴리스라 지금이 최적기" 서술은 **작성 시점의 판단 기록**이라
+  손대지 않았다.
+- **릴리스 경로에서 새 기본값을 처음 마주쳤고, 그 숫자가 이 배치의 실측이다.** 커밋 후 게이트는
+  `result: pass`·impacted 0을 보고하지만, 그건 **커밋 뒤가 아니라 커밋 전에 처리했기 때문**이지
+  발화 대상이 없어서가 아니다. 릴리스 커밋은 언제나 `package.json`을 바꾸는데, 그 파일을 인용하는
+  `verified` 문서가 많다. 커밋 전에 change set으로 예측한 결과 **비면제 11건**이 발화 대상이었고
+  전부 같은 커밋에 담았다(`domains/00_overview`·`EXAMPLES`·
+  `HARNESS_GOVERNANCE_ROADMAP`·`index`·`profiles/library`·`project-profile`·위키 `README`·
+  `RELEASE_FLOW`·`templates/` 2종·`VERSIONING`). **릴리스 노트 33건은 결정 28의 면제로 0건** —
+  면제가 없었다면 44건이었다. 11건 전부를 실제 diff와 대조해 재검토하고 Review Note로 기록했다.
+  결과: **10건은 "불변"**(인용 소스는 바뀌었으나 문서가 그 파일에서 취하는 주장은 안 바뀜),
+  **1건은 실제 갱신 필요**(`VERSIONING.md` — 이번 배포가 자기 SemVer 계약의 예외라는 사실을
+  본문에 명시). 즉 **11건 중 1건이 조치 대상**으로, 직전 커밋(6건 중 1건)과 같은 비율이다.
+- **이것은 매 릴리스마다 재발한다.** 허브 fan-out 비용이 릴리스 경로에서 구체적 숫자로 확인된
+  첫 사례이며, 유지보수자가 판단할 열린 항목으로 `HARNESS_GOVERNANCE_ROADMAP.md`에 남겼다.
+  선택지는 (a) 매 릴리스 11건 재검토를 계속, (b) 이 저장소 config에서 규칙 완화,
+  (c) 버전만 바뀐 `package.json`을 다르게 취급하는 제품 변경 — 셋 다 오늘 고르지 않았다.
+- 검증: 492 tests pass · `validate --strict` 0 · `validate-frontmatter`는 워킹트리에 있는
+  **다른 에이전트의 미추적 문서** 때문에 로컬에서 error 2건을 내지만 미추적이라 CI(clone)에는 없다.
+  그 문서는 커밋하지 않는다.
+
 ## 2026-08-03 - feat!: 누락 차단 게이트가 기본으로 빌드를 실패시킨다 (사람 결정 11건 집행)
 
 - status: verified (에이전트 승격)

@@ -686,7 +686,7 @@ Usage:
   llm-wiki import-memory [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki import-memory --apply [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki drift [--downgrade] [--watch-needs-review] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki impact [--since <git-ref>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki check-run [--run <path>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki harness-health [--agent <agent>] [--preload-budget <n>] [--skill-token-cap <n>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
@@ -948,13 +948,21 @@ Scope (see GATE_REVIEW.md "Autofix (--fix) Scope Decision"):
   drift: `llm-wiki drift
 
 Usage:
-  llm-wiki drift [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki drift --downgrade [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki drift [--watch-needs-review] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki drift --downgrade [--watch-needs-review] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Reports evidence.stale drift on verified documents (line/symbol aware). Without
   --downgrade it only reports; --downgrade flips drifted verified documents to
   needs_review.
+
+Options:
+  --watch-needs-review  Widen the date-anchored freshness check to needs_review
+                        documents as well as verified ones (off by default;
+                        accepted by drift only, never by impact).
+  --strict              Escalate evidence severities and fail on findings. The
+                        default exit code stays 0, so adding drift to an existing
+                        pipeline cannot break it.
 
 Scope (see GATE_REVIEW.md "Drift Downgrade Scope Decision", Gate 9):
   - Changes only status (verified -> needs_review) and last_updated — plus the

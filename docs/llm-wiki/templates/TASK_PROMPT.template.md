@@ -51,3 +51,4 @@ contains_sensitive_info: false
 
 - Keep generated documents as `needs_review` until human review is complete.
 - Promote a generated document to `verified` only after human approval.
+- 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 템플릿을 지목해 인용 소스 `package.json`을 재확인했다. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 템플릿 본문은 작업 프롬프트의 **형식**이라 패키지 version과 결합되어 있지 않다 — **불변**.

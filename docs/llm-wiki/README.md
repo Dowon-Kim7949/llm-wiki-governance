@@ -47,3 +47,4 @@ contains_sensitive_info: false
 ## Review Notes
 
 - 2026-08-03에 HEAD의 루트 `README.md` 변경(impact 기본 error Upgrading 절·`drift --watch-needs-review`·release_notes 면제·adapter 본문 영어 고정)을 이 문서 전 항목과 대조했다. 이 문서는 impact/drift 게이트와 adapter 언어에 대해 아무 주장도 하지 않고(게이트 계약은 `AGENTS.md`·index.md에 위임), EN/KO 짝 갱신 규칙은 이번 커밋에서 `README.md`·`README.ko.md`가 함께 바뀌어 지켜졌으며, `review --approve-all --yes`와 `content.not_enriched`도 소스에서 재확인돼 **불변** — 본문 무수정(`package.json`은 이번 커밋에서 변경 없음).
+- 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `package.json`, `README.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서가 소유한 것은 위키 운영 규칙(상태 전이·근거 규약·로그)이고 루트 README의 Upgrading 절·액션 핀은 그 규칙과 무관하며, `package.json`의 version 한 줄도 마찬가지다 — 본문 **불변**.

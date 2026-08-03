@@ -48,3 +48,4 @@ contains_sensitive_info: false
 
 - 2026-07-13에 패키지 진입점과 배포 형태를 기준으로 검토했다.
 - 2026-08-03에 HEAD의 `src/cli.js` 변경(`--watch-needs-review` 신설·drift 전용 등록, impact 도움말의 error-by-default 재서술)을 대조했다 — 이 문서는 명령 개수나 게이트 기본 심각도를 주장하지 않고 근거도 이번 커밋에서 변경되지 않은 `package.json`(`bin.llm-wiki`·`type: module`·의존성 부재)뿐이라 본문 불변.
+- 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `package.json`, `src/cli.js`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서는 library 프로파일의 필수 문서 집합과 근거 규약을 서술하며 version 숫자를 고정하지 않고, `src/cli.js`는 `#symbol:main`(인자 파싱·디스패치)을 근거로 삼는데 `main()`은 무변경이다 — 본문 **불변**.
