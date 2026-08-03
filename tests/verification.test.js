@@ -2348,7 +2348,10 @@ test("impact flags a verified doc whose source changed in the working tree, not 
 
   const result = await impactCommand({ ...IMPACT_BASE, cwd });
   assert.equal(result.command, "impact");
-  assert.equal(result.result, "warning");
+  // "fail", not "warning": decision 21 (2026-08-03) made this gate error by
+  // default. See tests/impact-default-gate.test.js for the contract and the
+  // documented ways back (config rules, rulesPreset relaxed).
+  assert.equal(result.result, "fail");
   assert.ok(result.findings.some(onImpact("docs/llm-wiki/api.md")), "api.md flagged (a.ts changed)");
   assert.equal(result.findings.some(onImpact("docs/llm-wiki/other.md")), false, "other.md not flagged (b.ts unchanged)");
 });

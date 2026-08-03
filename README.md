@@ -73,7 +73,8 @@ The `llm-wiki mcp` server is deterministic (no model); the agent *calling* its t
 | `validate` | Structure & safety validation for local checks / CI (`--strict`, `--changed`). |
 | `audit` · `status` | Full findings report · current wiki state. |
 | `graph` · `stats` | Knowledge graph (text/JSON/Mermaid/DOT) · health snapshot (verified % / enrichment % / evidence coverage). |
-| `drift` · `fix` · `migrate` | Drift detection & downgrade · scoped safe autofix · contract upgrade (all preview-first). |
+| `drift` · `fix` · `migrate` | Drift detection & downgrade · scoped safe autofix · contract upgrade (all preview-first). `drift --watch-needs-review` (off by default, accepted by `drift` only) widens the date-anchored freshness check to `needs_review` documents as well as `verified` ones; it deliberately does not widen `impact`. |
+| `impact` | Diff-anchored reverse impact (`--since <ref>` for a PR / CI baseline): `verified` documents whose referenced source changed in the diff while the document itself did not. **Fails the build on its own** — `impact.source_changed` defaults to `error`, so this exits 1 with no flag, and `--strict` is a no-op for that rule. Ways back: `"impact.source_changed": "warning"` (or `"info"` / `"off"`) in the `rules` map of `llm-wiki.config.json`, or `rulesPreset: "relaxed"`, which keeps it at `info`. Read the *Upgrading* note under **Governance in practice** first. |
 | `review` | Human review workflow: lists the `needs_review` backlog risk-ranked (read-only). `review --approve <path> --reviewer "<name>"` stamps `verified` — only on that explicit flag, never automatically. |
 | `check-run` | Audit what a skill run claims it did, from the run manifest it wrote: every changed source is referenced by a touched document, the log was appended, `validate` passed, and (for feature/fix) a `testEvidence` red→green trail is recorded. Read-only. |
 | `harness-health` | Inspect the harness instead of the documents: adapter files and generated skill artifacts stamped below the version this package ships, and skill bodies that no longer track their generator (no generation marker at all, or a marker whose body no longer hashes to it — `init --refresh` keeps both). Two further rules, an always-loaded context budget and a per-skill size cap, stay inert until you supply a number (`--preload-budget <n>` / `--skill-token-cap <n>`, or `harnessHealth` in `llm-wiki.config.json`); those sizes are the same `chars/4` proxy used elsewhere, never a measured token count. Read-only. |
@@ -85,9 +86,9 @@ The `llm-wiki mcp` server is deterministic (no model); the agent *calling* its t
 
 Add `--lang ko` (or set `lang` in `llm-wiki.config.json`) to see findings messages and `explain` output in Korean; rule IDs, the `--format json` shape, and default English output are unchanged.
 
-Generated wiki documents are English by default. Add `--doc-lang ko` (or set `docLanguage` in `llm-wiki.config.json`) to generate the wiki content — and the agent doc-writing instructions in the handoff/skill prompts — in Korean instead. `--doc-lang` is independent of `--lang`, and technical identifiers (paths, code symbols, JSON keys, frontmatter fields, status values, evidence locators) are never translated.
+Generated wiki documents are English by default. Add `--doc-lang ko` (or set `docLanguage` in `llm-wiki.config.json`) to generate the wiki content — and the agent doc-writing instructions in the handoff/skill prompts — in Korean instead. `--doc-lang` is independent of `--lang`, and technical identifiers (paths, code symbols, JSON keys, frontmatter fields, status values, evidence locators) are never translated. Adapter bodies (`AGENTS.md`, `CLAUDE.md`, and the other agent adapter files) stay in English regardless of `--doc-lang` / `docLanguage` — the setting covers wiki documents and doc-writing instructions, not the adapter contract itself.
 
-Rule severities are tunable per project: set `rules` for individual finding IDs, or `rulesPreset: "relaxed" | "standard" | "strict"` in `llm-wiki.config.json` for a named bundle. Explicit `rules` always win over the preset, and `sensitive.*` can never be switched off.
+Rule severities are tunable per project: set `rules` for individual finding IDs, or `rulesPreset: "relaxed" | "standard" | "strict"` in `llm-wiki.config.json` for a named bundle. Explicit `rules` always win over the preset, and `sensitive.*` can never be switched off. `relaxed` is the supported way to keep the old `impact` behaviour — it holds `impact.source_changed` at `info`; `standard` is a deliberate no-op baseline; `strict` turns on the opt-in lints and raises the governance core, and no longer lists `impact.source_changed`, because escalating a rule that is already an error would do nothing.
 
 Retrieval has opt-in token controls (default output unchanged): `get-doc --strict-section` withholds the full body when nothing matches (instead of falling back to a whole-doc read), `--max-chars <n>` caps the returned body exactly, `--compact` drops the frontmatter echo; and `prepare --compact` returns one bounded context bundle — a chosen path, at most three candidate docs, only the top doc's most-relevant section, and how to expand. These surface a diagnostic `estimatedTokens` (a `chars/4` proxy, not a measured token count).
 
@@ -140,11 +141,35 @@ When something needs attention, findings are `severity · rule · path` — mach
 ## Governance in practice
 
 - **Verify deliberately.** Agent-written docs stay `needs_review`; a human promotes to `verified` after reading them. Nothing the CLI does can bypass that.
-- **Catch drift early.** Every doc cites `source_files` / precise `evidence`; when those change, `evidence.stale` and `drift` flag the doc. Run `drift --downgrade` to flip stale `verified` docs back to `needs_review`.
+- **Catch drift early.** Every doc cites `source_files` / precise `evidence`; when those change, `evidence.stale` and `drift` flag the doc. Run `drift --downgrade` to flip stale `verified` docs back to `needs_review`, and `drift --watch-needs-review` (off by default, `drift` only) to widen the date-anchored check to `needs_review` docs too. **Release notes are exempt:** a document whose `doc_type` — or OKF `type` — is `release_notes` is skipped by both `evidence.stale` and `impact.source_changed`, because a release note is an immutable record of a release that already shipped and it anchors `package.json`, which changes on every release. State the cost plainly: the exemption **removes release notes from a check they are currently inside**, so a release note will no longer be flagged when the source it cites moves.
 - **Keep it current in the same change.** Update the wiki alongside the code (`prompt --task docs-sync`, or the `docs-sync` skill), and run `validate --changed` in pre-commit / CI.
 - **Let agents self-serve.** Point your agent at the `mcp` server so it queries the wiki as tools instead of re-scanning the code.
-- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.27.2` (pin an exact tag).
+- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.27.2` (pin an exact tag). Before you add `impact` to a required check, read the *Upgrading* note directly below — it now fails a build without `--strict`.
 - **Make it readable.** `graph --format mermaid`, `stats`, and `audit --format html` help humans see the corpus; it stays Markdown-in-git (renders on GitHub/GitLab, Obsidian, MkDocs — not a static-site generator).
+
+### Upgrading: `impact` now fails a build
+
+**Breaking — this changes the exit-code contract.** `impact.source_changed` now defaults to **`error`**. It used to be a warning, and `impact` exited 0 unless you passed `--strict`. It now exits **1 with no flag at all**, and `--strict` is a no-op for this rule. In practice: after upgrading, the first commit that changes source without touching a document that cites it turns the build red. That makes the next release a SemVer **MAJOR** — the change is not released yet (no version bump, no tag).
+
+Why it was turned on: it is the one rule that catches what this tool exists for — source moved, its documentation did not — and it was the only detection rule a project had to opt into before it could fail a build.
+
+**Two ways back**, both per project, neither of them a code change:
+
+```json
+{ "rules": { "impact.source_changed": "warning" } }
+```
+
+`"warning"` (or `"info"` / `"off"`) in the `rules` map of `llm-wiki.config.json` restores the advisory behaviour.
+
+```json
+{ "rulesPreset": "relaxed" }
+```
+
+`rulesPreset: "relaxed"` keeps the rule at `info`. Explicit `rules` still win over the preset. The `strict` preset no longer lists the rule, since escalating an error would be a no-op.
+
+`drift` and `check-run` still need `--strict` to fail a build — their rules are still warnings. That asymmetry is deliberate and is pinned by tests. Alongside this, `doctor`'s CI-governance check now counts a bare `llm-wiki impact --since ...` step as an omission gate; it used to report "NO omission gate" for exactly that step.
+
+**On the record:** this rule's baseline false-positive rate was measured at **27% or 57%**, depending on one policy call that is still unmade (whether a shifted line anchor counts as a true positive), and a single hub file cited by many documents fans out to as many as **14 findings**. The default was turned on with those numbers known.
 
 ## Does it actually help?
 

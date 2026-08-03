@@ -24,6 +24,68 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - feat!: 누락 차단 게이트가 기본으로 빌드를 실패시킨다 (사람 결정 11건 집행)
+
+- status: verified (에이전트 승격)
+- actor: Claude Code
+- scope: src, tests, docs
+- **BREAKING**: `impact.source_changed`가 `warning` → `error`. 다음 배포는 SemVer **MAJOR**다. 이 배치에서 버전 범프·태그는 하지 않았다.
+- changed:
+  - `src/commands/scans.js` · `src/commands/findings.js` · `src/commands.js` · `src/cli.js` · `src/git.js` · `src/commands/fix-migrate.js`
+  - `tests/impact-default-gate.test.js` · `tests/freshness-scope.test.js` · `tests/check-run-tracked-selection.test.js` (신규 3종) + 기존 4종 갱신
+  - `README.md` · `README.ko.md` · `GATE_REVIEW.md` · `SECURITY.md` · `docs/OPERATIONS.md` · `.github/ISSUE_TEMPLATE/sensitive_false_positive.md`(신규)
+  - `docs/llm-wiki/` — 로드맵 · `PUBLIC_API` · `ARCHITECTURE_CONVENTIONS` · `DOMAIN_FEATURES` · `domains/00_overview` · `index` · `log`
+
+### 내용
+
+유지보수자가 J장 사람 결정 **11건을 전부 결정**했다: 21번 기본화(권고와 반대), 22번 N-6 수정, 나머지 9건 권고대로.
+
+**21번 — 이 라인의 유일한 breaking change.** `impact.source_changed`를 기본 `error`로 올렸다(push 사이트와 `defaultSeverity` 동시). `--strict`는 이 규칙에 대해 no-op이 됐다. **돌아가는 길을 계약으로 만들었다** — config `rules`의 `"warning"`/`"info"`/`"off"`, 또는 `rulesPreset: "relaxed"`. 돌아갈 길 없는 breaking change는 결정이 아니라 매복이다. 프리셋 불변식도 정확해졌다: "error/blocked 기본값 금지"는 **dialable한 error 규칙이 없던 시절의 우연**에 기대고 있었으므로, "안전 규칙과 `blocked` 금지 + `error`는 허용 목록(`PRESET_DIALABLE_ERROR_RULES`)만"으로 다시 썼다.
+
+**파급이 예상보다 컸다.** `doctor`의 CI 거버넌스 판정이 `--strict` 없는 `impact` 단계를 "게이트 아님"으로 보고하고 있었고, **그 낡은 믿음을 단언하는 테스트 2건이 통과한 채였다.** 이제 `impact`는 단독으로 게이트로 세고 `drift`·`check-run`은 여전히 `--strict`가 필요하다(그쪽 규칙은 warning이므로). 비대칭을 테스트로 고정했다.
+
+**22번 — N-6.** `check-run`이 **git 추적 매니페스트를 우선**한다. 커밋하는 저장소는 로컬과 CI가 같은 파일을 본다. **추적분 전용으로 만들지 않았다** — 그러면 매니페스트를 gitignore하는 2개 저장소(우리 포함)가 영구히 `run.manifest_missing`이 되고 `AGENTS.md` 75행의 우리 워크플로가 검증 불가가 된다. 대신 신규 **info** finding `run.manifest_untracked`가 "클린 체크아웃은 이 파일을 못 본다"고 말한다. info인 이유: gitignore는 정당한 정책이고, 이 도구는 결과를 **예측 가능하게** 만들라고 요청받았지 정책을 판정하라고 요청받지 않았다.
+
+**23번 — `run.change_set_undeclared`(warning).** 매니페스트의 `changedSource` 자기신고를 git과 대조한다. **첫 구현이 노이즈였고 출하 전에 잡았다**: 미추적 파일까지 보다가 `.obsidian/` 에디터 설정과 개인 메모에 발화했다. **추적 중인 수정분만** 보도록 좁혔다. 공백 4의 절반이 닫혔다 — `run.doc_gap`은 선언 목록을 순회하므로 빈 선언에 여전히 침묵하지만, 선언 자체가 이제 검증된다.
+
+**24번 — 측정했고, 조건이 실패해서 출하하지 않았다.** 권고는 "(a) 도입, 단 소급 발화량 선측정을 조건으로"였다. 5개 저장소 `verified` 129건에서 재 보니 **42건 발화, 그중 실제 승격 우회 0건**이다. 33건은 검토 스탬프가 **바로 다음 커밋**에 도착했고, 9건은 `reviewed_at`이 날짜 단위라 같은 날 강등→재승인을 구분 못 하는 산출물이며, 19건은 `review` 명령이 존재하기도 전이다. 게다가 `frontmatter.verified_review`가 이미 같은 상태를 보고 129건 전부 초록이다 — **이미 clean을 보고하는 검사 위에 42건을 얹는 규칙**이었다. **조건이 실패했을 때 그대로 진행하는 것은 권고를 따르는 게 아니라 권고의 조건만 버리는 것이다.** 측정이 더 나은 규칙을 지목했다(`reviewed_at`이 승격 커밋보다 **앞서는** 경우만 → 전 코퍼스에서 1건, 그것이 원래 찾던 모양) — 다음 결정 후보로 남겼다.
+
+**28번 — 면제의 성격이 브리프와 다르다는 것을 실측이 드러냈다.** 릴리스 노트 33건이 이미 `verified`라 면제는 비용 상한이 아니라 **커버리지 제거**(52건 중 33건)다. 그럼에도 옳은 거래인 이유: 릴리스 노트는 이미 출하된 릴리스의 불변 기록인데 `package.json`을 앵커로 잡아 매 릴리스 낡고, **21번 이후로는 무관한 소스가 움직였다는 이유로 빌드를 실패시킬 수 있다.** 이 저장소 `impact` 23건 중 16건이 정확히 그것이었고 **면제 후 23 → 9**가 됐다. 즉 28번이 21번을 실사용 가능하게 만들었다. 옵트인 `--watch-needs-review`는 `drift` 전용·기본 off이며 `impact`는 넓히지 않았다(error 규칙에 미검토 문서가 빌드를 실패시킬 권한을 주면 안 된다).
+
+**문서 결정 5건**: 20번 유보 확정 · 25번 신고 경로만(예외 기구 없음, 단 "예외를 도입하면 누가 선언하는가"를 같이 정하도록 명시) · 26번 어댑터 영어 고정 명시 · 29번 **R0 상한 확정 + 자기승격을 선언적 예외로 명시**(로드맵 F장에 전용 절 신설) · 30번 로드맵을 `index.md` 읽기 순서에 추가.
+
+### 검증
+
+- **RED 선확인**: 신규 테스트 전건. 21번은 4건 RED → GREEN, 22번·28번은 구현 후 작성분이라 **소스를 임시로 되돌려 RED를 사후 확인**했다(복구는 `git checkout`이 아니라 되돌리는 편집으로).
+- 491 tests(477 → +14) · lint OK(70 files) · `validate --strict`·`validate-frontmatter --strict`·`drift --strict`·`audit` 0.
+- `templates/adapters/*`·`templates/core/*`·`src/task-prompts.js` 미변경.
+
+### 주의: 이 커밋에 포함하지 않은 것
+
+워킹트리에 **다른 에이전트(Codex)의 진행 중 작업**이 섞여 있었다. `index.md`에 추가된 읽기 순서 항목이 **미추적·프론트매터 없는 문서**를 링크하고 있어 클린 체크아웃에서 링크 검사와 `validate-frontmatter`를 깨뜨린다 — 그 한 줄만 이 커밋에서 뺐다. 같은 작업의 `log.md` 항목은 `actor: Codex`로 귀속돼 있고 무해하므로 **append-only 계약대로 남겼다.** 해당 문서 자체는 미추적 상태 그대로 두었다.
+
+## 2026-08-03 - docs: 기능 추가·수정 요청 관리 대시보드 및 자동 작업 계획
+
+- status: needs_review
+- actor: Codex
+- scope: docs
+- changed:
+  - `docs/llm-wiki/REQUEST_AUTOMATION_PLAN.md` (신규)
+  - `docs/llm-wiki/index.md`
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+- 현재 패키지 v1.27.2에 구현된 `prepare`·retrieval·작업 프롬프트/스킬·검증·run manifest/`check-run`·HTML/JSON 리포트·프로그램 API·읽기 전용 MCP를 기반으로 요청 관리 및 자동 작업 시스템의 1차-A 8주 계획을 작성했다.
+- 현재 패키지가 제공하지 않는 요청 DB·실시간 포털·스케줄러/워커·에이전트 직접 실행기·SSO/RBAC·외부 커넥터를 신규 구축 범위로 명확히 분리했다.
+- Teams/Microsoft 365·Jira·Slack 연동은 1차-B 4주 후속 단계로 두고, 주 요청 원장 1개와 알림 채널 1개를 먼저 파일럿하도록 범위를 제한했다.
+
+### 근거와 검토 항목
+
+- 근거: `package.json`, `src/{cli,index,commands,task-prompts,report}.js`, `src/commands/{guided,skills}.js`, `src/mcp/tools.js`, `.github/actions/validate/action.yml`.
+- 외부 제품의 상세 API·인증 방식·조직별 계정 정책은 구현 착수 시 공식 문서와 사내 보안 정책을 기준으로 별도 확정해야 한다.
+- 에이전트 편집 문서는 작업 끝에 저장소의 자기승격 정책에 따라 `review --approve-all --yes`로 승인한다.
+
 ## 2026-08-03 - fix(후속): 문서가 자기 상태를 두 곳에 적는데, 두 값이 어긋나도 아무 게이트가 보지 않았다
 
 - status: verified (에이전트 승격)

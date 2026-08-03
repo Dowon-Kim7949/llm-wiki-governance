@@ -46,6 +46,7 @@ contains_sensitive_info: false
 4. [Domain Overview](domains/00_overview.md) — 명령어군/서브시스템 지도
 5. [Glossary](GLOSSARY.md) — 핵심 용어
 6. 작업 대상에 맞는 [Versioning](VERSIONING.md) · [Release Flow](RELEASE_FLOW.md) · [Examples](EXAMPLES.md)
+7. [Harness Governance Roadmap](HARNESS_GOVERNANCE_ROADMAP.md) — 하네스(에이전트가 이 저장소를 개발하는 환경) 자체의 거버넌스 로드맵: 자기관리 게이트·측정·결정 기록
 
 ## Operating Rules
 

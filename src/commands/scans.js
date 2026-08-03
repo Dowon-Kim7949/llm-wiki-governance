@@ -557,8 +557,34 @@ export function evidenceTier({ status, reviewedBy, reviewedAt, hasGrounding, has
 // (driftTargets, which adds a review-date baseline) and diff-anchored
 // reverse-impact (scanReverseImpact, Gate 23), so both consume ONE anchor
 // extractor. External (http(s)/repo:) references are excluded.
+// Document types exempt from freshness and reverse-impact watching (decision 28,
+// 2026-08-03). A release note is an immutable record of a release that already
+// happened: it anchors `package.json`, which changes on EVERY release, so it goes
+// stale permanently and can only be cleared by re-stamping a document whose text
+// nobody should be editing. Measured here: 33 of 52 wiki documents are release
+// notes, 33 of 33 anchor package.json, and at a one-week-old baseline they
+// produce 67 of 185 findings.
+//
+// This is not only a cost cap. Since decision 21 made impact.source_changed an
+// ERROR, an unexempted release note can FAIL A BUILD because unrelated source
+// moved — 16 of the 23 impact findings on this repo's own decision-21 commit were
+// exactly that. The exemption is hardcoded rather than configurable, matching the
+// only other per-path skip in the product (isAppendOnlyLog for the change log).
+// Recorded cost: it removes those 33 documents from a check they are currently
+// inside, which is the right trade only because re-reviewing a shipped release
+// note is definitionally noise.
+export const FRESHNESS_EXEMPT_DOC_TYPES = new Set(["release_notes"]);
+
+function freshnessExempt(frontmatter) {
+  const docType = typeof frontmatter?.doc_type === "string" && frontmatter.doc_type.trim()
+    ? frontmatter.doc_type.trim()
+    : (typeof frontmatter?.type === "string" ? frontmatter.type.trim() : "");
+  return FRESHNESS_EXEMPT_DOC_TYPES.has(docType);
+}
+
 export function verifiedSourceAnchors(frontmatter) {
   if (frontmatter?.status !== "verified") return null;
+  if (freshnessExempt(frontmatter)) return null;
 
   // source_files are broad anchors (the whole file backs the document).
   const sources = [];
@@ -589,8 +615,18 @@ export function verifiedSourceAnchors(frontmatter) {
   return { files, sources, evidenceRefs };
 }
 
-export function driftTargets(frontmatter) {
-  const anchors = verifiedSourceAnchors(frontmatter);
+// `options.watchNeedsReview` (decision 28) widens DATE-anchored freshness to
+// needs_review documents. It stays off by default and it deliberately does NOT
+// widen reverse-impact: that rule is an error since decision 21, so widening it
+// would let an unreviewed document fail a build — the opposite of what an
+// advisory opt-in should buy.
+export function driftTargets(frontmatter, options = {}) {
+  const widened = options.watchNeedsReview === true
+    && frontmatter?.status === "needs_review"
+    && !freshnessExempt(frontmatter);
+  const anchors = widened
+    ? verifiedSourceAnchors({ ...frontmatter, status: "verified" })
+    : verifiedSourceAnchors(frontmatter);
   if (!anchors) return null;
 
   const reviewedAt = typeof frontmatter.reviewed_at === "string" && /^\d{4}-\d{2}-\d{2}$/.test(frontmatter.reviewed_at)
@@ -611,12 +647,12 @@ export function driftTargets(frontmatter) {
 // those line ranges so unrelated edits elsewhere in the file are not drift.
 // Best-effort: silently skips when git is unavailable, and falls back to the
 // file-level check if a line-range query fails (e.g. an out-of-range line).
-export async function scanEvidenceDrift(cwd) {
+export async function scanEvidenceDrift(cwd, options = {}) {
   const findings = [];
   for (const file of await listTargetMarkdown(cwd)) {
     const rel = toPosix(path.relative(cwd, file));
     const parsed = parseFrontmatter(await readUtf8(file));
-    const targets = driftTargets(parsed.frontmatter);
+    const targets = driftTargets(parsed.frontmatter, options);
     if (!targets) continue;
 
     // Split references into broad (whole-file) and line-range-only per file.
@@ -702,7 +738,13 @@ export async function scanReverseImpact(cwd, changedSet) {
     const changedSources = anchors.files.filter((base) => changedSet.has(base));
     if (changedSources.length === 0) continue;
     findings.push({
-      severity: "warning",
+      // Error, not warning: decision 21 (maintainer, 2026-08-03) made this gate
+      // fail by default. It is the one rule that catches what this tool exists
+      // for — source moved, its documentation did not — and leaving it advisory
+      // meant a project had to opt in to the only detection that can fail a
+      // build. The way back is per-project config (`"impact.source_changed":
+      // "warning"|"info"|"off"`) or `rulesPreset: "relaxed"`, never a code edit.
+      severity: "error",
       rule: "impact.source_changed",
       path: rel,
       message: `Verified document depends on ${changedSources.join(", ")}, which changed in this diff, but the document is unchanged; re-review and update it or downgrade to needs_review.`,

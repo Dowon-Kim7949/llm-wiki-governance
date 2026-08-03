@@ -13,7 +13,7 @@ import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { buildTaskPrompt, evidenceFocus, initialEnrichmentWorkflow } from "./task-prompts.js";
 import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
-import { fileChangedSince, lineRangeChangedSince, changedFiles, gitUserName, isPathIgnored } from "./git.js";
+import { fileChangedSince, lineRangeChangedSince, changedFiles, gitUserName, isPathIgnored, trackedPaths, modifiedTrackedFiles } from "./git.js";
 import { localizeExplanation, normalizeLang } from "./i18n.js";
 import { buildDomainContext, emptyDomainContext } from "./commands/domains.js";
 import { docMetadata } from "./commands/doc-templates.js";
@@ -218,7 +218,12 @@ function classifyCiInvocations(text) {
 
     const strict = /(?:^|\s)--strict\b/.test(flags);
     if (CI_OMISSION_COMMANDS.has(effectiveCommand)) {
-      if (strict) {
+      // `impact` gates on its own since decision 21 (2026-08-03) defaulted
+      // impact.source_changed to error; `drift` and `check-run` still emit
+      // warnings, so they still need --strict to fail a build. Treating all
+      // three alike would tell a maintainer whose pipeline already gates that
+      // it does not, and send them to add a flag that changes nothing.
+      if (strict || effectiveCommand === "impact") {
         result.blocking += 1;
         result.omissionGate = true;
       } else {
@@ -278,7 +283,7 @@ async function describeCiGovernance(cwd) {
   }
 
   if (found.length === 0) {
-    return "none detected — nothing runs llm-wiki in CI or on commit (see docs/OPERATIONS.md; `impact --since <base> --strict` is the check that fails when source changes without its wiki doc)";
+    return "none detected — nothing runs llm-wiki in CI or on commit (see docs/OPERATIONS.md; `impact --since <base>` is the check that fails when source changes without its wiki doc — it needs no --strict since 2026-08-03)";
   }
 
   // Report blocking power, not invocation count. A repo whose only llm-wiki step
@@ -291,7 +296,7 @@ async function describeCiGovernance(cwd) {
   if (totals.omissionGate) {
     return `${counts} — omission gate present ${where}`;
   }
-  return `${counts} — NO omission gate: nothing fails when source changes without its wiki doc; add \`impact --since <base> --strict\` (see docs/OPERATIONS.md) ${where}`;
+  return `${counts} — NO omission gate: nothing fails when source changes without its wiki doc; add \`impact --since <base>\` (see docs/OPERATIONS.md) ${where}`;
 }
 
 // Echoes the effective project config (llm-wiki.config.json) for doctor so the
@@ -411,7 +416,7 @@ export async function statusCommand(options) {
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const ungroundedFindings = await scanUngroundedVerified(options.cwd);
-  const driftFindings = await scanEvidenceDrift(options.cwd);
+  const driftFindings = await scanEvidenceDrift(options.cwd, options);
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
   const linkFindings = [
@@ -587,7 +592,7 @@ export async function audit(options) {
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const ungroundedFindings = await scanUngroundedVerified(options.cwd);
-  const driftFindings = await scanEvidenceDrift(options.cwd);
+  const driftFindings = await scanEvidenceDrift(options.cwd, options);
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
   const linkFindings = [
@@ -885,8 +890,10 @@ export async function validateCommand(options) {
 // Diff-anchored complement to the date-anchored drift: flags verified documents
 // whose referenced source changed in the current diff (working tree, or a
 // `--since <ref>` PR/CI baseline) while the document itself did not. Read-only;
-// remediation stays human or `drift --downgrade`. `--strict` fails CI on impact
-// (via the shared exitCodeFor warning-in-strict rule). Empty change set = no-op.
+// remediation stays with the reviewer or `drift --downgrade`. The rule is an
+// ERROR by default since decision 21 (2026-08-03), so this command fails CI on
+// its own and `--strict` is a no-op for it; a project dials it down through
+// config `rules` or `rulesPreset: "relaxed"`. Empty change set = no-op.
 // Scope: GATE_REVIEW.md ("Reverse-Impact (Changed-Source → Wiki) Scope Decision").
 export async function impactCommand(options) {
   const cwd = options.cwd;
@@ -953,7 +960,8 @@ export async function impactCommand(options) {
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: [
       "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (file-level, git-diff based). Run it from the repo root.",
-      "Default warning; use --strict (for CI) to fail on impact, or set \"impact.source_changed\" in llm-wiki.config.json rules. This complements the date-anchored evidence.stale (drift), it does not replace it."
+      "impact.source_changed is an error by default, so this command fails a build on its own; --strict does not change that. Dial it down per project with \"impact.source_changed\": \"warning\" (or \"info\"/\"off\") in llm-wiki.config.json rules, or rulesPreset: \"relaxed\". This complements the date-anchored evidence.stale (drift), it does not replace it.",
+      "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release."
     ] }
   ]);
 }
@@ -980,7 +988,20 @@ export async function impactCommand(options) {
 // not uniform in practice (some real manifests carry no parseable timestamp at
 // all). mtime is the fallback for manifests that omit the field, and the
 // filename breaks any remaining tie so selection stays deterministic.
-async function selectLatestManifest(runsDir) {
+//
+// N-6 (decision 22, 2026-08-03): selection now prefers TRACKED manifests. A repo
+// that commits its manifests used to go green locally on a freshly written,
+// still-uncommitted file while CI's clean checkout picked the newest committed
+// one and disagreed — local stopped predicting CI, which is the actual damage the
+// manifest-commit policy debate was causing. When git tracks at least one
+// manifest we rank only those, so both sides see the same file.
+//
+// A repo that gitignores its manifests (this one does, and so does one of the four
+// adopters) tracks none, and a tracked-only rule would leave it permanently
+// reporting run.manifest_missing — red under --strict, and it would break this
+// repository's own documented workflow in AGENTS.md. So the fallback is the full
+// on-disk set, and the caller reports that CI will not see the selected file.
+async function selectLatestManifest(cwd, runsDir) {
   let names = [];
   try {
     names = (await readdir(runsDir)).filter((name) => name.endsWith(".json"));
@@ -989,8 +1010,16 @@ async function selectLatestManifest(runsDir) {
   }
   if (names.length === 0) return null;
 
+  const relDir = toPosix(path.relative(cwd, runsDir));
+  const tracked = trackedPaths(cwd, relDir);
+  const trackedNames = tracked === null
+    ? null
+    : names.filter((name) => tracked.has(`${relDir}/${name}`));
+  const usingTracked = Array.isArray(trackedNames) && trackedNames.length > 0;
+  const candidates = usingTracked ? trackedNames : names;
+
   const ranked = [];
-  for (const name of names) {
+  for (const name of candidates) {
     const abs = path.join(runsDir, name);
     let stamp = null;
     try {
@@ -1012,7 +1041,7 @@ async function selectLatestManifest(runsDir) {
   }
 
   ranked.sort((a, b) => (a.stamp - b.stamp) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  return ranked[ranked.length - 1].abs;
+  return { path: ranked[ranked.length - 1].abs, tracked: usingTracked, onDisk: names.length, trackedCount: trackedNames === null ? null : trackedNames.length };
 }
 
 export async function checkRunCommand(options) {
@@ -1020,11 +1049,27 @@ export async function checkRunCommand(options) {
   const runsDir = path.join(cwd, ".llm-wiki", "runs");
 
   let manifestPath = null;
+  let selection = null;
   if (typeof options.run === "string" && options.run.trim()) {
     manifestPath = path.isAbsolute(options.run) ? options.run : path.join(cwd, options.run);
   } else {
-    manifestPath = await selectLatestManifest(runsDir);
+    selection = await selectLatestManifest(cwd, runsDir);
+    manifestPath = selection ? selection.path : null;
   }
+
+  // N-6: say it out loud when the file CI would read is not the file we read.
+  // Info, not warning: a repo that gitignores its manifests is making a policy
+  // choice, and turning that choice into a --strict failure would be this tool
+  // picking a side in a decision it was asked to make predictable, not to settle.
+  const selectionFindings = selection && !selection.tracked && selection.trackedCount !== null
+    ? [{
+        severity: "info",
+        rule: "run.manifest_untracked",
+        path: toPosix(path.relative(cwd, runsDir)),
+        message: `Selected manifest is not tracked by git, so a clean checkout (CI) would not see it; CI would report no manifest. ${selection.onDisk} manifest(s) on disk, 0 tracked.`,
+        params: { onDisk: String(selection.onDisk) }
+      }]
+    : [];
 
   if (!manifestPath) {
     const findings = applyRuleConfig([{
@@ -1033,7 +1078,7 @@ export async function checkRunCommand(options) {
       path: toPosix(path.relative(cwd, runsDir)),
       message: "No run manifest found under .llm-wiki/runs/ (nothing to check)."
     }], options);
-    return finishCheckRun(options, null, findings);
+    return finishCheckRun(options, null, applyRuleConfig(selectionFindings, options).concat(findings));
   }
 
   const relManifest = toPosix(path.relative(cwd, manifestPath));
@@ -1041,7 +1086,7 @@ export async function checkRunCommand(options) {
   try {
     manifest = JSON.parse(await readUtf8(manifestPath));
   } catch {
-    return finishCheckRun(options, relManifest, applyRuleConfig([{
+    return finishCheckRun(options, relManifest, applyRuleConfig([...selectionFindings, {
       severity: "error",
       rule: "run.manifest_invalid",
       path: relManifest,
@@ -1053,7 +1098,7 @@ export async function checkRunCommand(options) {
     ? manifest.changedSource.filter((item) => typeof item === "string" && item.trim())
     : null;
   if (!changedSource) {
-    return finishCheckRun(options, relManifest, applyRuleConfig([{
+    return finishCheckRun(options, relManifest, applyRuleConfig([...selectionFindings, {
       severity: "error",
       rule: "run.manifest_invalid",
       path: relManifest,
@@ -1064,7 +1109,7 @@ export async function checkRunCommand(options) {
     ? manifest.touchedDocs.filter((item) => typeof item === "string" && item.trim())
     : [];
 
-  const findings = [];
+  const findings = [...selectionFindings];
   const covered = new Set();
   for (const docRel of touchedDocs) {
     for (const base of await docSourceAnchors(cwd, docRel)) covered.add(base);
@@ -1080,6 +1125,37 @@ export async function checkRunCommand(options) {
         message: `Changed source is not referenced by any touched wiki document: ${norm}.`
       });
     }
+  }
+  // Decision 23 (2026-08-03): cross-check the manifest's SELF-REPORT against git.
+  // Gap 4 of the roadmap is that the proposer and the verifier are the same
+  // party — an agent that declares `changedSource: []` makes run.doc_gap
+  // impossible to fire, and nothing noticed. Comparing the declaration to the
+  // working-tree diff is the cheapest independent check available.
+  //
+  // Conservative on purpose: it only speaks when git reports a NON-EMPTY change
+  // set, because an empty one cannot be told apart from "the run was already
+  // committed", and check-run is often invoked after a commit. Wiki documents and
+  // the manifest directory are excluded — those are touchedDocs and the run's own
+  // bookkeeping, not changed source. Warning, never error: this is a heuristic
+  // about a working tree that may legitimately carry unrelated edits.
+  const undeclared = [];
+  const declared = new Set(changedSource.map((entry) => toPosix(entry.trim())));
+  const actual = modifiedTrackedFiles(cwd);
+  if (actual && actual.length > 0) {
+    for (const file of actual.map((entry) => toPosix(entry))) {
+      if (file.startsWith("docs/llm-wiki/") || file.startsWith(".llm-wiki/")) continue;
+      if (declared.has(file)) continue;
+      undeclared.push(file);
+    }
+  }
+  for (const file of undeclared.sort()) {
+    findings.push({
+      severity: "warning",
+      rule: "run.change_set_undeclared",
+      path: file,
+      message: "File changed in the working tree but the run manifest does not list it in changedSource, so the doc-gap check could not consider it.",
+      params: { manifest: relManifest }
+    });
   }
   if (manifest.logAppended !== true) {
     findings.push({

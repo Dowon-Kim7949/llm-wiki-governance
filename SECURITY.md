@@ -57,6 +57,74 @@ Reports of particular interest include: unintended writes outside the intended
 scope, path traversal, code execution via crafted project files, or leakage of
 sensitive information into reports/logs.
 
+## Reporting a sensitive-info false positive
+
+The sensitive-information scan is a **safety invariant, not a lint**. Every rule
+in the `sensitive.*` category (`NON_TOGGLEABLE_CATEGORIES` in
+`src/commands/findings.js`) is deliberately **not toggleable by project config**:
+an `llm-wiki.config.json` `rules` entry naming one is ignored, no `rulesPreset`
+may name one, and there is no flag that turns the scan off. A detector a project
+can switch off stops being a guarantee — so this one cannot be.
+
+That makes a false positive expensive, which is exactly why we want to hear about
+it.
+
+### If a finding is blocking you right now
+
+1. **Read the location, not the value.** The finding never prints the matched
+   text — it reports `path:line` and a type only (`llm-wiki explain
+   sensitive.redacted` describes the rule). Open that line **locally** and decide
+   what it actually is.
+2. **If it is real**, remove or rotate it, and replace examples with clearly fake
+   placeholders. Do not paste it anywhere, including into an issue.
+3. **If it is a false positive**, unblock yourself by rewriting the line so it no
+   longer has the shape of a credential — there is no suppression flag — and then
+   file a report, so the detector gets fixed instead of worked around.
+
+### What to put in the report
+
+- The **rule id** (`sensitive.redacted` in almost every case).
+- The **document path** the finding named, including the line.
+- A **redacted description of the shape** that tripped it: "a 40-character hex
+  commit SHA inside a prose sentence", "a base64 placeholder in a fenced
+  example". Describe the pattern, never the value.
+- The command you ran, the package version, and your Node.js version.
+
+**Never include the matched value**, even when you are certain it is not a
+secret. If the shape cannot be described without it, do not open a public issue —
+use a private channel from [Reporting a vulnerability](#reporting-a-vulnerability)
+instead.
+
+Use the **Sensitive-info false positive** issue template
+(`.github/ISSUE_TEMPLATE/sensitive_false_positive.md`).
+
+### Why there is no per-document exception yet
+
+There is deliberately **no** per-document or per-line exception mechanism — no
+allow-list, no inline suppression marker. The safety line stays whole. The
+condition for revisiting that is the **first real reported false positive**; the
+measured count today is **zero**, so an escape hatch would exist only for a case
+nobody has yet hit.
+
+If an exception mechanism is ever added, **who may declare an exception has to be
+decided in the same change.** An unqualified "declare an exception" inherits the
+self-approval problem: in this repository governance actions are carried out by an
+agent, so a rule that lets "the operator" waive a safety finding lets the agent
+waive it on its own authority. An escape hatch is only as strong as the answer to
+who holds it.
+
+### What a sensitive finding costs while it stands
+
+A sensitive false positive **blocks twice**:
+
+- `validate` (and `audit`) exit **2**. `sensitive.*` findings are `blocked`
+  severity, which is not conditional on `--strict`.
+- `review --approve` / `--approve-all` **refuses the document**: promotion
+  re-scans the resulting content and skips it with a `sensitive.redacted`
+  finding. In this repository the self-approval step that `AGENTS.md` makes
+  mandatory therefore cannot run, so the batch cannot be closed until the finding
+  is gone.
+
 ## MCP server trust model
 
 The `llm-wiki mcp` server (Gate 11) is designed for a **local, single-tenant**

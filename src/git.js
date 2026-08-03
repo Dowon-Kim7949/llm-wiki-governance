@@ -38,6 +38,37 @@ export function lineRangeChangedSince(cwd, file, start, end, sinceDate) {
 // created but never tracked. Best-effort: returns false when the path is not
 // ignored, git is unavailable, or cwd is not a repository (check-ignore exits
 // non-zero in every one of those cases, which execFileSync surfaces as a throw).
+// The set of paths git TRACKS under `relDir`, as repo-relative posix strings.
+// Returns null — meaning "unknown", never "none" — when git is unavailable or the
+// command fails, so a caller can tell "there is no repository here" apart from
+// "this repository tracks nothing". Added for N-6: check-run picked the newest
+// file on disk, which in a repo that commits its manifests may be an untracked
+// one that CI's clean checkout cannot see, so local silently stopped predicting CI.
+export function trackedPaths(cwd, relDir) {
+  try {
+    const out = runGit(cwd, ["ls-files", "-z", "--", relDir]);
+    return new Set(out.split("\0").map((line) => line.trim()).filter(Boolean));
+  } catch {
+    return null;
+  }
+}
+
+// Tracked files modified relative to HEAD — NOT the untracked set. Used by the
+// check-run change-set cross-check (decision 23), where the untracked half of
+// `changedFiles` is actively harmful: a real working tree carries editor config,
+// scratch notes and local experiments that have nothing to do with the run, and
+// flagging those is how a new rule becomes noise everyone learns to ignore. A
+// genuinely new source file enters this set as soon as it is staged, which
+// happens before the run is committed anyway.
+export function modifiedTrackedFiles(cwd) {
+  try {
+    const out = runGit(cwd, ["diff", "--name-only", "HEAD"]);
+    return out.split("\n").map((line) => line.trim()).filter(Boolean);
+  } catch {
+    return null;
+  }
+}
+
 export function isPathIgnored(cwd, relPath) {
   try {
     runGit(cwd, ["check-ignore", "-q", relPath]);

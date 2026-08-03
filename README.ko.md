@@ -73,7 +73,8 @@ CLI 자체는 모델이 필요 없습니다. 오직 **보강(enrichment)** 단�
 | `validate` | 로컬/CI용 구조·안전 검증(`--strict`, `--changed`). |
 | `audit` · `status` | 전체 finding 리포트 · 현재 wiki 상태. |
 | `graph` · `stats` | 지식 그래프(text/JSON/Mermaid/DOT) · 헬스 스냅샷(verified%/enrichment%/근거 커버리지). |
-| `drift` · `fix` · `migrate` | 드리프트 감지·강등 · 범위 한정 자동수정 · 계약 업그레이드(모두 미리보기 우선). |
+| `drift` · `fix` · `migrate` | 드리프트 감지·강등 · 범위 한정 자동수정 · 계약 업그레이드(모두 미리보기 우선). `drift --watch-needs-review`(기본 꺼짐, `drift`만 받는 옵션)는 date 기준 신선도 검사를 `verified`뿐 아니라 `needs_review` 문서까지 넓힙니다. `impact`는 의도적으로 넓히지 않습니다. |
+| `impact` | diff 기준 reverse-impact(`--since <ref>`로 PR/CI 기준선): 참조 소스가 이번 diff에서 바뀌었는데 문서 자신은 안 바뀐 `verified` 문서를 flag. **단독으로 빌드를 실패시킵니다** — `impact.source_changed`가 기본 `error`라 플래그 없이 exit 1이고, 이 규칙에 대해 `--strict`는 no-op입니다. 되돌리는 방법: `llm-wiki.config.json`의 `rules`에 `"impact.source_changed": "warning"`(또는 `"info"`/`"off"`), 또는 이 규칙을 `info`로 유지하는 `rulesPreset: "relaxed"`. **거버넌스 실전**의 *업그레이드* 안내를 먼저 읽으세요. |
 | `review` | 사람 검토 워크플로: `needs_review` 백로그를 위험도 순으로 나열(읽기 전용). `review --approve <path> --reviewer "<이름>"`로만 `verified`를 스탬프하며 자동 승격은 없음. |
 | `check-run` | 스킬 실행이 남긴 run manifest로 그 실행이 주장한 내용을 감사: 바뀐 소스마다 그걸 참조하는 문서가 touch됐는지, 로그가 append됐는지, `validate`가 통과했는지, (feature/fix라면) `testEvidence` red→green 트레일이 기록됐는지. 읽기 전용. |
 | `harness-health` | 문서가 아니라 하네스를 검사: 이 패키지가 배포하는 버전보다 낮게 스탬프된 adapter 파일·생성 스킬 산출물, 그리고 생성기를 더 이상 따라가지 않는 스킬 본문(생성 마커가 아예 없거나, 마커는 있지만 본문 해시가 그 마커와 어긋남 — `init --refresh`는 둘 다 그대로 둔다). 나머지 두 규칙(선적재 문맥 예산·스킬 길이 상한)은 숫자를 직접 줄 때만 동작한다(`--preload-budget <n>`/`--skill-token-cap <n>` 또는 `llm-wiki.config.json`의 `harnessHealth`). 그 크기 값은 다른 곳과 같은 `chars/4` 프록시이며 실측 토큰 수가 아니다. 읽기 전용. |
@@ -85,9 +86,9 @@ CLI 자체는 모델이 필요 없습니다. 오직 **보강(enrichment)** 단�
 
 `--lang ko`를 붙이면(또는 `llm-wiki.config.json`에 `lang` 설정) findings 메시지와 `explain` 출력을 한국어로 볼 수 있습니다. rule ID·`--format json` shape·기본 영어 출력은 불변입니다.
 
-생성되는 위키 문서는 기본이 영어입니다. `--doc-lang ko`를 붙이면(또는 `llm-wiki.config.json`에 `docLanguage` 설정) 위키 본문과 handoff/스킬 프롬프트의 에이전트 문서 작성 지시를 한국어로 생성합니다. `--doc-lang`은 `--lang`과 독립적이며, 기술 식별자(경로·코드 심볼·JSON 키·frontmatter 필드·status 값·evidence locator)는 번역하지 않습니다.
+생성되는 위키 문서는 기본이 영어입니다. `--doc-lang ko`를 붙이면(또는 `llm-wiki.config.json`에 `docLanguage` 설정) 위키 본문과 handoff/스킬 프롬프트의 에이전트 문서 작성 지시를 한국어로 생성합니다. `--doc-lang`은 `--lang`과 독립적이며, 기술 식별자(경로·코드 심볼·JSON 키·frontmatter 필드·status 값·evidence locator)는 번역하지 않습니다. adapter 본문(`AGENTS.md`·`CLAUDE.md` 등 에이전트 adapter 파일)은 `--doc-lang`/`docLanguage` 설정과 무관하게 항상 영어입니다 — 이 설정의 범위는 위키 문서와 문서 작성 지시이지 adapter 계약 자체가 아닙니다.
 
-rule severity는 프로젝트별로 조정할 수 있습니다: 개별 finding ID는 `rules`로, 명명 번들은 `llm-wiki.config.json`의 `rulesPreset: "relaxed" | "standard" | "strict"`로 설정합니다. 명시한 `rules`가 항상 프리셋보다 우선하고, `sensitive.*`는 어떤 경우에도 끌 수 없습니다.
+rule severity는 프로젝트별로 조정할 수 있습니다: 개별 finding ID는 `rules`로, 명명 번들은 `llm-wiki.config.json`의 `rulesPreset: "relaxed" | "standard" | "strict"`로 설정합니다. 명시한 `rules`가 항상 프리셋보다 우선하고, `sensitive.*`는 어떤 경우에도 끌 수 없습니다. `relaxed`는 종전 `impact` 동작을 유지하는 지원된 방법입니다 — `impact.source_changed`를 `info`로 붙잡아 둡니다. `standard`는 의도적 no-op 베이스라인이고, `strict`는 opt-in lint를 켜고 거버넌스 코어를 상향하되 `impact.source_changed`는 더 이상 나열하지 않습니다(이미 error인 규칙을 상향해봐야 아무 일도 일어나지 않기 때문입니다).
 
 retrieval에는 opt-in 토큰 제어가 있습니다(기본 출력 불변): `get-doc --strict-section`은 매칭이 없을 때 전체 본문으로 되돌아가지 않고 보류하며, `--max-chars <n>`은 반환 본문을 정확히 캡하고, `--compact`는 frontmatter echo를 생략합니다. `prepare --compact`는 한 번의 호출로 최소 문맥 번들(선택 경로·최대 3개 후보 문서·최상위 문서의 관련 섹션 1개·확장 방법)을 반환합니다. 이들은 진단용 `estimatedTokens`(실측이 아니라 `chars/4` 프록시)를 함께 노출합니다.
 
@@ -140,11 +141,35 @@ $ npx llm-wiki-governance validate --strict
 ## 거버넌스 실전
 
 - **의도적으로 검증.** 에이전트가 쓴 문서는 `needs_review`로 두고, 사람이 읽은 뒤 `verified`로 승격합니다. CLI가 하는 어떤 것도 이를 우회할 수 없습니다.
-- **드리프트를 조기에.** 모든 문서가 `source_files`/정밀 `evidence`를 인용하고, 그게 바뀌면 `evidence.stale`·`drift`가 표시합니다. `drift --downgrade`로 낡은 `verified` 문서를 `needs_review`로 되돌립니다.
+- **드리프트를 조기에.** 모든 문서가 `source_files`/정밀 `evidence`를 인용하고, 그게 바뀌면 `evidence.stale`·`drift`가 표시합니다. `drift --downgrade`로 낡은 `verified` 문서를 `needs_review`로 되돌리고, `drift --watch-needs-review`(기본 꺼짐, `drift` 전용)로 date 기준 검사를 `needs_review` 문서까지 넓힙니다. **릴리스 노트는 면제됩니다:** `doc_type`(또는 OKF `type`)이 `release_notes`인 문서는 `evidence.stale`과 `impact.source_changed` 양쪽에서 건너뜁니다 — 릴리스 노트는 이미 나간 릴리스의 불변 기록이고, 매 릴리스마다 바뀌는 `package.json`을 앵커로 삼기 때문입니다. 대가는 분명히 적어 둡니다: 이 면제는 **릴리스 노트를 지금 들어 있는 검사에서 빼냅니다.** 즉 릴리스 노트가 인용하는 소스가 움직여도 더는 flag되지 않습니다.
 - **같은 변경에서 최신 유지.** 코드와 같은 변경에서 위키도 갱신(`prompt --task docs-sync` 또는 `docs-sync` 스킬)하고, pre-commit/CI에서 `validate --changed` 실행.
 - **에이전트가 스스로 쓰게.** `mcp` 서버를 연결하면 에이전트가 코드를 다시 훑는 대신 위키를 툴로 질의합니다.
-- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.27.2`(정확한 태그로 고정).
+- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.27.2`(정확한 태그로 고정). `impact`를 필수 체크에 넣기 전에 바로 아래 *업그레이드* 안내를 읽으세요 — 이제 `--strict` 없이도 빌드를 실패시킵니다.
 - **눈에 보이게.** `graph --format mermaid`·`stats`·`audit --format html`로 사람이 코퍼스를 봅니다. GitHub/GitLab·Obsidian·MkDocs에서 그대로 렌더(정적 사이트 생성기가 아니라 Markdown-in-git 유지).
+
+### 업그레이드: `impact`가 이제 빌드를 실패시킵니다
+
+**Breaking — exit code 계약이 바뀝니다.** `impact.source_changed`의 기본값이 **`error`로 바뀌었습니다**. 이전에는 warning이라 `--strict`를 주지 않으면 `impact`가 exit 0이었지만, 이제는 **플래그 없이 exit 1**이고 이 규칙에 대해 `--strict`는 no-op입니다. 실제로는: 업그레이드한 뒤, 어떤 문서가 인용하는 소스를 바꾸면서 그 문서는 건드리지 않은 첫 커밋에서 빌드가 빨개집니다. 그래서 다음 릴리스는 SemVer **MAJOR**입니다 — 이 변경은 아직 릴리스되지 않았습니다(버전 bump 없음, 태그 없음).
+
+켠 이유: 이 도구가 존재하는 이유 그 자체 — 소스는 움직였는데 문서는 안 움직인 상황 — 를 잡는 유일한 규칙이면서, 빌드를 실패시킬 수 있는 감지 규칙 중 프로젝트가 **직접 opt-in해야만** 했던 유일한 규칙이었기 때문입니다.
+
+**되돌리는 방법 두 가지**, 둘 다 프로젝트 단위 설정이며 코드 수정이 아닙니다:
+
+```json
+{ "rules": { "impact.source_changed": "warning" } }
+```
+
+`llm-wiki.config.json`의 `rules` 맵에 `"warning"`(또는 `"info"`/`"off"`)을 주면 종전의 권고형 동작으로 돌아갑니다.
+
+```json
+{ "rulesPreset": "relaxed" }
+```
+
+`rulesPreset: "relaxed"`는 이 규칙을 `info`로 유지합니다. 명시한 `rules`는 여전히 프리셋보다 우선합니다. `strict` 프리셋은 이 규칙을 더 이상 나열하지 않습니다 — error를 상향해봐야 no-op이기 때문입니다.
+
+`drift`와 `check-run`은 빌드를 실패시키려면 여전히 `--strict`가 필요합니다. 그쪽 규칙들은 아직 warning이고, 이 비대칭은 의도된 것이며 테스트로 고정되어 있습니다. 함께: `doctor`의 CI 거버넌스 점검이 이제 플래그 없는 `llm-wiki impact --since ...` 스텝도 누락 게이트로 셉니다 — 이전에는 바로 그 스텝을 두고 "NO omission gate"라고 보고했습니다.
+
+**기록으로 남기는 반론:** 이 규칙의 기준선 오탐률은 **27% 또는 57%로 측정되었습니다**(아직 내려지지 않은 정책 판단 하나 — 라인 앵커가 밀린 경우를 true positive로 볼 것인가 — 에 따라 갈립니다). 그리고 여러 문서가 인용하는 허브 파일 하나가 최대 **14건**의 finding으로 퍼집니다. 유지보수자는 이 숫자들을 알고서 기본값을 켰습니다.
 
 ## 실제로 도움이 되나?
 

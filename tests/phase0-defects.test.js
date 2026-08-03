@@ -404,13 +404,24 @@ test("changedFiles still excludes gitignored paths under --since", async () => {
   );
 });
 
-// --- backlog 3: rulesPreset strict escalates the missing-detection rule ----
+// --- backlog 3: the missing-detection rule fails a build ------------------
+// Backlog 3 asked that `strict` escalate this rule, because the preset named
+// strict was escalating seven presentational rules while the one detection rule
+// that can fail a build stayed advisory. Decision 21 (2026-08-03) went further
+// and made error the DEFAULT, which subsumes the preset entry — so the assertion
+// moved from "strict escalates it" to "nothing has to escalate it". The
+// requirement backlog 3 expressed is now stronger, not dropped.
 
-test("rulesPreset strict escalates impact.source_changed", () => {
+test("the missing-detection rule fails a build with no preset and no --strict", () => {
+  assert.equal(
+    FINDING_EXPLANATIONS["impact.source_changed"].defaultSeverity,
+    "error",
+    "the one rule that detects a missing doc update must fail a build by default"
+  );
   assert.equal(
     RULE_PRESETS.strict["impact.source_changed"],
-    "error",
-    "the preset named strict must escalate the one rule that detects a missing doc update"
+    undefined,
+    "strict must not carry a no-op escalation of a rule that already defaults to error"
   );
 });
 

@@ -87,6 +87,29 @@ the directory it runs in, so a step validating a scratch directory (a packaging
 smoke test, say) still counts. It names the files it matched so you can check;
 read the counts as an upper bound.
 
+## When the sensitive-info scan blocks you
+
+Every other rule in this guide has a dial. `sensitive.*` does not: the category
+is in `NON_TOGGLEABLE_CATEGORIES`, so an `llm-wiki.config.json` `rules` entry for
+one is ignored and no `rulesPreset` may name one. It is a safety invariant, not a
+lint, and there is no adoption ramp for it.
+
+A hit therefore blocks twice: findings are `blocked` severity, so `validate` and
+`audit` exit `2` with or without `--strict`, and `review --approve` /
+`--approve-all` re-scans the content it is about to stamp and refuses the
+document — so a repository whose workflow ends in a review step cannot close the
+batch either.
+
+What to do: the finding never prints the matched value — it names `path:line` and
+a type. Inspect that line **locally**. Remove or rotate it if it is real. If it is
+a false positive, rewrite the line so it no longer has the shape of a credential
+(there is no suppression flag), then report it with the rule id, the document
+path and a **redacted description of the pattern** — never the value. There is
+deliberately no per-document exception mechanism yet; the report path, and the
+open question of who would be allowed to declare an exception if one is ever
+added, are in
+[SECURITY.md](../SECURITY.md#reporting-a-sensitive-info-false-positive).
+
 ## Cost & safety notes
 
 - **CI cost** is dominated by document count and the `npx` cold-start, not by repo size — the tool reads the wiki, not the whole codebase. `--changed` narrows reporting further.
@@ -99,4 +122,4 @@ read the counts as an upper bound.
 - `npx llm-wiki-governance help <command>` — offline, per-command reference.
 - [PUBLIC_API.md](llm-wiki/PUBLIC_API.md) — full command / option / config / programmatic-API / MCP reference.
 - [GATE_REVIEW.md](../GATE_REVIEW.md) — accepted safety scopes and release gates.
-- [SECURITY.md](../SECURITY.md) — threat model and the MCP server trust model.
+- [SECURITY.md](../SECURITY.md) — threat model, the MCP server trust model, and the sensitive-info false-positive report path.

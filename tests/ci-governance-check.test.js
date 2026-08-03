@@ -97,14 +97,28 @@ test("ci_governance: impact --strict is recognized as the omission gate", async 
   assert.doesNotMatch(line, /NO omission gate/);
 });
 
-test("ci_governance: impact WITHOUT --strict is advisory, because it exits 0", async () => {
+test("ci_governance: impact WITHOUT --strict is now a real gate, because it exits 1", async () => {
   const cwd = await makeRepo();
-  // impact.source_changed is a warning, so without --strict this step reports
-  // the omission and then lets the build pass. That is not a gate.
+  // Decision 21 (2026-08-03) made impact.source_changed default to error, so a
+  // bare `impact --since` fails the build on its own. doctor has to say so:
+  // reporting "NO omission gate" on a pipeline that does gate would send a
+  // maintainer to add a flag that changes nothing.
   await writeWorkflow(cwd, "gate.yml", "    - run: llm-wiki impact --since origin/main\n");
   const line = ciGovernanceLine(await doctor({ cwd }));
-  assert.match(line, /0 blocking/);
-  assert.match(line, /NO omission gate/);
+  assert.match(line, /1 blocking/);
+  assert.doesNotMatch(line, /NO omission gate/);
+  assert.match(line, /omission gate present/);
+});
+
+test("ci_governance: drift and check-run still need --strict to gate", async () => {
+  // Their rules are still warnings, so the asymmetry is real and doctor must
+  // keep it rather than treating every omission command the same way.
+  for (const command of ["drift", "check-run"]) {
+    const cwd = await makeRepo();
+    await writeWorkflow(cwd, "gate.yml", `    - run: llm-wiki ${command}\n`);
+    const line = ciGovernanceLine(await doctor({ cwd }));
+    assert.match(line, /NO omission gate/, `${command} without --strict must not count as a gate`);
+  }
 });
 
 test("ci_governance: drift --strict and check-run --strict also count as omission gates", async () => {
@@ -133,12 +147,27 @@ test("ci_governance: the composite action reads its command and strict inputs", 
   assert.match(line, /omission gate present/);
 });
 
-test("ci_governance: the composite action without strict is not a gate", async () => {
+test("ci_governance: the composite action running impact gates even without strict", async () => {
+  // Same contract change as the bare CLI form: since decision 21 the rule is an
+  // error, so `command: impact` blocks whether or not `strict: true` is set.
   const cwd = await makeRepo();
   await writeWorkflow(cwd, "gate.yml", [
     "    - uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.28.0",
     "      with:",
     "        command: impact",
+    ""
+  ].join("\n"));
+  assert.match(ciGovernanceLine(await doctor({ cwd })), /omission gate present/);
+});
+
+test("ci_governance: the composite action running drift without strict is still not a gate", async () => {
+  // The asymmetry has to survive on the action path too, or the composite action
+  // becomes a way to look gated without being gated.
+  const cwd = await makeRepo();
+  await writeWorkflow(cwd, "gate.yml", [
+    "    - uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.28.0",
+    "      with:",
+    "        command: drift",
     ""
   ].join("\n"));
   assert.match(ciGovernanceLine(await doctor({ cwd })), /NO omission gate/);

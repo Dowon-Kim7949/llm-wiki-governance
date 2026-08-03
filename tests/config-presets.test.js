@@ -12,6 +12,7 @@ import path from "node:path";
 import {
   FINDING_EXPLANATIONS,
   NON_TOGGLEABLE_CATEGORIES,
+  PRESET_DIALABLE_ERROR_RULES,
   RULE_PRESETS,
   findingCategory
 } from "../src/commands/findings.js";
@@ -43,9 +44,17 @@ test("RULE_PRESETS: bundles are registry-valid, frozen, and never touch safety o
         !NON_TOGGLEABLE_CATEGORIES.has(findingCategory(rule)),
         `preset ${name} must never touch safety rule ${rule}`
       );
+      // A preset may dial warning/info rules freely, must never touch a `blocked`
+      // default, and may touch an `error` default only if that rule is on the
+      // allow-list — which exists so decision 21's breaking default (error) still
+      // has a preset-level way back. Anything else added to that list is a
+      // decision, not a refactor.
       const defaultSeverity = FINDING_EXPLANATIONS[rule].defaultSeverity;
+      const dialable = defaultSeverity === "warning"
+        || defaultSeverity === "info"
+        || (defaultSeverity === "error" && PRESET_DIALABLE_ERROR_RULES.includes(rule));
       assert.ok(
-        defaultSeverity === "warning" || defaultSeverity === "info",
+        dialable,
         `preset ${name} must not touch ${rule} (default severity ${defaultSeverity})`
       );
     }

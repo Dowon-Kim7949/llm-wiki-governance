@@ -2324,6 +2324,168 @@ bringing the root governance documents into scan scope. All three change what th
 command count goes 29 → 30. Unreleased — and the adapter template the baseline ran against is
 itself unpublished, which is the second honesty limit above.
 
+## Detection Defaults and Freshness Scope Decision (maintainer-approved 2026-08-03 — built, BREAKING)
+
+### Why
+
+Phase 0 ended with the omission gate wired into all four shipped channels and the rule
+behind it still unable to fire on its own. `impact.source_changed` was a warning, so every
+channel had to carry `--strict` before an omission could fail anything. It is the one rule
+that catches what this tool exists for — **source moved, its documentation did not** — and
+it was the **only detection rule a project had to opt into before it could fail a build**.
+Every other category already blocked on its own errors without a flag.
+
+The same measurement pass produced three items that belong in the same slice: a `check-run`
+selection bug that makes a green local run stop predicting CI, a hole in the manifest
+self-report that lets a run silence `run.doc_gap` by declaring nothing, and a freshness
+scope that holds immutable release notes inside two checks they can never satisfy. A fourth
+candidate was measured here and **declined**; it has its own section below, because a rule
+that was recommended and then rejected on its own evidence is the more useful record.
+
+### Decisions
+
+- **`impact.source_changed` now defaults to `error`. This is a BREAKING change to the
+  exit-code contract.** Before: warning, exit 0 unless `--strict`. After: error, **exit 1
+  with no flag at all**. `--strict` is now a no-op for this rule, and the `strict` preset no
+  longer lists it — an entry there would be a no-op too. **The ways back, which must appear
+  wherever this change is documented:** set `"impact.source_changed": "warning"` (or
+  `"info"`, or `"off"`) in `llm-wiki.config.json` `rules`, or use `rulesPreset: "relaxed"`,
+  which keeps the rule at `info`. `relaxed` is now the only direction a preset can move it,
+  and the only way an adopter recovers the previous behaviour without naming the rule.
+  Stated plainly rather than softened: **an adopter who upgrades gets a red build on the
+  first commit that changes source without touching a document that cites it.** That makes
+  the next release a **SemVer MAJOR**. The version in `package.json` is **not** bumped in
+  this change and **no tag is being cut**.
+- **A bare `impact --since` step now counts as a gate in `doctor`.** The CI-governance line
+  classified it as "NO omission gate" because it demanded `--strict`, which is exactly the
+  flag decision 21 made unnecessary. `drift` and `check-run` still require `--strict`,
+  because their rules are still warnings. **That asymmetry is deliberate and is pinned by
+  tests** — it tracks blocking power, not command name, so it stays correct the day another
+  rule's default moves.
+- **`check-run` prefers git-TRACKED run manifests (defect N-6).** It used to pick the newest
+  file on disk. In a repository that commits manifests, that is the one the agent has just
+  written and not committed, while CI clones and picks the newest *committed* manifest — so
+  a green local run stopped predicting CI, and **the divergence was silent**. Now, when git
+  tracks at least one manifest, only tracked manifests are ranked. It is deliberately **not**
+  tracked-only: a repository that gitignores manifests (this one, and one of the four
+  adopters) tracks none, so it falls back to the on-disk set and gets a new INFO finding
+  `run.manifest_untracked` saying a clean checkout would not see the selected file. Info and
+  not warning **on purpose** — gitignoring manifests is a legitimate policy and `--strict`
+  must not punish it; a tracked-only rule would also have broken this repository's own
+  documented workflow (`AGENTS.md` line 75). The new helper `trackedPaths` (`src/git.js`)
+  returns `null` (unknown) rather than an empty set outside a git repository, so **"no
+  repository" is never mistaken for "tracks nothing"**.
+- **New rule `run.change_set_undeclared` (warning) cross-checks the manifest's self-reported
+  `changedSource` against git.** This closes half of gap 4 — the proposer and the verifier
+  are the same party. A run that declared an empty `changedSource` made `run.doc_gap`
+  **structurally unable to fire**, and nothing noticed. The comparison uses **tracked
+  modifications only** (`git diff --name-only HEAD`), never the untracked set: the first cut
+  included untracked files and immediately fired on `.obsidian/` editor config and a personal
+  scratch note — measured on this repository, and corrected before shipping (new helper
+  `modifiedTrackedFiles`, `src/git.js`). It is silent when git reports no changes at all,
+  because that is indistinguishable from a run that was already committed, and it excludes
+  `docs/llm-wiki/**` and `.llm-wiki/**` (those are the run's `touchedDocs` and its own
+  bookkeeping). The remaining half stays open and is recorded as a known gap: **once a run
+  is committed there is nothing left to compare against.**
+- **Release notes are exempt from both freshness checks (decision 28).**
+  `FRESHNESS_EXEMPT_DOC_TYPES` = `release_notes`, hardcoded rather than configurable,
+  matching the only other per-path skip in the product (the append-only change log). It
+  exempts **both** `evidence.stale` and `impact.source_changed`, and the OKF `type` spelling
+  exempts too. **The brief's cost model is obsolete and this has to be said:** it assumed
+  release notes were `needs_review`, so the exemption would only cap a new opt-in's cost.
+  All 33 are `verified` now, so **the exemption REMOVES 33 of this repository's 52 documents
+  from a check they are currently inside.** That is the right trade for two measured reasons.
+  A release note is an immutable record of a release that already shipped and it anchors
+  `package.json`, which changes on every release — so it goes stale permanently and can only
+  be cleared by re-stamping a document nobody should be editing. And since decision 21 an
+  unexempted release note **can fail a build** because unrelated source moved: **16 of the 23
+  impact findings on this repository's own decision-21 commit were exactly that.** After the
+  exemption this repository's impact count went **23 → 9, with zero release notes remaining**.
+- **`--watch-needs-review` is opt-in, `drift`-only, and off by default (decision 28).** It
+  widens date-anchored freshness to `needs_review` documents. It deliberately does **not**
+  widen `impact`: that rule is an error now, and an advisory opt-in must never let an
+  unreviewed document fail a build. The exemption outranks the opt-in — an exempt document
+  stays exempt with the flag on.
+
+### The counter-argument, kept on the record
+
+Decision 21 was taken with an unfavourable measurement in hand, and it is recorded next to
+the decision rather than in a footnote. The **baseline false-positive rate for
+`impact.source_changed` was measured at 27% or 57%**, depending on a single policy call that
+is **still unmade**: whether a shifted line anchor counts as a true positive. And **a single
+hub file fans out to as many as 14 findings** (N-1), because the rule matches per file and
+every document citing that file lights up at once. The maintainer defaulted the rule to
+error **with those numbers known**. The reasoning on the record is that the alternative is a
+detection rule nobody turns on, and the documented ways back above are the mitigation — not
+a claim that the noise is gone.
+
+### Decision 24: measured, and declined
+
+The recommendation was "adopt at warning, **CONDITIONAL** on measuring the retroactive firing
+volume first". The measurement was run and **the condition failed**, so the rule is **NOT
+SHIPPED**.
+
+The rule as specified: a `verified` document whose promotion commit did not also change
+`reviewed_at`. Run across **5 repositories, 129 verified documents: 42 fire (32.6%), and 0 of
+the 42 are a live promotion bypass.** They decompose entirely into two benign shapes — **33**
+where the review stamp arrived in the very next commit, and **9** where `reviewed_at` is
+date-granular, so a same-day demote-and-re-approve is indistinguishable from an untouched
+stamp. **38 of the 42 come from just 5 bulk commits**, and **19 of the 42 predate the
+existence of the `review` command entirely** — there was no tool path to bypass.
+
+An existing rule already covers the state that would survive: `frontmatter.verified_review`
+fires when a verified document carries no review metadata, and it is **green on all 129**. So
+the new rule would have added 42 findings on top of a check that already reports clean — a
+governance rule whose entire first-day output is history is a rule that teaches people to
+ignore findings.
+
+The measurement does point somewhere: a narrower rule that fires when `reviewed_at`
+**predates** the promotion commit isolates the single genuine candidate found in the whole
+corpus. That is left as its own future decision, on this evidence, rather than folded in
+here.
+
+### Scope boundary
+
+Not in this slice and each still awaiting its own decision: the narrower promotion-bypass
+rule the decision-24 measurement points at; the remaining half of gap 4 (a committed run has
+nothing left to compare against); a mitigation for N-1 hub-file fanout, which decision 21
+makes more expensive, not less; and the line-anchor policy call the 27%/57% spread hangs on.
+The doc-only decisions of the same day are recorded in the next section.
+
+### Verification
+
+**491 tests pass (was 477)**, `lint` OK (70 files). The `doctor` asymmetry (`impact` counts
+without `--strict`, `drift` and `check-run` do not), the tracked-manifest preference, the
+untracked-file exclusion in `run.change_set_undeclared`, and the release-notes exemption are
+each pinned by tests rather than left to the next reader's judgment.
+
+**Unreleased. No version bump and no tag are part of this change** — decision 21 makes the
+next release a SemVer MAJOR, and that release is a separate decision.
+
+## Doc-Only Decisions (maintainer-decided 2026-08-03 — recorded, no code change)
+
+Five decisions of the same day that resolve to a recorded sentence rather than a code change.
+They are written down here so they stop being carried as open questions.
+
+- **20 — the agent-layer package split stays DEFERRED until Phase 2 starts.** Recorded as
+  **decided-deferred, not open**: nothing is waiting on an answer, and the trigger is the
+  start of Phase 2 rather than a date.
+- **25 — create a false-positive REPORTING path for the sensitive-info rules, and do NOT add
+  an exception mechanism.** The safety line stays whole: `sensitive.*` remains non-toggleable
+  and gains no suppression. What is approved is a way to *report* a false positive, not a way
+  to wave one through. Also recorded: **who may declare an exception, if one is ever added** —
+  in this repository governance actions are performed by an agent, so an unqualified "declare
+  an exception" would inherit the self-approval problem the wiki exception is carefully scoped
+  around. Newly relevant fact behind the urgency: **a sensitive false positive now blocks
+  twice.** `validate` exits 2, and it also blocks the self-approval step that `AGENTS.md`
+  makes mandatory — so a batch cannot be closed at all.
+- **26 — adapter bodies are English regardless of `--doc-lang` / `docLanguage`.** Stated in
+  one explicit line rather than left implied by the option's documented scope.
+- **29 — this line's automation ceiling is R0.** The wiki self-approval is a **declared
+  exception**, scoped to `docs/llm-wiki/` and to the tool path (`review --approve*`) — it is
+  **not** a relaxation of the ceiling and must not be cited as precedent for one.
+- **30 — the roadmap joins the Recommended Read Order in `docs/llm-wiki/index.md`.**
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

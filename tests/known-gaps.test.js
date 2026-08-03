@@ -22,7 +22,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import { normalizeOptions } from "../src/index.js";
 import { driftCommand, impactCommand, checkRunCommand, validateCommand } from "../src/commands.js";
@@ -91,6 +91,11 @@ async function makeRepo(status, options = {}) {
 
 // --- GAP 2: freshness checking is scoped to `verified` documents only -----
 
+// PARTLY ADDRESSED 2026-08-03 by decision 28: `drift --watch-needs-review` opts
+// into exactly this. It stays OFF by default, so the gap below is still the
+// default behaviour and the assertion stands. impact was deliberately NOT
+// widened — its rule is an error since decision 21, and an advisory opt-in must
+// not let an unreviewed document fail a build.
 test("KNOWN GAP: drift cannot see a needs_review document whose source moved", async () => {
   const verified = await makeRepo("verified", { reviewedBy: "Fixture Human" });
   const needsReview = await makeRepo("needs_review");
@@ -141,19 +146,38 @@ test("KNOWN GAP: a hand-edited verified status with stale review metadata passes
   // line), which is Phase 1+ work.
 });
 
-// --- GAP 4: the run manifest is self-reported, and self-report is trusted --
+// --- GAP 4: the run manifest is self-reported ------------------------------
+// PARTLY CLOSED 2026-08-03 by decision 23. `run.doc_gap` still cannot fire on an
+// empty changedSource — that is inherent to a rule that iterates the declared
+// list — but the declaration itself is now cross-checked against git, so an
+// under-reported change set is visible instead of silent. The half that remains
+// open is that the cross-check needs a working tree to compare against: once the
+// run is committed, git reports no changes and the check has nothing to say.
 
-test("KNOWN GAP: a manifest that declares no changed source cannot fail the doc-gap check", async () => {
+test("GAP 4 (partly closed): an under-declared change set is now visible, via git rather than the manifest", async (t) => {
+  let hasGit = true;
+  try { execFileSync("git", ["--version"], { stdio: "ignore" }); } catch { hasGit = false; }
+  if (!hasGit) { t.skip("git not available"); return; }
+
   const cwd = await mkdtemp(path.join(os.tmpdir(), "llm-wiki-gap-run-"));
   await mkdir(path.join(cwd, ".llm-wiki", "runs"), { recursive: true });
   await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
   await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture", version: "0.0.0" }), "utf8");
   await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), doc({ status: "needs_review" }), "utf8");
+  // A baseline commit, because the cross-check compares against HEAD — a repo
+  // with no commits at all has nothing to diff and the check stays silent (that
+  // is the second known gap below, in its "no working tree to compare" form).
+  const env = { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@e" };
+  execFileSync("git", ["init"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["add", "-A"], { cwd, stdio: "ignore", env });
+  execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-m", "baseline"], { cwd, stdio: "ignore", env });
 
-  // The agent writes this file about its own run. Declaring an empty
-  // changedSource makes run.doc_gap unreachable by construction, no matter what
-  // the run actually touched. Gate 26 listed a changedFiles cross-check as
-  // evidence, and it was never implemented.
+  // The agent really did change a source file, and declared that it changed none.
+  // Staged, because the cross-check reads tracked modifications: an untracked
+  // scratch file is not evidence about a run, and treating it as such is what
+  // made the first cut of this rule fire on editor config.
+  await writeFile(path.join(cwd, "src-touched.js"), "export const a = 1;\n", "utf8");
+  execFileSync("git", ["add", "src-touched.js"], { cwd, stdio: "ignore", env });
   await writeFile(path.join(cwd, ".llm-wiki", "runs", "run-fix-20260731T000000Z.json"), JSON.stringify({
     task: "fix",
     timestamp: "2026-07-31T00:00:00Z",
@@ -168,7 +192,42 @@ test("KNOWN GAP: a manifest that declares no changed source cannot fail the doc-
   assert.equal(
     result.findings.filter((finding) => finding.rule === "run.doc_gap").length,
     0,
-    "GAP CLOSED? check-run now cross-checks the declared change set — flip this test."
+    "doc_gap still iterates the declaration, so it stays silent — that half of the gap is inherent"
+  );
+  const undeclared = result.findings.filter((finding) => finding.rule === "run.change_set_undeclared");
+  assert.ok(
+    undeclared.some((finding) => finding.path === "src-touched.js"),
+    `the cross-check must name the undeclared file; saw ${JSON.stringify(result.findings.map((f) => f.rule))}`
+  );
+  assert.equal(undeclared[0].severity, "warning", "observation first: warning, never error");
+});
+
+test("KNOWN GAP: once a run is committed, the change-set cross-check has nothing to compare", async (t) => {
+  let hasGit = true;
+  try { execFileSync("git", ["--version"], { stdio: "ignore" }); } catch { hasGit = false; }
+  if (!hasGit) { t.skip("git not available"); return; }
+
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "llm-wiki-gap-run-committed-"));
+  await mkdir(path.join(cwd, ".llm-wiki", "runs"), { recursive: true });
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture", version: "0.0.0" }), "utf8");
+  await writeFile(path.join(cwd, "docs", "llm-wiki", "index.md"), doc({ status: "needs_review" }), "utf8");
+  await writeFile(path.join(cwd, "src-touched.js"), "export const a = 1;\n", "utf8");
+  await writeFile(path.join(cwd, ".llm-wiki", "runs", "run-fix-20260731T000000Z.json"), JSON.stringify({
+    task: "fix", timestamp: "2026-07-31T00:00:00Z", changedSource: [], touchedDocs: [],
+    logAppended: true, validated: { command: "validate", result: "pass" },
+    testEvidence: { red: "x", green: "y" }
+  }), "utf8");
+  const env = { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@e" };
+  execFileSync("git", ["init"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["add", "-A"], { cwd, stdio: "ignore", env });
+  execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-m", "everything"], { cwd, stdio: "ignore", env });
+
+  const result = await checkRunCommand(normalizeOptions({ cwd, strict: true }));
+  assert.equal(
+    result.findings.filter((finding) => finding.rule === "run.change_set_undeclared").length,
+    0,
+    "GAP CLOSED? the cross-check now works against a committed run — flip this test."
   );
 });
 

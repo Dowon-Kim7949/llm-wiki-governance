@@ -424,7 +424,7 @@ export async function driftCommand(options) {
     ]);
   }
 
-  const driftFindings = await scanEvidenceDrift(cwd);
+  const driftFindings = await scanEvidenceDrift(cwd, options);
   const driftedDocs = [];
   const seen = new Set();
   for (const finding of driftFindings) {

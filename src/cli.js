@@ -175,6 +175,7 @@ export function defaultOptions() {
     compact: false,
     maxChars: null,
     preloadBudget: null,
+    watchNeedsReview: false,
     skillTokenCap: null,
     minimal: false,
     withAdapters: false,
@@ -320,6 +321,9 @@ export function parseArgs(argv) {
         else errors.push(`--max-chars must be a positive integer: ${value}`);
         index += 1;
       }
+    } else if (arg === "--watch-needs-review") {
+      usedOptions.add("watch-needs-review");
+      options.watchNeedsReview = true;
     } else if (arg === "--preload-budget") {
       usedOptions.add("preload-budget");
       const value = readOptionValue(rest, index, arg, errors);
@@ -517,7 +521,11 @@ const COMMAND_OPTION_RULES = {
   // warning, so --strict is the only way to make a drifted wiki fail a build.
   // Without it the exit code stays 0, so adding drift to an existing pipeline
   // cannot break that pipeline by accident.
-  drift: new Set(["cwd", "dry-run", "downgrade", "strict", "format", "out"]),
+  //  (decision 28) is drift-only on purpose: it widens the
+  // DATE-anchored check to unreviewed documents. impact stays verified-only
+  // because its rule is an error since decision 21, and an advisory opt-in must
+  // not hand an unreviewed document the power to fail a build.
+  drift: new Set(["cwd", "dry-run", "downgrade", "strict", "watch-needs-review", "format", "out"]),
   impact: new Set(["cwd", "since", "strict", "format", "out"]),
   "check-run": new Set(["cwd", "run", "strict", "format", "out"]),
   // `agent` is earned: the command inspects the adapters of the SELECTED agents,
@@ -971,9 +979,15 @@ Purpose:
   An empty change set is a no-op. Run it from the repo root.
 
 Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
-  - Default warning; --strict makes impact findings fail (exit 1) so a PR that
-    changes governed code without updating its verified doc fails CI.
-  - Read-only: never writes. Remediation is human re-review or drift --downgrade.
+  - Error by default (decision 21, 2026-08-03): this command exits 1 on its own
+    when a verified document's cited source moved without it, so --strict is a
+    no-op for impact.source_changed. Dial it down per project with
+    "impact.source_changed": "warning" | "info" | "off" in llm-wiki.config.json
+    rules, or rulesPreset: "relaxed" which holds it at info. Documents with
+    doc_type: release_notes are exempt.
+  - A PR that changes governed code without updating its verified doc fails CI,
+    with or without --strict. That is the point of the default.
+  - Read-only: never writes. Remediation is re-review or drift --downgrade.
   - Toggle/override per project via llm-wiki.config.json rules
     ("impact.source_changed": "off"|"error"|...). File-level in v1.
 `,
