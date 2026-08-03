@@ -130,6 +130,29 @@ export async function loadProjectConfig(cwd) {
     }
   }
 
+  // Budgets for `harness-health` (Phase 1). Both are opt-in: the two budget rules
+  // stay silent until a number is supplied, because the figures they compare are
+  // a chars/4 proxy and this package ships no default threshold. Positive
+  // integers only, so a typo becomes a config error rather than a silently
+  // disabled check.
+  if ("harnessHealth" in parsed) {
+    const harness = parsed.harnessHealth;
+    if (harness === null || typeof harness !== "object" || Array.isArray(harness)) {
+      errors.push(`${CONFIG_FILENAME}: "harnessHealth" must be an object.`);
+    } else {
+      const budgets = {};
+      for (const field of ["preloadBudget", "skillTokenCap"]) {
+        if (!(field in harness)) continue;
+        if (!Number.isInteger(harness[field]) || harness[field] <= 0) {
+          errors.push(`${CONFIG_FILENAME}: "harnessHealth.${field}" must be a positive integer.`);
+        } else {
+          budgets[field] = harness[field];
+        }
+      }
+      if (Object.keys(budgets).length > 0) config.harnessHealth = budgets;
+    }
+  }
+
   return { found: true, config, errors };
 }
 
@@ -180,6 +203,14 @@ export function mergeConfigIntoOptions(options, config) {
     options.templates = { ...config.templates };
   }
   // CLI --reviewer wins; config reviewer only fills an unset value.
+  if (config.harnessHealth) {
+    if (options.preloadBudget == null && Number.isInteger(config.harnessHealth.preloadBudget)) {
+      options.preloadBudget = config.harnessHealth.preloadBudget;
+    }
+    if (options.skillTokenCap == null && Number.isInteger(config.harnessHealth.skillTokenCap)) {
+      options.skillTokenCap = config.harnessHealth.skillTokenCap;
+    }
+  }
   if (options.reviewer == null && typeof config.reviewer === "string") {
     options.reviewer = config.reviewer;
   }

@@ -76,6 +76,7 @@ CLI 자체는 모델이 필요 없습니다. 오직 **보강(enrichment)** 단�
 | `drift` · `fix` · `migrate` | 드리프트 감지·강등 · 범위 한정 자동수정 · 계약 업그레이드(모두 미리보기 우선). |
 | `review` | 사람 검토 워크플로: `needs_review` 백로그를 위험도 순으로 나열(읽기 전용). `review --approve <path> --reviewer "<이름>"`로만 `verified`를 스탬프하며 자동 승격은 없음. |
 | `check-run` | 스킬 실행이 남긴 run manifest로 그 실행이 주장한 내용을 감사: 바뀐 소스마다 그걸 참조하는 문서가 touch됐는지, 로그가 append됐는지, `validate`가 통과했는지, (feature/fix라면) `testEvidence` red→green 트레일이 기록됐는지. 읽기 전용. |
+| `harness-health` | 문서가 아니라 하네스를 검사: 이 패키지가 배포하는 버전보다 낮게 스탬프된 adapter 파일·생성 스킬 산출물, 그리고 생성기를 더 이상 따라가지 않는 스킬 본문(생성 마커가 아예 없거나, 마커는 있지만 본문 해시가 그 마커와 어긋남 — `init --refresh`는 둘 다 그대로 둔다). 나머지 두 규칙(선적재 문맥 예산·스킬 길이 상한)은 숫자를 직접 줄 때만 동작한다(`--preload-budget <n>`/`--skill-token-cap <n>` 또는 `llm-wiki.config.json`의 `harnessHealth`). 그 크기 값은 다른 곳과 같은 `chars/4` 프록시이며 실측 토큰 수가 아니다. 읽기 전용. |
 | `import-memory` | 에이전트 하네스의 portable 메모리(`ecc.memory.v1`)를 `needs_review` 위키 초안으로 변환. 기본은 미리보기이고 `--apply`에서만 씀. `verified`를 만들 수 없고, 기존 파일을 덮지 않으며, 민감값이 있는 메모리는 skip. |
 | `handoff` · `prompt` | 에이전트 handoff 프롬프트 · 반복 작업 프롬프트(bootstrap/feature/fix/refactor/docs-sync/okf-extract). |
 | `onboard` · `prepare` | 읽기 전용 guided: 업무 영역을 코드 근거와 함께 학습(`onboard [--domain]`) · 구현 전 작업 범위 조사(`prepare --task`). 위키에서 조립하며 CLI는 설명을 창작하지 않음. |

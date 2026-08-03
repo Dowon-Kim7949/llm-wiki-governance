@@ -3731,7 +3731,7 @@ test("programmatic API exposes a frozen command map mirroring the CLI surface", 
   const expected = [
     "doctor", "validate", "validate-frontmatter", "monorepo", "status", "next", "explain",
     "audit", "quickstart", "handoff", "prompt", "init", "migrate", "import-memory", "fix",
-    "drift", "impact", "check-run", "review", "graph", "stats", "list-docs", "search-docs", "get-doc",
+    "drift", "impact", "check-run", "harness-health", "review", "graph", "stats", "list-docs", "search-docs", "get-doc",
     "get-related", "onboard", "prepare", "release-notes"
   ];
 

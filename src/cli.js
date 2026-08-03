@@ -1,7 +1,7 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, impactCommand, importMemoryCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, harnessHealthCommand, impactCommand, importMemoryCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { KNOWN_TYPES } from "./detector.js";
@@ -28,6 +28,7 @@ const COMMANDS = new Map([
   ["drift", driftCommand],
   ["impact", impactCommand],
   ["check-run", checkRunCommand],
+  ["harness-health", harnessHealthCommand],
   ["review", reviewCommand],
   ["graph", graphCommand],
   ["stats", statsCommand],
@@ -173,6 +174,8 @@ export function defaultOptions() {
     strictSection: false,
     compact: false,
     maxChars: null,
+    preloadBudget: null,
+    skillTokenCap: null,
     minimal: false,
     withAdapters: false,
     noAdapters: false,
@@ -315,6 +318,24 @@ export function parseArgs(argv) {
         const parsed = Number.parseInt(value, 10);
         if (Number.isInteger(parsed) && parsed > 0) options.maxChars = parsed;
         else errors.push(`--max-chars must be a positive integer: ${value}`);
+        index += 1;
+      }
+    } else if (arg === "--preload-budget") {
+      usedOptions.add("preload-budget");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isInteger(parsed) && parsed > 0) options.preloadBudget = parsed;
+        else errors.push(`--preload-budget must be a positive integer: ${value}`);
+        index += 1;
+      }
+    } else if (arg === "--skill-token-cap") {
+      usedOptions.add("skill-token-cap");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isInteger(parsed) && parsed > 0) options.skillTokenCap = parsed;
+        else errors.push(`--skill-token-cap must be a positive integer: ${value}`);
         index += 1;
       }
     } else if (arg === "--domains") {
@@ -499,6 +520,12 @@ const COMMAND_OPTION_RULES = {
   drift: new Set(["cwd", "dry-run", "downgrade", "strict", "format", "out"]),
   impact: new Set(["cwd", "since", "strict", "format", "out"]),
   "check-run": new Set(["cwd", "run", "strict", "format", "out"]),
+  // `agent` is earned: the command inspects the adapters of the SELECTED agents,
+  // so pointing it at one agent is a real narrowing. The two budget options are
+  // the only way to arm harness.preload_budget / harness.skill_too_long from the
+  // CLI — both rules stay silent without a number, so omitting them here would
+  // leave two of the four checks unreachable.
+  "harness-health": new Set(["cwd", "agent", "strict", "preload-budget", "skill-token-cap", "format", "out"]),
   review: new Set(["cwd", "approve", "approve-all", "yes", "reviewer", "include-sensitive", "format", "out"]),
   graph: new Set(["cwd", "format", "out"]),
   stats: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
@@ -654,6 +681,7 @@ Usage:
   llm-wiki drift [--downgrade] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki impact [--since <git-ref>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki check-run [--run <path>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki harness-health [--agent <agent>] [--preload-budget <n>] [--skill-token-cap <n>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki review [--approve <path>]... [--approve-all --yes] [--reviewer <name>] [--include-sensitive] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki graph [--format text|json|mermaid|dot] [--cwd <path>] [--out <path>]
   llm-wiki stats [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--strict] [--format text|json|markdown|html] [--out <path>]
@@ -974,6 +1002,50 @@ Strict / CI (see GATE_REVIEW.md "Agent Update Runner ... Scope Decision", Gate 2
   - Toggle/override per project via llm-wiki.config.json rules
     ("run.doc_gap": "off"|"error"|...). File-level; proves the pipeline ran, not
     that the prose is correct.
+`,
+  "harness-health": `llm-wiki harness-health
+
+Usage:
+  llm-wiki harness-health [--agent codex|claude|...] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki harness-health --preload-budget <n> --skill-token-cap <n> [--strict] [--cwd <path>]
+
+Purpose:
+  Read-only health report on the HARNESS itself — the agent adapters, the
+  generated skill artifacts, and the always-loaded context surface — rather than
+  on the wiki documents. It exists because nothing else reports when those files
+  go stale: audit only checks that an adapter exists and mentions
+  docs/llm-wiki/index.md, and init --refresh compares artifact bodies rather than
+  their stamped versions, so an artifact generated by an older version is
+  reported as "already up to date" and is never re-generated.
+
+Checks (all warning by default):
+  - harness.marker_drift    adapter/skill stamped below the version shipped here
+  - harness.user_modified   a skill artifact no longer hashes to its own marker
+  - harness.preload_budget  always-loaded context over --preload-budget <n>
+  - harness.skill_too_long  a skill body over --skill-token-cap <n>
+
+Budgets are opt-in:
+  The last two rules stay silent until a number is supplied, either as
+  --preload-budget / --skill-token-cap or as "harnessHealth": { "preloadBudget":
+  <n>, "skillTokenCap": <n> } in llm-wiki.config.json. This tool ships no default
+  threshold: every size figure it prints is a chars/4 PROXY, never a measured
+  token count, and it under-estimates non-English text.
+
+Strict / CI:
+  - Default warning; --strict makes harness.* findings fail (exit 1).
+  - Read-only: it opens files and writes nothing, and the same input always
+    produces the same output.
+  - Toggle per project via llm-wiki.config.json rules ("harness.marker_drift":
+    "off"|"error"|...).
+  - Adapters carry a version marker but no content hash, so userModified is
+    reported as null for them; whether an adapter was hand-edited is not
+    decidable, and diffing against the shipped template would flag every
+    intentional customization.
+  - The adapter marker (llm-wiki-adapter / wiki-block vN) is a different
+    namespace from the per-document wiki_block_version that doctor reports.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, adapters[], skills[], preload, skillTokenCap, findingSummary, findings[]. adapters[] items are { path, agent, present, markerVersion, shippedVersion, drifted, userModified, estimatedTokens }; skills[] items are { path, format, task, managed, markerVersion, currentVersion, drifted, userModified, estimatedTokens, overCap }; preload is { byAgent[], files[], estimatedTokens, budget, exceeded }; findings[] items are { severity, rule, path, message }.
 `,
   review: `llm-wiki review
 

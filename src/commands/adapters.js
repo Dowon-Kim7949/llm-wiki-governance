@@ -13,6 +13,24 @@ import { scanSensitiveInfo } from "../sensitive-info.js";
 
 const TEMPLATE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "templates");
 
+// Adapter block marker, in the two vocabularies the shipped templates use:
+// `<!-- llm-wiki-adapter vN -->` (claude-code, antigravity) and
+// `<!-- wiki-block vN -->` (codex, copilot, cursor, gemini, jetbrains, windsurf).
+// Nothing in the product parsed this until Phase 1: scanAdapters only checks that
+// the file exists and mentions docs/llm-wiki/index.md, so a v1 adapter passed
+// audit as clean forever. `harness-health` reads it; nothing writes it, and the
+// never-overwrite contract below is untouched.
+const ADAPTER_MARKER_RE = /<!--\s*(?:llm-wiki-adapter|wiki-block)\s+v(\d+)\s*-->/;
+
+// The version stamped in `content`, or null when the file carries no marker at
+// all (a hand-written adapter, or a template that lost its marker — the test
+// `every shipped adapter template carries a parseable marker version` makes the
+// second case fail loudly rather than silently disabling drift detection).
+export function adapterMarkerVersion(content) {
+  const match = String(content ?? "").match(ADAPTER_MARKER_RE);
+  return match ? match[1] : null;
+}
+
 export const ADAPTER_TARGETS = {
   codex: {
     path: "AGENTS.md",

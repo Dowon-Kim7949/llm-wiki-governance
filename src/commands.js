@@ -100,6 +100,7 @@ export { driftCommand, fixCommand } from "./commands/fix-migrate.js";
 export { getDocCommand, getRelatedCommand, listDocsCommand, searchDocsCommand } from "./commands/retrieval.js";
 export { onboardCommand, prepareCommand } from "./commands/guided.js";
 export { importMemoryCommand } from "./commands/import-memory.js";
+export { harnessHealthCommand } from "./commands/harness-health.js";
 
 export async function doctor(options) {
   const cwd = options.cwd;

@@ -139,6 +139,42 @@ function isManagedUnmodified(fileContent) {
   return contentHash(stripMarker(fileContent)) === match[1];
 }
 
+// Read-only inspection seam for `harness-health` (Phase 1, R0). Keeps the hash
+// and the marker regex private and answers the three questions an inspector has
+// about one artifact:
+//   managed        does it carry our marker at all
+//   modified       it does, but the body no longer hashes to it (hand-edited or foreign)
+//   markerVersion  the version stamped at generation time, vs currentVersion
+// The version comparison is the reason this exists: --refresh compares BODIES
+// (stripMarker(current) === stripMarker(next)), so an artifact stamped v4 by a
+// v5 generator is reported "already up to date" and re-stamps never happen.
+// isManagedUnmodified cannot see that, because it only checks the hash.
+const GENERATED_MARKER_VERSION_RE = /\n<!-- llm-wiki-generated v(\S+) ([0-9a-f]{16}) -->\n?$/;
+
+export function inspectSkillArtifact(fileContent) {
+  const content = String(fileContent ?? "");
+  const match = content.match(GENERATED_MARKER_VERSION_RE);
+  if (!match) {
+    return { managed: false, modified: false, markerVersion: null, currentVersion: SKILL_ARTIFACT_VERSION, body: content };
+  }
+  const body = stripMarker(content);
+  return {
+    managed: true,
+    modified: contentHash(body) !== match[2],
+    markerVersion: match[1],
+    currentVersion: SKILL_ARTIFACT_VERSION,
+    body
+  };
+}
+
+// The four on-disk locations one skill slug can occupy. Derived from
+// artifactTargets so the inspector and the generator can never disagree about
+// where an artifact lives.
+export function skillArtifactPaths(slug) {
+  return artifactTargets(new Set(["claude", "codex", "cursor", "neutral"]), { slug })
+    .map((target) => ({ format: target.format, path: target.path }));
+}
+
 // The shared artifact body: the wiki-map step (a generation-time snapshot for
 // bootstrap; the live run-time map for the rest), the reusable wiki-grounded
 // workflow from task-prompts.js, then the Gate 26 completion contract (a run

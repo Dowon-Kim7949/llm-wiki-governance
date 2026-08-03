@@ -24,6 +24,48 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - feat: 하네스 자신을 보는 첫 번째 눈 (`harness-health`, Phase 1 R0) + J장 전제 재검토
+
+- status: verified (에이전트 승격)
+- actor: Claude Code
+- scope: src, tests, docs
+- changed:
+  - `src/commands/harness-health.js` (신규) · `src/commands/adapters.js` · `src/commands/skills.js` · `src/commands/findings.js` · `src/commands.js` · `src/cli.js` · `src/config-file.js` · `src/index.js`
+  - `tests/harness-health.test.js` (신규, 16건) · `tests/verification.test.js`
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` · `PUBLIC_API.md` · `ARCHITECTURE_CONVENTIONS.md` · `DOMAIN_FEATURES.md` · `REVIEW_HISTORY.md` · `log.md`
+  - `README.md` · `README.ko.md` · `GATE_REVIEW.md`
+
+### 내용
+
+**1. `harness-health` (Phase 1, R0).** 결정 27번 권고 (b)를 채택해 `harness-health`만 만들고 `fleet`은 보류했다. 이 명령은 위키 문서가 아니라 **하네스 자신**(어댑터·생성된 스킬 산출물·항상 선적재되는 표면)을 본다. 존재 이유는 실물 결함 두 개다 — `scanAdapters`는 파일 존재와 `docs/llm-wiki/index.md` 문자열만 보므로 어댑터 마커를 영영 읽지 않고, `init --refresh`는 산출물 **본문**을 비교하므로(`stripMarker(current) === stripMarker(next)`) v5 생성기가 만든 v4 스탬프 산출물을 "already up to date"라고 보고한다. 두 번째 결함은 이 저장소에서 재현되며, refresh가 버전을 비교하게 되는 날 실패하도록 테스트로 고정했다.
+
+규칙은 4개(`harness.marker_drift` · `harness.user_modified` · `harness.preload_budget` · `harness.skill_too_long`), 전부 기본 warning이고 `--strict`에서 error다. **예산 규칙 2개는 숫자를 주기 전까지 침묵한다** — 이 저장소는 chars/4 프록시에서 유도한 임계값을 만들어 배포하지 않는다. 어댑터에는 콘텐츠 해시가 없어 "손댔는지"가 판정 불가이므로 `userModified: null`로 보고한다. 템플릿 diff로 추정하는 대안은 **정당한 커스터마이즈를 전부 발화시키므로**(이 저장소에 두 건) 채택하지 않았다.
+
+**2. 오탐률 측정이 규칙 하나를 늘렸다.** 완료 조건("숫자 없으면 미완")을 채우려고 5개 저장소를 읽기 전용으로 돌렸더니 도입처 2곳이 findings 0건이었다. 침묵을 신뢰하지 않고 확인한 결과 — **마커가 아예 없는 산출물 18건에 명령이 눈을 감고 있었다.** 즉 **가장 많이 밀린 하네스가 가장 깨끗하게 보고되고 있었다.** `--refresh`는 이미 그 상태를 손편집과 동일하게 취급하므로 `harness.user_modified`의 범위를 둘 다로 넓혔다. 이 수정이 없었으면 합계는 33이 아니라 15였고 **오탐률은 그래도 0이었다** — 오탐 0이 미탐을 배제하지 않는다는 실물 사례다.
+
+최종: 5개 저장소 **91개 산출물 · findings 33건 · 오탐 0건**(한 저장소는 진짜 0건). 한계 둘을 함께 기록했다 — "참"은 보고된 사실이 정확하다는 뜻이지 조치 가치가 있다는 뜻이 아니고, 측정에 쓴 codex 어댑터 `v2` 템플릿은 아직 미배포다.
+
+**3. J장 11건 전수 재검토.** 지시받은 목록은 "21·22·25"였는데 **전수 대조 결과가 두 방향으로 달랐다**: 22번은 본문 어디에도 그 전제가 없어 영향이 0이고, **24·28·29·30번이 빠져 있었다.** 최종 집계는 핵심 4(21·24·28·29) · 부분 5(20·23·25·27·30) · 없음 2(22·26). 전제를 셋으로 쪼개 보니(P1 verified는 사람 / P2 여기서 게이트를 관측할 수 있다 / P3 복구는 사람 재승인뿐) 가장 널리 퍼진 것은 **P3**인데 지시 목록은 P3 계열을 하나도 담지 못했다. **목록을 받으면 먼저 전수 조사한다** — 이 라인에서 다섯 번째로 값을 한 규율이다.
+
+본문은 두 종류로 나눠 처리했다. **표준 규칙 문장**(불변 조건 목록·R3 표·용어 사전·위험 등록부·백로그 33·G-3 안전 지표)은 제자리 교정했고, **과거 관측·측정 문장과 숫자**는 역사적 기록이므로 고치지 않고 오늘의 결정에 다시 쓰이는 자리에만 무효 표시를 달았다. 지시가 언급하지 않은 최고 심각도는 불변 조건 목록의 두 줄이었다 — `verified`는 사람만 승인 / AI의 `review --approve` 금지. 뒤쪽은 `CLAUDE.md`가 요구하는 것의 **정확한 반대**였다.
+
+**4. 라벨 30건 재현 명령.** 판정은 유지보수자 몫이므로 **재라벨링을 하지 않았다.** 표의 축약(`roadmonitor` → `roadmonitor-frontend`, 같은 이름의 별개 저장소가 형제로 존재해 그대로 붙여넣으면 틀린 저장소를 본다)을 풀고 행별 명령 60줄을 추가했다. **판정을 복사하지 않았다** — 두 곳에 적으면 한쪽이 조용히 낡고, 그 실패 모드가 바로 이 절이 찾아낸 가장 강한 참 양성 패턴이다.
+
+### 검증
+
+- **RED 선확인**: 신규 테스트 16건 전건, 그리고 미탐 수정분 1건도 별도로 RED를 먼저 확인했다.
+- 467 tests(451 → +16) · lint OK(66 files) · 게이트 5종 exit 0.
+- 판정 행 30개가 커밋 전 상태와 **바이트 단위로 동일**함을 대조로 확인했다.
+- 재현 명령은 표본 5행을 직접 실행해 확인했다(자기제외 규칙 포함: `rev-parse <sha>:<doc> <sha>^:<doc>` 두 값 일치).
+- `templates/adapters/*`·`templates/core/*`·`src/task-prompts.js` 미변경(`git status`로 확인).
+
+### 남은 것
+
+- Phase 1 범위 7항목 중 6항목 미착수(검토 경과일 · 승격 우회 탐지 · `needs_review` 옵트인 · 루트 거버넌스 문서 옵트인 · 중복 후보 · `fleet`) — 각각 별도 결정 대기.
+- 사람 결정 11건 중 9건의 브리프가 갱신됐다. **결정 자체는 그대로 사람 몫이다.**
+- 라벨 30건 사람 교차검증.
+- 배포 결정(`v1.27.3`) — 이번 변경도 미배포 상태에 쌓인다.
+
 ## 2026-08-03 - fix(후속): 커밋 후 `impact`가 2건 울렸고, 새 정책대로 해소했다
 
 - status: verified (에이전트 승격)
