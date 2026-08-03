@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-07-31
+last_updated: 2026-08-03
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,59 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-08-03 - docs: Review Notes 5건 상한은 아무도 검사할 수 없는 규칙이었다
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs, tests
+- changed:
+  - `tests/review-notes-cap.test.js` (신규 가드 3건 — 5건 상한 · 아카이브 헤더 건수 · 원문서 포인터 대조)
+  - `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` (규칙 술어 "무거운 문서"→"모든 문서" + 건수 손계산 금지 규칙 신설; Review Notes 1건 아카이브 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/PUBLIC_API.md` (38건 → 5건, 34건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (10건 → 5건, 6건 이전; `needs_review` 유지)
+  - `docs/llm-wiki/BENCHMARK.md` (8건 → 5건, 4건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/EXAMPLES.md` (8건 → 5건, 4건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/domains/00_overview.md` (8건 → 5건, 4건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/DOMAIN_FEATURES.md` (포인터 거짓 건수 48→52 교정, 1건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (신규 5개 절 + `Domain Features` 헤더 48→52 · `Architecture Conventions` 43→44, source_files·related에 원문서 7건 등재; `verified`→`needs_review`)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+인수인계의 열린 항목 5번("Review Notes 5건 상한 위반 3건, 별도 배치 필요")을 처리했다. **먼저 재고 조사를 했고, 인수인계보다 나쁜 상태가 나왔다** — 지시받은 목록을 그대로 믿지 않은 것이 이 배치의 유일한 방법론적 선택이다.
+
+**사실 세 가지.**
+
+1. **위반은 3건이 아니라 5건이었다.** `BENCHMARK.md`(8건)·`EXAMPLES.md`(8건)가 목록에서 빠져 있었고, 로드맵도 9건이 아니라 이미 10건이었다. 이 목록은 `PUBLIC_API.md`와 `domains/00_overview.md`의 2026-08-03 노트, 그리고 인수인계 메모에 각각 손으로 적혀 있었다 — 세 곳이 같은 방식으로 틀렸다.
+2. **아카이브 헤더가 이미 거짓 건수를 담고 있었다.** `Domain Features` 절이 "48건"이라 적고 실제로는 51건을 담고 있었다. 경위를 특정했다: 2026-07-31에 3건을 받았는데(그 이전 자체는 로그에 남아 있다) 2026-08-03의 갱신이 그것을 모르는 **낡은 47에서 +1**을 계산했다. 같은 종류의 오류가 2026-07-31에 이미 한 번 교정됐고(39→41, 44→47) **곧바로 재발했다.**
+3. **상한을 강제하는 장치가 없었고, 규칙 술어가 검사 불가능했다.** 규칙은 적용 범위를 "무거운 위키 문서"라고 적었는데 "무거운"은 테스트가 평가할 수 있는 술어가 아니다. 2026-07-30에 규칙이 생긴 뒤 나흘간 아무것도 발화하지 않았다.
+
+**한 것.** 가드를 먼저 쓰고 3건 전건 RED를 확인한 뒤(위반 5문서 · `Domain Features` 48≠51 · `DOMAIN_FEATURES.md` 포인터 48≠51) 이전을 실행했다. 이전은 **원문 그대로**이며, 커밋 전 상태와 대조해 **176건 항목 전수가 byte-identical하게 보존**됨을 검증했다(항목 다중집합 비교, 유실 0·변형 0). 총 54건이 7개 문서에서 아카이브로 이동했고 각 문서는 4건 + 이번 노트 = 5건이 됐다. 규칙 범위를 모든 위키 문서로 바꾸고, **아카이브 건수를 손으로 적지 않는다**는 규칙을 신설했다 — 원문서 포인터 · 아카이브 헤더 · 실제 항목 수 세 값이 항상 같아야 하며 가드가 이 등식을 고정한다.
+
+형식 두 가지를 함께 처리했다. `BENCHMARK.md`의 노트는 **여러 줄로 감겨** 있어 항목 경계를 `- ` 시작 줄로 잡아야 했고(원문 줄바꿈 보존), 이 문서만 워킹트리 줄바꿈이 **CRLF 혼재**라 `.gitattributes`의 `eol=lf`에 맞춰 LF로 정규화됐다(인덱스는 이미 LF여서 git이 보는 diff는 이동뿐이다).
+
+### 검증
+
+- `npm test`: **447 tests / 447 pass / 0 fail**(신규 3, 전건 RED 선확인).
+- `npm run lint`: OK(63 files).
+- `validate --strict` 0 · `validate-frontmatter --strict` 0 · `drift --strict` 0 · `impact --since origin/main --strict` 0 · `audit` 0.
+- 이 배치는 **소스 파일을 한 줄도 바꾸지 않았다**(신규 테스트 파일만 추가). 그래서 "커밋 전 게이트 0은 거짓 안심"이라는 이 저장소의 함정이 이번에는 적용되지 않지만, 그래도 커밋 후 재확인해 같은 값임을 기록한다.
+
+### 대가 (숨기지 않는다)
+
+- **`verified` 19/52 → 12/52, health 79 → 74.** 7개 문서를 규칙대로 강등했고 재승인은 사람 몫이다. 순수 이력 이동이라 문서의 주장은 하나도 바뀌지 않았지만, 그것이 강등을 면제하지는 않는다.
+- **강등은 게이트 사정거리를 줄인다**(기록된 공백 2 — `drift`·`impact` 둘 다 `verified`만 본다). 이 배치가 게이트 0인 이유의 일부는 검사 대상이 7개 줄었기 때문이다. 재승인 전까지 이 7개는 드리프트 감시 밖에 있다.
+- **`REVIEW_HISTORY.md`가 이제 원문서 7건에 드리프트-민감하다.** source_files에 7개를 등재했으므로 그중 아무 문서에 새 note가 붙어도 이 아카이브가 `evidence.stale`/`impact`로 발화한다. 기존 모델(2건)의 확장이고 의미상 옳지만(아카이브 내용은 그 문서들에서 파생된다) 소음원이 2→7로 늘어난 것은 사실이며, N-7·N-8의 로케이터 존중 논의에 데이터 포인트로 남긴다.
+
+### 부수 효과 (의도한 것이 아님)
+
+`HARNESS_GOVERNANCE_ROADMAP.md`가 **오르판에서 빠졌다**(35 → 34). `REVIEW_HISTORY.md`의 `related`가 inbound 링크를 만들었기 때문이다. 이것은 백로그 30번(로드맵을 `index.md` 읽기 순서에 넣을지)의 **사람 결정을 대체하지 않는다** — 그래프 도달성과 사람이 읽는 진입점은 다른 문제이고, 이 링크는 아카이브에서 나온 것이라 신입에게 로드맵을 소개하지 않는다.
+
+### 열린 것
+
+- 재승인 7건(`ARCHITECTURE_CONVENTIONS`·`PUBLIC_API`·`BENCHMARK`·`EXAMPLES`·`DOMAIN_FEATURES`·`domains/00_overview`·`REVIEW_HISTORY`) + 기존 로드맵 1건. **`review --approve`는 실행하지 않았다.**
+- 가드는 이 저장소 전용(`tests/`)이다. 상한·건수 등식을 **제품 규칙**(`content.*` finding)으로 올릴지는 게이트 결정이 필요해 범위 밖으로 뒀다 — 도입처에도 같은 손계산 드리프트가 생길 수 있다.
 
 ## 2026-08-03 - measure: 기준선 오탐률 30건 라벨링 — 그리고 332건 기준선으로는 그 질문에 답할 수 없었다
 

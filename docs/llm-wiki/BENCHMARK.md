@@ -3,11 +3,11 @@ title: Impact Measurement Baseline
 tags:
   - llm-wiki
   - benchmark
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-07-31
+last_updated: 2026-08-03
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
@@ -385,27 +385,8 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 
 ## Review Notes
 
-- 2026-07-22에 Gate 22 베이스라인 + Gate 24 재측정(정직/불리) + B2 retrieval 델타를 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 승인했다(최초 verified 승격). **핵심 불변 조건**: 이 문서의 모든 수치(특히 B2 −81.5%/−80.5%)는 `chars/4` **프록시**이지 실제 LLM 실행 결과가 아니다. 따라서 README·런치 카피에 토큰/속도/생산성 수치를 싣는 것은 **여전히 금지**이며, 실측(`bench/real/` 실행)이 뒷받침될 때까지 이 규율을 유지한다. 실측 방법은 `bench/REAL_LLM_METHODOLOGY.md` 참조.
-- 2026-07-22에 **실제 LLM N=3 실측**(외부 프로젝트 `csap-roadkeeper-frontend`@`aws-global`, Opus 4.8)을 반영했다: "실측 · Real-LLM measurement" 섹션 추가(최신 위키에서 B2 −10% 토큰·−5% wall·정확도 18/18 동률·소스 fallback 0; stale 위키는 보안 오답 → 신선도-종속 정확도가 핵심)와 규율 갱신(스코프 명시 정직 수치 허용, 볼드 헤드라인·`chars/4` 프록시 수치는 계속 금지). 원자료: `bench/results/real-driver-csap-aws-global-pilot-2026-07-22.md`. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
-- 2026-07-23에 토큰-효율 벤치 확장의 **비유료 부분을 구축**했다(유료는 보류): proxy 하네스에
-  `B3_retrieval_compact` arm(`strategyWikiRetrievalCompact`)을 추가·실행(chars/4)해 B3 vs B2
-  **−34.5% 토큰 / grounding 100%→83.3%**의 정직한 트레이드오프를 `current.*`에 기록했고, whole-task
-  러너에 `guided-compact` arm(dry)을 추가했다. real 하네스 B3·`B2_empty_wiki` 통제·실제 유료 실행은
-  **보류**(사람 예산 결정). 모든 수치는 chars/4 PROXY(진단용)이라 README 헤드라인 금지 규율을 유지한다.
-  fabricated 수치 없음. 에이전트(Claude Code) 편집이라 `needs_review` 유지.
-- 2026-07-27에 **2026-07-24 SDK 경로 유료 실측**(커밋 `0e2b012`)을 문서에 반영했다 — 그 커밋은
-  `bench/results/`에만 결과를 남기고 이 위키 문서를 갱신하지 않아 문서가 실행 사실보다 뒤처져
-  있었다. 추가/수정: (1) §실측 2 신설(input B2/B **0.516× −48.4%**, cost 0.581× −41.9%, pooled
-  **−40.7%**, 블라인드 루브릭 채점 B 0.910 vs B2 **0.971**·환각 0, 픽스처 22/22 verified, 비용 $11.15),
-  지는 태스크(routing-map 3.17×)와 2026-07-22 −10%와의 **미해결 불일치**, 미실행 통제
-  (`B2_empty_wiki`)를 함께 명시. (2) §규율에 2026-07-24 이후 규율 추가 — **README/런치 토큰·속도
-  헤드라인은 계속 금지**(단일 레포·단일 모델·N=3·에이전트 채점·통제 미실행), 인용은 pooled −40.7%
-  기준. (3) §토큰-효율 벤치 확장 제목·도입부를 축 기준으로 정정 — 2026-07-24 실행은 **retrieval
-  축**이고 **B3/whole-task real 하네스는 여전히 `executed:false`**임을 분리 명시(이전 제목
-  "(설계, executed:false)"가 "유료 실측이 전혀 없다"로 오독될 수 있었음). (4) §한계의 "답변 품질
-  미측정"을 프록시 하네스 한정으로 한정. (5) frontmatter·§Evidence에 새 근거 2건 등재. 새 수치는
-  전부 원자료에서 전사했고 지어낸 값은 없다. 에이전트(Claude Code) 편집이라 `needs_review` 유지 —
-  사람 검토 후 `verified` 승격 예정(허위 검토 메타 미기입).
+Older review notes (4 entries, 2026-07-22 → 2026-07-27) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+
 - 2026-07-27에 **채점 기준을 사람이 비준**했다(승인, reviewed_by: Dowon-Kim). 결론을 무효화할 수
   있는 유일한 질문(arm 간 잣대 일관성)을 겨냥해 불리하게 고른 7개 표본을 매칭 3중쌍으로 제시하고
   민감도 분석(가장 논쟁적 판정 제외 시 B 0.942·B2_empty 0.953·B2 0.978, 결론 불변)을 함께 냈으며,
@@ -432,3 +413,4 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   강등한다 — 사람 검토 후 재승인 예정(허위 검토 메타 미기입).
 - 2026-07-22에 실측 후속 엄밀성 하네스를 **scaffolded**(미실행)했다: SDK 경로 드라이버 `bench/real/agent.js`(Anthropic SDK tool_runner; read/grep + 읽기 전용 `llm-wiki` retrieval 툴; env로 target-agnostic; 읽기 전용)가 서브에이전트 경로에 없던 **input/output 토큰 분리**를 제공한다. `bench/tasks-csap.json`(6 태스크 재현), `bench/real/package.json`(SDK를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변), `runner.js`의 `BENCH_TASKS` 오버라이드, `DRIVER_RUNBOOK.md` § SDK path 실행법을 함께 추가했다. `--dry`로 배선 검증(모델 호출·비용 0). **유료 실행과 교차 에이전트(GPT) 드라이버는 보류**(유저 지시). 커밋되는 재현 산출물은 tasks-csap.json·package.json·runner.js·runbook이며 `agent.js`는 설계상 git-ignore(SDK dep 격리)다. 에이전트 편집이라 `needs_review` 유지.
 - 2026-07-30에 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 2026-07-27 통제군(B2_empty) 실측·비준 이후 벤치 사실관계 변경이 없고, 1.27.1(문맥 규율)·1.27.2(프롬프트 형태 규율)는 벤치를 재실행하지 않았으며 이 문서도 그렇게 주장하지 않음을 확인했다. README 헤드라인 금지 유지.
+- 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-22 → 2026-07-27)을 `REVIEW_HISTORY.md`의 신규 `Benchmark` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서는 인수인계의 위반 목록에 없었다** — 그 목록이 손으로 작성돼 `EXAMPLES.md`와 함께 빠졌고, 전 문서 계수를 돌려서야 드러났다. 형식 두 가지를 함께 처리했다: 이 문서의 노트는 여러 줄로 감겨 있어 이전기가 항목 경계를 `- ` 시작 줄로 잡아야 했고(원문 줄바꿈 보존), 워킹트리 줄바꿈이 이 문서만 CRLF 혼재라 `.gitattributes`의 `eol=lf`에 맞춰 LF로 정규화됐다(인덱스는 이미 LF여서 git이 보는 diff는 이번 이동뿐이다). 수치·규율 서술은 한 글자도 바뀌지 않았고, README 토큰·속도 헤드라인 금지 규율도 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
