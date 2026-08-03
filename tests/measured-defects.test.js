@@ -10,6 +10,13 @@
 //      `tags:` alone, so the status tag drifted away from the status field. One
 //      adopting repository carries the mismatch on 12 of its 22 documents, and
 //      which way it breaks depends on which path did the downgrade.
+//
+// N-10 (2026-08-03) belongs to the same family and is appended at the end of this
+//      file: the N-4 fix taught both commands to write the tag but not to say so,
+//      so every caveat and help topic kept claiming the old field list. Found the
+//      same way — by running the tool, not by reading it. Here it was the
+//      maintainer's own approval run: the report claimed two or three writes and
+//      the diff carried three lines per document.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, readFile } from "node:fs/promises";
