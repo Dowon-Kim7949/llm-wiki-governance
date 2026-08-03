@@ -674,8 +674,8 @@ Safety:
   migrate previews by default and writes only with --apply, reusing the fix scope plus wiki_block_version upgrades; it never edits verified documents' content.
   import-memory previews by default and writes only with --apply. It converts portable ecc.memory.v1 memory files (ECC Memory Vault; defaults to .ecc/memory) into needs_review drafts under docs/llm-wiki/imported/, never overwrites existing files, never touches log.md, and skips memories with sensitive-looking values (reported as counts only — no force flag).
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
-  drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated). It never promotes to verified.
-  review is read-only by default: it risk-ranks the needs_review backlog for human spot-checking. --approve <path> (or --approve-all --yes) stamps ONLY status: verified + reviewed_by + reviewed_at; it refuses docs with blocking/structural findings and never auto-verifies. verified stays a human decision.
+  drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated, plus the tags: status tag when the document already carries one). It never promotes to verified.
+  review is read-only by default: it risk-ranks the needs_review backlog for human spot-checking. --approve <path> (or --approve-all --yes) stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it refuses docs with blocking/structural findings and never auto-verifies. verified stays a human decision.
   graph is read-only: it emits the wiki knowledge graph (documents + resolved doc-to-doc links) as text, JSON, Mermaid, or Graphviz DOT.
   stats is read-only: it reports a wiki health snapshot (verified %, enrichment %, evidence coverage, staleness, orphans).
   list-docs/search-docs/get-doc/get-related are read-only retrieval: they return document content (not governance reports). search-docs is keyword/substring only (not semantic). Restricted/sensitive docs are excluded from list/search unless --include-sensitive, and returned bodies/snippets redact sensitive-looking lines.
@@ -921,7 +921,8 @@ Purpose:
   needs_review.
 
 Scope (see GATE_REVIEW.md "Drift Downgrade Scope Decision", Gate 9):
-  - Changes only status (verified -> needs_review) and last_updated, only on
+  - Changes only status (verified -> needs_review) and last_updated — plus the
+    tags: status tag, and only when the document already carries one — on
     verified documents that have drifted.
   - Never promotes to verified, never edits body/reviewed_at/source_files/evidence
     or any other field, and never writes outside docs/llm-wiki. Mojibake and
@@ -990,7 +991,8 @@ Purpose:
 
 Approve (writes ONLY the review stamp; see GATE_REVIEW.md "Review Workflow Scope Decision", Gate 20):
   - --approve <path> promotes the named needs_review docs to verified, stamping
-    status: verified + reviewed_by + reviewed_at. Repeatable, and a value may be a
+    status: verified + reviewed_by + reviewed_at, plus the tags: status tag when
+    the document already carries one. Repeatable, and a value may be a
     comma-separated list. --approve-all promotes every approvable needs_review doc
     but REQUIRES an explicit --yes confirmation.
   - reviewed_by resolves --reviewer > llm-wiki.config.json "reviewer" > git

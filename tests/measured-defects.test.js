@@ -20,6 +20,7 @@ import { promisify } from "node:util";
 import { normalizeOptions } from "../src/index.js";
 import { validateFrontmatterCommand, reviewCommand } from "../src/commands.js";
 import { driftCommand, syncStatusTag } from "../src/commands/fix-migrate.js";
+import { main, helpText } from "../src/cli.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -179,7 +180,9 @@ test("review --approve syncs the status tag with the status field", async () => 
   assert.ok(!written.includes("needs-review"), "the stale needs-review tag must be gone");
 });
 
-test("drift --downgrade syncs the status tag with the status field", async () => {
+// A verified document whose cited source changed after the review date, so
+// drift has something to downgrade.
+async function makeDriftedWiki() {
   const doc = docWithDuplicateKey("verified")
     .replace("last_edited_by: claude\n", "")
     .replace(/reviewed_at: 2026-07-31/, "reviewed_at: 2020-01-01")
@@ -196,6 +199,11 @@ test("drift --downgrade syncs the status tag with the status field", async () =>
   await writeFile(path.join(cwd, "src", "app.js"), "export const a = 2;\n", "utf8");
   await git("add", ".");
   await git("commit", "-q", "-m", "change the cited source after the review date");
+  return { cwd, wiki };
+}
+
+test("drift --downgrade syncs the status tag with the status field", async () => {
+  const { cwd, wiki } = await makeDriftedWiki();
 
   const result = await driftCommand(normalizeOptions({ cwd, downgrade: true }));
   assert.equal(result.applied.length, 1, `nothing was downgraded: ${JSON.stringify(result)}`);
@@ -204,4 +212,100 @@ test("drift --downgrade syncs the status tag with the status field", async () =>
   assert.ok(written.includes("status: needs_review"));
   assert.ok(written.includes("  - needs-review"), "the tag must follow the field");
   assert.ok(!/- verified$/m.test(written), "the stale verified tag must be gone");
+});
+
+// --- N-10: the shipped text still described the pre-N-4 write scope ---------
+//
+// The N-4 fix added the `tags:` status tag to what `review --approve` and
+// `drift --downgrade` write, and updated PUBLIC_API.md — but not the strings the
+// tool itself prints. Both commands kept telling the user, in the caveat block
+// printed by the very run that had just written the tag, that they touch ONLY
+// the old field list. The maintainer's own approval run is what exposed it: the
+// diff carried three lines per document while the report claimed two writes.
+//
+// Same class as A-6 #3 (help enumerating a hand-copied subset), with one
+// difference that matters for a governance tool: this text is the contract for a
+// write, printed by the command performing the write. So these assertions pin
+// the SHIPPED description to the code, in all four places a user can read it —
+// the read-only list surface (also the MCP surface), the approve report, the
+// drift report, and the help.
+async function captureHelp(topic) {
+  const lines = [];
+  const originalLog = console.log;
+  const originalExitCode = process.exitCode;
+  console.log = (...args) => lines.push(args.join(" "));
+  try {
+    await main(["help", topic]);
+  } finally {
+    console.log = originalLog;
+    process.exitCode = originalExitCode;
+  }
+  return lines.join("\n");
+}
+
+function statement(text, needle) {
+  const line = text.split("\n").find((entry) => entry.includes(needle));
+  assert.ok(line, `guard: no statement matching "${needle}"; the text moved and this test stopped checking anything`);
+  return line;
+}
+
+// A help topic's scope section, from its heading to the next blank-line-separated
+// heading, so a `tags` mention elsewhere in the topic cannot satisfy the check.
+function helpSection(text, heading, until) {
+  const start = text.indexOf(heading);
+  assert.ok(start >= 0, `guard: help topic has no "${heading}" section`);
+  const end = text.indexOf(until, start);
+  return text.slice(start, end >= 0 ? end : undefined);
+}
+
+test("the review list caveat names every field the approve stamp writes", async () => {
+  const { cwd } = await makeWiki(docWithDuplicateKey().replace("last_edited_by: claude\n", ""));
+  const result = await reviewCommand(normalizeOptions({ cwd }));
+
+  const caveat = statement(result.text, "Promotion to verified is human-only");
+  assert.ok(caveat.includes("reviewed_at"), "guard: this is the field enumeration");
+  assert.ok(caveat.includes("tags"), `the list caveat omits the tags write: ${caveat}`);
+});
+
+test("the review approve caveat does not claim an exclusivity the stamp breaks", async () => {
+  const { cwd } = await makeWiki(docWithDuplicateKey().replace("last_edited_by: claude\n", ""));
+  const result = await reviewCommand(normalizeOptions({
+    cwd,
+    approve: ["docs/llm-wiki/index.md"],
+    reviewer: "Fixture Human"
+  }));
+
+  assert.deepEqual(result.approved, ["docs/llm-wiki/index.md"], `approval refused: ${JSON.stringify(result.refused)}`);
+  const caveat = statement(result.text, "review --approve stamps");
+  assert.ok(caveat.includes("reviewed_at"), "guard: this is the field enumeration");
+  assert.ok(caveat.includes("tags"), `the approve caveat claims ONLY the old field list: ${caveat}`);
+});
+
+test("the drift downgrade caveat names every field the downgrade writes", async () => {
+  const { cwd } = await makeDriftedWiki();
+  const result = await driftCommand(normalizeOptions({ cwd, downgrade: true }));
+
+  assert.equal(result.applied.length, 1, `nothing was downgraded: ${JSON.stringify(result)}`);
+  const caveat = statement(result.text, "Downgraded drifted verified documents");
+  assert.ok(caveat.includes("last_updated"), "guard: this is the field enumeration");
+  assert.ok(caveat.includes("tags"), `the drift caveat claims status + last_updated only: ${caveat}`);
+});
+
+test("help names the tag write for both commands that perform it", async () => {
+  const general = helpText();
+  const reviewLine = statement(general, "review is read-only by default");
+  assert.ok(reviewLine.includes("reviewed_at"), "guard: this is the field enumeration");
+  assert.ok(reviewLine.includes("tags"), `general help omits the tag write for review: ${reviewLine}`);
+
+  const driftLine = statement(general, "drift reports evidence.stale drift");
+  assert.ok(driftLine.includes("last_updated"), "guard: this is the field enumeration");
+  assert.ok(driftLine.includes("tags"), `general help omits the tag write for drift: ${driftLine}`);
+
+  const approveScope = helpSection(await captureHelp("review"), "Approve (", "JSON (--format json)");
+  assert.ok(approveScope.includes("reviewed_at"), "guard: this is the write-scope section");
+  assert.ok(approveScope.includes("tags"), `help review omits the tag write:\n${approveScope}`);
+
+  const driftScope = helpSection(await captureHelp("drift"), "Scope (", "\n\nJSON");
+  assert.ok(driftScope.includes("last_updated"), "guard: this is the write-scope section");
+  assert.ok(driftScope.includes("tags"), `help drift omits the tag write:\n${driftScope}`);
 });

@@ -5,11 +5,11 @@ tags:
   - roadmap
   - harness
   - governance
-  - verified
-status: verified
+  - needs-review
+status: needs_review
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-07-31
+last_updated: 2026-08-03
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
@@ -109,7 +109,7 @@ contains_sensitive_info: false
 | 낡음(날짜 앵커) | `evidence.stale` — 리뷰 기준일 이후 참조 소스가 커밋됨 | `src/commands/scans.js#symbol:verifiedSourceAnchors` |
 | 낡음(diff 앵커) | `impact.source_changed` — 소스는 이 diff에 있고 문서는 없음 | 같은 앵커 추출기 공유 |
 | 완료 계약 | run manifest + `check-run`의 `run.*` 6룰 | `src/commands.js#symbol:checkRunCommand` |
-| 사람 승인 | `review`(기본 읽기 전용, `--approve-all`에 `--yes` 강제, blocked/error 있으면 거부, 3필드만 스탬프) | `src/commands.js` |
+| 사람 승인 | `review`(기본 읽기 전용, `--approve-all`에 `--yes` 강제, blocked/error 있으면 거부, 리뷰 스탬프만 = `status`·`reviewed_by`·`reviewed_at` + 이미 있는 경우 `tags` 상태 태그) | `src/commands.js` |
 | 위험 다이얼 | `rules` 토글 + `rulesPreset` 3종, 민감 카테고리는 비토글 | `src/commands/findings.js#symbol:RULE_PRESETS`, `#symbol:NON_TOGGLEABLE_CATEGORIES` |
 | 기계적 자동수정 | Tier A frontmatter 필드, `## Evidence` 정합, 깨진 링크 stub, block version 스탬프 | `src/commands/fix-migrate.js#symbol:runMechanicalRemediation` |
 | 사용자 수정 보호 | 생성 스킬의 sha256 마커 — 한 글자만 고쳐도 영구 보존 | `src/commands/skills.js#symbol:isManagedUnmodified` |
@@ -311,7 +311,7 @@ run manifest는 에이전트가 스스로 씁니다(Gate 26에서 "새 쓰기 �
 | 거버넌스 자기진단 | `doctor`의 `ci_governance` | 차단력 기준 판정 | 호출 존재를 게이트 존재로 계수. 스모크 테스트를 게이트로 오인 | 없는 안전을 있다고 보고 | 결함 7 |
 | 낡음 감시 범위 | `verified` 문서만 | 상태와 무관하게 감시 가능 | `verifiedSourceAnchors`가 비-verified를 즉시 배제. 자기 저장소 69%가 사각지대 | 강등이 관측을 끄는 역설 | 공백 2 |
 | 프리셋 의미 | `rulesPreset` 3종 | 이름과 차단력이 일치 | `strict`가 `impact.source_changed`를 승격 안 함 | 사용자가 강제된다고 오인 | 공백 2 |
-| 승인 경계 | `review --approve`가 3필드만 스탬프 | 우회 경로 탐지 또는 차단 | frontmatter 직접 편집을 아무도 보지 않음. 실사용에서 발생 | 제품의 존재 이유가 무력화 | 공백 3 |
+| 승인 경계 | `review --approve`가 리뷰 스탬프만 씀(3필드 + 이미 있는 경우 `tags` 상태 태그) | 우회 경로 탐지 또는 차단 | frontmatter 직접 편집을 아무도 보지 않음. 실사용에서 발생 | 제품의 존재 이유가 무력화 | 공백 3 |
 | 승인 게이트 강도 | blocked/error 있으면 거부 | 보강 여부가 승격 조건에 포함 | warning만 있으면 통과 → 빈 스캐폴드도 verified 가능 | 신뢰할 수 없는 문서가 verified로 | 결함 6 |
 | 완료 계약 | 자기신고 매니페스트 + `check-run` | 외부 사실과 교차검증 | git diff 교차검증 미구현. `changedSource` 빈 배열로 통과 가능 | 게이트가 게이트가 아님 | 공백 4 |
 | 매니페스트 선택 | 사전순 마지막 | 실제 최신 | task 이름이 타임스탬프를 지배. 3일 전 것을 검사 | 잘못된 런을 검증 | 결함 8 |
@@ -805,7 +805,7 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 
 | # | 문서 쌍 | 무엇이 어긋나는가 |
 | --- | --- | --- |
-| **C-1(충돌)** | `PUBLIC_API.md` × `domains/00_overview.md` | `review --approve`가 스탬프하는 대상. `00_overview.md`가 "**3필드만**"이라고 단정했으나 `src/commands.js:1393-1397`은 `status`·`reviewed_by`·`reviewed_at`·`tags` 상태 태그 **네 곳**을 쓴다. `PUBLIC_API.md`가 맞다 |
+| **C-1(충돌)** | `PUBLIC_API.md` × `domains/00_overview.md` | `review --approve`가 스탬프하는 대상. `00_overview.md`가 "**3필드만**"이라고 단정했으나 `src/commands.js:1393-1397`은 `status`·`reviewed_by`·`reviewed_at`·`tags` 상태 태그 **네 곳**을 쓴다. 두 문서의 산문 중에서는 `PUBLIC_API.md`가 맞다 — 단 2026-08-03(N-10)에 확인된 바로는 `PUBLIC_API.md`의 `## Evidence` 재서술도 같은 거짓 문장을 담고 있었다 |
 | D-1(중복) | `README.md` × `index.md` | 둘 다 `## Operating Rules`를 두고 4개 중 3개를 재서술했고 **이미 갈라졌다**(UTF-8 규칙은 한쪽에만, frontmatter 규칙은 다른 쪽에만) |
 | D-2(중복) | `templates/DECISION_LOG.template.md` × `templates/TASK_PROMPT.template.md` | 제목·H1을 빼면 **바이트 동일**(1477B vs 1475B). 세 저장소 전부 |
 | D-3(중복) | sinkhole `ARCHITECTURE_CONVENTIONS.md` × `domains/08_shared_platform.md` | 같은 Tailwind 함정을 같은 근거로 양쪽에 전문 서술. **이미 갈라졌다** — 예외 조항이 한쪽에만 있다 |
@@ -850,6 +850,22 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 | N-9 | **`impact`의 자기제외가 PR 범위 전체에 걸린다** — 무관한 승인 스탬프 커밋 1건이 그 문서를 그 PR 내내 면제시킨다 | `DOMAIN_FEATURES.md`가 승인 스탬프로 PR 범위에 들어가 면제된 사이 낡은 계약 서술이 통과했다(C-1) | 설계 |
 
 잠재 결함 1건(현재 발생 0건이라 표에 넣지 않음): `source_files`에 로케이터를 쓰면 `scanSourceFiles`는 원문 그대로 `pathExists`해 `source_files.missing`을 내는데 `verifiedSourceAnchors`는 `#` 앞을 잘라 받아준다 — 같은 필드를 두 스캔이 다르게 해석한다(실측 843/843이 순수 경로라 미발화).
+
+---
+
+#### 2026-08-03 배포 텍스트 정직성 배치 (N-10) + 기준선 오탐률 두 번째 데이터 포인트
+
+| # | 결함 | 근거 | 성격 |
+| --- | --- | --- | --- |
+| N-10 | ~~**배포되는 출력이 N-4 이전의 쓰기 범위를 말한다** — `review --approve`와 `drift --downgrade`의 런타임 caveat·help가 "ONLY status + reviewed_by + reviewed_at" / "status + last_updated only"라고 단정하는데, 두 명령 모두 `tags`의 상태 태그를 쓴다~~ **→ 수정됨(2026-08-03)** | 소스 8곳(`commands.js` 3 · `cli.js` 4 · `fix-migrate.js` 1) + 위키 4문서 5곳. 발견 경로는 유지보수자의 승인 실행이다 — 리포트는 2~3필드를 주장했고 diff는 문서당 3줄이었다 | 결함(N-4의 여진) |
+
+**N-4의 여진이 세 번 연속 같은 방식으로 이어졌다.** N-4 수정(2026-07-31)은 `PUBLIC_API.md`의 명령 표만 갱신했고 → 백로그 16 프로토타입이 `00_overview.md`·`DOMAIN_FEATURES.md`의 산문을 잡았고 → 그 수정도 **같은 문서들의 `## Evidence` 재서술**과 **도구가 인쇄하는 텍스트**에는 닿지 않았다. 최종 집계: 같은 계약이 **소스 8곳 + 위키 5문서 7곳**에 재서술돼 있고 두 차례의 수정이 각각 일부에만 도달했다. `DOMAIN_FEATURES.md`는 "스탬프 필드 목록을 교정했다"는 Review Note를 달고도 자기 `## Evidence` 줄이 거짓인 채였다. **백로그 16(중복·충돌 후보 탐지)의 근거가 한 번 더, 더 강하게 확인됐다** — 그리고 이번 것은 프로토타입이 아니라 사람의 실사용이 찾았다.
+
+**기준선 오탐률 두 번째 데이터 포인트** (결정 21번에 남은 유일한 공백): 이 배치의 소스 3파일 변경에 `impact`가 `verified` **10문서**를 발화했고, 각 문서를 직접 대조해 분류하면 **참 양성 4 / 노이즈 6 = TP 40%**다.
+
+- **참 양성 4건** — `ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`·`PUBLIC_API.md`(각각 `## Evidence` 재서술) · `HARNESS_GOVERNANCE_ROADMAP.md`(인벤토리 표·공백 표 2곳). 전부 현재형 거짓 문장을 담고 있었고 이 배치에서 고쳤다.
+- **노이즈 6건** — `domains/00_overview.md`(직전 세션 수정으로 이미 정확) · `EXAMPLES.md` · `GLOSSARY.md` · `index.md` · `profiles/library.md` · `project-profile.md`. `src/cli.js`/`src/commands.js`를 광의로 인용하지만 이번에 바뀐 계약을 서술하지 않는다.
+- 성격이 N-1 허브 팬아웃의 실물이면서, **그 팬아웃의 40%가 참이었던 사례**다. 다음 측정(무작위 30건 라벨링)과 다른 점은 표본 방식이다 — 이것은 한 커밋 findings의 **전수**이며, 커밋 성격(계약 문장 수정)이 TP율을 위로 밀었을 가능성을 함께 기록한다.
 
 ---
 
@@ -1459,3 +1475,4 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 - 2026-07-31(백로그 17·18·19 측정): 게이트를 도입 저장소 4곳에 읽기 전용으로 예행하고(쓰기·커밋·체크아웃 0건), `needs_review` 감시 옵트인의 폭발 반경을 재고, 파일럿 3곳의 마찰 이력을 git 이력에서 조사했다. **Phase 0의 마지막 미충족 완료 조건("파일럿 초록 확인")이 이것으로 닫혔다.** 핵심 결과 네 가지: (1) 새 게이트는 4곳 전부 오늘 초록이지만 **roadmonitor의 초록은 무의미**하고(위키 33개가 전부 diff 안), 문서를 갱신하지 않은 실존 커밋 9건은 **전부 RED**다 — 즉 다음 PR부터 울리는 것이 정상이다. (2) **허브 파일 팬아웃**이 두 저장소에서 독립적으로 확인됐다(배럴 파일 1개 → 문서 10건) — 사람 결정 21번의 실질 선행 조건으로 올렸다. (3) `needs_review` 옵트인 추가분 65건이 **100% 릴리스 노트**이고 살아있는 문서는 0건 — `doc_type: release_notes` 면제를 기능의 일부로 함께 내보내면 3곳 전부 0이다. (4) 마찰 이력에서 세 패턴이 나왔고, 그중 **도입처 어댑터 동결을 도구가 영구히 탐지하지 못한다**는 사실에 코드 앵커(`scanAdapters`)를 붙였다. 신규 결함 6건(N-1~N-6)과 백로그 37~41번을 신설했다. 측정 한계를 그대로 남겼다: 백로그 16번은 여전히 미측정, 실존 커밋 RED 9건은 재구현 시뮬레이션이자 현재 앵커 기준 예측이며, 세 저장소 모두 히스토리가 정지해 정상 상태 추가분은 못 쟀다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-31(Phase 0 잔여 완료, 유지보수자 지시): 백로그 8번(기준선 기록·R3 금지 목록·실패 사례집)을 채우고 Phase 0 진행 상황 표를 추가했다. **A-3b**(Phase 0 완료 시점 읽기 전용 실측, 5개 저장소), **F장 R3 자동 변경 금지 목록 12항목**(항목별로 "자동화가 할 수 있는 최대치"를 함께 적었고, 12건 중 6건은 관례로만 지켜진다는 사실을 명시), **G-2 실패 사례집**(요구된 6건 전부 실행 가능한 테스트로 고정 — 3건은 이번 라인에서 해결됐고 3건은 신규 `tests/known-gaps.test.js`의 characterization test로 고정)을 작성했다. 측정에서 새로 드러난 것 3가지: (1) 도입 4곳이 **차단력 기준으로 재판정해도 여전히 `none detected`** — 자문용 호출조차 없다, (2) **도입 저장소의 선적재가 우리보다 크다**(최대 ~3.8k vs 우리 ~1.44k; `index.md`가 주범) — 1.27.2의 선적재 축소가 도입처로 전파되지 않았다는 뜻이고 공백 5와 같은 뿌리다, (3) **"방치된 `needs_review`"는 실측상 문제가 아니다**(csap 1일·dotnine 4일; 우리 median 15일도 35건 중 31건이 릴리스 노트) — 백로그 11번의 근거를 이 수치가 약화시킨다. A-3의 "약 8.9k 토큰"과 A-3b의 선적재 수치는 **분모가 달라 비교 불가**임을 문서에 명시했다. 429 tests. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-31(N-1 완화 근거 측정 + 백로그 16 오탐률 측정 + 사람 결정 브리프, 유지보수자 지시): 읽기 전용 측정 2건을 병렬로 수행하고(대상 5개 저장소, 쓰기·커밋·체크아웃 0건) 사람 결정 11건의 브리프를 **J장**으로 신설했다. 핵심 결과 여섯 가지. (1) **완화안 (a)는 앵커만 고쳐서는 효과가 0이다** — `scanReverseImpact`가 로케이터를 버리고(`scans.js:584-587`·`:702`) 입력인 `changedFiles`가 `--name-only`라 라인 정보가 파이프라인에 아예 없다. (2) **오늘 채택할 수 있는 완화안이 없다** — 효과가 큰 안(대표 앵커 −78%)은 문서 다수를 영구 침묵시키고, 손실이 작은 안(라인 범위 −5.1%)은 두 저장소에서 정확히 0이며, 허브 경고는 RED 커밋 빈도를 전혀 줄이지 않는다. 따라서 결정 21번에 필요한 것은 완화안 선택이 아니라 **아직 없는 숫자, 즉 기준선 332건의 오탐률**이다. (3) **"배럴 파일" 전제가 사실이 아니다** — 문법적 재수출 배럴이 도입처 3곳에 0개이고 실제 허브는 파사드·라우트 테이블·매니페스트다. 판정은 파일 내용이 아니라 팬아웃 수여야 한다. (4) 백로그 16은 **(나) 제한적 착수** 권고 — 섹션 단위 + 본문 문자 8-gram 단독(0.25) + `doc_type`·스캐폴드 헤딩 제외에서 64,452 섹션쌍 → 후보 3건·오탐 0건이고, 문서 단위(오탐 83~99%)와 충돌 신호 전부는 기각이다. (5) **그 프로토타입이 우리 위키의 실제 충돌 1건을 찾았다** — 같은 날 N-4 수정이 `src/commands.js`를 바꾸고 `PUBLIC_API.md`만 갱신해서, 같은 계약을 재서술한 `domains/00_overview.md`가 "**3필드만** 스탬프"라는 거짓 문장을 담은 채 사람 재승인까지 통과했다. 두 문서를 사실에 맞게 고치고 규칙대로 강등했다. 배포된 어떤 명령도 이것을 보지 못했고 그 경위(머지 후 워킹트리 diff 공백 + 같은 날 `reviewed_at`이 날짜 앵커를 덮음 + 승인 스탬프가 자기제외로 면제)를 본문에 남겼다. (6) **정상 작업이 게이트의 사정거리를 깎는다** — csap에 fix 커밋 2건이 들어오자 `verified` 20→8, 허브 팬아웃 14→4가 됐다. 회피가 아니라 규칙의 정상 작동이지만, 강등된 문서는 `drift`·`impact` 둘 다에서 보이지 않으므로(공백 2) 하루의 평범한 작업이 사정거리를 60% 줄였고 복구 수단은 사람의 재승인뿐이다. 신규 결함 3건(N-7 라인 범위 앵커 58/58 무력화 · N-8 디렉터리 앵커의 양방향 오작동 · N-9 자기제외가 PR 범위 전체에 걸림)과 백로그 42~44를 신설했다. **기존 기록 2건을 정정했다**: "csap 10건 중 9건이 배럴 파일"은 roadmonitor의 형상이었고(csap은 `verified`가 8건이라 구조적으로 불가능하며, `core.autocrlf` 냉시작 인덱스가 만든 유령 diff 위에서 측정됐을 가능성이 높다), "문서 미갱신 실존 커밋 9건"은 전수 47건 중 최근 표본이었다(전수 RED 44/47 = 93.6%로 결론은 오히려 강해졌다). 한계를 그대로 남겼다 — **기준선 오탐률과 재현율 둘 다 미측정**, 현재 프론트매터를 과거 커밋에 적용한 시대착오, 심볼→라인 변환이 AST가 아닌 정규식이고 과거 시점 33% 실패, 표본 n=3~17에 판정자 1인, `impact --strict`의 exit code 경로 미실행. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등했고 허위 검토 메타는 기입하지 않았다.
+- 2026-08-03에 **도구가 인쇄하는 텍스트가 자기 쓰기 범위를 거짓으로 말하던 것을 고쳤다**(N-10, N-4의 네 번째 여진). `review --approve`의 caveat·help는 "ONLY status + reviewed_by + reviewed_at", `drift --downgrade`의 caveat·help는 "status + last_updated only"라고 단정했지만, 2026-07-31 N-4 수정 이후 두 명령은 공유 `syncStatusTag`로 `tags`의 상태 태그도 쓴다. 발견 경로가 중요하다 — **유지보수자의 실제 승인 실행**에서 리포트의 주장과 diff(문서당 3줄)가 어긋났고, 배포된 어떤 검증 명령도 이것을 보지 못했다. 소스 8곳(`src/commands.js` 3 · `src/cli.js` 4 · `src/commands/fix-migrate.js` 1)을 고쳤고 신규 테스트 4건이 수정 전 소스에서 전건 RED임을 확인했다(list caveat · approve caveat · drift caveat · help 4표면). 442 tests(신규 4)·lint OK(61 files)·`validate --strict` 0. 인벤토리 표와 공백 표의 "3필드만 스탬프" 2곳을 고치고, C-1 행에 `PUBLIC_API.md`의 `## Evidence` 재서술도 같은 거짓이었음을 덧붙였다. **N-10을 결함 표로 신설**하고 같은 절에 **기준선 오탐률의 두 번째 데이터 포인트**를 남겼다: 이 배치의 소스 3파일 변경에 `impact`가 `verified` 10문서를 발화했고 문서 대조 결과 참 양성 4 / 노이즈 6(TP 40%)이다 — 결정 21번에 필요한 숫자의 표본이며, 무작위 30건이 아니라 한 커밋 전수라는 점을 명시했다. 이 문서의 Review Notes는 8건으로 5건 상한을 넘겨 있고(이 노트로 9건) 아카이브 섹션이 없다 — 별도 배치가 필요하다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.

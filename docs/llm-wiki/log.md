@@ -24,6 +24,46 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - fix: 명령이 자기 쓰기 범위를 거짓으로 말하고 있었다 (N-10)
+
+- status: needs_review
+- actor: Claude Code
+- scope: src, tests, docs
+- changed:
+  - `src/commands.js` (`review` LIST caveat · APPROVE caveat · 주석 2곳)
+  - `src/cli.js` (`helpText`의 review·drift 줄 · `COMMAND_HELP.review` Approve 절 · `COMMAND_HELP.drift` Scope 절)
+  - `src/commands/fix-migrate.js` (`drift --downgrade` caveat)
+  - `tests/measured-defects.test.js` (신규 4건, 전건 RED 선확인)
+  - `docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md` (`## Evidence` 재서술 교정 + 스탬프 seam에 `syncStatusTag` 추가; `verified`→`needs_review`)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (인벤토리·공백 표 2곳 교정, C-1 행 보완, **N-10 결함 표 + 기준선 오탐률 두 번째 데이터 포인트** 신설; `verified`→`needs_review`)
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES에서 각 1건 수신, 아카이브 건수 43·48로 갱신; `verified`→`needs_review`)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+`review --approve`는 caveat에 "stamps **ONLY** status + reviewed_by + reviewed_at"이라고, `drift --downgrade`는 "status + last_updated **only**"라고 인쇄했다. 2026-07-31 N-4 수정 이후 두 명령은 공유 `syncStatusTag`로 `tags`의 상태 태그도 쓴다. **쓰기를 수행하는 명령이, 그 쓰기를 설명하는 자리에서 사실과 다른 말을 하고 있었다** — 거버넌스 도구에서 이건 단순 오타가 아니라 계약 위반이다.
+
+발견 경로를 남긴다: **유지보수자의 실제 승인 실행**이 드러냈다(리포트는 2~3필드를 주장했고 diff는 문서당 3줄이었다). 배포된 어떤 검증 명령도 이것을 보지 못했다 — 문자열은 `validate`의 스캔 대상이 아니고, 머지 후에는 `impact`가 볼 diff가 없고, 같은 날 `reviewed_at`이 `evidence.stale`의 날짜 앵커를 덮는다(N-9).
+
+**작업 지시가 예상한 규모보다 컸다. 3곳이 아니라 8곳이었고, 2곳이 아니라 배포되는 출력 3곳이었다.**
+
+- 소스 8곳: `commands.js`의 LIST caveat(**MCP로도 노출되는 읽기 전용 표면**)·APPROVE caveat·주석 2곳, `cli.js`의 `helpText` 2줄·`COMMAND_HELP.review`·`COMMAND_HELP.drift`, `fix-migrate.js`의 drift caveat.
+- 지시가 놓친 것은 **`drift --downgrade` 쪽 전부**였다. N-4가 두 명령을 같은 helper로 묶었으므로 여진도 양쪽에 생겼다.
+- 위키 5곳(4문서): 지시는 "`PUBLIC_API.md`·`DOMAIN_FEATURES.md`·`domains/00_overview.md`는 이미 정확하므로 추가 강등 0건"이라고 적었지만, **정확했던 것은 각 문서의 산문·표뿐이고 같은 문서의 `## Evidence` 재서술 3건은 거짓인 채였다.** `DOMAIN_FEATURES.md`는 "스탬프 필드 목록을 교정했다"는 Review Note를 달고도 자기 Evidence 줄이 거짓이었다.
+
+**같은 계약이 소스 8곳 + 위키 5문서 7곳에 재서술돼 있고, 두 차례의 수정이 각각 일부에만 도달했다**(N-4 → 백로그 16 프로토타입 → 이번). 백로그 16(중복·충돌 후보 탐지)의 근거가 세 번째로, 가장 강하게 확인됐다.
+
+**기준선 오탐률의 두 번째 데이터 포인트(결정 21번의 유일한 공백)**: 소스 3파일 변경에 `impact`가 `verified` 10문서를 발화했고, 문서를 직접 대조해 **참 양성 4 / 노이즈 6 = TP 40%**로 분류했다. 상세와 분류 근거는 로드맵 N-10 절에 있다. 첫 데이터 포인트(1/1)와 합쳐 5건 중 5건이 아니라 **11건 중 5건**이 참이다.
+
+테스트는 4건 전부 수정 전 소스에서 RED임을 먼저 확인했다(list caveat · approve caveat · drift caveat · help 4표면). 문자열 단언은 텍스트가 이동하면 조용히 아무것도 검사하지 않게 되므로, 각 단언에 **가드**(해당 문장이 실제로 필드 열거인지 먼저 확인)를 붙였다. 442 tests(신규 4)·lint OK(61 files)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0.
+
+**열린 상태 2건을 정직하게 남긴다.**
+
+1. `impact`가 아직 **6건** 경고한다(`domains/00_overview.md`·`EXAMPLES.md`·`GLOSSARY.md`·`index.md`·`profiles/library.md`·`project-profile.md`). 전부 위 분류에서 **노이즈**로 판정한 문서이고 내용 갱신이 필요 없다 — 남은 것은 `reviewed_at` 재기준선이며 **그것은 사람 검토 행위다**(선례: `52aa90b`). `review --approve`는 이미 `verified`인 문서를 거부하므로 도구 경로가 없다(기록된 미해결 결함). 이 상태로 PR을 올리면 CI의 `impact --since origin/main --strict`가 빨갛다.
+2. Review Notes 5건 상한: `ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`는 아카이브 이전으로 5건을 유지했지만, `PUBLIC_API.md`는 **38건**, `HARNESS_GOVERNANCE_ROADMAP.md`는 **9건**으로 상한을 넘어 있다(아카이브 섹션 없음). 33건 이전은 이 배치 범위 밖이라 별도 배치가 필요하다 — 2026-07-31에 기록한 "상한 과소 집행"이 그대로다.
+
+강등 5건으로 `verified` 20/52 → **15/52(29%)**, health 79 → 76, `stale_verified` 0. **`review --approve`는 이번에도 실행하지 않았다.**
+
 ## 2026-07-31 - measure(후속): 게이트가 이 측정의 커밋에서 울렸고, 다시 옳았다
 
 - status: needs_review

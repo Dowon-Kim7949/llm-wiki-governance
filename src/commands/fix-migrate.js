@@ -521,7 +521,7 @@ export async function driftCommand(options) {
     { title: "Blocked", body: blockedFindings.map(formatFinding) },
     { title: "Caveats", body: [
       downgrade
-        ? "Downgraded drifted verified documents to needs_review (status + last_updated only). Re-review and re-verify after updating; nothing else was changed."
+        ? "Downgraded drifted verified documents to needs_review (status + last_updated, plus the tags: status tag when the document already carries one). Re-review and re-verify after updating; nothing else was changed."
         : "Report only; no files were written. Run drift --downgrade to flip drifted verified documents to needs_review."
     ] }
   ]);
