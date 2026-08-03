@@ -2,8 +2,8 @@
 title: Review History
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: review_history
 project: llm-wiki-governance
 last_updated: 2026-08-03
@@ -28,7 +28,7 @@ related:
   - docs/llm-wiki/domains/00_overview.md
 visibility: internal
 contains_sensitive_info: false
-reviewed_by: Dowon-Kim
+reviewed_by: Claude Code (delegated by Dowon-Kim)
 reviewed_at: 2026-08-03
 ---
 
@@ -41,7 +41,7 @@ reviewed_at: 2026-08-03
 
 ## Architecture Conventions
 
-원문서: [ARCHITECTURE_CONVENTIONS.md](ARCHITECTURE_CONVENTIONS.md) — 44건(2026-07-14 → 2026-07-29), 2026-07-30·2026-07-31·2026-08-03 이전분.
+원문서: [ARCHITECTURE_CONVENTIONS.md](ARCHITECTURE_CONVENTIONS.md) — 45건(2026-07-14 → 2026-07-30), 2026-07-30·2026-07-31·2026-08-03 이전분.
 
 - 2026-07-14에 1.3.0 명령 표면과 소스 구조를 기준으로 재검토했다.
 - 2026-07-14에 1.5 프로그래매틱 API 모듈(`src/index.js`)과 `--format json`의 `schemaVersion` 부가를 반영하고, 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
@@ -87,6 +87,7 @@ reviewed_at: 2026-08-03
 - 2026-07-27(야간)에 같은 날 품질 감사의 잔여 3건을 반영했다(미릴리스, main 한정). **(A) frontmatter negative-path 테스트**: `parseFrontmatter`/`validateFrontmatter`의 순수 seam에 rule별·parse-error별 직접 유닛 테스트를 추가했다(소스 변경 없음). **(B) 중복 frontmatter 키**: `parseFrontmatter`가 additive `duplicateKeys`를 반환하고(파서는 last-wins 유지, 기존 반환 키 불변) 두 seam(`validateFrontmatterCommand`·`summarizeDocumentStatuses`)이 신규 `frontmatter.duplicate_key`(warning, toggleable; `findings.js` 레지스트리 등록 + `i18n.js` KO 카탈로그; message에 키 이름만, 값 미노출)를 push한다 — 중복 키가 grounding 리스트를 조용히 버리거나 `contains_sensitive_info`를 뒤집던 구멍을 표면화. **(C) MCP inputSchema 강제 + CLI `--type` 검증**: 신규 순수 leaf `src/mcp/validate-args.js`(`validateToolArguments`; TOOL_DEFS가 쓰는 JSON-Schema 서브셋만)를 `dispatch.js#handleToolCall`이 `buildToolOptions` 전에 호출해 위반을 `-32602 Invalid params`(`data:{tool,errors}`)로 반환하고(실행 수준 `isError:true` 경로와 의도적 구분), `tools.js`의 stale enum을 단일 소스에서 파생하도록 교정했으며(`KNOWN_TYPES`←detector.js에 mobile/infra 포함, `SUPPORTED_TASK_PROMPTS`←task-prompts.js, `SUPPORTED_LANGS`←i18n.js, visibility←frontmatter-schema.js; agents의 CLI 전용 `all`은 MCP 미수용을 설명에 명시), `src/cli.js#parseArgs`가 `--type`을 `KNOWN_TYPES`로 검증한다(미지원 유형 usage error exit 3 — **작은 동작 변경**: 이전엔 `--type banana`가 exit 0으로 흘렀다). additive·zero-dep·동결 API 맵/`--format json` shape 불변. 347 tests(신규 17; B 3건·C 7건이 수정 전 소스에서 실패함을 stash로 확인)·lint OK(50 files)·validate --strict 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-28에 ECC 기법 추출 배치 4건을 반영했다(유지보수자 지시, GATE_REVIEW "ECC Technique Extraction Scope Decision"; 미릴리스, main 한정). ECC(github.com/affaan-m/ECC, MIT 에이전트 하네스)를 의존성이 아니라 **기법 소스**로 읽어 4건을 하우스 방식(zero-dep·additive·preview-first)으로 재구현했다: **(1) 증거 트레일** — run manifest에 optional `testEvidence {red, green}` + `check-run`의 `run.test_evidence_missing`(warning, feature/fix+changedSource 비어있지 않을 때만; 구 manifest 면제) + feature/fix 스킬 완성 계약 갱신. **(2) 스킬 토큰 예산** — 생성 아티팩트에 `estimated-tokens`(chars/4 PROXY 명시; Claude/Codex frontmatter, Cursor/중립 HTML 코멘트; `skills.js#tokenBudgetField`/`tokenBudgetComment`), 마커 v2→v3, dogfood 스킬 24개 `--refresh` 재생성. **(3) rule 프리셋** — config `rulesPreset`(relaxed/standard/strict; `findings.js#RULE_PRESETS` 단일 소스, 병합 시점 확장, 명시 rules 우선, sensitive.* 보호). **(4) `import-memory`** — ECC `ecc.memory.v1` 메모리를 needs_review 위키 초안으로 변환하는 단방향 write 명령(신규 leaf `src/commands/import-memory.js`; preview 기본·`--apply`; verified 생성 구조적 불가; 민감 히트 기본 skip; MCP 미노출; `import.*` finding 4종). 4건 모두 워크트리 병렬 구현 후 직렬 통합했고 각자 테스트 선실패(RED)를 확인했다. 기각 2건(confidence 스코어링 — `reference_checked`/`human_verified` 직교 2축 설계와 충돌; instincts/세션 학습 — 벤치 귀인 오염)은 GATE_REVIEW에 기록. 380 tests(신규 33)·lint OK(55 files)·validate --strict 0. additive·zero-dep·동결 API 맵/`--format json` shape 불변(신규 명령·키는 additive). 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-29에 에이전트 문맥 규율 3건을 반영했다(유지보수자 지시; 1.27.1로 배포). 1.25의 토큰 효율은 CLI가 **돌려주는** 양을 통제했지만 에이전트가 **끌어오는** 양은 통제하지 않았고, 실제 실행 로그에서 (a) `check-run`이 읽지도 않는 여러 문장짜리 `summary`, (b) 무제한 소스 파일 읽기, (c) 테스트 결과 ~380줄 전량이 반복 유입되고 있었다. **(1) `task-prompts.js#contextBudget`**(신규 순수·export 단일 소스) — 8개 태스크 프롬프트 + `handoff` + 생성 스킬 전부에 문맥 예산을 주입한다. 읽기 방식만 좁히고 읽기 자체는 요구를 유지하는 것이 핵심 불변식이며(`task-path.js#mustReadSource`와 정합) "근거가 간결함보다 우선, 확인 못 하면 더 읽어라"를 본문에 명시했다. **(2) `skills.js#manifestContractSection`** — 필드 집합이 계약 전부임을 선언(+`check-run`이 그 외 미독), 선택적 summary 두 문장 제한, diff·파일 내용·로그·테스트 출력 삽입 금지. **(3) `npm run test:quiet`**(`--test-reporter=dot`) — 기존 `test`/`verify`/CI는 진단용 상세 리포터 유지(additive). 대가는 정직하게 기록한다: 스킬 고정 본문이 약 30% 늘어난다(`feature` 프록시 775→1010) — 실행이 끌어오는 양을 제한하기 위한 **설계된 트레이드오프이며 실측 절감이 아니다**(chars/4 프록시). 마커 v3→v4, dogfood 스킬 24개 `--refresh` 재생성. 384 tests(신규 4, RED 선실패 확인: `contextBudget` export 부재로 파일 전체 실패)·lint OK(56 files). additive·zero-dep·동결 API 맵/`--format json` shape 불변(`contextBudget`은 leaf 모듈 export이며 `src/index.js` 공개 표면 밖). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-07-30에 프롬프트 형태 규율(unhobbling) 배치를 반영했다(유지보수자 지시, GATE_REVIEW "Prompt-Shape Discipline" scope decision; 1.27.2 대상). Boris Cherny의 3원칙(불필요 설정 삭제·목표/금지선/종료기준·비법 금지)을 {steering/계약/안전} 분류로 적용했다: (1) claude-code 어댑터 템플릿(마커 v1→v2)과 이 저장소 `CLAUDE.md`의 `@`-include를 index+project-profile로 축소(선적재 ~30.3k→~1.4k 토큰, chars/4 프록시; `scanAdapters` 호환·기존 파일 미덮어씀 불변), (2) 이 문서와 DOMAIN_FEATURES의 Review Notes를 최근 5건 상한 + `REVIEW_HISTORY.md` 아카이브로 이전(원문 보존), (3) `implementationPrompt`·`docsSyncPrompt`를 Goal/Hard lines/Exit criteria 3블록으로 재구성(계약·안전 줄 전부 보존, steering만 제거; 마커 v4→v5, dogfood 스킬 12개 재생성; 절차형 원샷은 체크리스트 유지·테스트로 경계 고정), (4) 삭제 기준을 계측화(steering 줄은 부재 시 발화하는 신호가 없으면 삭제 후보; 재검토는 캘린더가 아니라 모델 업그레이드/수 릴리스 주기). 프롬프트 재구성의 과제 성과 효과는 미측정이며(벤치 arm 미실행, 유지보수자 결정) 절감 주장은 하지 않는다. 386 tests(신규 2, RED 선실패 확인)·lint OK(56 files). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 ## Domain Features
 
 원문서: [DOMAIN_FEATURES.md](DOMAIN_FEATURES.md) — 52건(2026-07-14 → 2026-07-31), 2026-07-30·2026-07-31·2026-08-03 이전분.
@@ -143,7 +144,6 @@ reviewed_at: 2026-08-03
 - 2026-07-30에 "프롬프트 형태 규율 + 어댑터 선적재 축소(unhobbling, 1.27.2)" 기능을 등재했다(유지보수자 지시, GATE_REVIEW "Prompt-Shape Discipline" scope decision). Boris Cherny의 3원칙을 {steering/계약/안전} 분류로 적용: claude-code 어댑터 템플릿(마커 v1→v2)+이 저장소 `CLAUDE.md`의 `@`-include를 index+project-profile로 축소(선적재 ~30.3k→~1.4k 토큰, chars/4 프록시), `implementationPrompt`·`docsSyncPrompt`를 Goal/Hard lines/Exit criteria 3블록으로 재구성(계약·안전 줄 보존, steering만 제거; 마커 v4→v5, dogfood 스킬 12개 재생성; 절차형 원샷은 체크리스트 유지), 무거운 문서 Review Notes를 최근 5건 상한 + `REVIEW_HISTORY.md` 아카이브로 이전, 삭제 기준을 계측화(steering 줄은 부재 시 발화 신호 없으면 삭제 후보). 과제 성과 효과는 미측정(벤치 arm 미실행, 유지보수자 결정)이며 절감 헤드라인 금지 유지. Evidence 3건 추가(`implementationPrompt`·어댑터 템플릿·discipline 테스트). 386 tests(신규 2, RED 선실패 확인)·lint OK(56 files). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-07-30에 위 "프롬프트 형태 규율 + 어댑터 선적재 축소(unhobbling, 1.27.2)" 기능 등재분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 기능 서술과 근거(`src/task-prompts.js#symbol:implementationPrompt`·`templates/adapters/claude-code/CLAUDE.md`·`tests/agent-token-discipline.test.js`)가 현재 소스와 일치함을 확인했다(386 tests·lint OK). 이 재승인은 1.27.2 릴리스의 일부다.
 - 2026-07-31에 "에이전트 네이티브(MCP 서버)" 기능의 **노출 툴 목록을 정정했다**(문서 검토 중 발견, 코드 변경 없음). 이 항목은 노출 툴을 1.6 시점의 **10종**(validate/audit/next/status/doctor/stats/graph/explain/handoff/prompt)으로 나열하고 있었는데, `MCP_TOOLS.length`를 직접 실행해 확인한 실제 값은 **17종**이다 — 1.18 retrieval 4종·1.24 guided 2종·Gate 20 `review`(LIST만)가 추가된 뒤 이 한 줄이 갱신되지 않았다. 열거 대신 단일 소스(`src/mcp/tools.js#symbol:TOOL_DEFS`)를 함께 가리키도록 고쳐 같은 방식의 재발을 줄였다. 같은 stale 목록이 `domains/00_overview.md`에도 있어 함께 정정했다. 이 문서의 다른 서술은 이번 세션에 소스·실행으로 대조했고 부합했다(`--type` 검증 exit 3, `rulesPreset` 3종, `run.*` 6룰, `impact` diff 앵커, retrieval 4종, `review`의 blocked/error 거부, `import-memory` MCP 미노출). Review Notes가 6건이 되어 자체 규칙(최근 5건)에 맞게 가장 오래된 2026-07-27(야간) 항목을 `REVIEW_HISTORY.md`로 원문 그대로 옮기고 아카이브 건수를 47로 갱신했다. **같은 날 이어서** "monorepo profile" 기능에 CLI 계약 균일화를 반영했다(유지보수자 승인): `monorepo`만 `COMMAND_OPTION_RULES`·`COMMAND_HELP`에서 빠져 있던 것을 등록해 미지원 옵션이 exit 3으로 거부되게 하고 help 토픽을 신설했다 — **exit code 동작 변경**이다. 화이트리스트는 명령이 실제로 적용하는 옵션(`cwd`·`strict`·`agent`·`format`·`out`)에 맞췄고, 테스트로 `--strict`가 패키지별 severity를 실제로 승격함을 확인했다. 399 tests(신규 6, RED 3건 선실패 확인)·lint OK(58 files). 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
-
 ## Benchmark
 
 원문서: [BENCHMARK.md](BENCHMARK.md) — 4건(2026-07-22 → 2026-07-27), 2026-08-03 이전분.
@@ -169,7 +169,6 @@ reviewed_at: 2026-08-03
   미측정"을 프록시 하네스 한정으로 한정. (5) frontmatter·§Evidence에 새 근거 2건 등재. 새 수치는
   전부 원자료에서 전사했고 지어낸 값은 없다. 에이전트(Claude Code) 편집이라 `needs_review` 유지 —
   사람 검토 후 `verified` 승격 예정(허위 검토 메타 미기입).
-
 ## Domain Overview
 
 원문서: [00_overview.md](domains/00_overview.md) — 4건(2026-07-14 → 2026-07-16), 2026-08-03 이전분.
@@ -178,7 +177,6 @@ reviewed_at: 2026-08-03
 - 2026-07-14에 도메인 지도를 현행화했다: 누락됐던 Knowledge(`graph`/`stats`, 1.4)·Release(`release-notes`)·Agent-native(`mcp`, 1.6)를 추가하고, stale했던 "migrate --apply 안정판 차단" 서술을 Gate 8(해금, preview-first) 기준으로 정정했으며, `drift`(Gate 9)를 반영했다. 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-15에 1.7 CI/CD 도입을 반영했다: Release 도메인에 `release-notes --body-only`(GitHub Release 본문용, 민감정보 스캔·차단)를 추가하고, 컴포지트 validate Action·태그 트리거 Release 잡은 저장소/CI 표면임을 명시했다(Gate 12). 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)를 반영했다: 도메인 지도는 불변이며, Evidence의 `fixCommand` 포인터를 `src/commands/fix-migrate.js`로 갱신했다. 코드에 맞춰 문서를 수정한 뒤 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)를 거쳐 `verified`로 재승인했다.
-
 ## Examples
 
 원문서: [EXAMPLES.md](EXAMPLES.md) — 4건(2026-07-13 → 2026-07-23), 2026-08-03 이전분.
@@ -187,7 +185,6 @@ reviewed_at: 2026-08-03
 - 2026-07-16에 1.12.0 release-prep에서 `README.md`가 변경되어(감지 대상 행 추가) `evidence.stale`이 발생했다. 이 문서 내용은 무관하며 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
 - 2026-07-20에 1.14.3 release-prep에서 `src/cli.js`가 변경되어(bare 명령/`--help` 오리엔테이션 헤더 추가) `evidence.stale`이 발생했다. 이 문서의 명령 예시는 그대로 유효하며 내용은 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
 - 2026-07-23에 "스킬 생성 + 최초 보강(bootstrap)" 예시 섹션을 추가했다(`--agent codex`→`.agents/skills/`, `--agent claude`→`.claude/skills/`, `--skills`→모든 형식, `prompt --task bootstrap`). 예시 명령은 현재 CLI 표면과 일치한다. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
-
 ## Harness Governance Roadmap
 
 원문서: [HARNESS_GOVERNANCE_ROADMAP.md](HARNESS_GOVERNANCE_ROADMAP.md) — 6건(2026-07-31 → 2026-07-31), 2026-08-03 이전분.
@@ -198,7 +195,6 @@ reviewed_at: 2026-08-03
 - 2026-07-31: 이 문서는 아직 어떤 문서에서도 링크되지 않아 orphan에 들어간다. 다만 실측 결과 orphan 총계는 35건으로 변하지 않았다 — 이 문서의 `related`가 `BENCHMARK.md`에 inbound 링크를 만들어 그 문서를 orphan에서 빼냈기 때문이다. `index.md` 읽기 순서에 넣으려면 `verified` 문서를 편집해야 하므로 규칙상 `needs_review`로 강등된다 — 백로그 30번의 사람 결정 사항으로 남겼다.
 - 2026-07-31: 이 문서를 작성한 실행 자체가 계약의 빈틈 하나를 드러냈다. 이번 작업이 만든 finding은 0건인데 위키 전체에는 무관한 기존 경고가 1건 있어, 매니페스트의 검증 결과를 정직하게 적으면 `run.unvalidated`가 뜬다. Phase 3 범위에 반영했다.
 - 2026-07-31(백로그 17·18·19 측정): 게이트를 도입 저장소 4곳에 읽기 전용으로 예행하고(쓰기·커밋·체크아웃 0건), `needs_review` 감시 옵트인의 폭발 반경을 재고, 파일럿 3곳의 마찰 이력을 git 이력에서 조사했다. **Phase 0의 마지막 미충족 완료 조건("파일럿 초록 확인")이 이것으로 닫혔다.** 핵심 결과 네 가지: (1) 새 게이트는 4곳 전부 오늘 초록이지만 **roadmonitor의 초록은 무의미**하고(위키 33개가 전부 diff 안), 문서를 갱신하지 않은 실존 커밋 9건은 **전부 RED**다 — 즉 다음 PR부터 울리는 것이 정상이다. (2) **허브 파일 팬아웃**이 두 저장소에서 독립적으로 확인됐다(배럴 파일 1개 → 문서 10건) — 사람 결정 21번의 실질 선행 조건으로 올렸다. (3) `needs_review` 옵트인 추가분 65건이 **100% 릴리스 노트**이고 살아있는 문서는 0건 — `doc_type: release_notes` 면제를 기능의 일부로 함께 내보내면 3곳 전부 0이다. (4) 마찰 이력에서 세 패턴이 나왔고, 그중 **도입처 어댑터 동결을 도구가 영구히 탐지하지 못한다**는 사실에 코드 앵커(`scanAdapters`)를 붙였다. 신규 결함 6건(N-1~N-6)과 백로그 37~41번을 신설했다. 측정 한계를 그대로 남겼다: 백로그 16번은 여전히 미측정, 실존 커밋 RED 9건은 재구현 시뮬레이션이자 현재 앵커 기준 예측이며, 세 저장소 모두 히스토리가 정지해 정상 상태 추가분은 못 쟀다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
-
 ## Public API
 
 원문서: [PUBLIC_API.md](PUBLIC_API.md) — 34건(2026-07-14 → 2026-07-31), 2026-08-03 이전분.

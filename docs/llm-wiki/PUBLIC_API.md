@@ -2,14 +2,14 @@
 title: Public Api
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: public_api
 project: llm-wiki-governance
 last_updated: 2026-08-03
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: Dowon-Kim
+reviewed_by: Claude Code (delegated by Dowon-Kim)
 reviewed_at: 2026-08-03
 wiki_block_version: v1
 source_files:

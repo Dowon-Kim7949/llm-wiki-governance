@@ -3,14 +3,14 @@ title: Impact Measurement Baseline
 tags:
   - llm-wiki
   - benchmark
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: reference
 project: llm-wiki-governance
 last_updated: 2026-08-03
 author: ai-generated
 last_edited_by: Claude Code
-reviewed_by: Dowon-Kim
+reviewed_by: Claude Code (delegated by Dowon-Kim)
 reviewed_at: 2026-08-03
 wiki_block_version: v1
 source_files:

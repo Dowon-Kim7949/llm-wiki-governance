@@ -1,4 +1,5 @@
 {
   "type": "library",
-  "agents": ["codex", "claude"]
+  "agents": ["codex", "claude"],
+  "reviewer": "Claude Code (delegated by Dowon-Kim)"
 }

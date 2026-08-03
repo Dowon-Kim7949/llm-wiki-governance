@@ -57,8 +57,13 @@ before changing code or docs.
   18.18/20/22/24. Avoid OS-specific path handling; use `node:path`.
 - **No sensitive information** in docs, logs, reports, or prompts.
 - **LLM-WIKI discipline:**
-  - Docs created or edited by an LLM stay `needs_review`. Only a human reviewer
-    sets `verified`.
+  - Docs created or edited by an LLM are set to `needs_review` at edit time. In
+    **this** repository an agent then promotes them itself with
+    `review --approve-all --yes`, stamping the agent as `reviewed_by` (2026-08-03,
+    maintainer's decision — this repo is vibe-coded dogfood; see `AGENTS.md`
+    "Wiki discipline"). That is a local policy: the rule this package ships to
+    adopters still requires a human reviewer, and nothing outside
+    `docs/llm-wiki/` may seed `verified`.
   - If you change code or docs, update the related wiki docs and append an entry
     to [`docs/llm-wiki/log.md`](./docs/llm-wiki/log.md) (append-only).
 - **Bilingual docs.** `README`, `CHANGELOG`, `ROADMAP`, and these community

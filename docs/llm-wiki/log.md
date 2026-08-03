@@ -24,6 +24,42 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - policy: 이 저장소는 자기 문서를 스스로 승격한다 (유지보수자 결정)
+
+- status: needs_review → 같은 작업 안에서 에이전트 승격
+- actor: Claude Code
+- scope: policy, docs, config, tests
+- changed:
+  - `llm-wiki.config.json` (`reviewer` 키 추가 — `Claude Code (delegated by Dowon-Kim)`)
+  - `AGENTS.md` (필수 운영 규칙 + "Wiki discipline" — 절대 금지 → 범위 한정 정책, 계약 정본)
+  - `CLAUDE.md` (Required rules; 이 저장소 어댑터만, 템플릿은 불변)
+  - `.orca/agents/03-implement.md` (implement 역할의 금지 줄 → 승격 지시)
+  - `CONTRIBUTING.md` · `CONTRIBUTING.ko.md` (LLM-WIKI 규율 절)
+  - `docs/llm-wiki/index.md` (Status + Operating Rules; 선적재 문서라 가장 중요)
+  - `docs/llm-wiki/README.md` (Operating Rules)
+  - `docs/llm-wiki/GLOSSARY.md` (`status`·`verified` 정의 교정 + `human_verified` 용어 신설)
+  - `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` (Conventions에 정책 + 가드 기록; Review Notes 1건 아카이브 이전)
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (`Architecture Conventions` 44 → 45건)
+  - `tests/self-approval-policy.test.js` (신규 가드 2건)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+유지보수자가 **이 저장소에 대해서만** 문서 확인·승격·수정을 자동화하기로 결정했다. 근거는 국지적이다 — 이 저장소는 전체가 바이브코딩 산출물이자 제품의 dogfood이고, "사람이 문서를 큐레이션하는 코드베이스"를 전제한 규칙을 자기 자신에게 적용할 이유가 없다. 도입처로 나가는 규칙은 바뀌지 않는다.
+
+**결정 두 건과 그 대가.**
+
+1. **`reviewed_by`는 에이전트를 지목한다.** 이것이 이 변경의 핵심 설계 판단이다. `resolveReviewer`는 `--reviewer` > config `reviewer` > `gitUserName` 순이므로, 그냥 `review --approve`를 실행하면 에이전트가 한 일에 `Dowon-Kim`이 찍힌다 — 이 라인이 일주일간 고쳐 온 결함(N-10: 도구가 인쇄하는 텍스트가 자기 행위를 거짓으로 서술)과 **정확히 같은 형태**다. 그래서 config `reviewer`를 `Claude Code (delegated by Dowon-Kim)`으로 두었다: 코드 변경 0, 도입처 영향 0, 스탬프는 사람 검토를 주장하지 않는다. 사람이 자기 검토를 남길 때는 `--reviewer Dowon-Kim`이 config를 이긴다. **config 기본값을 에이전트로 둔 이유**는 위험한 방향이 에이전트→사람 사칭이고 에이전트 실행이 압도적으로 많을 것이기 때문이다.
+2. **드리프트는 소스 대조 없이 해소한다**(유지보수자 선택). 대가를 명시한다: `evidence.stale`·`impact`는 이 저장소에서 다시는 빨개지지 않으므로 **관측 도구가 아니게 된다.** 로드맵 J장의 오탐률·팬아웃 측정처럼 게이트 발화를 관측 대상으로 삼는 작업은 이제 다른 저장소를 써야 한다. 이 손실은 결정 21번의 근거 수집에 직접 영향을 준다.
+
+**규칙 문장 8곳을 전수 갱신했다.** `AGENTS.md`(2곳)·`CLAUDE.md`·`.orca/agents/03-implement.md`·`CONTRIBUTING.md`/`.ko.md`·`index.md`·`README.md`·`GLOSSARY.md`. **한 곳만 고치면 다음 세션이 다른 곳을 근거로 또 거절한다** — 이 라인에서 네 번 지시받고 네 번 거절한 근거가 `AGENTS.md` L47이었다. 계약 정본은 `AGENTS.md` "Wiki discipline"으로 못 박고 나머지는 그것을 가리킨다.
+
+**바뀌지 않은 것(경계).** `templates/adapters/*` 7종의 "Use `verified` only after human review."는 그대로다 — 도입처로 복사되는 문장이다. `templates/core/wiki-document.md`는 계속 `needs_review`를 씨앗으로 삼는다. `README.md`의 "`verified` is human-only in every command"도 그대로 두었다: 그 주장은 **명령 표면**에 대한 것이고(어떤 명령도 스스로 승격하지 않으며 명시적 `--approve`만이 스탬프한다) 여전히 참이다 — 바뀐 것은 누가 그 명령을 실행하느냐다. 제품 코드는 한 줄도 바꾸지 않았고 도구의 거부 조건(blocking·구조적 finding·`review.not_enriched`)은 안전 바닥으로 남는다.
+
+**신규 가드 `tests/self-approval-policy.test.js` 2건, 두 실패 모드 전부 RED 선확인.** (1) config `reviewer`가 없거나 git 신원과 같으면 실패 — 삭제하면 폴백이 되살아나 사람을 사칭하는데 다른 어떤 게이트도 이걸 못 본다(둘 다 파싱·검증·배포를 통과한다). (2) 어댑터 템플릿 7종이 human-review 문장을 잃으면 실패 — 미래의 에이전트가 이 저장소의 `CLAUDE.md`를 읽고 템플릿을 "동기화"해 제품의 중심 주장과 반대되는 것을 배포하는 경로를 막는다.
+
+부수로 `human_verified` tier의 이름-의미 불일치를 `GLOSSARY.md`에 용어로 신설해 기록했다: 정의가 "`verified` + reviewer 메타 존재"일 뿐 사람인지 검사하지 않으므로, 이 저장소의 그 수치는 에이전트 승인분을 포함한다. 코드 수정은 제품 규칙 변경이라 범위 밖으로 뒀다.
+
 ## 2026-08-03 - docs: Review Notes 5건 상한은 아무도 검사할 수 없는 규칙이었다
 
 - status: needs_review

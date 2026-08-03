@@ -6,10 +6,10 @@ tags:
 status: verified
 doc_type: glossary
 project: llm-wiki-governance
-last_updated: 2026-07-31
+last_updated: 2026-08-03
 author: cli-generated
 last_edited_by: Claude Code
-reviewed_by: Dowon-Kim
+reviewed_by: Claude Code (delegated by Dowon-Kim)
 reviewed_at: 2026-08-03
 wiki_block_version: v1
 source_files:
@@ -34,8 +34,9 @@ contains_sensitive_info: false
 ## Terms
 
 - **Frontmatter** — 각 wiki 문서 상단의 YAML 블록. 필수 필드/enum은 `src/frontmatter-schema.js`가 정의한다.
-- **status** — 문서 검토 상태. 허용값: `draft`, `needs_review`, `verified`, `deprecated`(`src/config.js` `VALID_STATUSES`). CLI/에이전트 산출물은 항상 `needs_review`.
-- **verified** — 사람 검토가 끝난 문서에만 부여. `--strict`에서는 `reviewed_by`/`reviewed_at`가 없으면 실패.
+- **status** — 문서 검토 상태. 허용값: `draft`, `needs_review`, `verified`, `deprecated`(`src/config.js` `VALID_STATUSES`). CLI/에이전트 **생성 시점** 산출물은 항상 `needs_review`(생성기에는 `verified` 경로가 없다).
+- **verified** — 검토가 끝난 문서에만 부여하며, 누가 검토했는지는 `reviewed_by`가 말한다. `--strict`에서는 `reviewed_by`/`reviewed_at`가 없으면 실패. 도구는 스스로 승격하지 않고 명시적 `review --approve`/`--approve-all --yes`만이 스탬프한다 — **누가 그 명령을 실행하는지는 저장소 정책이다.** 이 저장소는 2026-08-03부터 에이전트 승인을 허용하고 `reviewed_by`에 에이전트를 적는다([index.md](index.md) Status). 도입처 기본값은 사람 검토다.
+- **human_verified** (evidence tier) — `stats`가 계산하는 report-only 값이며 정의는 "`verified` + reviewer 메타 존재"다. **reviewer가 사람인지 검사하지 않으므로**, 이 저장소에서는 에이전트 승인분도 여기에 포함된다. 이름과 실제 의미가 어긋나 있고, 이 저장소의 수치를 인용할 때 그 사실을 함께 적어야 한다.
 - **source_files** — 문서 주장이 근거로 삼는 파일 목록(넓은 범위 근거).
 - **evidence** — 파일/라인/심볼/섹션/라우트 단위의 정밀 근거 참조. 예: `src/cli.js#symbol:main`, `file#L10-L20`, `file#route:/users`. 본문 `## Evidence` 섹션과 정렬되어야 한다.
 - **related** — 연결된 다른 wiki 문서 경로. 존재하지 않으면 `related.missing` 경고(P0-2에서 추가).
@@ -58,3 +59,4 @@ contains_sensitive_info: false
 - 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)에 따라 재검토했다: GLOSSARY는 광의의 `src/commands.js` 참조만 있어 내용은 불변이며, 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 재승인하고 review baseline을 갱신해 `evidence.stale`을 해소했다.
 - 2026-07-20에 1.14.1 노출-테스트 fix 배치에 따라 재검토했다: 용어 목록은 불변이며(광의의 `src/commands.js` 참조만), 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)로 재승인하고 review baseline을 갱신해 `evidence.stale`을 해소했다.
 - 2026-07-31에 `evidence.stale`(commands.js가 2026-07-28 이후 변경) 대응으로 재검토하다가 **실제 내용 오류**를 찾아 고쳤다: `llm-wiki.config.json` 항목이 인식 키를 `type`/`profiles`/`agents`/`strict` 4개로만 적고 있었으나 `src/config-file.js`는 11개(`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage` 추가)를 받는다. 키 목록을 소스와 맞추고 상세 계약 소유권을 PUBLIC_API Configuration 절로 넘겼으며, 거버넌스 핵심 어휘인 `rules`/`rulesPreset` 항목을 신설했다(프리셋=바닥값, 명시 `rules` 우선, `sensitive.*` 비토글, `--strict`와 무관). `related`에 PUBLIC_API를 추가했다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-08-03에 `status`·`verified` 정의를 이 저장소의 새 승격 정책에 맞게 고치고 **`human_verified` tier를 용어로 신설했다**(유지보수자 결정 반영). `verified` 항목이 "사람 검토가 끝난 문서에만 부여"라고 단정하고 있었는데, 이 저장소는 2026-08-03부터 에이전트 승인을 허용하므로 그 문장은 거짓이 됐다 — 도구가 스스로 승격하지 않는다는 사실(명시적 `--approve`만이 스탬프한다)과 **누가 그 명령을 실행하는지는 저장소 정책이라는 사실**을 분리해 적었다. `status` 항목의 "CLI/에이전트 산출물은 항상 `needs_review`"도 **생성 시점** 한정으로 좁혔다(생성기에 `verified` 경로가 없다는 것은 여전히 참이다). `human_verified`를 새로 적은 이유는 그 이름이 실제 계산과 어긋나기 때문이다 — 정의는 "`verified` + reviewer 메타 존재"일 뿐 사람인지 검사하지 않으므로, 이 저장소의 그 수치는 에이전트 승인분을 포함한다. 인용할 때 함께 적어야 한다. 에이전트(Claude Code) 편집이며 새 정책에 따라 같은 작업 안에서 승격했다 — `reviewed_by`는 에이전트다.

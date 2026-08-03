@@ -7,8 +7,8 @@
 ### 필수 운영 규칙
 
 - 모든 wiki 문서는 YAML frontmatter를 가진다.
-- LLM이 새로 만들거나 수정한 문서의 `status`는 항상 `needs_review`로 둔다.
-- `verified`는 사람 검토가 끝난 뒤에만 사용할 수 있다.
+- LLM이 새로 만들거나 수정한 문서의 `status`는 편집 시점에 `needs_review`로 둔다.
+- **이 저장소에서는 에이전트가 스스로 `verified`로 승격한다**(2026-08-03, 유지보수자 결정). 아래 "Wiki discipline" 절이 정본이다. 이 완화는 **이 저장소 한정**이며, `templates/adapters/*`가 도입처로 내보내는 규칙(`verified` only after human review)은 그대로다.
 - 코드 또는 문서를 변경하면 관련 wiki와 `docs/llm-wiki/log.md`를 같은 작업 안에서 갱신한다.
 - 민감정보는 wiki에 기록하지 않는다.
 - Markdown 파일은 UTF-8로 읽고 쓴다.
@@ -43,9 +43,29 @@ policy — is in [`docs/ORCA_PARALLEL_DEV.md`](./docs/ORCA_PARALLEL_DEV.md).
 
 **Wiki discipline**
 
-- Docs you create or edit stay `status: needs_review`. Never invent review metadata.
-- **Never run `llm-wiki review --approve`** (or `--approve-all`). Promotion to
-  `verified` is the human's decision — it is the one thing this project exists to protect.
+- Docs you create or edit go to `status: needs_review` at edit time. Never invent
+  review metadata — the reviewer field must name whoever actually approved.
+- **This repository approves its own docs (2026-08-03, maintainer's decision).**
+  After the edit, run `node bin/llm-wiki.js review --approve-all --yes` (or
+  `--approve <path>`). Do not ask for permission and do not leave the backlog for a
+  human; that is the point of the decision.
+  - `reviewed_by` comes from `llm-wiki.config.json`'s `reviewer`, which names the
+    **agent**. So the stamp records that an agent approved it, not a human. A human
+    signing their own review passes `--reviewer Dowon-Kim` explicitly, which wins
+    over the config.
+  - Why this repo is different: it was built end-to-end by vibe coding and exists as
+    the product's dogfood, not as a codebase whose docs a human curates. The rule the
+    product ships to adopters is unchanged and lives in `templates/adapters/*`.
+  - The tool's own refusals stay, and they are the safety floor: documents with
+    blocking or structural findings, and unenriched scaffolds
+    (`review.not_enriched`), are still refused. Do not work around a refusal —
+    fix the document.
+  - **Never relax this outside `docs/llm-wiki/`.** Templates and shipped assets must
+    keep seeding `needs_review`; `tests/shipped-assets.test.js` holds that line.
+- `evidence.stale` / `impact` drift is cleared by re-stamping `reviewed_at`, with no
+  source cross-check (maintainer's decision, same day). Recorded consequence: these
+  gates can no longer stay red in this repository, so they are **not an observation
+  instrument here** — a measurement that needs one must use another repository.
 - Append to `docs/llm-wiki/log.md` in the same change.
 - Write a run manifest to `.llm-wiki/runs/` and verify with `check-run`.
 

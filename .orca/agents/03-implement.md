@@ -32,10 +32,13 @@ report**. The code is the final fact; the plan is a hypothesis.
 - **Cross-platform.** `node:path`, UTF-8, no OS-specific path handling. CI runs
   Linux/Windows/macOS on Node 18.18/20/22/24.
 - Add or update tests for every behavior change, including negative cases.
-- Update the related wiki docs and keep them `status: needs_review`.
+- Update the related wiki docs, setting them `status: needs_review` at edit time.
 - Append to `docs/llm-wiki/log.md`.
 - Write the run manifest to `.llm-wiki/runs/`, then run `check-run`.
-- **Never run `llm-wiki review --approve`.**
+- **Then approve them:** `node bin/llm-wiki.js review --approve-all --yes`
+  (2026-08-03, maintainer's decision — this repo approves its own docs; `reviewed_by`
+  names the agent via config `reviewer`). See `AGENTS.md` "Wiki discipline". Never
+  extend this outside `docs/llm-wiki/`.
 - Never weaken validation, delete a test, or skip a case to get a green run.
 
 ## Verify

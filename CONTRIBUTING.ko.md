@@ -57,8 +57,12 @@ npm test             # node --test tests/*.test.js
   실행됩니다. OS 종속 경로 처리를 피하고 `node:path`를 사용하세요.
 - **민감정보 금지** — 문서, 로그, 리포트, 프롬프트에 민감정보를 넣지 않습니다.
 - **LLM-WIKI 규율:**
-  - LLM이 생성·수정한 문서는 `needs_review`로 유지합니다. `verified`는 사람
-    검토 후에만 설정합니다.
+  - LLM이 생성·수정한 문서는 편집 시점에 `needs_review`로 둡니다. **이** 저장소에서는
+    그 뒤 에이전트가 `review --approve-all --yes`로 스스로 승격하고 `reviewed_by`에
+    에이전트를 적습니다(2026-08-03 유지보수자 결정 — 이 저장소는 바이브코딩 dogfood이며,
+    계약 전문은 `AGENTS.md` "Wiki discipline"). 이는 저장소 한정 정책입니다: 이 패키지가
+    도입처로 내보내는 규칙은 여전히 사람 검토를 요구하고, `docs/llm-wiki/` 밖의 어떤
+    파일도 `verified`를 씨앗으로 삼을 수 없습니다.
   - 코드나 문서를 변경하면 관련 wiki 문서를 갱신하고
     [`docs/llm-wiki/log.md`](./docs/llm-wiki/log.md)에 항목을 추가합니다(append-only).
 - **영·국문 문서 쌍.** `README`, `CHANGELOG`, `ROADMAP` 및 이 커뮤니티 문서는
