@@ -24,6 +24,28 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - fix(후속): 커밋 후 `impact`가 2건 울렸고, 새 정책대로 해소했다
+
+- status: verified (에이전트 승격)
+- actor: Claude Code
+- scope: docs
+- changed:
+  - `docs/llm-wiki/profiles/library.md` · `docs/llm-wiki/project-profile.md` (강등 → 재승인, `reviewed_at` 재기준선)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+앞 항목을 커밋한 뒤 게이트를 다시 읽었더니 `impact --since origin/main --strict`가 **exit 1 / 2건**이었다(커밋 전에는 0 — `evidence.stale`·`impact`가 `git log`를 보므로 미커밋 소스 변경을 못 보는, 이 저장소에 이미 기록된 함정이다). 잡힌 문서는 `profiles/library.md`·`project-profile.md`이고 둘 다 `src/cli.js`를 인용한다.
+
+**내용 대조 결과 주장은 영향받지 않았다** — 이번 `src/cli.js` 변경은 help 산문뿐이고 두 문서가 그 파일에 대해 말하는 것(진입점·인자 파싱)은 그대로다. 새 정책은 소스 대조를 요구하지 않지만, 이번 건은 대조해도 재기준선이 맞는 경우다.
+
+**해소 경로에 주의할 점이 있다.** `review --approve`는 이미 `verified`인 문서를 거부하므로(기록된 결함) `reviewed_at`만 갱신하는 도구 경로가 없다. `reviewed_at`을 손으로 올리면 `reviewed_by: Dowon-Kim`이 그대로 남아 **사람이 오늘 검토했다고 주장**하게 된다. 그래서 `status`·`tags`만 `needs_review`로 내린 뒤(내용이 안 바뀌었으니 `last_updated`는 보존) `review --approve-all --yes`로 재승인해 `reviewed_by`가 에이전트로, `reviewed_at`이 오늘로 스탬프되게 했다. 같은 실행에서 앞 항목이 강등한 3건(`PUBLIC_API`·로드맵·`REVIEW_HISTORY`)도 함께 승격됐다.
+
+### 검증
+
+- 게이트 5종 전부 exit 0(`validate --strict`·`validate-frontmatter --strict`·`drift --strict`·`impact --since origin/main --strict`·`audit`), 451 tests·lint OK(64 files).
+- `verified` 51/52 · health 99 · `needs_review` 1(`log.md`, 구조적 제외).
+
 ## 2026-08-03 - fix: 도구는 키보드 앞에 누가 있는지 알 수 없다 (배포 텍스트 5곳 완화)
 
 - status: needs_review → 같은 작업 안에서 에이전트 승격

@@ -2,8 +2,8 @@
 title: Review History
 tags:
   - llm-wiki
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: review_history
 project: llm-wiki-governance
 last_updated: 2026-08-03

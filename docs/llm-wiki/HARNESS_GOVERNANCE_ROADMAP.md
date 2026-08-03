@@ -5,8 +5,8 @@ tags:
   - roadmap
   - harness
   - governance
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: roadmap
 project: llm-wiki-governance
 last_updated: 2026-08-03
