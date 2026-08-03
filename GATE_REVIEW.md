@@ -2132,12 +2132,20 @@ human found it rather than a prototype.
 ### A second data point for the baseline false-positive rate
 
 This batch's full diff fired `impact` on **11 verified documents**. Labelled by reading
-each one: **4 true positives / 7 noise (TP 36%)**. The four (ARCHITECTURE_CONVENTIONS,
-DOMAIN_FEATURES, PUBLIC_API, HARNESS_GOVERNANCE_ROADMAP) each held a present-tense false
-sentence; six of the seven cite `src/cli.js` or `src/commands.js` broadly and assert
-nothing that changed.
+each one: **5 true positives / 6 noise (TP 45%)**. The five (ARCHITECTURE_CONVENTIONS,
+DOMAIN_FEATURES, PUBLIC_API, HARNESS_GOVERNANCE_ROADMAP, domains/00_overview) each held a
+false or incomplete contract sentence; five of the six cite `src/cli.js` or
+`src/commands.js` broadly and assert nothing that changed.
 
-The seventh is the interesting one. `BENCHMARK.md` cites
+**The labeller was wrong once, in the direction of undercounting true positives.**
+`domains/00_overview.md` was first called noise because its `review --approve` sentence was
+already correct — but its `drift [--downgrade]` sentence omitted the same tag sync. N-4
+joined the two commands through one helper, so the contract had to appear in both places.
+Scanning a document for "the sentence this change is about" misses that; the random-30
+labelling needs a rule that walks **every** contract sentence in the document. Recorded
+next to the number, because a measurement whose labels can be wrong should say so.
+
+The sixth noise case is the mechanically interesting one. `BENCHMARK.md` cites
 `GATE_REVIEW.md#section:Impact Measurement Scope Decision` — a **section** anchor — and
 what changed is a different section of that file (this one). `scanReverseImpact` drops the
 locator and compares base paths, so the section never enters the decision. N-7 (line
@@ -2159,17 +2167,56 @@ still needs the random-30 labelling.
 Measured **after** committing, which is the only honest place to measure it: `evidence.stale`
 reads `git log`, so an uncommitted source change is invisible to it and both gates read 0
 before the commit. After: **`impact --since origin/main --strict` 7 findings / exit 1** and
-**`validate --strict` 6** — the documents labelled noise above. (`domains/00_overview.md`
-appears in `impact` but not in `validate`: its `reviewed_at` is 2026-08-03, so the date
-anchor covers it while the diff anchor does not. Another live instance of the drift/impact
-complementarity.)
+**`validate --strict` 6** — the documents labelled noise at that point, one of which
+(`domains/00_overview.md`) later turned out to be a true positive; see the follow-up below.
+(`00_overview` appeared in `impact` but not in `validate`: its `reviewed_at` is 2026-08-03,
+so the date anchor covered it while the diff anchor did not. Another live instance of the
+drift/impact complementarity.)
 
-Their content needs no change, so what remains is a `reviewed_at` re-baseline, which is a
-human review act (precedent `52aa90b`); `review --approve` refuses an already-verified
-document, so no tool path exists (a recorded open defect). A PR from this state turns CI
-red until the maintainer re-baselines. Five wiki documents were edited and all five kept
-`needs_review` pending human re-approval (`verified` 20/52 → 15/52, health 79 → 76). The
-agent did not run `review --approve`. Unreleased.
+For the six genuine noise cases the content needs no change, so what remains is a
+`reviewed_at` re-baseline, which is a human review act (precedent `52aa90b`);
+`review --approve` refuses an already-verified document, so no tool path exists (a recorded
+open defect).
+
+### Follow-up the same day: the approval sweep reached outside the wiki, and nothing could see it
+
+The maintainer restored the five downgraded documents to `verified`. The same edit also
+flipped four files **outside** `docs/llm-wiki` — `adapters/README.md`, `rules/README.md`,
+`templates/core/wiki-document.md`, `tests/fixtures/README.md` — each to `status: verified`
+with **no `reviewed_by`/`reviewed_at` at all**. That violates the frontmatter contract this
+product enforces on its users (`frontmatter.js:134`), and the full suite, `lint`,
+`validate --strict`, and `validate-frontmatter --strict` all stayed green, because the scan
+boundary is `docs/llm-wiki`.
+
+The heaviest one is `templates/core/wiki-document.md`: the template that shows an adopter
+what a new wiki document looks like, shipping (via `package.json` `files[]`) with
+`status: verified` — the opposite of this product's central rule. Not a functional
+regression: generation runs off `src/commands/doc-templates.js`, no source reads that
+template file, and the generator still emits `needs_review`. It is the same failure mode as
+N-10 itself — **shipped text saying something the product does not do.**
+
+New guard `tests/shipped-assets.test.js` (2 cases, confirmed RED against the flipped state
+before reverting): a template may never seed `verified`, and markdown outside the wiki scan
+that claims `verified` must carry the review metadata. Scope is the **scan boundary**, not
+the ship surface — so the unshipped `tests/fixtures/README.md` is covered too, while shipped
+offenders are labelled `[SHIPS to npm]`. The shipped directory list is read from
+`package.json` rather than hand-copied.
+
+Reverting the four exposed that the remaining problem was `reviewed_at`: the flip wrote
+`status` and `tags` only, so ARCHITECTURE_CONVENTIONS and PUBLIC_API became `verified` with
+`reviewed_at: 2026-07-31` — earlier than the day's source change, which manufactured two
+`evidence.stale` findings that did not exist while they were `needs_review` (gap 2:
+freshness applies to `verified` only). `validate --strict` went 6 → 8. With the maintainer's
+confirmation, `reviewed_at` was re-baselined to 2026-08-03 on the eight stale documents —
+that line and nothing else.
+
+### Verification (final)
+
+444 tests (442 + 2), `lint` OK (62 files), and for the first time in this line **all four
+gates green**: `validate --strict` 0, `validate-frontmatter` 0, `drift` 0,
+`impact --since origin/main --strict` **0 / exit 0**. `verified` 19/52 (37%), health 79,
+`stale_verified` 0. One document (`domains/00_overview.md`) is `needs_review` pending human
+re-approval. The agent did not run `review --approve`. Unreleased.
 
 ## Release Caveats
 

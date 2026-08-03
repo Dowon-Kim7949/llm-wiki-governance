@@ -24,6 +24,33 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-03 - fix(후속): 승인 일괄 편집이 위키 밖 4파일을 함께 뒤집었고, 게이트는 그것을 볼 수 없었다
+
+- status: needs_review
+- actor: Claude Code
+- scope: src(없음), tests, docs
+- changed:
+  - `tests/shipped-assets.test.js` (**신규** 2건, 뒤집힌 상태에서 RED 선확인)
+  - `adapters/README.md`·`rules/README.md`·`templates/core/wiki-document.md`·`tests/fixtures/README.md` (**되돌림** — `verified`→`needs_review` 원복)
+  - `docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,PUBLIC_API,BENCHMARK,EXAMPLES,GLOSSARY,index,profiles/library,project-profile}.md` (`reviewed_at`만 2026-08-03으로 재기준선 — 유지보수자 확인 근거)
+  - `docs/llm-wiki/domains/00_overview.md` (`drift` 서술의 누락 계약 보완; `verified`→`needs_review`)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (오탐률 라벨 4/7 → **5/6** 정정 + 방법론 주의)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+유지보수자가 앞 항목의 강등 5건을 `verified`로 되돌렸는데, 같은 편집이 **`docs/llm-wiki/` 밖 4파일**(`adapters/README.md`·`rules/README.md`·`templates/core/wiki-document.md`·`tests/fixtures/README.md`)도 함께 뒤집었다. 네 파일 모두 **`reviewed_by`/`reviewed_at`이 아예 없는 채 `status: verified`** 였다 — 이 제품이 사용자에게 강제하는 frontmatter 계약(`frontmatter.js:134`) 위반인데, **스캔 범위가 `docs/llm-wiki`라서 어떤 검증 명령도 볼 수 없었다.** 442 tests·lint·`validate --strict`·`validate-frontmatter --strict` 전부 초록이었다.
+
+가장 무거운 것은 `templates/core/wiki-document.md`다 — **새 문서가 어떤 모양인지 보여주는 템플릿이 `status: verified`로 배포된다**(`templates`·`adapters`·`rules`는 `package.json` `files[]`에 있다). 기능 회귀는 아니다: 런타임 생성기는 `src/commands/doc-templates.js`이고 어떤 소스도 이 템플릿 파일을 읽지 않으며 생성기는 여전히 `needs_review`를 낸다. **배포되는 예시가 제품의 중심 규칙과 반대로 적혀 있던 것**이고, 이는 N-10(배포되는 텍스트가 거짓)과 같은 부류다.
+
+**신규 가드 `tests/shipped-assets.test.js` 2건**을 먼저 뒤집힌 상태에 대해 RED로 확인한 뒤 되돌렸다. 불변식 둘: (1) 템플릿은 `verified`를 씨앗으로 삼을 수 없다 — 생성 시점에 "verified는 사람의 결정"이 성립해야 한다. (2) 위키 스캔 밖 markdown이 `verified`를 주장하면 `reviewed_by`/`reviewed_at`을 갖춰야 한다. 범위를 "배포 대상"이 아니라 **"스캔 경계 밖 전부"**로 잡았다(그래서 배포되지 않는 `tests/fixtures/README.md`도 잡힌다) — 공백은 배포 여부가 아니라 스캔 경계이기 때문이며, 배포되는 항목은 메시지에 `[SHIPS to npm]`으로 표시한다. 배포 디렉터리 목록은 `package.json` `files[]`에서 읽어 손으로 베끼지 않는다.
+
+**되돌린 뒤 남은 문제는 되돌리기가 아니라 `reviewed_at`이었다.** 뒤집기는 `status`·`tags` 2줄만 바꿨고 `reviewed_at`은 그대로여서, `ARCHITECTURE_CONVENTIONS.md`·`PUBLIC_API.md`가 **`reviewed_at: 2026-07-31`인 채 `verified`** 가 됐다 — 오늘 소스 변경보다 이전이라 `needs_review`였을 때는 없던 `evidence.stale`이 새로 생겼다(신선도가 `verified`에만 적용되는 공백 2). `validate --strict`가 6 → **8**로 늘었다. 유지보수자 확인을 받아 8문서의 `reviewed_at`만 2026-08-03으로 재기준선했다(선례 `52aa90b`; `status`·본문·`last_updated`·`source_files`/`evidence` 불변).
+
+**그리고 `impact`의 마지막 1건이 내 오분류를 드러냈다.** `domains/00_overview.md`를 노이즈로 판정한 근거는 "`review --approve` 서술이 이미 정확하다"였는데, **같은 문서의 `drift [--downgrade]` 서술이 같은 `tags` 동기화를 빠뜨린 채였다.** N-4가 두 명령을 한 helper로 묶었으므로 계약도 양쪽에 있어야 했다 — 게이트가 옳았고 라벨러가 틀렸다. 보완 후 **오탐률 라벨을 4/7(36%) → 5/6(45%)로 정정**했고, 무작위 30건 라벨링은 "변경과 관련된 문장"이 아니라 **문서의 계약 문장 전수**를 훑는 규칙으로 해야 한다는 주의를 로드맵에 남겼다.
+
+**게이트 4종 전부 초록이다**(이 라인에서 처음): 444 tests(신규 2)·lint OK(62 files)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0·**`impact --since origin/main --strict` 0 / exit 0**. `verified` **19/52(37%)**, health 79, `stale_verified` 0. `00_overview.md` 1건만 사람 재승인 대기이며 **`review --approve`는 이번에도 실행하지 않았다.**
+
 ## 2026-08-03 - fix: 명령이 자기 쓰기 범위를 거짓으로 말하고 있었다 (N-10)
 
 - status: needs_review
