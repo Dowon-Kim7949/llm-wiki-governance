@@ -941,7 +941,51 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 1. **표본 편중**: 도입처 층은 전수지만 n=19이고, 우리 층은 121건 중 11건입니다. 도입처의 낮은 n은 우연이 아니라 **그들의 위키가 기준선 시점에 `verified`가 거의 없었기 때문**이며, 이 사실 자체가 "도입처에서 게이트가 실제로 발화한 역사는 짧다"는 별개의 정보입니다.
 2. **커밋 단위 ≠ PR 단위**(기존 항목 2번 그대로).
 3. **해소 비용**(기존 항목 4번 그대로) — 이번에도 재지 않았습니다.
-4. 라벨러 1명(에이전트)의 판정이며 사람 교차검증이 없습니다. **직전 배치에서 내 라벨이 실제로 한 번 틀렸고**(`00_overview`를 noise로 판정 → 실제 TP) 오류 방향은 TP 과소 계상이었습니다. 이번 라벨링에서는 그 교훈을 규칙으로 적용했습니다 — **"변경과 관련된 문장"이 아니라 문서의 계약 문장 전수를 훑고, 판정이 갈리는 4건은 문서 원문을 직접 열어 확인**했습니다.
+4. 라벨러 1명(에이전트)의 판정이며 사람 교차검증이 없습니다. **직전 배치에서 내 라벨이 실제로 한 번 틀렸고**(`00_overview`를 noise로 판정 → 실제 TP) 오류 방향은 TP 과소 계상이었습니다. 이번 라벨링에서는 그 교훈을 규칙으로 적용했습니다 — **"변경과 관련된 문장"이 아니라 문서의 계약 문장 전수를 훑고, 판정이 갈리는 4건은 문서 원문을 직접 열어 확인**했습니다. 교차검증이 가능하도록 30건 전체를 아래에 남깁니다.
+
+##### 라벨 원본 30건 (사람 교차검증용)
+
+각 행은 `git show <sha>:<doc>`과 `git diff <sha>^ <sha> -- <cited>`로 그대로 재현됩니다.
+
+**도입처 3곳 — 전수 19건** (TP 4 / borderline 9 / noise 6)
+
+| # | repo | sha | 문서 | 인용 소스(변경분) | 판정 | 근거 |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 1 | roadmonitor | `2a2caec0` | `decisions/ADR-0001` | `RMMonitoringView.vue`, `RMMonitoringPresenter.vue` | borderline | ADR 주장(View가 API/캐시 소유)은 불변, 본문 라인 근거 `:245`/`:268`이 ~20줄 밀림 |
+| 2 | roadmonitor | `2a2caec0` | `domains/03_surroundings` | `RMSurroundingView.vue` | borderline | 상수 추출(값 5 동일), `:211`이 +1 밀림 |
+| 3 | roadmonitor | `2a2caec0` | `domains/06_scanfileupload` | `utils/common/index.ts` | **noise** | 삽입 위치 L410 > 문서 앵커 `:387` → 밀림 0, 추가된 상수는 업로드와 무관 |
+| 4 | roadmonitor | `2a2caec0` | `domains/08_rpci_map` | `RMap.vue` | borderline | `:367`·`:74-94` 밀림, 주장은 불변 |
+| 5 | roadmonitor | `2a2caec0` | `domains/09_common_layout_menu` | `RMap.vue` | **TP** | **props 열거**에 신규 `pointData` 누락(`:27-49` 범위도 어긋남) |
+| 6 | roadmonitor | `2a2caec0` | `E2E_WORKFLOWS` | `RMMonitoringView.vue` | borderline | `:896`·`:893-931` 밀림 |
+| 7 | roadmonitor | `8ea11269` | `decisions/ADR-0001` | `RMMonitoringView.vue` | borderline | 순수 삽입 +9 → `:245`/`:268` 밀림 |
+| 8 | roadmonitor | `8ea11269` | `domains/02_monitoring` | `RMMonitoringView.vue` | borderline | 문서가 `getCoverages` **호출부 `:193`**을 지목 — 그 위치가 밀림. 파라미터를 열거하지 않아 주장 무효화는 아님 |
+| 9 | roadmonitor | `8ea11269` | `E2E_WORKFLOWS` | `RMMonitoringView.vue` | borderline | `:896`·`:893-931` +9 밀림 |
+| 10 | roadmonitor | `9052ad39` | `domains/01_auth` | `stores/uiStore.ts` | borderline | `:47`·`:47-57`은 삽입점(L77) 위라 불변, `:135`만 +7 밀림 |
+| 11 | roadmonitor | `9052ad39` | `domains/03_surroundings` | `stores/uiStore.ts` | **noise** | 본문 주장 0건(frontmatter 인용만) |
+| 12 | roadmonitor | `9052ad39` | `domains/04_coverage` | `stores/uiStore.ts` | **noise** | 본문 주장 0건 |
+| 13 | roadmonitor | `9052ad39` | `domains/08_rpci_map` | `rPCI/rPCIAnalyzeMapView.vue` | borderline | 페이징 도입(143줄+)으로 `:323`·`:346-351` 대폭 밀림. "geometry+distress 이중 fetch"는 여전히 참이라 무효화는 아님 |
+| 14 | roadmonitor | `9052ad39` | `domains/10_updates_error` | `stores/uiStore.ts` | **noise** | `uiStore.ts:5` 앵커 밀림 0, 신규 `setLoadingText`는 additive이고 문서가 store API를 열거하지 않음 |
+| 15 | roadmonitor | `a524e1af` | `domains/02_monitoring` | `RMMonitoringView.vue`, `RMMonitoringPresenter.vue` | **TP** | **Presenter emits 열거 11개**에 신규 `device-selected` 누락(`:21-39`) |
+| 16 | roadmonitor | `a524e1af` | `domains/09_common_layout_menu` | `menu/RSearchDrawerContainer.vue` | **TP** | "**14 emits**(`:24-41`)" — **개수가 틀림**(15가 됨). 가장 강한 형태 |
+| 17 | roadmonitor | `a524e1af` | `E2E_WORKFLOWS` | `RMMonitoringView.vue` | **TP** | `onMounted` 단계 열거에 장비 목록 로딩 누락. **유지보수자가 이후 그 절을 실제로 추가**(뒷 rev에 `getDevicesList, :896`) → 독립 확인 |
+| 18 | sinkhole | `284667ca` | `DOMAIN_FEATURES` | `RSA/RsaAnalysisView.vue` | **noise** | 본문 주장 0건, 변경은 `limit 1000→50000` 1줄 |
+| 19 | sinkhole | `284667ca` | `E2E_WORKFLOWS` | `RSA/RsaAnalysisView.vue` | **noise** | 앵커가 `#L287-L318`인데 변경은 L228 1:1 치환 → 범위 밖 + 밀림 0. **완화안 (a)가 정확히 지웠어야 할 유형** |
+
+**우리 저장소 — 121건 중 11건 무작위** (TP 4 / borderline **0** / noise 7). borderline이 0인 이유는 앵커가 전부 `#symbol:` 또는 광역 경로이기 때문입니다.
+
+| # | sha | 문서 | 인용 소스(변경분) | 판정 | 근거 |
+| ---: | --- | --- | --- | --- | --- |
+| 20 | `18dafd06` | `DOMAIN_FEATURES` | `src/commands.js` | **TP** | adapter 심볼 이동(모듈 분리) → 이동 심볼 evidence 포인터 어긋남. v1.11.1 릴리스 노트의 doc-sync 기록과 일치 |
+| 21 | `d732de02` | `index.md` | `package.json` | **noise** | 버전 범프 + 스크립트 1줄. 위키가 version-agnostic이라 주장 0건 |
+| 22 | `d4816c35` | `GLOSSARY` | `src/commands.js` | **noise** | 광의 참조만. 유지보수자가 같은 형상을 두 번 "내용 불변"으로 판정한 기록 있음 |
+| 23 | `ca5122c8` | `DOMAIN_FEATURES` | `commands.js`·`cli.js`·`index.js`·`findings.js` | **TP** | **신규 명령 `import-memory`가 기능 카탈로그에 없음**(이후 실제로 등재됨) |
+| 24 | `cdd93deb` | `PUBLIC_API` | `src/detector.js` | **TP** | `--type` **열거**에 `infra` 누락(`mobile`도 이미 누락 상태였음) |
+| 25 | `9b9d7ca7` | `GLOSSARY` | `src/commands.js` | **noise** | 동작 보존 리팩터, 본문 주장 0건 |
+| 26 | `0bf09ccf` | `domains/00_overview` | `commands.js`·`fix-migrate.js` | **noise** | `ready` 리네임에 대해 **유지보수자가 "공개 표면 불변"으로 이미 판정**(내용 불변, reviewed_at만 재기준) |
+| 27 | `34822469` | `ARCHITECTURE_CONVENTIONS` | `src/commands.js` | **TP** | Module Layout 문서 + 이동 심볼 앵커. v1.11.1 doc-sync 기록과 일치 |
+| 28 | `cdd93deb` | `VISIBILITY` | `src/config.js` | **noise** | 인용 심볼은 `VALID_VISIBILITIES`인데 바뀐 건 `PROFILE_DOCS.infra`. **유지보수자가 `PROFILE_DOCS.mobile` 때 같은 판정을 Review Note에 적어 둠 → 사람 판정과 일치** |
+| 29 | `3a396f1c` | `domains/00_overview` | `src/commands.js` | **noise** | 이 커밋이 옮긴 것은 `scan*` 계열이고 이 문서의 4개 심볼 앵커는 전부 그대로 해소됨 |
+| 30 | `6fa579df` | `GLOSSARY` | `src/commands.js` | **noise** | 광의 참조만 |
 
 ---
 
