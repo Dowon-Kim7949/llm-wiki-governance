@@ -5,15 +5,15 @@ tags:
   - roadmap
   - harness
   - governance
-  - needs-review
-status: needs_review
+  - verified
+status: verified
 doc_type: roadmap
 project: llm-wiki-governance
 last_updated: 2026-07-31
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-31
+reviewed_at: 2026-08-03
 wiki_block_version: v1
 source_files:
   - package.json
