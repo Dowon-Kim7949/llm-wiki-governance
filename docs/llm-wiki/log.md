@@ -24,6 +24,89 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-04 - feat: 릴리스마다 발화하던 게이트를 매니페스트 버전 한 줄에서 떼어냈다 (N-13, 결정 c)
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (유지보수자 결정: 로드맵 45번 N-13의 선택지 A/B/C 중 **(c)**)
+- scope: src, tests, docs, templates
+- changed:
+  - `src/git.js` — 신규 `fileAtRef(cwd, ref, relPath)`: 특정 ref 시점의 파일 내용. 실패는
+    `null`(모른다)이며 "빈 파일"이 아니다(`git show`가 잘못된 ref와 없는 경로에 같은 128을 낸다)
+  - `src/commands.js` — 신규 `versionOnlyManifestChanges`, `impactCommand`가
+    `scanReverseImpact` 호출 전에 적용. 요약에 `anchoring_files` 추가, JSON에 additive
+    `versionOnlyExcluded[]` 추가, Caveats에 제외 규칙 1줄
+  - `src/commands/scans.js`(주석) · `src/cli.js`(`help impact`) · `src/commands/findings.js`
+    (규칙 설명) · `src/i18n.js`(한국어 설명) — "File-level in v1"을 내용 기준 카브아웃 1건이
+    있는 file-level로 정정
+  - `tests/impact-package-version-only.test.js` — 신규 9건(RED 선확인: 6 실패 / 3은 보수적
+    폴백이라 원래 통과)
+  - `docs/OPERATIONS.md` · `templates/github-actions/llm-wiki-validate.yml` ·
+    `templates/git-hooks/pre-commit` — **1.28.0 이후 이미 거짓이던** "이 규칙은 warning이고
+    `--strict`가 있어야 막는다" 문장 3곳 교정
+  - `README.md` · `README.ko.md` — `impact` 행 + 드리프트 절에 제외 규칙
+  - `GATE_REVIEW.md` — "Version-Only Manifest Scope Decision" 신규
+  - `docs/llm-wiki/` — `PUBLIC_API` · `ARCHITECTURE_CONVENTIONS` · `DOMAIN_FEATURES` ·
+    `domains/00_overview` · `EXAMPLES` · `index` · `HARNESS_GOVERNANCE_ROADMAP`(45번 종결), `log`
+
+### 내용
+
+- **문제**: 릴리스 커밋은 정의상 `package.json`을 바꾸고, 이 저장소의 비면제 `verified` 문서
+  18건 중 **10건**이 그 파일을 인용한다. 결정 21로 규칙이 error가 된 뒤부터 **매 릴리스가
+  조치 불가능한 finding을 만들어냈다.** 1.28.0에서는 커밋 전에 예측해 대상 문서를 같은 커밋에
+  담아 통과시켰다 — 비용이 사라진 게 아니라 앞으로 옮겨간 것이었다.
+- **조치**: `version` 값만 바뀐 `package.json`은 `changed_files`에는 그대로 세면서 앵커 대조
+  집합에서만 뺀다. 양쪽을 `JSON.parse`하고 `version`을 제외한 나머지를 `isDeepStrictEqual`로
+  비교하므로 키 순서·공백은 영향이 없다. **증명하지 못하면 제외하지 않는다**: 다른 키 변경,
+  `version` 필드 추가·삭제, 한쪽 파싱 실패, 기준 blob 없음(신규·미추적·git 실패), 작업트리
+  파일 삭제는 전부 그대로 센다.
+- **경계**: 필터를 공유 프리미티브 `changedFiles`가 아니라 `impactCommand`에 두었다. 프리미티브를
+  좁히면 `validate --changed`의 범위와 `prepare`의 작업트리 힌트가 조용히 함께 좁아진다.
+  `scanReverseImpact`도 host가 될 수 없다 — `(cwd, changedSet)`만 받아 `--since` ref를 모른다.
+  date-앵커 `evidence.stale`은 무엇이 바뀌었는지가 아니라 언제 바뀌었는지를 보므로 무접촉이다.
+- **숫자를 정정했다.** 로드맵 45번의 "11건"은 릴리스가 만지는 버전 담지 파일 8종 기준일 때만
+  맞다. 실제 `88bf8cc`의 impacted는 **0**(위키 16건이 같은 change set에 있어 자기제외),
+  위키 갱신을 뺀 반사실은 **14**, `package.json` 단독은 **10**이다. (c)의 효과는
+  매니페스트 단독 10 → **0**, 버전 담지 8종 11 → **4**, `src/cli.js`까지 바뀌는 실제 릴리스
+  커밋 14 → **10**이다. **0이 되지 않으며 그렇게 주장하지 않는다** — 남는 문서들은 내용이 실제로
+  바뀐 `README.md`·`ROADMAP.md`·action.yml을 인용하므로 진짜 양성에 가깝다.
+- **기각**: (b) config 완화는 매니페스트만이 아니라 모든 소스 변경의 차단력을 없앤다(1.28.0에서
+  게이트가 잡은 진짜 1건도 묻혔을 것). (a) 매 릴리스 재검토는 11건 중 10건이 "불변" 노트가
+  되는데 Review Notes 5건 상한 때문에 릴리스마다 아카이브 회전을 강제하고 게이트를 고무도장으로
+  만든다.
+- **N-7은 값싼 후속이 아니다**(이 저장소 자기 기록의 이전 주장 정정). `#symbol:`은 AST 해석기가
+  아니라 존재 여부 바닥선이고 `#section:`은 헤딩 존재 확인뿐이라 심볼의 라인 범위를 모른다.
+  대상 문서들의 정밀 앵커는 전부 symbol/section이고 line 로케이터가 없어 **해소 0건**이다.
+
+### 게이트 팬아웃 처리 — 이번 커밋 자신이 N-13의 사례가 됐다
+
+- 커밋 전 `impact`(작업트리)가 **verified 7건**을 지목했다: `BENCHMARK`(←`GATE_REVIEW.md`) ·
+  `GLOSSARY`(←`src/commands.js`) · `profiles/library`·`project-profile`(←`src/cli.js`) ·
+  `README`(←`README.md`) · `RELEASE_FLOW`(←`templates/github-actions/llm-wiki-validate.yml`) ·
+  `REVIEW_HISTORY`(←이번에 편집한 위키 6건). 전부 대조했고 **거짓이 된 문장은 없었다** —
+  `GLOSSARY`·`RELEASE_FLOW`는 규칙 severity·`--strict` 계약 문장을 본문에 갖고 있지 않고,
+  `project-profile`의 정밀 앵커 `src/cli.js#symbol:main`도 무변경이다(바뀐 것은 `COMMAND_HELP`).
+- 해소는 이 저장소의 문서화된 경로(`status` 강등 → `review --approve-all --yes`의 `reviewed_at`
+  재스탬프)로 했고 **Review Note는 추가하지 않았다.** 7건 전부 "불변" 노트가 될 것이고, 그것은
+  방금 (a)를 기각한 이유 자체다(문서당 5건 상한 → 릴리스마다 아카이브 회전 → 고무도장).
+  재검토 근거는 문서마다 흩뿌리지 않고 이 항목 하나에 남긴다. 재기준선 커밋의 순 diff는
+  `reviewed_at`뿐이다 — 본문이 안 바뀐 문서의 `last_updated`는 **일부러 건드리지 않았다.**
+- 같은 배치에서 1.28.0 배포가 남긴 `evidence.stale` 4건(`RELEASE_FLOW`·`VERSIONING`·
+  `templates/DECISION_LOG`·`templates/TASK_PROMPT`, 전부 `package.json` 기준)도 함께 재기준선을
+  시도했다. **앞의 2건은 해소됐고 뒤의 2건은 해소하지 못했다** — 신규 결함 **N-14**(로드맵 46번):
+  `review`는 `listWikiContentDocs`(`/templates/` 제외)를 쓰고 `validate`/`impact`/`drift`는
+  `listTargetMarkdown`(전체 포함)을 써서, 이 2건은 **게이트가 지목할 수는 있지만 `review`로는
+  승격도 재스탬프도 불가능하다.** 강등해 보니 승격 목록에 나타나지 않고 `needs_review_remaining: 0`
+  으로 조용히 보고돼 문서가 `needs_review`에 갇혔고, `git checkout`으로 원상복구했다.
+  두 문서는 `verified` + 미해소 `evidence.stale`이라는 **이번 배치 시작 시점 상태 그대로**다.
+
+### 검증
+
+- `node --test tests/*.test.js` → **501 pass / 0 fail / 0 skipped**(직전 492). 신규 9건은
+  구현 전 RED 확인(6 실패).
+- `node scripts/lint-syntax.mjs` → OK(71 files).
+- `validate --strict` · `validate-frontmatter` · `impact --since HEAD~1 --strict` · `drift` ·
+  `check-run` — 커밋 후 재실행 결과를 같은 배치에서 확인.
+
 ## 2026-08-03 - release: 1.28.0 준비 (동작 파괴 변경을 MINOR로 — 유지보수자 결정)
 
 - status: verified (에이전트 승격)

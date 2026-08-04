@@ -9,11 +9,11 @@ tags:
 status: verified
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-08-03
+last_updated: 2026-08-04
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-03
+reviewed_at: 2026-08-04
 wiki_block_version: v1
 source_files:
   - package.json
@@ -1626,6 +1626,59 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     **(c)** **version 필드만 바뀐 `package.json`을 diff 대상에서 제외**하는 제품 변경(가장 좁고
     일반적이지만 "필드 단위 diff"는 현재 file-level 계약을 넘어섭니다).
     오늘은 (a)로 처리했고 **어느 것도 채택하지 않았습니다** — 유지보수자 결정 대상입니다.
+
+    **2026-08-04 종결: 유지보수자가 (c)를 골랐고 출하했습니다.** `impactCommand`가
+    `scanReverseImpact`를 부르기 전에 `version` 값만 바뀐 `package.json`을 change set에서
+    빼고(새 프리미티브 `src/git.js#symbol:fileAtRef`로 기준 내용을 읽어 `version`을 제외한
+    나머지를 deep-equal 비교), `changed_files`(무엇이 움직였는가)와 `anchoring_files`(무엇을
+    대조했는가)를 따로 인쇄하며 JSON에 `versionOnlyExcluded[]`를 additive로 싣습니다.
+    범위 결정은 `GATE_REVIEW.md`의 "Version-Only Manifest Scope Decision", 테스트는
+    `tests/impact-package-version-only.test.js`(9건, RED 선확인)입니다.
+
+    **위 11건이라는 숫자는 재측정에서 정정됐습니다.** 이 항목이 "11건"이라고 적은 것은
+    특정 정의(릴리스가 만지는 버전 담지 파일 8종: `package.json`·CHANGELOG 2종·README 2종·
+    ROADMAP 2종·action.yml) 기준일 때만 맞습니다. 실제 `88bf8cc` 커밋의 impacted는 **0**이었고
+    (위키 문서 16건이 같은 change set에 들어 있어 자기제외에 걸렸습니다), 위키 갱신을 뺀
+    반사실은 **14**, `package.json` 단독 diff는 **10**입니다. 비면제 `verified` 18건 중
+    `package.json`을 인용하는 것은 **10건**입니다.
+    (c)의 효과도 정직하게: `package.json` 단독이면 10 → **0**, 버전 담지 8종이면 11 → **4**,
+    `src/cli.js`까지 바뀌는 실제 릴리스 커밋이면 14 → **10**입니다. 남는 문서들은 내용이 실제로
+    바뀐 `README.md`·`ROADMAP.md`·action.yml을 인용하므로 노이즈가 아니라 진짜 양성에 가깝습니다.
+
+    **함께 기각한 것**: (b) config 완화는 매니페스트만이 아니라 모든 소스 변경의 차단력을
+    없애고(1.28.0에서 게이트가 실제로 잡은 진짜 1건 `VERSIONING.md`도 묻혔을 것), (a)는 11건 중
+    10건이 "불변" 노트가 되는데 Review Notes가 문서당 5건 상한이라 릴리스마다 아카이브 회전을
+    강제하고 게이트를 고무도장으로 만듭니다.
+
+    **N-7은 이 항목의 값싼 후속이 아닙니다**(2026-08-04 검증). `#symbol:`은 AST 해석기가 아니라
+    존재 여부 바닥선이고 `#section:`도 헤딩 존재 확인뿐이라, 심볼이 차지하는 라인 범위를 몰라
+    "이 심볼이 이번 diff에서 바뀌었나"를 답할 수 없습니다. 그리고 이 fan-out 대상 문서들이 가진
+    정밀 앵커는 전부 `#symbol:`/`#section:`이고 line 로케이터는 하나도 없어, N-7을 그 형태로
+    구현하면 **해소되는 건 0건**입니다.
+
+### N-13 처리 중 발견 (2026-08-04)
+
+46. **N-14 `review`가 볼 수 없는 문서를 게이트는 지목한다 — 드리프트 해소 경로가 구조적으로 없다**
+    — N-13 배치에서 `evidence.stale`이 지목한 문서 4건을 이 저장소의 문서화된 방식(`status`를
+    내렸다가 `review --approve-all --yes`로 `reviewed_at` 재스탬프)으로 재기준선 하려다 실측했습니다.
+    `docs/llm-wiki/templates/DECISION_LOG.template.md`·`TASK_PROMPT.template.md` 2건은
+    **승격 목록에 나타나지 않고 `needs_review_remaining: 0`으로 보고됩니다** — 즉 내려놓으면
+    아무것도 되돌려 주지 않습니다(이번엔 `git checkout`으로 복구했습니다).
+    원인은 문서 열거자가 둘로 갈라져 있는 것입니다: `reviewCommand`는 `loadContentDocs`
+    → `listWikiContentDocs`(`src/commands/wiki-files.js:19`, `/templates/` **제외**)를 쓰고,
+    `validate`·`impact`·`drift`는 `listTargetMarkdown`(같은 파일 `:10`, `docs/llm-wiki/`
+    **전체 포함**)을 씁니다. 결과: 이 2건은 게이트에 걸릴 수는 있으나 `review`로는 승격도
+    재스탬프도 불가능하고, 그래서 두 문서의 `evidence.stale`은 **해소할 수 있는 경로가 없습니다**
+    (현재도 미해소로 남아 있고, 이번 배치에서 고치지 않았습니다).
+    도입처에도 같은 함정이 있습니다: `docs/llm-wiki/templates/` 아래 문서를 두는 저장소는
+    `review`로 다룰 수 없는 문서를 갖게 되면서 그 사실을 어디서도 듣지 못합니다.
+    선택지: **(a)** `review`도 `listTargetMarkdown`을 쓰게 통일(템플릿 문서가 승격 대상이 되는
+    것이 의도인지 결정 필요), **(b)** `validate`/`impact`/`drift`가 템플릿 문서를 최신성 검사에서
+    빼서 열거자 경계를 반대 방향으로 맞춤, **(c)** 현 동작을 의도로 못 박고 `review`가 "이 문서는
+    이 명령의 범위 밖"이라고 **말하게** 만듦(지금은 침묵한다).
+    권고는 **(c) + (b)**입니다 — 템플릿은 도입처가 복사해 쓰는 뼈대이므로 승격 대상이 아니라는
+    현 경계가 옳아 보이고, 그렇다면 최신성 게이트도 그것을 지목해선 안 됩니다. 다만 어느 쪽이든
+    **열거자가 둘이라는 사실 자체가 결함**이라 결정이 필요합니다.
 
 ### 사람의 결정이 필요함
 

@@ -1,6 +1,7 @@
 import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
 import { detectProject, detectWorkspaces } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
@@ -13,7 +14,7 @@ import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
 import { buildTaskPrompt, evidenceFocus, initialEnrichmentWorkflow } from "./task-prompts.js";
 import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
-import { fileChangedSince, lineRangeChangedSince, changedFiles, gitUserName, isPathIgnored, trackedPaths, modifiedTrackedFiles } from "./git.js";
+import { fileChangedSince, fileAtRef, lineRangeChangedSince, changedFiles, gitUserName, isPathIgnored, trackedPaths, modifiedTrackedFiles } from "./git.js";
 import { localizeExplanation, normalizeLang } from "./i18n.js";
 import { buildDomainContext, emptyDomainContext } from "./commands/domains.js";
 import { docMetadata } from "./commands/doc-templates.js";
@@ -887,6 +888,59 @@ export async function validateCommand(options) {
 }
 
 // ---- impact command (Gate 23 reverse-impact, read-only) ----------------
+const MANIFEST_BASENAME = "package.json";
+
+function parseJsonObject(text) {
+  if (typeof text !== "string") return null;
+  try {
+    // A BOM-prefixed manifest is valid on disk but not to JSON.parse; treating it
+    // as unparseable would only mean "not excluded", but it would do so for the
+    // wrong reason. Arrays and scalars are not manifests.
+    const value = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+// Paths in <changed> that are a `package.json` whose only difference from the
+// baseline is the `version` value. N-13, decision (c) (maintainer, 2026-08-04):
+// a release commit changes the manifest by definition, so every release fired the
+// error-by-default impact gate at every verified document citing it — findings
+// nobody could act on, because no document's claims depend on the version number
+// (this repository's own profile says so in its body: "version is the single
+// source"). Turning the rule down instead would have dropped the block for ALL
+// source changes, and re-reviewing the fanout every release turns the gate into a
+// rubber stamp. `package.json` only: pyproject.toml and Cargo.toml would need a
+// parser and the zero-dependency invariant is worth more than the symmetry.
+//
+// Conservative in every direction — anything it cannot PROVE is version-only
+// stays in the change set: an unparseable side, a manifest with no baseline blob
+// (new/untracked, or git unable to read the ref), a deleted working-tree file, or
+// a `version` field being added or removed rather than changed. Key order and
+// whitespace are not semantic in JSON, so a reformat that leaves the parsed
+// object identical is excluded too.
+export async function versionOnlyManifestChanges(cwd, sinceRef, changed) {
+  const excluded = [];
+  for (const relPath of changed) {
+    if (relPath !== MANIFEST_BASENAME && !relPath.endsWith(`/${MANIFEST_BASENAME}`)) continue;
+    const before = parseJsonObject(fileAtRef(cwd, sinceRef || "HEAD", relPath));
+    if (!before) continue;
+    let after = null;
+    try {
+      after = parseJsonObject(await readUtf8(path.join(cwd, ...relPath.split("/"))));
+    } catch {
+      after = null;
+    }
+    if (!after) continue;
+    if (typeof before.version !== "string" || typeof after.version !== "string") continue;
+    const { version: _beforeVersion, ...beforeRest } = before;
+    const { version: _afterVersion, ...afterRest } = after;
+    if (isDeepStrictEqual(beforeRest, afterRest)) excluded.push(relPath);
+  }
+  return excluded;
+}
+
 // Diff-anchored complement to the date-anchored drift: flags verified documents
 // whose referenced source changed in the current diff (working tree, or a
 // `--since <ref>` PR/CI baseline) while the document itself did not. Read-only;
@@ -918,6 +972,7 @@ export async function impactCommand(options) {
       result: findings.some((finding) => finding.severity === "error") ? "fail" : "pass",
       since: options.since,
       changedFiles: 0,
+      versionOnlyExcluded: [],
       findingSummary,
       findings
     }, "LLM-WIKI Reverse-Impact", [
@@ -927,7 +982,10 @@ export async function impactCommand(options) {
     ]);
   }
 
-  const changedSet = new Set(changed);
+  // Reported as changed, but not used for anchoring: see versionOnlyManifestChanges.
+  // `changed` itself is left alone so changed_files keeps meaning "what moved".
+  const versionOnlyExcluded = await versionOnlyManifestChanges(cwd, options.since, changed);
+  const changedSet = new Set(changed.filter((relPath) => !versionOnlyExcluded.includes(relPath)));
   const findings = applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
 
   const result = findings.some((finding) => finding.severity === "blocked")
@@ -943,6 +1001,7 @@ export async function impactCommand(options) {
     `mode: ${options.strict ? "strict" : "standard"}`,
     `baseline: ${options.since ? `since ${options.since}` : "working tree"}`,
     `changed_files: ${changed.length}`,
+    `anchoring_files: ${changedSet.size}${versionOnlyExcluded.length ? ` (version-only manifest excluded: ${versionOnlyExcluded.join(", ")})` : ""}`,
     `impacted_verified_docs: ${findings.filter((finding) => finding.rule === "impact.source_changed").length}`,
     `findings: ${findings.length}`
   ];
@@ -952,6 +1011,7 @@ export async function impactCommand(options) {
     result,
     since: options.since,
     changedFiles: changed.length,
+    versionOnlyExcluded,
     findingSummary,
     findings
   }, "LLM-WIKI Reverse-Impact", [
@@ -961,7 +1021,8 @@ export async function impactCommand(options) {
     { title: "Caveats", body: [
       "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (file-level, git-diff based). Run it from the repo root.",
       "impact.source_changed is an error by default, so this command fails a build on its own; --strict does not change that. Dial it down per project with \"impact.source_changed\": \"warning\" (or \"info\"/\"off\") in llm-wiki.config.json rules, or rulesPreset: \"relaxed\". This complements the date-anchored evidence.stale (drift), it does not replace it.",
-      "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release."
+      "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release.",
+      "A package.json whose diff moves nothing but the version value is reported as changed but not used for anchoring (N-13, 2026-08-04): every release bumps it and no document's claims depend on the number. Any other key, an unparseable manifest, a version field added or removed, or a manifest with no baseline to compare against all still count. Version-only exclusion is package.json only, and never applies to pyproject.toml or Cargo.toml."
     ] }
   ]);
 }

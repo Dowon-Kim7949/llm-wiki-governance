@@ -724,9 +724,11 @@ export function driftFinding(rel, reference, baseline) {
 // diff), flag each verified document whose referenced source files are IN the
 // change set while the document itself is NOT — the pre-merge complement to the
 // date-anchored scanEvidenceDrift. Paths align when the CLI runs from the repo
-// root (same assumption as validate --changed). File-level in v1 (a changed
-// referenced file counts; line-range narrowing is out of scope). A document
-// edited in the same change set is intentionally not flagged. Read-only.
+// root (same assumption as validate --changed). File-level (a changed referenced
+// file counts; line-range narrowing is out of scope) with one content-aware
+// carve-out the CALLER applies, not this scan: impactCommand withholds a
+// package.json whose diff moves nothing but `version` (N-13, 2026-08-04). A
+// document edited in the same change set is intentionally not flagged. Read-only.
 export async function scanReverseImpact(cwd, changedSet) {
   const findings = [];
   if (!changedSet || changedSet.size === 0) return findings;

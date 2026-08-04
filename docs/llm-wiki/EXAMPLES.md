@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-governance
-last_updated: 2026-08-03
+last_updated: 2026-08-04
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-03
+reviewed_at: 2026-08-04
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -98,6 +98,8 @@ npx llm-wiki drift --strict                 # 날짜 앵커 최신성 — 이쪽
 `--strict`는 warning을 실패로 처리하므로 `related.missing`·`content.not_enriched`·`evidence.*`가 릴리스 게이트에서 CI를 실패시킬 수 있다.
 
 `impact`는 예외다. 2026-08-03(결정 21)부터 `impact.source_changed`의 기본 severity가 warning이 아니라 **error**라, `--strict` 없이 exit 1이고 이 규칙에 대해 `--strict`는 no-op이다 — 즉 위 블록의 `impact` 줄을 필수 체크에 넣는 순간, 자기를 인용하는 문서를 함께 건드리지 않고 소스만 바꾼 첫 커밋에서 빌드가 빨개진다. 되돌리는 길은 코드가 아니라 설정이다: `llm-wiki.config.json`의 `rules`에 `"impact.source_changed": "warning"`(또는 `"info"`/`"off"`)을 두거나, `rulesPreset: "relaxed"`(이 규칙을 `info`로 유지)를 쓴다. `strict` 프리셋은 이 규칙을 더 이상 나열하지 않는다(no-op이라서다). `drift`·`check-run`의 규칙은 아직 warning이라 두 명령은 계속 `--strict`가 있어야 빌드를 실패시킨다 — 의도된 비대칭이다.
+
+릴리스 커밋에 대한 예외가 하나 있다(N-13, 2026-08-04): `version` 값만 바뀐 `package.json`은 `changed_files`에는 계속 세지만 앵커 대조에서는 빠지므로, 버전만 올리는 커밋이 그 매니페스트를 인용하는 문서들 때문에 실패하지 않는다. 요약에 `anchoring_files`와 제외된 경로가 함께 인쇄되고 `--format json`에는 `versionOnlyExcluded[]`가 붙는다. 다른 키가 바뀌었거나 매니페스트가 파싱되지 않거나 비교할 기준 내용이 없으면 그대로 센다. **릴리스 커밋의 게이트 비용이 0이 되지는 않는다** — 같은 커밋에서 `README.md`·`ROADMAP.md`·action.yml처럼 내용이 실제로 바뀐 파일을 인용하는 문서는 계속 발화하고, 그건 진짜 양성에 가깝다.
 
 ## 드리프트 감시 범위 넓히기 (--watch-needs-review, 결정 28)
 

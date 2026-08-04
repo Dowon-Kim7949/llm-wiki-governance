@@ -54,7 +54,7 @@ The distinction that matters:
 | --- | --- | --- |
 | `validate` / `validate-frontmatter` | a malformed or missing **document** | always (error findings) |
 | `validate --strict` | the above, plus warnings | always |
-| `impact --since <base> --strict` | **source changed, its `verified` doc did not** | only with `--strict` |
+| `impact --since <base>` | **source changed, its `verified` doc did not** | always (error by default since 1.28.0) |
 | `drift --strict` | a `verified` doc whose source moved after its review date | only with `--strict` |
 | `check-run --strict` | a skill run that claimed a pipeline it did not complete | only with `--strict` |
 
@@ -63,8 +63,19 @@ The validate family checks the documents that **exist**. Only the `impact` /
 touched** — so a repo with a green `validate` step and no `impact` step has no
 omission gate at all. That is what `doctor` now says out loud.
 
-`--strict` is load-bearing: `impact.source_changed` is a warning, so without it
-the step prints the omission and the build still passes.
+`--strict` used to be load-bearing here. Since 1.28.0 it is not:
+`impact.source_changed` defaults to `error`, so `impact` fails a build on its own
+and `--strict` is a no-op for that rule. The recipes below still pass `--strict`
+so their other findings escalate too. The ways back are per-project config
+(`"impact.source_changed": "warning" | "info" | "off"`) or
+`rulesPreset: "relaxed"`, never dropping the step.
+
+Two exemptions keep the gate actionable: documents with `doc_type:
+release_notes` are exempt outright, and a `package.json` whose diff moves nothing
+but the `version` value is reported as changed but not used for anchoring — every
+release bumps it, and no document's claims depend on the number. Any other key, a
+version field added or removed, an unparseable manifest, or a manifest with no
+baseline to compare against all still count.
 
 Three ready-made channels:
 

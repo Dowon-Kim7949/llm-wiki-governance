@@ -51,7 +51,11 @@ jobs:
       # 2026-07-31 no shipped channel ran this, so nothing this project handed an
       # adopter could block an undocumented change.
       #
-      # `--strict` is what makes it block: impact.source_changed is a warning, so
-      # without it the step reports the omission and the build still passes.
+      # Since 1.28.0 impact.source_changed defaults to error, so this step blocks
+      # with or without --strict; --strict is kept so the step's other findings
+      # escalate too. Soften it in llm-wiki.config.json rules
+      # ("impact.source_changed": "warning"|"info"|"off") or rulesPreset:
+      # "relaxed" — not by deleting the step. A package.json whose diff moves
+      # nothing but the version value does not count as a source change.
       - name: Gate on undocumented source changes
         run: npx llm-wiki impact --since "origin/${{ github.base_ref || 'main' }}" --strict

@@ -997,7 +997,12 @@ Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
     with or without --strict. That is the point of the default.
   - Read-only: never writes. Remediation is re-review or drift --downgrade.
   - Toggle/override per project via llm-wiki.config.json rules
-    ("impact.source_changed": "off"|"error"|...). File-level in v1.
+    ("impact.source_changed": "off"|"error"|...). File-level, with one
+    content-aware carve-out: a package.json whose diff moves nothing but the
+    version value is reported as changed but not used for anchoring (N-13,
+    2026-08-04) — every release bumps it and no document's claims depend on the
+    number. Any other key, an added/removed version field, an unparseable
+    manifest, or a manifest with no baseline to compare against still count.
 `,
   "check-run": `llm-wiki check-run
 

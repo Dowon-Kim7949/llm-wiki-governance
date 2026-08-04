@@ -111,3 +111,17 @@ export function changedFiles(cwd, sinceRef) {
     : [...toLines(runGit(cwd, ["diff", "--name-only", "HEAD"])), ...untracked];
   return [...new Set(changed)];
 }
+
+// Stored content of <relPath> at <ref>, or null when it cannot be read. Callers
+// need the BEFORE side of a diff to decide whether a change is meaningful, which
+// `changedFiles` (names only) cannot answer. Best-effort: `git show <ref>:<path>`
+// exits 128 both for a bad ref and for a path absent at that ref, and runGit
+// discards stderr, so null means "unknown" — never "the file was empty". <relPath>
+// must be posix and relative to the git root, which is what changedFiles yields.
+export function fileAtRef(cwd, ref, relPath) {
+  try {
+    return runGit(cwd, ["show", `${ref}:${relPath}`]);
+  } catch {
+    return null;
+  }
+}

@@ -10,7 +10,7 @@ last_updated: 2026-08-03
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-03
+reviewed_at: 2026-08-04
 wiki_block_version: v1
 source_files:
   - package.json

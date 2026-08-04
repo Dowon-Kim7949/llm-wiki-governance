@@ -30,7 +30,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-03
+reviewed_at: 2026-08-04
 ---
 
 # Review History

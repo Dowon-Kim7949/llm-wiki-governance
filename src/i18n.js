@@ -243,7 +243,7 @@ const EXPLANATION_CATALOG = {
     },
     "impact.source_changed": {
       meaning: "verified 문서가 현재 diff에서 변경된 소스 파일에 의존하는데, 문서 자신은 변경되지 않았습니다.",
-      whyItMatters: "이는 날짜 기준 evidence.stale의 diff 기준·pre-merge 보완으로, 가장 중요한 경우 — 코드와 그 문서가 서로 다른 위치/PR에서 바뀌는 경우 — 를 잡아 verified 문서가 문서화한 코드와 조용히 어긋나지 않게 합니다.",
+      whyItMatters: "이는 날짜 기준 evidence.stale의 diff 기준·pre-merge 보완으로, 가장 중요한 경우 — 코드와 그 문서가 서로 다른 위치/PR에서 바뀌는 경우 — 를 잡아 verified 문서가 문서화한 코드와 조용히 어긋나지 않게 합니다. 내용을 보는 예외가 하나 있습니다: version 값만 바뀐 package.json은 변경된 것으로 보고되지만 앵커 대조에는 쓰이지 않습니다(N-13, 2026-08-04). 릴리스마다 올라가는 값이고 어떤 문서의 주장도 그 숫자에 의존하지 않기 때문입니다. 다른 키가 바뀌거나, version 필드가 추가·삭제되거나, 파싱이 안 되거나, 비교할 기준 내용이 없으면 그대로 셉니다.",
       remediation: ["변경된 소스를 다시 읽고 같은 변경집합에서 verified 문서를 갱신하세요.", "주장이 더 이상 성립하지 않으면 문서를 needs_review로 낮추세요(llm-wiki drift --downgrade).", "새 검토 후 reviewed_by/reviewed_at을 갱신하세요.", "이는 diff 기반 파일 수준 휴리스틱이니, 변경이 문서화된 주장에 영향이 없다면 무시하세요.", "이 규칙은 기본이 error라 --strict 없이도 빌드를 실패시킵니다. 너무 시끄러우면 llm-wiki.config.json rules에서 \"impact.source_changed\"를 \"warning\"(또는 \"info\"/\"off\")으로 낮추거나 rulesPreset: \"relaxed\"를 쓰세요.", "허브 파일 1개가 그것을 인용한 문서 수만큼 발화하는 것은 정상입니다."]
     },
     "impact.unavailable": {

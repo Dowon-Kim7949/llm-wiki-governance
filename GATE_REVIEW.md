@@ -2486,6 +2486,90 @@ They are written down here so they stop being carried as open questions.
   **not** a relaxation of the ceiling and must not be cited as precedent for one.
 - **30 — the roadmap joins the Recommended Read Order in `docs/llm-wiki/index.md`.**
 
+## Version-Only Manifest Scope Decision (maintainer-approved 2026-08-04 — built)
+
+### Why
+
+Decision 21 (2026-08-03) made `impact.source_changed` an error by default. The first release
+commit after it exposed a cost that repeats forever: a release commit changes `package.json` by
+definition, and **10 of this repository's 18 non-exempt `verified` documents cite that file**, so
+the gate fires on documents whose claims did not move. The 1.28.0 release commit paid it in
+advance by carrying all of them in the same commit — the cost did not disappear, it moved earlier.
+Roadmap item 45 (N-13) held three options; the maintainer chose (c).
+
+### Decisions
+
+- **A `package.json` whose diff moves nothing but `version` is not a source change for
+  reverse-impact.** It is still counted in `changed_files`; it is withheld from the set used for
+  anchoring. Summary prints `anchoring_files` and the excluded paths; `--format json` gains an
+  additive `versionOnlyExcluded[]`. A silent exclusion was rejected outright — a count that drops
+  for an unstated reason is the same failure this repository has already shipped twice.
+- **The filter lives in `impactCommand`, not in `changedFiles`.** Narrowing the shared primitive
+  would silently narrow `validate --changed`'s scope and `prepare`'s working-tree hint, whose
+  contract is "files that differ from the baseline". `scanReverseImpact` cannot host it either: it
+  receives `(cwd, changedSet)` and never sees `--since`, so it cannot read the before side.
+- **Conservative in every direction.** Anything the predicate cannot prove is version-only stays
+  in the change set: an unparseable side, a `version` field added or removed rather than changed, a
+  manifest with no baseline blob (new/untracked, or git unable to read the ref), a deleted
+  working-tree file. Key order and whitespace are not semantic in JSON, so a reformat whose parsed
+  object is identical is excluded.
+- **`package.json` only**, matched on basename so monorepo workspace manifests behave the same.
+  `pyproject.toml` and `Cargo.toml` would need a parser; the zero-dependency invariant is worth
+  more than the symmetry.
+- **(a) and (b) rejected, and why.** (b) dialing the rule down per project would drop the block for
+  ALL source changes — the one true positive the gate caught in 1.28.0 (`VERSIONING.md`) would have
+  been buried with the noise, and a repository that sells this gate turning it off only for itself
+  is not a defensible shape. (a) re-reviewing the fanout every release writes "unchanged" notes
+  into a per-document 5-entry cap, forcing an archive rotation every release and making the gate a
+  rubber stamp — which the roadmap's own rule ("a check nobody can act on becomes noise") forbids.
+
+### The numbers, corrected
+
+Roadmap item 45 recorded "11 documents"; a re-measurement against the tree corrected it. That
+figure holds only for one definition of a release commit — the eight version-bearing files
+(`package.json`, CHANGELOG ×2, README ×2, ROADMAP ×2, the pinned action). The actual `88bf8cc`
+commit impacted **0** (16 wiki documents were in the same change set, so self-exclusion covered
+them); the counterfactual without those wiki updates is **14**; a `package.json`-only diff is
+**10**. Effect of this change: 10 → **0** for a manifest-only diff, 11 → **4** for the
+version-bearing set, 14 → **10** for a release commit that also touches `src/cli.js`.
+
+**This does not reach zero, and the claim is not made.** The documents that survive cite
+`README.md` / `ROADMAP.md` / the action — files whose CONTENT really changed — so they are closer
+to true positives than to noise. The remaining problem is anchor BREADTH (a document citing a file
+it only loosely depends on), and the answer to that is per-document judgment, never deleting
+citations to quiet a gate, which the rule's own remediation text warns against.
+
+**N-7 is not a cheap follow-up** (verified 2026-08-04, correcting an earlier claim in this
+repository's own notes): `#symbol:` is a presence floor, not an AST resolver, and `#section:` only
+checks that a heading exists, so neither knows the line range a symbol occupies and neither can
+answer "did this symbol change in this diff". Every precise anchor on the affected documents is
+`#symbol:` or `#section:` — there is not one line locator among them — so implementing N-7 in that
+shape would resolve **zero** of them.
+
+### Scope boundary
+
+`evidence.stale` (drift) is date-anchored: it asks when a file changed, not what changed in it, so
+it does not share this path and was not touched. `validate --changed`, `prepare`'s working-tree
+hint, `check-run`'s `run.change_set_undeclared` (which uses `modifiedTrackedFiles`) and `run.doc_gap`
+(which uses the manifest's own declaration) are all unchanged. The exclusion is hardcoded, not a
+config key — like the release-notes exemption of decision 28.
+
+### Verification
+
+**501 tests pass (was 492)**, `lint` OK (71 files). New file
+`tests/impact-package-version-only.test.js` (9 tests, RED confirmed before the fix: 6 failed, and
+the 3 that already passed are the conservative-fallback regression fence). It pins the working-tree
+and `--since` paths, every non-version key, the added/removed `version` field, both unparseable
+sides, the missing-baseline case, the bad-`--since` error branch, workspace manifests, and that the
+printed output names the exclusion.
+
+Also corrected in the same change: three shipped surfaces still said `impact.source_changed` was a
+warning and that `--strict` was what made it block — false since 1.28.0. `docs/OPERATIONS.md`,
+`templates/github-actions/llm-wiki-validate.yml`, and `templates/git-hooks/pre-commit` now state
+the error default and the config-only ways back.
+
+**Unreleased. No version bump and no tag are part of this change.**
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)
