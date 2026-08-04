@@ -153,7 +153,7 @@ reviewed_at: 2026-08-04
 - 2026-07-31(백로그 16 오탐률 측정 중 발견)에 Gate 20 서술의 스탬프 필드 목록을 **불완전한 상태에서 교정했다.** 세 필드만 열거하고 있었으나 같은 날 N-4 수정이 `tags` 상태 태그 동기화를 추가해 실제로는 네 곳을 쓴다(`src/commands.js:1393-1397`, `drift --downgrade`와 공유하는 `syncStatusTag`). `00_overview.md`는 여기에 "**3필드만**"이라고 단정해 사실과 어긋났고 그 문서도 같이 고쳤다 — **같은 계약이 세 문서(`PUBLIC_API.md`·이 문서·`00_overview.md`)에 재서술돼 있고 수정이 한 곳에만 도달한 사례**다. 이것이 백로그 16(중복·충돌 후보 탐지)이 겨냥하는 실패 양상 그 자체이며, 이번 측정에서 유일하게 소스로 검증된 진짜 충돌이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등했고 검토 메타는 날조하지 않았다.
 ## Benchmark
 
-원문서: [BENCHMARK.md](BENCHMARK.md) — 5건(2026-07-22 → 2026-07-27), 2026-08-03 이전분.
+원문서: [BENCHMARK.md](BENCHMARK.md) — 6건(2026-07-22 → 2026-07-27), 2026-08-03 이전분.
 
 - 2026-07-22에 Gate 22 베이스라인 + Gate 24 재측정(정직/불리) + B2 retrieval 델타를 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 승인했다(최초 verified 승격). **핵심 불변 조건**: 이 문서의 모든 수치(특히 B2 −81.5%/−80.5%)는 `chars/4` **프록시**이지 실제 LLM 실행 결과가 아니다. 따라서 README·런치 카피에 토큰/속도/생산성 수치를 싣는 것은 **여전히 금지**이며, 실측(`bench/real/` 실행)이 뒷받침될 때까지 이 규율을 유지한다. 실측 방법은 `bench/REAL_LLM_METHODOLOGY.md` 참조.
 - 2026-07-22에 **실제 LLM N=3 실측**(외부 프로젝트 `csap-roadkeeper-frontend`@`aws-global`, Opus 4.8)을 반영했다: "실측 · Real-LLM measurement" 섹션 추가(최신 위키에서 B2 −10% 토큰·−5% wall·정확도 18/18 동률·소스 fallback 0; stale 위키는 보안 오답 → 신선도-종속 정확도가 핵심)와 규율 갱신(스코프 명시 정직 수치 허용, 볼드 헤드라인·`chars/4` 프록시 수치는 계속 금지). 원자료: `bench/results/real-driver-csap-aws-global-pilot-2026-07-22.md`. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
@@ -184,6 +184,8 @@ reviewed_at: 2026-08-04
   흐리지 않는다.** 이로써 벤치 라인의 마지막 방법론 갭이 닫혔으나 **README 헤드라인 금지는 유지**
   된다(비준은 신뢰도를 올릴 뿐 표본을 늘리지 않는다). 신규 기록
   `bench/results/…-empty-control-2026-07-27-ratification.md`.
+- 2026-07-22에 실측 후속 엄밀성 하네스를 **scaffolded**(미실행)했다: SDK 경로 드라이버 `bench/real/agent.js`(Anthropic SDK tool_runner; read/grep + 읽기 전용 `llm-wiki` retrieval 툴; env로 target-agnostic; 읽기 전용)가 서브에이전트 경로에 없던 **input/output 토큰 분리**를 제공한다. `bench/tasks-csap.json`(6 태스크 재현), `bench/real/package.json`(SDK를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변), `runner.js`의 `BENCH_TASKS` 오버라이드, `DRIVER_RUNBOOK.md` § SDK path 실행법을 함께 추가했다. `--dry`로 배선 검증(모델 호출·비용 0). **유료 실행과 교차 에이전트(GPT) 드라이버는 보류**(유저 지시). 커밋되는 재현 산출물은 tasks-csap.json·package.json·runner.js·runbook이며 `agent.js`는 설계상 git-ignore(SDK dep 격리)다. 에이전트 편집이라 `needs_review` 유지.
+
 ## Domain Overview
 
 원문서: [00_overview.md](domains/00_overview.md) — 7건(2026-07-14 → 2026-07-31), 2026-08-03 이전분.
@@ -207,9 +209,10 @@ reviewed_at: 2026-08-04
 - 2026-07-23에 Guided Onboarding and Task Preparation(1.24 대상; 읽기 전용 `onboard`/`prepare` 명령·스킬, 검색 랭킹 `rankDocsByQuery` 재사용)을 반영했다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등한다 — 사람 검토 전까지 미확정이며 허위 검토 메타를 넣지 않는다. 이번 소스 변경(`src/commands/guided.js` 신규 등)으로 소스를 참조하는 다른 verified 문서도 재검토가 필요하다(그 문서들은 `drift --downgrade`로 정직하게 needs_review 처리).
 ## Glossary
 
-원문서: [GLOSSARY.md](GLOSSARY.md) — 1건(2026-07-13 → 2026-07-13), 2026-08-03 이전분.
+원문서: [GLOSSARY.md](GLOSSARY.md) — 2건(2026-07-13 → 2026-07-16), 2026-08-04 이전분.
 
 - 2026-07-13에 현재 frontmatter 및 CLI 용어 계약을 기준으로 검토했다.
+- 2026-07-16에 1.11.1 commands.js 모듈 분리(동작 보존 내부 리팩터)에 따라 재검토했다: GLOSSARY는 광의의 `src/commands.js` 참조만 있어 내용은 불변이며, 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 재승인하고 review baseline을 갱신해 `evidence.stale`을 해소했다.
 
 ## Harness Governance Roadmap
 

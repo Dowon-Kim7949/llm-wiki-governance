@@ -61,7 +61,7 @@ This document records the default decisions for the `0.1.0` stable release line 
 | Gate 20 Review Workflow Scope Approval | `accepted` | Add a read-only `review` command that supports the human review→`verified` step (the weakest, most manual part of the loop, and the governance core): list `needs_review` content docs risk-ranked (thin / no-evidence / broken-link / never-enriched first) with a per-doc quality + evidence summary for fast spot-checking. Promotion to `verified` (stamping `reviewed_by`/`reviewed_at`) happens ONLY on an explicit, per-doc/confirmed `--approve <path>…` (or `--approve-all` with a confirmation) — NEVER automatically; the review DECISION stays human, only the MECHANICS get cheap. Additive/opt-in, read-only by default, zero-dep; `1.0.0` contracts unchanged. Motivated by the first external end-to-end run (a backend dev enriched a full wiki; the maintainer then had no ergonomic way to review + bless the `needs_review` backlog). Accepted by Dowon-Kim on 2026-07-24 (in-session) with the recommended open-question answers (standalone `review` command; approval names docs, `--approve-all` gated behind an explicit `--yes` confirmation; `reviewed_by` sourced from explicit `--reviewer` → config `reviewer`/`reviewedBy` → git `user.name`, required if none resolvable — never stamped blank/fabricated). Independently flagged as the top functional gap by the external deep-analysis (2026-07-24). See "Review Workflow Scope Decision" below. |
 | Gate 21 Skill Generation Scope Approval | `accepted_for_1.15.0` | Generate invocable, wiki-grounded automation prompts for the feature/fix/docs-sync workflows already encoded in `src/task-prompts.js`, in each agent's native shape — Claude skill (`.claude/skills/llm-wiki-<task>/SKILL.md`), Cursor rule (`.cursor/rules/llm-wiki-<task>.mdc`), and an agent-neutral prompt doc (`docs/llm-wiki/prompts/llm-wiki-<task>.prompt.md`, for Codex/others) — so a user can invoke `/llm-wiki-feature "…"` to run "read the wiki → ground the change → update docs (needs_review) → log", closing the value loop (#8). Each body embeds a generation-time snapshot of the project's domain map so the agent knows which docs to read. Opt-in (per `--agent`/`--skills`), preview-first, existing files never overwritten, recognize-don't-run, needs_review discipline embedded. Additive, zero-dep; `1.0.0` contracts unchanged. Accepted by Dowon-Kim on 2026-07-20 with two additions over the draft (domain-map injection + multi-agent formats). MINOR (`1.15.0`). See "Skill Generation Scope Decision" below. |
 | Gate 22 Impact Measurement Scope Approval | `accepted` | Pull impact measurement to the FRONT of the post-1.16 line (before the feature gates). A reproducible, opt-in, zero-dep benchmark harness (repo-internal, e.g. `bench/`) runs a representative task with vs. without the governed wiki and records input tokens, source files opened, task success/quality, and wall-clock, plus an honest methodology that counts wiki read + maintenance cost (not just repo-scan tokens) and a recorded baseline. Primarily a VALIDATION track — no `1.0.0` contract change; any shipped `bench` helper is a later minor; zero-dep preserved. Results reported honestly INCLUDING unfavorable ones (an "overhead > benefit" result reshapes the roadmap, it is not hidden); no token/speed/productivity claim ships in README/launch until a measured result supports it. Re-run at each later gate for its delta. Motivated by the product-identity audit (`outputs/audits/product-identity-audit.md`): the governance core is real but the value chain is unproven. Accepted by Dowon-Kim on 2026-07-21. See "Impact Measurement Scope Decision" below. |
-| Gate 23 Reverse-Impact (Changed-Source → Wiki) Scope Approval | `accepted_for_1.17.0` | Add a read-only reverse-impact check that builds a git-diff reverse index from every `verified` doc's `source_files`/`evidence` and flags a `verified` doc when its referenced code is in the current change set (working tree, or a `--since <ref>` PR/CI baseline) while the doc itself is NOT changed — the pre-merge, diff-anchored complement to the existing date-anchored `evidence.stale`. Defaults to warning (NEVER default error/blocked, preserving the additive `1.0.0` invariant); an opt-in `--strict` (for CI) escalates it to a failing error so a PR that changes governed code without updating its doc fails. Read-only, additive/opt-in, zero-dep — reuses `changedFiles` (`src/git.js`), `driftTargets`, and the reference parsers. Motivated by the product-identity audit's biggest vision-vs-reality gap: today drift is date-based and misses code + its doc changing in separate PRs, and cannot answer the pre-merge CI question. Accepted by Dowon-Kim on 2026-07-21 with: a standalone `impact` command, rule `impact.source_changed` (new toggleable `impact` category), `--strict` escalating impact findings ONLY (`evidence.stale` stays escalatable via config `rules`), and an empty change set treated as a no-op. See "Reverse-Impact (Changed-Source → Wiki) Scope Decision" below. |
+| Gate 23 Reverse-Impact (Changed-Source → Wiki) Scope Approval | `accepted_for_1.17.0` | Add a read-only reverse-impact check that builds a git-diff reverse index from every `verified` doc's `source_files`/`evidence` and flags a `verified` doc when its referenced code is in the current change set (working tree, or a `--since <ref>` PR/CI baseline) while the doc itself is NOT changed — the pre-merge, diff-anchored complement to the existing date-anchored `evidence.stale`. Defaults to warning (NEVER default error/blocked, preserving the additive `1.0.0` invariant); an opt-in `--strict` (for CI) escalates it to a failing error so a PR that changes governed code without updating its doc fails. Read-only, additive/opt-in, zero-dep — reuses `changedFiles` (`src/git.js`), `driftTargets`, and the reference parsers. Motivated by the product-identity audit's biggest vision-vs-reality gap: today drift is date-based and misses code + its doc changing in separate PRs, and cannot answer the pre-merge CI question. Accepted by Dowon-Kim on 2026-07-21 with: a standalone `impact` command, rule `impact.source_changed` (new toggleable `impact` category), `--strict` escalating impact findings ONLY (`evidence.stale` stays escalatable via config `rules`), and an empty change set treated as a no-op. **The default-warning clause in this row was SUPERSEDED on 2026-08-03 by decision 21** (default `error`, `--strict` a no-op for this rule, config-only ways back), and the change set gained one content-aware carve-out on 2026-08-04 (a `package.json` whose diff moves nothing but `version`); the row is left as the record of what was accepted for 1.17.0. See "Reverse-Impact (Changed-Source → Wiki) Scope Decision", "Detection Defaults and Freshness Scope Decision", and "Version-Only Manifest Scope Decision" below. |
 | Gate 26 Agent Update Runner + Completion Contract Scope Approval | `accepted` | Make the wiki-grounded skill workflow (Gate 21) auditable end-to-end. When an agent runs a `/llm-wiki-<task>` skill to change code, have it emit a small structured **run manifest** (task, changed source files, touched wiki docs, whether the log was appended, whether `validate` ran + its result), and add a read-only **check** that verifies the claimed pipeline actually happened — so CI can catch a code change whose wiki update was skipped. The agent still writes the prose; only the PIPELINE becomes checkable. Proposed: a plain-JSON manifest under `.llm-wiki/runs/` (never carries sensitive values), a `manifest`-emitting seam in the generated skill bodies, and `llm-wiki check-run` (read-only: manifest's changed source ⊆ touched docs' `source_files`/`evidence` + log appended + validate pass) — or fold the check into `impact`/`validate` (open question). Complements Gate 23 `impact` (diff-anchored reverse index) with an INTENT-anchored record of what a run claims it did. Additive/opt-in/zero-dep; `1.0.0` contracts unchanged; never default error/blocked (opt-in `--strict` fails CI). Out of scope v1: enforcing prose correctness, auto-writing docs, non-skill/manual edits, a hosted run store. Accepted by Dowon-Kim (delegated, overnight autonomous run) on 2026-07-21 with the recommended answers (standalone `check-run`, agent-authored manifest, git-ignored `.llm-wiki/runs/`, file-level match reusing the reference parsers, kept separate from `impact`); BUILT (`check-run` + `run.*` findings + skill-body manifest contract) — ships in the next minor. See "Agent Update Runner + Completion Contract Scope Decision" below. |
 | Gate 25 Evidence Semantic Tiers Scope Approval | `accepted` | Deepen evidence verification from FORMAT-only to MEANING — the product-identity audit's #1 remaining vision-vs-reality gap. Today `scanEvidenceReferences` checks a reference's shape + that the source FILE exists + (for `#L` line locators) the line range, but a `#symbol:`/`#section:`/`#route:` locator's TARGET existence is NEVER checked, and the frontmatter schema lets a `verified` doc carry `source_files: []` with no `evidence` at all (grounding-free "verified"). Gate 25 adds, all additive/opt-in/zero-dep/read-only and NEVER default error/blocked: (1) a conservative, language-agnostic EXISTENCE check for `symbol`/`section` locators that flags ONLY when the target token/heading does not appear in the referenced file (no false "missing" for a real target) — new toggleable `evidence.symbol_unverified`/`evidence.section_unverified` (default warning, `--strict` escalates); (2) an opt-in `evidence.ungrounded` rule for a `verified` doc with empty `source_files` AND no `evidence`; (3) a COMPUTED evidence tier (`reference_checked` vs `human_verified`) surfaced as ADDITIVE JSON only — never a new required frontmatter field or `status` enum value (both frozen at `1.0.0`). `route` existence and true AST/language-server symbol resolution stay OUT of scope v1 (framework/parser-specific, would break zero-dep). Accepted by Dowon-Kim (delegated) on 2026-07-21 with the recommended open-question answers (ungrounded default warning; section check `.md`-only; tier computed-only; `--strict` escalates `*_unverified` only); BUILT — ships in the next minor. See "Evidence Semantic Tiers Scope Decision" below. |
 | Gate 24 Read-Only Retrieval (Search/Get) Scope Approval | `accepted_for_1.18.0` | Add read-only retrieval over the programmatic API + MCP (and CLI) that returns document CONTENT, not just governance reports: `list_docs` (enumerate with status/visibility/type filters), `search_docs` (zero-dep keyword/substring over titles + bodies + frontmatter — NOT semantic/vector search), `get_doc` (a doc's frontmatter + body by path), and `get_related` (a doc's resolved graph neighbors). Reuses `listWikiContentDocs`, the frontmatter parser, and `collectWikiGraph`; today every MCP/API tool returns governance REPORTS only, so this is the "the agent queries the wiki instead of re-deriving from the code" story that was walked back at launch. **The Gate 22 harness is RE-MEASURED here** — this is where the rediscovery/token delta should show (the headline is the before/after-retrieval delta). Read-only, additive/opt-in, zero-dep; honors `visibility` + reuses the sensitive-info scan so raw sensitive values are NEVER returned. No write/mutating surface (mirrors the MCP read-only ethos). `1.0.0` command/`--format json`/frontmatter contracts unchanged (new commands + new MCP tools + additive JSON only); likely a MINOR (`1.18.0`). Accepted by Dowon-Kim on 2026-07-21 (resolutions in the scope decision below). See "Read-Only Retrieval (Search/Get) Scope Decision" below. |
@@ -1013,7 +1013,11 @@ They are complementary; neither subsumes the other.
 - **Strict-governance / CI enforcement:** the finding defaults to **warning** (never
   default error/blocked — preserves the additive `1.0.0` invariant). An opt-in `--strict`
   (mirroring `validate --strict`) escalates it to a failing error, so a PR that changes
-  governed code without updating its doc fails CI. Whether a shared `strict-governance`
+  governed code without updating its doc fails CI.
+  **SUPERSEDED 2026-08-03 by decision 21** ("Detection Defaults and Freshness Scope
+  Decision", below): the default is now `error`, `--strict` is a no-op for this rule, and
+  the ways back are config-only. The paragraph above is kept as the record of what Gate 23
+  accepted in 1.17, not as a description of current behaviour. Whether a shared `strict-governance`
   posture should ALSO escalate the existing date-anchored `evidence.stale` is an open
   question below (the audit flagged that `evidence.stale` warning + composite-action
   `strict:false` lets drift pass CI today).
@@ -1024,6 +1028,10 @@ They are complementary; neither subsumes the other.
   existing `drift --downgrade`. No new write surface.
 - **Additive/opt-in, default warning.** The `impact` rule can NEVER default to
   error/blocked; strictness is opt-in per run/CI. No new required frontmatter field.
+  **SUPERSEDED 2026-08-03 by decision 21**, which deliberately broke this invariant and
+  shipped the exit-code change as a documented breaking change with two config-only ways
+  back. Recorded rather than rewritten: the invariant was real when Gate 23 was accepted,
+  and the decision to drop it is the thing worth being able to find later.
 - **Zero-dependency, best-effort git.** Reuses `changedFiles`/`driftTargets`; no repo (or
   git unavailable) degrades to a single `impact.unavailable` finding, mirroring
   `changed.unavailable` — never a crash.
@@ -1969,8 +1977,12 @@ repositories be skipped for this slice.
   commands that accept it — newly required, since every command now rejects an
   unsupported option with exit 3.
 - **`--strict` is load-bearing everywhere.** Each wired gate carries it
-  explicitly, because `impact.source_changed` is a warning and the step would
-  otherwise print the omission and pass.
+  explicitly, because `impact.source_changed` is a warning (**SUPERSEDED**, see below)
+  and the step would otherwise print the omission and pass.
+  **SUPERSEDED 2026-08-03 by decision 21** for `impact` only: that rule now defaults to
+  `error`, so its step blocks without the flag and `--strict` is a no-op for it. The flag
+  stays on the wired gates because it is still load-bearing for `drift` and `check-run`,
+  and because it still escalates `impact`'s other findings.
 - **`fetch-depth: 0` is part of the gate.** Without it `--since` cannot resolve
   the base ref and the check degrades quietly — a gate that breaks silently is
   worse than no gate.
@@ -2511,8 +2523,21 @@ Roadmap item 45 (N-13) held three options; the maintainer chose (c).
 - **Conservative in every direction.** Anything the predicate cannot prove is version-only stays
   in the change set: an unparseable side, a `version` field added or removed rather than changed, a
   manifest with no baseline blob (new/untracked, or git unable to read the ref), a deleted
-  working-tree file. Key order and whitespace are not semantic in JSON, so a reformat whose parsed
-  object is identical is excluded.
+  working-tree file, or a version that did not actually move (a reformat or a line-ending
+  conversion is not a version bump and must not be reported as one).
+- **The comparison is order-sensitive.** The first implementation compared parsed objects with
+  `isDeepStrictEqual`, on the stated ground that "key order is not semantic in JSON". True of
+  JSON, **false of `package.json`**: Node matches conditional `exports`/`imports` in key order,
+  so `{node, default}` and `{default, node}` resolve to different files. An adversarial review
+  demonstrated a version bump plus an `exports` reorder being silently withheld from anchoring —
+  the one change that decides what every consumer imports. Fixed before this decision shipped in
+  its corrected form: the rest is compared as `JSON.stringify` output, which keeps order
+  significant while still ignoring indentation, a BOM, and line endings.
+- **Nested manifests need a declared workspace.** Basename matching alone also captured test
+  fixtures, samples and vendored copies, where a `version` value can BE the content under test
+  (demonstrated on a fixture going `0.9.0` → `2.0.0`). A nested `package.json` is now eligible
+  only when the root manifest declares `workspaces` and the path sits under one of the declared
+  globs' literal prefixes. The root manifest is always eligible.
 - **`package.json` only**, matched on basename so monorepo workspace manifests behave the same.
   `pyproject.toml` and `Cargo.toml` would need a parser; the zero-dependency invariant is worth
   more than the symmetry.
@@ -2556,19 +2581,47 @@ config key — like the release-notes exemption of decision 28.
 
 ### Verification
 
-**501 tests pass (was 492)**, `lint` OK (71 files). New file
-`tests/impact-package-version-only.test.js` (9 tests, RED confirmed before the fix: 6 failed, and
-the 3 that already passed are the conservative-fallback regression fence). It pins the working-tree
-and `--since` paths, every non-version key, the added/removed `version` field, both unparseable
-sides, the missing-baseline case, the bad-`--since` error branch, workspace manifests, and that the
-printed output names the exclusion.
+`lint` OK (71 files). `tests/impact-package-version-only.test.js` holds **17 tests**; the first
+nine shipped with the implementation (RED confirmed: 6 failed, the 3 that already passed are the
+conservative-fallback fence), and eight more closed holes an adversarial review found in the fence
+itself. Live proof on this repository rather than a fixture: a working-tree version-only bump gives
+`anchoring_files: 0 (version-only manifest excluded: package.json)` and `impacted_verified_docs: 0`;
+adding one non-version key to the same manifest gives **10 findings** and a failing result.
 
-Also corrected in the same change: three shipped surfaces still said `impact.source_changed` was a
-warning and that `--strict` was what made it block — false since 1.28.0. `docs/OPERATIONS.md`,
-`templates/github-actions/llm-wiki-validate.yml`, and `templates/git-hooks/pre-commit` now state
-the error default and the config-only ways back.
+**The first fence was weaker than the commit that shipped it claimed**, and the corrections are the
+substance of this entry. Mutation testing showed four holes: the `--since` test could not tell
+`sinceRef` from a hardcoded `HEAD` (its fixture made the two identical, so a real `engines` change
+went unreported against a base several commits back); the "filter lives in `impactCommand`" decision
+had no assertion at all, and moving the predicate into `changedFiles` passed all 501 tests while
+silently narrowing `validate --changed`; the output test matched unconditional caveat boilerplate,
+so deleting the summary line still passed; and the `package.json`-only promise had no negative case.
+All four are now pinned, plus the order-sensitivity and workspace-scoping fixes above, a deleted
+manifest, and the payload shape of the git-unavailable branch. The file also guards its own imports
+at load time: `hasGit()` swallows every throw, so a missing import turned all nine tests into
+`# skipped 9` with exit code 0 — green locally and green in CI while testing nothing.
 
-**Unreleased. No version bump and no tag are part of this change.**
+`tests/impact-default-gate.test.js`'s prose census called itself "a census over the shipped
+surfaces" while reading three files under `src/`. It now reads fourteen surfaces including both
+READMEs, `docs/OPERATIONS.md`, `GATE_REVIEW.md`, the two shipped templates, the composite action and
+the CI workflow, with a pattern that catches "`--strict` is what makes it block" as well as
+"`--strict` makes it fail". Extending it immediately found two more stale claims that the first pass
+had missed — `docs/OPERATIONS.md` telling the reader `--strict` is load-bearing four lines above the
+section rewritten to say it is not, and the same claim in this file's CI-wiring decision — and the
+composite action's input description implying `strict: true` was required for the gate. The census is
+sentence-scoped, because a Markdown bullet routinely covers `impact` in one sentence and
+`drift`/`check-run` — which DO still need `--strict` — in the next; a sentence naming both is skipped,
+which is a known hole and the reason the line-scoped version produced a false positive on the very
+sentence stating the deliberate asymmetry.
+
+Also corrected: the Gate 23 approval row and its two "never default error/blocked" invariants now
+carry SUPERSEDED markers pointing at decision 21, because `help impact` sends readers into that
+section and it asserted the opposite of shipped behaviour.
+
+**Unreleased. No version bump and no tag are part of this change.** `audit` and `validate --strict`
+are NOT at zero and this entry does not claim they are: two errors come from another agent's
+untracked document under `docs/llm-wiki/` (absent in CI, which clones) and two `evidence.stale`
+warnings sit on documents that `review` structurally cannot re-stamp (defect N-14, roadmap item 46).
+`impact --since HEAD~1 --strict` is at zero.
 
 ## Release Caveats
 

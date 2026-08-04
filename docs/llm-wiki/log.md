@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-08-03
+last_updated: 2026-08-04
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,72 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-08-04 - fix(follow-up): 적대적 검증이 방금 출하한 제외 규칙에서 결함 3건을 찾았다
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (오케스트레이션: 읽기전용 검증 에이전트 4대를 커밋 `2ae88cd`에 붙였다)
+- scope: src, tests, docs, templates, ci
+- changed:
+  - `src/commands.js` — `versionOnlyManifestChanges` 재작성: **순서 구분 비교**(`JSON.stringify`),
+    **`version`이 실제로 달라야 함**, 중첩 매니페스트는 루트가 선언한 `workspaces` 접두사 아래만
+    대상. `node:util` `isDeepStrictEqual` import 제거
+  - `tests/impact-package-version-only.test.js` — 9건 → **17건**. 신규 8건은 검증이 찾은 울타리
+    구멍을 막는다. 파일 상단에 **import 자기검사** 추가(hasGit()가 모든 throw를 먹어 전체 파일이
+    `# skipped 9` + exit 0으로 조용히 죽을 수 있었다)
+  - `tests/impact-default-gate.test.js` — prose census를 `src/` 3파일 → **14개 출하 표면**으로
+    확장(README 2종·`docs/OPERATIONS.md`·`GATE_REVIEW.md`·템플릿 2종·컴포지트 액션·CI 워크플로 포함),
+    패턴에 "`--strict` is what makes it block" 추가. 문장 단위 판정
+  - `docs/OPERATIONS.md`(32행) · `.github/actions/validate/action.yml`(9행) · `GATE_REVIEW.md`
+    (Gate 23 승인 행 + 불변식 2건 + CI 배선 결정) — 확장된 census가 찾아낸 낡은 주장 정정
+  - `README.md` · `README.ko.md` — 제외를 **`impact` 한정**으로 범위 명시(drift 불릿에 있어서
+    `evidence.stale`도 면제되는 것처럼 읽혔다) + 순서 구분·workspaces 범위 반영
+  - `docs/llm-wiki/` — `PUBLIC_API` · `ARCHITECTURE_CONVENTIONS` · `DOMAIN_FEATURES` ·
+    `domains/00_overview` · `EXAMPLES` · `index`(전부 "키 순서는 의미 없다"를 주장하고 있었다),
+    `HARNESS_GOVERNANCE_ROADMAP`(46번 N-14 서술 정정), `log`(이 항목 + `last_updated`)
+
+### 내용
+
+- **결함 1 (가장 심각) — `exports` 키 순서는 의미를 갖는데 비교가 순서를 무시했다.** Node는 조건부
+  `exports`/`imports`를 **키 순서로** 해석하므로 `{node, default}`와 `{default, node}`는 다른 파일을
+  로드한다. `isDeepStrictEqual`은 순서를 무시하니 "version 올림 + `exports` 순서 뒤집기"가 조용히
+  제외됐다 — 소비자가 무엇을 import하는지 결정하는 바로 그 변경이다. 검증 에이전트가 실제 CLI
+  실행으로 재현했다(`result=pass impacted=0`). 그런데 우리는 그 근거("JSON에서 키 순서는 의미 없다")를
+  **출하 문서에 사실로 적어 두기까지 했다.** 이제 `version`을 뺀 나머지를 `JSON.stringify`로 비교한다 —
+  순서는 살고 들여쓰기·BOM·줄바꿈은 여전히 무시된다.
+- **결함 2 — `version`이 안 바뀌어도 제외가 발동했고, 출력은 그것을 "version-only"라고 불렀다.**
+  양쪽에 문자열 `version`이 있기만 하면 통과해서, 재포맷이나 CRLF 변환이 제외되면서
+  `version-only manifest excluded`로 보고됐다. 이제 두 값이 **실제로 달라야** 한다.
+- **결함 3 — basename 매치가 매니페스트가 아닌 `package.json`까지 잡았다.** 테스트 픽스처·샘플·
+  vendored 사본에서는 `version` 값 자체가 시험 대상일 수 있다(검증이 `0.9.0`→`2.0.0` 픽스처로 실증).
+  이제 **루트 `package.json`은 항상**, 중첩 매니페스트는 **루트가 `workspaces`를 선언하고 그 glob의
+  리터럴 접두사 아래 있을 때만** 대상이다.
+- **울타리가 주장보다 약했다.** mutation 테스트로 구멍 4개가 드러났다: `--since` 테스트가
+  `sinceRef`와 하드코딩 `HEAD`를 구분하지 못했고(픽스처가 둘을 동일하게 만들었다 — 여러 커밋 뒤
+  base에 대한 진짜 `engines` 변경이 보고되지 않는 시나리오를 검증이 실측했다), "필터는
+  `impactCommand`에 있다"는 결정에 **단언이 하나도 없었고**(예측기를 `changedFiles`로 옮기면
+  501개 테스트가 전부 통과하면서 `validate --changed`가 조용히 좁아진다), 출력 테스트가 무조건
+  인쇄되는 caveat 문구에 매치돼 요약 줄을 삭제해도 통과했고, "`package.json` 한정" 약속에 부정
+  케이스가 없었다. 넷 다 이제 고정됐다.
+- **census가 자기 주장을 못 지켰다.** `tests/impact-default-gate.test.js`의 census 테스트는
+  주석에 "출하 표면 전수"라고 적고 실제로는 `src/` 3개 파일만 읽었다. 14개 표면으로 넓히자
+  **즉시 2건이 더 나왔다**: `docs/OPERATIONS.md`가 방금 정반대로 고쳐 쓴 절을 네 줄 위에서
+  가리키며 "`--strict`가 막는 것"이라고 적고 있었고, `GATE_REVIEW.md`의 CI 배선 결정에도 같은
+  주장이 남아 있었다. 컴포지트 액션 입력 설명도 `strict: true`가 필요한 것처럼 읽혔다.
+- **`help impact`가 자기와 반대되는 문서로 독자를 보내고 있었다.** `src/cli.js`가 가리키는
+  `GATE_REVIEW.md` Gate 23 절이 "이 규칙은 **절대** error/blocked 기본이 될 수 없다"고 단언한다.
+  결정 21이 그 불변식을 의도적으로 깼으므로, 역사 기록은 남기고 **SUPERSEDED 표시**를 달았다.
+- **정직성 정정 2건**: 앞선 커밋 메시지가 "impact and audit at zero"라고 적었지만 `audit`은
+  `findings: 4`다(미추적 문서 2 + N-14로 해소 불가능한 `evidence.stale` 2). 같은 메시지 뒷부분이
+  둘 다 공개하고 있으므로 요약 한 줄이 과장이었다. 그리고 `log.md`의 `last_updated`가 2026-08-03인데
+  본문에 2026-08-04 항목이 있었다 — 어떤 게이트도 이 불일치를 보지 못한다(N-12와 같은 계열).
+
+### 검증
+
+- `tests/impact-package-version-only.test.js` 17/17. 신규 8건 중 5건은 수정 전 **RED 확인**
+  (순서 변경·버전 무변경·비매니페스트·픽스처·workspaces 미선언), 3건은 이미 통과(보수적 폴백).
+- 확장된 census는 통과 전에 **실패했다** — 그 실패가 위 정정 2건을 찾아낸 방법이다.
+- 전체 스위트·게이트 결과는 이 항목 아래 커밋의 요약 참조.
 
 ## 2026-08-04 - feat: 릴리스마다 발화하던 게이트를 매니페스트 버전 한 줄에서 떼어냈다 (N-13, 결정 c)
 

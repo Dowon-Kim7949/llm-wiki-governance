@@ -6,7 +6,7 @@ branding:
 
 inputs:
   command:
-    description: "Read-only command to run: validate | validate-frontmatter | audit | impact | check-run | drift | monorepo | doctor | stats | status | next. Defaults to validate for backward compatibility. Use `impact` with `strict: true` and `since:` for the gate that FAILS when source changes without its wiki doc — the action previously hardcoded `validate`, so that gate was unreachable through it."
+    description: "Read-only command to run: validate | validate-frontmatter | audit | impact | check-run | drift | monorepo | doctor | stats | status | next. Defaults to validate for backward compatibility. Use `impact` with `since:` for the gate that FAILS when source changes without its wiki doc — the action previously hardcoded `validate`, so that gate was unreachable through it. Since 1.28.0 that gate blocks with no flag at all: `strict: true` is a no-op for `impact.source_changed` and only escalates the command's other findings."
     required: false
     default: "validate"
   version:

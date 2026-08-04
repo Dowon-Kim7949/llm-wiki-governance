@@ -385,7 +385,7 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 
 ## Review Notes
 
-Older review notes (5 entries, 2026-07-22 → 2026-07-27) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (6 entries, 2026-07-22 → 2026-07-27) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
 - 2026-07-27에 **`B2_empty` 통제 arm을 구축·실행**해 tooling-vs-knowledge 교란요인을 닫았다
   (유지보수자 지시, 유료 $5.95). 하네스: `runner.js`에 B2와 도구·프롬프트가 바이트 동일한
@@ -403,7 +403,7 @@ Older review notes (5 entries, 2026-07-22 → 2026-07-27) are archived in [REVIE
   §규율에 2026-07-27 규율을 추가했으나
   **README 헤드라인 금지는 유지**한다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로
   강등한다 — 사람 검토 후 재승인 예정(허위 검토 메타 미기입).
-- 2026-07-22에 실측 후속 엄밀성 하네스를 **scaffolded**(미실행)했다: SDK 경로 드라이버 `bench/real/agent.js`(Anthropic SDK tool_runner; read/grep + 읽기 전용 `llm-wiki` retrieval 툴; env로 target-agnostic; 읽기 전용)가 서브에이전트 경로에 없던 **input/output 토큰 분리**를 제공한다. `bench/tasks-csap.json`(6 태스크 재현), `bench/real/package.json`(SDK를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변), `runner.js`의 `BENCH_TASKS` 오버라이드, `DRIVER_RUNBOOK.md` § SDK path 실행법을 함께 추가했다. `--dry`로 배선 검증(모델 호출·비용 0). **유료 실행과 교차 에이전트(GPT) 드라이버는 보류**(유저 지시). 커밋되는 재현 산출물은 tasks-csap.json·package.json·runner.js·runbook이며 `agent.js`는 설계상 git-ignore(SDK dep 격리)다. 에이전트 편집이라 `needs_review` 유지.
 - 2026-07-30에 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 2026-07-27 통제군(B2_empty) 실측·비준 이후 벤치 사실관계 변경이 없고, 1.27.1(문맥 규율)·1.27.2(프롬프트 형태 규율)는 벤치를 재실행하지 않았으며 이 문서도 그렇게 주장하지 않음을 확인했다. README 헤드라인 금지 유지.
 - 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-22 → 2026-07-27)을 `REVIEW_HISTORY.md`의 신규 `Benchmark` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서는 인수인계의 위반 목록에 없었다** — 그 목록이 손으로 작성돼 `EXAMPLES.md`와 함께 빠졌고, 전 문서 계수를 돌려서야 드러났다. 형식 두 가지를 함께 처리했다: 이 문서의 노트는 여러 줄로 감겨 있어 이전기가 항목 경계를 `- ` 시작 줄로 잡아야 했고(원문 줄바꿈 보존), 워킹트리 줄바꿈이 이 문서만 CRLF 혼재라 `.gitattributes`의 `eol=lf`에 맞춰 LF로 정규화됐다(인덱스는 이미 LF여서 git이 보는 diff는 이번 이동뿐이다). 수치·규율 서술은 한 글자도 바뀌지 않았고, README 토큰·속도 헤드라인 금지 규율도 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 게이트가 지목한 `GATE_REVIEW.md` 변경을 재대조했다: 이번 커밋은 새 절(`Detection Defaults and Freshness Scope Decision`·`Doc-Only Decisions`)을 **덧붙였을 뿐**(162줄 추가·0줄 삭제)이고 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`(Gate 22, 2026-07-21 수용)과 `bench/**`는 한 글자도 바뀌지 않았으며, 새 절의 `impact.source_changed` 기본 error는 CLI 탐지 규칙이라 이 문서의 Gate 22 임팩트 측정 수치·규율과 무관하므로 **본문 불변**이다(`GATE_REVIEW.md` 스스로 기록해 둔 section-anchor 오탐 사례의 재발화).
+- 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를 재확인했다. 이번 변경이 그 파일에 더한 것은 "Version-Only Manifest Scope Decision" 절과 Gate 23 승인 행·불변식 2건·CI 배선 결정에 붙인 SUPERSEDED 표시뿐이고, 벤치 범위를 정한 Gate 22·24 항목과 통제군(B2_empty) 서술에는 손대지 않았다 — 이 문서의 수치·규율(모든 proxy 수치는 chars/4이고 README 헤드라인은 금지)은 **불변**이다. 재스탬프만으로는 해소되지 않아 이 노트를 남긴다: `reviewed_at`이 이미 오늘이면 강등→승격 왕복이 byte-identical이 되어 문서가 change set에 들어가지 않는다(결함 N-11).

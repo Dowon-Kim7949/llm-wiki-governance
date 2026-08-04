@@ -23,11 +23,26 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { impactCommand } from "../src/commands.js";
+import { impactCommand, versionOnlyManifestChanges } from "../src/commands.js";
+import { changedFiles } from "../src/git.js";
 import { normalizeOptions } from "../src/index.js";
+
+// hasGit() below swallows every throw, which in this repository has meant that a
+// missing import turns a whole file into `# skipped N` with exit code 0 — green
+// locally and green in CI while testing nothing. Nothing in the repo asserts a
+// skip count, so this file guards its own imports at load time instead.
+for (const [name, value] of [
+  ["execFileSync", execFileSync],
+  ["impactCommand", impactCommand],
+  ["versionOnlyManifestChanges", versionOnlyManifestChanges],
+  ["changedFiles", changedFiles],
+  ["normalizeOptions", normalizeOptions]
+]) {
+  if (typeof value !== "function") throw new Error(`${name} is not imported; this file would have silently skipped`);
+}
 
 function hasGit() {
   try { execFileSync("git", ["--version"], { stdio: "ignore" }); return true; } catch { return false; }
@@ -164,9 +179,13 @@ test("the exclusion does not swallow the unavailable branch", async (t) => {
 
 test("a workspace manifest is excluded by the same rule", async (t) => {
   if (!hasGit()) { t.skip("git not available"); return; }
-  // The predicate matches on basename, so a monorepo's package manifests behave
-  // like the root one. Only `package.json` — a TOML manifest would need a parser.
-  const { cwd, git } = await pkgRepo({ cites: "packages/a/package.json" });
+  // A monorepo bumps member versions every release too, so a declared workspace
+  // member behaves like the root manifest. Only `package.json` — a TOML manifest
+  // would need a parser this package does not ship.
+  const { cwd, git } = await pkgRepo({
+    pkg: { ...BASE_PKG, workspaces: ["packages/*"] },
+    cites: "packages/a/package.json"
+  });
   await mkdir(path.join(cwd, "packages", "a"), { recursive: true });
   await writePkg(cwd, BASE_PKG, "packages/a/package.json");
   // Commit the workspace manifest so it has a baseline, then bump only its version.
@@ -184,9 +203,137 @@ test("the command tells the reader when it excluded something", async (t) => {
   // Shipped text in this repository has outlived the behaviour it described twice
   // (N-10, and the drift caveats before it). An exclusion nobody can see in the
   // output is the same failure mode: the count would drop with no stated reason.
+  // The caveats state the RULE unconditionally, so matching /version-only/ alone
+  // is vacuous — the assertion has to be that the applied PATH reaches the
+  // summary, and that it is absent when nothing was excluded.
+  const summaryOf = (result) => result.text.split(/^## /m).find((block) => block.startsWith("Summary")) ?? "";
+
+  const excludedRepo = await pkgRepo();
+  await writePkg(excludedRepo.cwd, { ...BASE_PKG, version: "1.1.0" });
+  const excludedSummary = summaryOf(await impactCommand(normalizeOptions({ cwd: excludedRepo.cwd })));
+  assert.match(excludedSummary, /anchoring_files: 0 \(version-only manifest excluded: package\.json\)/);
+
+  const keptRepo = await pkgRepo();
+  await writePkg(keptRepo.cwd, { ...BASE_PKG, engines: { node: ">=20" } });
+  const keptSummary = summaryOf(await impactCommand(normalizeOptions({ cwd: keptRepo.cwd })));
+  assert.ok(keptSummary.length > 0, "the summary section must be findable in the rendered text");
+  assert.doesNotMatch(keptSummary, /excluded/, "an unexcluded change must not claim an exclusion");
+});
+
+test("a reordered exports map is NOT version-only, even with a version bump", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  // Node resolves conditional exports in KEY ORDER, so {node, default} and
+  // {default, node} load different files. A deep-equality compare ignores order
+  // and would call this version-only — silently withholding the one change that
+  // decides what every consumer of the package actually imports.
+  const pkg = { ...BASE_PKG, exports: { ".": { node: "./node.js", default: "./browser.js" } } };
+  const { cwd } = await pkgRepo({ pkg });
+  await writePkg(cwd, { ...pkg, version: "1.1.0", exports: { ".": { default: "./browser.js", node: "./node.js" } } });
+
+  const result = await impactCommand(normalizeOptions({ cwd }));
+  assert.equal(impactFindings(result).length, 1, "a conditional-exports reorder is a real change");
+  assert.deepEqual(result.versionOnlyExcluded, []);
+});
+
+test("an unchanged version is not a version-only change", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  // Reformatting or a line-ending conversion leaves the version identical. Calling
+  // that "version-only" would print a reason that is not the reason.
+  const { cwd } = await pkgRepo();
+  await writePkg(cwd, `${JSON.stringify(BASE_PKG, null, 4)}\n`);
+  const result = await impactCommand(normalizeOptions({ cwd }));
+  assert.equal(impactFindings(result).length, 1, "same version on both sides: nothing to exclude");
+  assert.deepEqual(result.versionOnlyExcluded, []);
+});
+
+test("--since is honored, not silently replaced by HEAD", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  // A fixture that commits the bump and diffs HEAD~1 cannot tell the two apart:
+  // HEAD's blob and the working tree are identical, so reading the wrong side
+  // gives the right answer. This one puts a REAL change between ref and HEAD.
+  const { cwd, git } = await pkgRepo();
+  await writePkg(cwd, { ...BASE_PKG, version: "1.1.0" });
+  git(["add", "-A"]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "bump"]);
+  await writePkg(cwd, { ...BASE_PKG, version: "1.1.0", engines: { node: ">=20" } });
+  git(["add", "-A"]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "engines"]);
+
+  const result = await impactCommand(normalizeOptions({ cwd, since: "HEAD~2", strict: true }));
+  assert.deepEqual(result.versionOnlyExcluded, [], "against HEAD~2 the net diff also changes engines");
+  assert.equal(impactFindings(result).length, 1);
+  assert.equal(result.result, "fail");
+});
+
+test("only a package manifest is eligible — and only where one is expected", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  // The caveat promises this never applies to pyproject.toml or Cargo.toml. It
+  // must also not apply to any other JSON file that happens to carry a version,
+  // nor to a nested package.json in a repo that declares no workspaces (a test
+  // fixture's version is its test input, not a release number).
+  const other = await pkgRepo({ cites: "manifest.json" });
+  await writePkg(other.cwd, { name: "x", version: "1.0.0" }, "manifest.json");
+  other.git(["add", "-A"]);
+  other.git(["-c", "commit.gpgsign=false", "commit", "-m", "add manifest.json"]);
+  await writePkg(other.cwd, { name: "x", version: "2.0.0" }, "manifest.json");
+  assert.equal(impactFindings(await impactCommand(normalizeOptions({ cwd: other.cwd }))).length, 1, "manifest.json is not a package manifest");
+
+  const fixture = await pkgRepo({ cites: "tests/fixtures/legacy/package.json" });
+  await mkdir(path.join(fixture.cwd, "tests", "fixtures", "legacy"), { recursive: true });
+  await writePkg(fixture.cwd, { name: "legacy", version: "0.9.0" }, "tests/fixtures/legacy/package.json");
+  fixture.git(["add", "-A"]);
+  fixture.git(["-c", "commit.gpgsign=false", "commit", "-m", "add fixture"]);
+  await writePkg(fixture.cwd, { name: "legacy", version: "2.0.0" }, "tests/fixtures/legacy/package.json");
+  assert.equal(
+    impactFindings(await impactCommand(normalizeOptions({ cwd: fixture.cwd }))).length,
+    1,
+    "no workspaces declared: a nested manifest is not the manifest of record"
+  );
+});
+
+test("a workspace manifest is eligible only under a declared workspace root", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  const { cwd, git } = await pkgRepo({
+    pkg: { ...BASE_PKG, workspaces: ["packages/*"] },
+    cites: "packages/a/package.json"
+  });
+  await mkdir(path.join(cwd, "packages", "a"), { recursive: true });
+  await writePkg(cwd, { name: "a", version: "1.0.0" }, "packages/a/package.json");
+  await mkdir(path.join(cwd, "vendor", "b"), { recursive: true });
+  await writePkg(cwd, { name: "b", version: "1.0.0" }, "vendor/b/package.json");
+  git(["add", "-A"]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "add packages"]);
+
+  await writePkg(cwd, { name: "a", version: "1.1.0" }, "packages/a/package.json");
+  await writePkg(cwd, { name: "b", version: "1.1.0" }, "vendor/b/package.json");
+  const excluded = await versionOnlyManifestChanges(cwd, undefined, ["packages/a/package.json", "vendor/b/package.json"]);
+  assert.deepEqual(excluded, ["packages/a/package.json"], "packages/* is declared; vendor/ is not");
+});
+
+test("a deleted manifest stays in the change set", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  const { cwd } = await pkgRepo();
+  await rm(path.join(cwd, "package.json"));
+  const result = await impactCommand(normalizeOptions({ cwd }));
+  assert.equal(impactFindings(result).length, 1, "a deleted manifest has no after side to compare");
+  assert.deepEqual(result.versionOnlyExcluded, []);
+});
+
+test("the change-set primitive is not narrowed — only impact's anchoring is", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  // GATE_REVIEW records that validate --changed and prepare's working-tree hint
+  // keep their contract ("files that differ from the baseline"). Moving the filter
+  // into changedFiles would satisfy every impact-shaped assertion in this file
+  // while silently narrowing both of those, so assert on the primitive directly.
   const { cwd } = await pkgRepo();
   await writePkg(cwd, { ...BASE_PKG, version: "1.1.0" });
-  const printed = (await impactCommand(normalizeOptions({ cwd }))).text;
-  assert.match(printed, /version-only/i, "the summary/caveats must name the exclusion");
-  assert.match(printed, /package\.json/, "and name the file it applied to");
+  assert.ok(changedFiles(cwd).includes("package.json"), "changedFiles must still report the manifest");
+  assert.ok(changedFiles(cwd, "HEAD").includes("package.json"), "including through a --since ref");
+});
+
+test("the git-unavailable payload keeps the same shape", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  const { cwd } = await pkgRepo();
+  const result = await impactCommand(normalizeOptions({ cwd, since: "no-such-ref" }));
+  assert.deepEqual(result.versionOnlyExcluded, [], "consumers must not have to branch on which path ran");
 });

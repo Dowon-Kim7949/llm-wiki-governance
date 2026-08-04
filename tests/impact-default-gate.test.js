@@ -121,19 +121,54 @@ test("nothing this command ships still tells the user impact is a warning", asyn
   assert.doesNotMatch(printed, /[Dd]efault warning/, "the command's own caveats must not call this rule a warning");
   assert.match(printed, /error by default/i);
 
-  const surfaces = {
-    "src/cli.js": await readFile(path.join(REPO_ROOT, "src/cli.js"), "utf8"),
-    "src/commands.js": await readFile(path.join(REPO_ROOT, "src/commands.js"), "utf8"),
-    "src/i18n.js": await readFile(path.join(REPO_ROOT, "src/i18n.js"), "utf8")
-  };
-  for (const [file, text] of Object.entries(surfaces)) {
-    for (const line of text.split("\n")) {
-      if (!/impact/i.test(line)) continue;
-      assert.ok(
-        !/--strict\s+(makes|fails|to fail)/.test(line) || /no-op|does not change/.test(line),
-        `${file} still tells the reader --strict is what makes impact fail: ${line.trim()}`
-      );
-    }
+  // The census named three source files while calling itself a census over the
+  // shipped surfaces. On 2026-08-04 a sweep found docs/OPERATIONS.md still telling
+  // the reader "--strict is what makes it block" — in the same file whose next
+  // section had just been rewritten to say the opposite — and the composite
+  // action's input description implying strict: true was load-bearing. Neither was
+  // in scope, and neither phrasing matched the pattern. Both are now covered.
+  const SURFACES = [
+    "src/cli.js",
+    "src/commands.js",
+    "src/i18n.js",
+    "src/commands/findings.js",
+    "src/commands/scans.js",
+    "README.md",
+    "README.ko.md",
+    "GATE_REVIEW.md",
+    "docs/OPERATIONS.md",
+    "SECURITY.md",
+    "templates/git-hooks/pre-commit",
+    "templates/github-actions/llm-wiki-validate.yml",
+    ".github/actions/validate/action.yml",
+    ".github/workflows/ci.yml"
+  ];
+  // "--strict is what makes it block" / "--strict makes it fail" / "so --strict is
+  // required", and the flat claim that the rule is a warning.
+  const BLOCK_CLAIM = /--strict`?\s*(is what makes|is required|makes|fails|to fail)/;
+  const WARNING_CLAIM = /impact\.source_changed`?\s+(is|as)\s+a\s+warning/i;
+  // A line may say any of it while marking itself as history or as a correction.
+  const ALLOWED = /no-op|does not change|used to be|no longer|superseded|since 1\.28\.0|is not\b/i;
+
+  // Sentence-scoped, because a Markdown bullet is one line and routinely covers
+  // `impact` in one sentence and `drift`/`check-run` — which DO still need
+  // `--strict` — in the next. A sentence naming both is ambiguous and skipped; that
+  // is a known hole, and the alternative (line-scoped) produced a false positive on
+  // the very sentence that states the deliberate asymmetry.
+  for (const file of SURFACES) {
+    const text = await readFile(path.join(REPO_ROOT, file), "utf8");
+    text.split("\n").forEach((line, index) => {
+      if (!/impact/i.test(line)) return;
+      for (const sentence of line.split(/(?<=\.)\s+/)) {
+        if (!/impact/i.test(sentence)) continue;
+        if (/\bdrift\b|check-run/i.test(sentence)) continue;
+        if (!BLOCK_CLAIM.test(sentence) && !WARNING_CLAIM.test(sentence)) continue;
+        assert.ok(
+          ALLOWED.test(sentence),
+          `${file}:${index + 1} still tells the reader --strict is what makes impact block, or calls the rule a warning: ${sentence.trim()}`
+        );
+      }
+    });
   }
 });
 

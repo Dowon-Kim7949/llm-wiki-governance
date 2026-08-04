@@ -1,7 +1,6 @@
 import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { isDeepStrictEqual } from "node:util";
 import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
 import { detectProject, detectWorkspaces } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
@@ -903,7 +902,27 @@ function parseJsonObject(text) {
   }
 }
 
-// Paths in <changed> that are a `package.json` whose only difference from the
+// Directory prefixes a nested manifest must sit under to count as a package
+// manifest of record: the literal head of each `workspaces` glob in the ROOT
+// manifest. Without a declaration, a nested package.json is a fixture, a vendored
+// copy, or a sample — and its `version` may be test input rather than a release
+// number, which is exactly the case the exclusion below must not swallow.
+function workspacePrefixes(rootManifest) {
+  const declared = Array.isArray(rootManifest?.workspaces)
+    ? rootManifest.workspaces
+    : Array.isArray(rootManifest?.workspaces?.packages)
+      ? rootManifest.workspaces.packages
+      : [];
+  return declared
+    .filter((entry) => typeof entry === "string" && entry.trim())
+    .map((entry) => {
+      const head = entry.includes("*") ? entry.slice(0, entry.indexOf("*")) : `${entry}/`;
+      return head.endsWith("/") ? head : `${head.slice(0, head.lastIndexOf("/") + 1)}`;
+    })
+    .filter(Boolean);
+}
+
+// Paths in <changed> that are a package manifest whose only difference from the
 // baseline is the `version` value. N-13, decision (c) (maintainer, 2026-08-04):
 // a release commit changes the manifest by definition, so every release fired the
 // error-by-default impact gate at every verified document citing it — findings
@@ -914,29 +933,50 @@ function parseJsonObject(text) {
 // rubber stamp. `package.json` only: pyproject.toml and Cargo.toml would need a
 // parser and the zero-dependency invariant is worth more than the symmetry.
 //
-// Conservative in every direction — anything it cannot PROVE is version-only
+// Conservative in every direction — anything it cannot PROVE is a version bump
 // stays in the change set: an unparseable side, a manifest with no baseline blob
-// (new/untracked, or git unable to read the ref), a deleted working-tree file, or
-// a `version` field being added or removed rather than changed. Key order and
-// whitespace are not semantic in JSON, so a reformat that leaves the parsed
-// object identical is excluded too.
+// (new/untracked, or git unable to read the ref), a deleted working-tree file, a
+// `version` field added or removed rather than changed, a version that did not
+// actually move (a reformat or a line-ending conversion is not a version bump and
+// must not be reported as one), or a nested manifest in a repository that declares
+// no workspaces.
+//
+// The comparison is ORDER-SENSITIVE, and that is not pedantry: Node matches
+// conditional `exports`/`imports` in key order, so `{node, default}` and
+// `{default, node}` resolve to different files. A deep-equality compare ignores
+// order and would call a reorder version-only, withholding the one change that
+// decides what every consumer of the package imports. Serializing the rest with
+// JSON.stringify keeps order significant while still ignoring indentation, a BOM,
+// and line endings, which genuinely carry no meaning here.
 export async function versionOnlyManifestChanges(cwd, sinceRef, changed) {
   const excluded = [];
-  for (const relPath of changed) {
-    if (relPath !== MANIFEST_BASENAME && !relPath.endsWith(`/${MANIFEST_BASENAME}`)) continue;
+  const candidates = changed.filter(
+    (relPath) => relPath === MANIFEST_BASENAME || relPath.endsWith(`/${MANIFEST_BASENAME}`)
+  );
+  if (candidates.length === 0) return excluded;
+
+  const readWorkingTree = async (relPath) => {
+    try {
+      return parseJsonObject(await readUtf8(path.join(cwd, ...relPath.split("/"))));
+    } catch {
+      return null;
+    }
+  };
+  const prefixes = candidates.every((relPath) => relPath === MANIFEST_BASENAME)
+    ? []
+    : workspacePrefixes(await readWorkingTree(MANIFEST_BASENAME));
+
+  for (const relPath of candidates) {
+    if (relPath !== MANIFEST_BASENAME && !prefixes.some((prefix) => relPath.startsWith(prefix))) continue;
     const before = parseJsonObject(fileAtRef(cwd, sinceRef || "HEAD", relPath));
     if (!before) continue;
-    let after = null;
-    try {
-      after = parseJsonObject(await readUtf8(path.join(cwd, ...relPath.split("/"))));
-    } catch {
-      after = null;
-    }
+    const after = await readWorkingTree(relPath);
     if (!after) continue;
     if (typeof before.version !== "string" || typeof after.version !== "string") continue;
+    if (before.version === after.version) continue;
     const { version: _beforeVersion, ...beforeRest } = before;
     const { version: _afterVersion, ...afterRest } = after;
-    if (isDeepStrictEqual(beforeRest, afterRest)) excluded.push(relPath);
+    if (JSON.stringify(beforeRest) === JSON.stringify(afterRest)) excluded.push(relPath);
   }
   return excluded;
 }

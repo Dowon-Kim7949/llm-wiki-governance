@@ -29,7 +29,7 @@ The same lifecycle applies everywhere; only the dial settings change:
 
 - **Setup:** `init --write` detects domains and scaffolds `domains/NN_<name>.md`. If detection is quiet, name them explicitly: `init --write --domains billing,auth,search`.
 - **Everyday:** `prepare --task "<change>"` before implementing (scopes the relevant docs, source, and risks from the wiki); the `feature`/`fix` skills to keep docs in sync; `onboard --domain <name>` for newcomers.
-- **Freshness:** wire `impact --since <base> --strict` into PR CI so a change to governed code that doesn't update its `verified` doc fails the build — see [Wiring the gate](#wiring-the-gate-the-step-most-repos-skip) for why `--strict` is what makes it block. Run `drift` periodically (`drift --strict` to gate on it); `drift --downgrade` flips stale `verified` docs back to `needs_review`.
+- **Freshness:** wire `impact --since <base>` into PR CI so a change to governed code that doesn't update its `verified` doc fails the build — it blocks with no flag since 1.28.0; see [Wiring the gate](#wiring-the-gate-the-step-most-repos-skip) for the two config-only ways back. Run `drift` periodically (`drift --strict` to gate on it); `drift --downgrade` flips stale `verified` docs back to `needs_review`.
 - **CI cost:** still one read-only pass; it scales with document count, not repo size (the scan reads the wiki, not your whole source tree). Scope with `--changed` on large PRs to report only findings on changed docs.
 - **Doc-count strategy:** one doc per meaningful domain/subsystem. Split a doc when it stops fitting in a reviewer's head; merge two when they always change together. Keep `source_files`/`evidence` precise so drift detection stays meaningful.
 
