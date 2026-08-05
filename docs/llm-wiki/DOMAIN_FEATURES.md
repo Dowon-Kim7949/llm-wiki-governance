@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
-last_updated: 2026-08-04
+last_updated: 2026-08-05
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-04
+reviewed_at: 2026-08-05
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -145,7 +145,7 @@ contains_sensitive_info: false
 - `src/encoding.js#symbol:readTextAuto` — detector 매니페스트/소스 읽기용 BOM 인식 리더(UTF-16/UTF-8-BOM 디코드, BOM 없는 파일 byte-identical); 위키 문서 `readUtf8`는 불변(1.14.1).
 - `src/commands.js#symbol:buildHandoff` — handoff 진입점을 명시적 선택 에이전트의 어댑터 파일로만 한정(1.14.1).
 - `src/commands/skills.js#symbol:writeSkillArtifacts` — bootstrap/feature/fix/docs-sync 위키-그라운디드 자동화 프롬프트를 Claude 스킬(`.claude/skills/`)·Codex 스킬(`.agents/skills/`)·Cursor 룰·중립 프롬프트로 생성(도메인 맵 주입, opt-in, recognize-don't-run, 미덮어씀; `--agent codex`가 Codex 네이티브 형식을 트리거)(1.15; bootstrap·Codex 확장). bootstrap/handoff 공통 규칙은 `src/task-prompts.js#symbol:initialEnrichmentWorkflow`.
-- `src/commands.js#symbol:impactCommand`·`src/commands/scans.js#symbol:scanReverseImpact` — diff 기준 reverse-impact: 변경집합(`changedFiles`)에 든 소스를 참조하나 문서 자신은 안 바뀐 `verified` 문서를 `impact.source_changed`로 flag(read-only; date drift와 앵커 추출기 `verifiedSourceAnchors` 공유)(1.17, Gate 23). **2026-08-03(결정 21)부터 기본 severity가 warning → error다: 플래그 없이 exit 1이고 이 규칙에 한해 `--strict`는 no-op이며, exit code 계약이 바뀌는 breaking change다.** 되돌리는 길은 config `rules`의 `"impact.source_changed": "warning"`/`"info"`/`"off"` 또는 `rulesPreset: "relaxed"`(이 규칙을 `info`로 유지)이고, `strict` 프리셋은 no-op이라 더 이상 이 규칙을 나열하지 않는다. 2026-08-04(N-13)부터 `impactCommand`가 `scanReverseImpact` 호출 **전에** `versionOnlyManifestChanges`(같은 파일)로 `version`만 바뀐 `package.json`을 집합에서 빼고, 기준 내용은 새 git 프리미티브 `src/git.js#symbol:fileAtRef`로 읽는다 — 스캔은 `(cwd, changedSet)`만 받아 `--since` ref를 모르므로 카브아웃은 호출자 몫이다.
+- `src/commands.js#symbol:impactCommand`·`src/commands/scans.js#symbol:scanReverseImpact` — diff 기준 reverse-impact: 변경집합(`changedFiles`)에 든 소스를 참조하나 문서 자신은 안 바뀐 `verified` 문서를 `impact.source_changed`로 flag(read-only; date drift와 앵커 추출기 `verifiedSourceAnchors` 공유)(1.17, Gate 23). **2026-08-03(결정 21)부터 기본 severity가 warning → error다: 플래그 없이 exit 1이고 이 규칙에 한해 `--strict`는 no-op이며, exit code 계약이 바뀌는 breaking change다.** 되돌리는 길은 config `rules`의 `"impact.source_changed": "warning"`/`"info"`/`"off"` 또는 `rulesPreset: "relaxed"`(이 규칙을 `info`로 유지)이고, `strict` 프리셋은 no-op이라 더 이상 이 규칙을 나열하지 않는다. 1.29.0(N-13, 2026-08-04)부터 `impactCommand`가 `scanReverseImpact` 호출 **전에** `versionOnlyManifestChanges`(같은 파일)로 `version`만 바뀐 `package.json`을 집합에서 빼고, 기준 내용은 새 git 프리미티브 `src/git.js#symbol:fileAtRef`로 읽는다 — 스캔은 `(cwd, changedSet)`만 받아 `--since` ref를 모르므로 카브아웃은 호출자 몫이다.
 - `src/commands/scans.js#symbol:FRESHNESS_EXEMPT_DOC_TYPES`·`driftTargets` — release note 면제와 `drift` 전용 opt-in(결정 28, 2026-08-03): `doc_type: release_notes`(OKF `type` 표기 포함)를 `evidence.stale`·`impact.source_changed` 양쪽에서 하드코딩 제외(append-only 로그 skip과 같은 자리) — 이 저장소 52건 중 33건이 검사에서 빠지고 impact 수는 23 → 9. `--watch-needs-review`는 `drift`만 받으며(기본 off) 날짜 앵커 최신성을 `needs_review`까지 넓히되 error인 `impact`에는 넓히지 않고, 면제가 opt-in보다 우선한다.
 - `src/commands/retrieval.js#symbol:searchDocsCommand`·`getDocCommand` — read-only retrieval(문서 본문 반환): `list-docs`/`search-docs`/`get-doc`/`get-related`. zero-dep 키워드 검색, restricted/민감 문서 list/search 기본 제외(opt-in `includeSensitive`), 반환 본문/스니펫 sensitive 라인 redact, 쓰기 표면 없음; API+MCP+CLI 3표면(1.18, Gate 24).
 - `src/commands/guided.js#symbol:onboardCommand`·`prepareCommand` — read-only guided(1.24): `onboard`(도메인 학습 경로)·`prepare`(작업 범위 조사)를 기존 위키+evidence+그래프+검색 랭킹(`rankDocsByQuery` 재사용)에서 결정적으로 조립. 완전 read-only, 민감 문서 제외·redact, 비단정 어법, EN/KO, CLI/API/MCP 3표면. feature/fix 스킬은 prepare 인지 + 충돌/범위 확대 시 구현 전 중단(계약 불변). 스킬 `llm-wiki-onboard`/`llm-wiki-prepare`(read-only, 매니페스트 없음). 근거: `src/commands/guided.js`, 범위는 `GATE_REVIEW.md`(Guided Onboarding and Task Preparation).

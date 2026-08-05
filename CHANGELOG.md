@@ -6,6 +6,101 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.29.0 — 2026-08-05
+
+One change, and it exists because the gate 1.28.0 turned on fired on the commit that shipped it.
+A release commit changes `package.json` by definition, and ten non-exempt `verified` documents in
+this repository cite that file — so every release produced a fanout of findings nobody could act
+on, from a rule that now fails a build with no flag. `llm-wiki impact` no longer anchors on a
+manifest whose diff moves **nothing but the `version` value**. The file is still **reported as
+changed**; it is simply not used to decide which documents are impacted.
+
+Filed as N-13 in `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` chapter H, where the two rejected
+alternatives are priced next to it; this is option (c), the maintainer's decision on 2026-08-04.
+Scope is recorded in `GATE_REVIEW.md` under *"Version-Only Manifest Scope Decision"*.
+
+### Changed
+
+- **`impact` no longer anchors on a version-only `package.json`.** Nothing else about the rule
+  moves: it is still `error` by default, `--strict` is still a no-op for it, and `release_notes`
+  are still exempt. Only the change set the rule anchors against is narrower.
+
+  **Conservative in every direction.** Anything the check cannot *prove* is a version bump stays in
+  the change set and still counts: any other key moving, a `version` field added or removed rather
+  than changed, a `version` that did not actually move (a reformat or a CRLF conversion is not a
+  version bump and must not be reported as one), an unparseable manifest on either side, a manifest
+  with no baseline blob to compare against (new, untracked, or a ref git cannot read), a deleted
+  working-tree file, and a nested manifest in a repository that declares no workspaces.
+
+  **The comparison is order-sensitive, and that is not pedantry.** Node resolves conditional
+  `exports` / `imports` in **key order**, so `{node, default}` and `{default, node}` load different
+  files. Everything but `version` is compared as a `JSON.stringify` string, which keeps order
+  significant while still ignoring indentation, a BOM, and line endings — those genuinely carry no
+  meaning here.
+
+  **Scope: `package.json` only.** The root manifest always, and a nested one only when the root
+  declares `workspaces` and the path sits under the literal prefix of one of its globs — matching
+  on basename alone would swallow test fixtures, samples, and vendored copies, where the `version`
+  value may be the thing under test. Never `pyproject.toml` or `Cargo.toml`: those need a parser,
+  and the zero-dependency invariant is worth more than the symmetry.
+
+  **`drift` is unchanged, deliberately.** `evidence.stale` is date-anchored — it asks *when* a file
+  changed, not *what* changed in it — so a version-only bump still flags every document citing the
+  manifest there. The exclusion is `impact`'s alone.
+
+### Added
+
+- **`anchoring_files` in every `impact` report**, printed next to `changed_files`, with the excluded
+  paths named inline (`anchoring_files: 23 (version-only manifest excluded: package.json)`). A
+  silent exclusion was ruled out at design time: this project has twice shipped text that ran ahead
+  of behaviour, and an invisible carve-out is the same failure in the other direction.
+- **`versionOnlyExcluded[]` in `impact --format json`** — additive, and a matching sentence in the
+  command's Caveats block.
+- **`fileAtRef(cwd, ref, relPath)` in `src/git.js`** — the stored content of a path at a ref
+  (`git show <ref>:<path>`), because a decision about whether a change is *meaningful* needs the
+  before side of the diff, which `changedFiles` (names only) cannot supply. A failure returns
+  `null` meaning "unknown", never "the file was empty": a bad ref and a path absent at that ref both
+  exit 128 and `runGit` discards stderr, so the two cannot be told apart, and callers fail closed on
+  that distinction.
+
+### Honesty note
+
+**It does not go to zero, and the numbers are measured, not estimated.** A `package.json`-only diff
+goes from **10 findings to 0**. Across the eight version-bearing files a release actually touches,
+it goes from **11 to 4** — and this release commit measured exactly **4**, every one of them citing
+`README.md` or `.github/actions/validate/action.yml`, whose contents genuinely changed. Those four
+are closer to true positives than to noise, and they were resolved by re-reading the documents, not
+by re-stamping them: three carried a claim that had gone stale and were edited. Resolving them then
+raised **one second-order finding** — the review-notes archive cites the documents that were just
+edited — so the honest count for this commit is five findings handled, not four. Fanout in a wiki is
+not one hop from source to document.
+
+**The first implementation was wrong in three ways, and one of them had already been written into
+shipped documentation as a fact.** Adversarial verification before release caught: the order-blind
+comparison above (justified in six wiki documents by "key order carries no meaning in JSON" — true
+of JSON, false of `package.json`); an exclusion that fired when `version` had not changed at all;
+and a basename match that reached manifests that were not manifests of record. All three are fixed
+and fenced. The wiki sentences that asserted the false premise were corrected — except one, in the
+N-13 entry itself, which survived that sweep and was found only when this release's gate flagged
+the document again. Stale claims are found by the next gate firing, not by the batch that made them.
+
+**The fence was weaker than the claim it was protecting.** Mutation testing found four holes in the
+first test set — a `--since` test whose fixture made `sinceRef` and a hardcoded `HEAD`
+indistinguishable, zero assertions pinning the decision that the filter lives in `impactCommand`
+rather than in the shared `changedFiles` primitive, an output assertion matching a caveat that
+always prints, and no negative case for "`package.json` only". **9 tests → 17.** Separately, a
+prose census in `tests/impact-default-gate.test.js` commented that it covered the shipped surface
+while reading three files under `src/`; widened to fourteen surfaces it immediately found two more
+stale claims, in `docs/OPERATIONS.md` and `GATE_REVIEW.md`.
+
+**Known issue, unfixed (N-14).** `review` enumerates documents through a helper that excludes a
+`templates/` subdirectory of the wiki, while `validate` / `impact` / `drift` enumerate everything.
+A document under `docs/llm-wiki/templates/` can therefore be flagged by a gate and has **no
+promotion or re-stamp path** — downgrading one drops it out of the approval list and reports
+`needs_review_remaining: 0`. Two documents in this repository sit in that state on purpose, left
+there rather than papered over. Recorded as roadmap item 46; adopters with wiki documents under a
+`templates/` directory hit the same trap.
+
 ## 1.28.0 — 2026-08-03
 
 **Read the Breaking section before upgrading.** This release turns the omission gate on by

@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-08-04
+last_updated: 2026-08-05
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,79 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-08-05 - release: 1.29.0 준비 (N-13 제외 규칙 배포 + 게이트가 자기 문서의 낡은 주장을 잡았다)
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (유지보수자 지시: "태그 및 배포가 완료되도록 하라")
+- scope: release metadata, docs, wiki, outputs
+- changed:
+  - `package.json`(1.28.0 → **1.29.0**) · `tests/verification.test.js`(버전 단언) ·
+    `.github/actions/validate/action.yml`(`version` 입력 기본값 1.28 → **1.29**)
+  - `CHANGELOG.md` · `CHANGELOG.ko.md` — 1.29.0 절 신규(Changed / Added / 정직성 노트)
+  - `README.md` · `README.ko.md` — 액션 핀 `@v1.28.0` → `@v1.29.0`, `impact` 행의 매니페스트
+    카브아웃에 "1.29.0부터" 표기 추가
+  - `ROADMAP.md` · `ROADMAP.ko.md` — post-1.28.0 shipped 절 신규(기각한 대안 2건과 실측 숫자 포함)
+  - `docs/llm-wiki/` — `HARNESS_GOVERNANCE_ROADMAP`(**낡은 주장 2건 정정** + 배포 버전 확정) ·
+    `index`(N-13 항목에 버전 확정) · `EXAMPLES`(같음) · `ARCHITECTURE_CONVENTIONS`(N-13 스탬프
+    5곳) · `DOMAIN_FEATURES`(1곳) · `log`(이 항목)
+  - `outputs/team-briefing/` — 덱·노트·README 버전 라벨 v1.28.0 → v1.29.0, 타임라인에 1.29 항목
+    추가(`now` 마커 이동), 1.29 한 줄 설명 추가
+
+### 버전 판단
+
+**MINOR(1.29.0).** `impact`의 안정 출력 표면에 `anchoring_files`(리포트 줄)와
+`versionOnlyExcluded[]`(JSON)가 **추가**됐으므로 `VERSIONING.md`의 patch 정의("메시지/출력
+다듬기")를 넘어서고, 제거·이름변경·JSON 형태 파괴가 없으므로 major도 아니다. 동작 변경 방향은
+**허용 쪽**이다(발화가 줄어 exit 1 → exit 0). 1.28.0처럼 계약을 어기는 예외가 아니라 규칙대로의
+MINOR이므로 `VERSIONING.md`의 예외 절은 건드리지 않았다.
+
+### 게이트가 잡은 것 — 1차 4건(조치 3 / 불변 1) → 2차 1건 → 0
+
+커밋 전 예측(`impact`, 워킹트리 vs HEAD)을 릴리스 메타데이터만 바꾼 상태에서 돌려 **4건**을 얻었다.
+`anchoring_files: 23 (version-only manifest excluded: package.json)` — **방금 배포하는 그 제외
+규칙이 자기 릴리스 커밋에서 실제로 동작했다**(11 → 4). 4건은 전부 내용이 진짜로 바뀐
+`README.md`(3건)·`.github/actions/validate/action.yml`(1건)을 인용하므로 잡음이 아니다.
+
+⚠️ **그 4건을 해소하니 2차 발화가 1건 나왔다**: `REVIEW_HISTORY.md`가 방금 고친 4문서 중
+`ARCHITECTURE_CONVENTIONS`·`DOMAIN_FEATURES`·`EXAMPLES`·`HARNESS_GOVERNANCE_ROADMAP`을
+`source_files`로 인용하는 아카이브이기 때문이다. **위키 문서를 고치는 것이 위키 문서를 인용하는
+문서를 깨운다** — 이 저장소의 팬아웃은 소스→문서 1홉이 아니다. 노트 회전을 하지 않았으므로
+아카이브 내용은 실제로 불변이고, 재기준선(status+tag만, `last_updated` 불변)으로 해소했다.
+최종 `impact`: **findings 0 · exit 0**(changed_files 39 · anchoring_files 38). 이 커밋의 정직한
+숫자는 "4건"이 아니라 **1차 4 + 2차 1 = 5건 처리**다.
+
+- **`HARNESS_GOVERNANCE_ROADMAP.md` — 조치(가장 중요).** N-13 항목이 비교 방식을 **"deep-equal"**,
+  테스트를 **"9건, RED 선확인"**이라고 아직 적고 있었다. 둘 다 **`e355cd1`이 폐기한 첫 구현의
+  서술**이다(현재는 키 순서를 구분하는 `JSON.stringify` 비교, 테스트 17건). 2026-08-04 정정 배치는
+  같은 거짓 전제를 위키 6문서에서 고쳤지만 이 문서에서는 46번(N-14)만 손댔고, **이 문단은 그 사이
+  살아남아 이번 릴리스의 게이트가 다시 지목했을 때 발견됐다.** 본문을 고치고 그 경위를 문단에
+  명시했다 — **낡은 주장은 그것을 만든 배치가 아니라 다음 게이트 발화가 찾는다**는 것이 이 항목이
+  관측하려던 현상 자체다.
+- **`index.md` · `EXAMPLES.md` — 조치.** 카브아웃을 날짜(`2026-08-04`)로만 적고 있어 어느 npm
+  버전부터 쓸 수 있는지 알 수 없었다. `1.29.0`을 명시했다.
+- **`docs/llm-wiki/README.md` — 불변.** 이 문서가 소유한 것은 위키 운영 규칙이고 루트 README에서
+  바뀐 것은 액션 핀 문자열과 `impact` 행의 버전 표기다. 게이트별 계약 서술은 `PUBLIC_API.md`가
+  소유하므로 옮겨 적을 것이 없다 — 재스탬프로 해소했다(`reviewed_at` 2026-08-04 → 2026-08-05이라
+  N-11의 byte-identical no-op에 걸리지 않는다).
+
+게이트가 지목하지 않았지만 같은 배치에서 맞춘 것: `ARCHITECTURE_CONVENTIONS`(5곳)·
+`DOMAIN_FEATURES`(1곳)의 N-13 스탬프에 릴리스 번호를 확정했다. 88bf8cc의 선례(갓 나간 기능의
+"미릴리스" 표기를 실제 버전으로 확정)를 따른 것이며, 두 문서 모두 이 change set에 들어가므로
+자기제외로 새 finding을 만들지 않는다.
+
+**Review Note는 추가하지 않았다.** 문서당 5건 상한(`tests/review-notes-cap.test.js`)에
+`HARNESS_GOVERNANCE_ROADMAP`은 이미 5건이고, 상한 회전은 아카이브 헤더·포인터 줄의 숫자 3개를 같이
+올려야 해서 그 자체가 실패 이력이 있다. 근거는 이 log 항목 하나에 모았다 — 2026-08-04 배치와 같은
+판단이다.
+
+### 남긴 것
+
+**N-14는 그대로다**(로드맵 46번). `review`는 위키의 `templates/` 하위를 못 봐서
+`docs/llm-wiki/templates/*.template.md` 2건의 `evidence.stale`은 **해소 경로가 없다.** 덮지 않고
+CHANGELOG 2종의 "알려진 문제"로 도입처에도 공개했다. `check-run`의 `run.doc_gap` 4건도 그대로다 —
+어떤 위키 문서도 그 파일들을 인용하지 않아서이며, **인용을 늘려 게이트를 조용히 만들지 않는다**(규칙
+자신이 경고하는 안티패턴).
 
 ## 2026-08-04 - fix(follow-up): 적대적 검증이 방금 출하한 제외 규칙에서 결함 3건을 찾았다
 

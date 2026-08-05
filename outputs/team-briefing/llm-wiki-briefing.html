@@ -1,4 +1,4 @@
-<title>llm-wiki-governance 팀 발표 (v1.0 → v1.28.0)</title>
+<title>llm-wiki-governance 팀 발표 (v1.0 → v1.29.0)</title>
 <style>
   :root{
     --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Segoe UI",system-ui,sans-serif;
@@ -262,7 +262,7 @@
       <h1 class="anim">AI를 위한<br>회사 지식 관리 도구</h1>
       <p class="lead anim" style="color:var(--muted)">우리가 만들고 써 온 <strong>llm-wiki-governance</strong> 이야기 —<br>왜 필요하고, 어떻게 발전했고, 어떻게 잘 쓰는가.</p>
       <div class="titlemeta anim">
-        <span class="versionpill">v1.0.0 &nbsp;→&nbsp; v1.28.0</span>
+        <span class="versionpill">v1.0.0 &nbsp;→&nbsp; v1.29.0</span>
         <span class="metachip">방향키 ← → 로 넘기세요</span>
       </div>
     </div>
@@ -498,7 +498,7 @@
   <!-- 6 · TIMELINE -->
   <section class="slide">
     <div class="wrap">
-      <p class="eyebrow anim">발전 스토리 · 1.0 → 1.28.0</p>
+      <p class="eyebrow anim">발전 스토리 · 1.0 → 1.29.0</p>
       <h2 class="anim">한 번에 하나씩, 순서대로 쌓아온 기능</h2>
       <ul class="tl anim">
         <li><span class="ver">1.0</span><span class="desc">안정 선언<small>“사용법을 함부로 안 바꾸겠다”는 약속</small></span></li>
@@ -515,7 +515,8 @@
         <li><span class="ver">1.25</span><span class="desc">토큰 효율<small>가장 싼 안전한 경로 선택 · compact 조회(<b>--compact</b>/<b>--strict-section</b>) · 스킬 간소화 &amp; 안전한 <b>--refresh</b></small></span></li>
         <li><span class="ver">1.26</span><span class="desc">견고화 &amp; 도입<small>사람 검토 워크플로(<b>review</b>) · 공급망/CI 위생(무의존성 유지) · 도입 문서(운영 가이드 · 예제 · MCP 신뢰 모델)</small></span></li>
         <li><span class="ver">1.27</span><span class="desc">감사 마감 &amp; 문맥 규율<small>중복 키·MCP 인자 검증 등 감사 잔여 · 명명 규칙 프리셋(<b>rulesPreset</b>) · 테스트 증거 트레일 · 메모리 임포트(<b>import-memory</b>) · AI가 읽어들이는 양을 제한하는 문맥 예산 · 프롬프트를 목표/금지선/종료기준 3블록으로(선적재 축소, unhobbling)</small></span></li>
-        <li class="now"><span class="ver">1.28</span><span class="desc">게이트를 실제로 켠 릴리스 &nbsp;—&nbsp; 최근 작업<small><b>문서를 안 고치면 빌드가 빨개진다</b>(<b>impact</b>가 이제 기본으로 차단 — 되돌리는 설정 2가지 제공) · 우리가 배포하는 4개 채널(훅·CI 템플릿·액션·우리 CI)이 드디어 그 게이트를 실행 · 어댑터 8종 전부 v2 형태로 · AI 작업환경 자체를 점검하는 <b>harness-health</b> · 릴리스 노트는 검사 면제</small></span></li>
+        <li><span class="ver">1.28</span><span class="desc">게이트를 실제로 켠 릴리스<small><b>문서를 안 고치면 빌드가 빨개진다</b>(<b>impact</b>가 이제 기본으로 차단 — 되돌리는 설정 2가지 제공) · 우리가 배포하는 4개 채널(훅·CI 템플릿·액션·우리 CI)이 드디어 그 게이트를 실행 · 어댑터 8종 전부 v2 형태로 · AI 작업환경 자체를 점검하는 <b>harness-health</b> · 릴리스 노트는 검사 면제</small></span></li>
+        <li class="now"><span class="ver">1.29</span><span class="desc">켠 게이트가 우리 릴리스에서 울던 것을 고침 &nbsp;—&nbsp; 최근 작업<small>버전 숫자 <b>한 줄만</b> 바뀐 <b>package.json</b>은 이제 "바뀐 파일"로는 계속 보고하되 <b>문서 대조에는 쓰지 않는다</b> — 배포할 때마다 아무도 조치할 수 없는 경고가 쏟아지던 문제. <b>0이 되지는 않는다</b>(11건 → 4건, 남는 건 내용이 진짜 바뀐 파일들) · 첫 구현이 세 군데 틀렸고 <b>배포 전 교차검증</b>이 전부 잡아냈다</small></span></li>
       </ul>
     </div>
   </section>
@@ -731,7 +732,7 @@
       <p class="big anim">AI는 단순한 도구가 아니라,<br><em>일하는 방식</em>을 바꾸는 것입니다.</p>
       <p class="closeline anim">정답을 찾기보다 <strong>계속 배우고 시도하며</strong> 현장에서 임팩트를 만든다.<br>우리는 이미 그 길 위에 있습니다 — <strong>안전하게, 한 걸음씩.</strong></p>
       <div class="titlemeta anim">
-        <span class="versionpill">감사합니다 · v1.28.0</span>
+        <span class="versionpill">감사합니다 · v1.29.0</span>
       </div>
     </div>
   </section>

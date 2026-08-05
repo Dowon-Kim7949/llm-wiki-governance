@@ -9,11 +9,11 @@ tags:
 status: verified
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-08-04
+last_updated: 2026-08-05
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-04
+reviewed_at: 2026-08-05
 wiki_block_version: v1
 source_files:
   - package.json
@@ -1627,13 +1627,22 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     일반적이지만 "필드 단위 diff"는 현재 file-level 계약을 넘어섭니다).
     오늘은 (a)로 처리했고 **어느 것도 채택하지 않았습니다** — 유지보수자 결정 대상입니다.
 
-    **2026-08-04 종결: 유지보수자가 (c)를 골랐고 출하했습니다.** `impactCommand`가
+    **2026-08-04 종결: 유지보수자가 (c)를 골랐고 출하했습니다**(1.29.0으로 2026-08-05 배포). `impactCommand`가
     `scanReverseImpact`를 부르기 전에 `version` 값만 바뀐 `package.json`을 change set에서
     빼고(새 프리미티브 `src/git.js#symbol:fileAtRef`로 기준 내용을 읽어 `version`을 제외한
-    나머지를 deep-equal 비교), `changed_files`(무엇이 움직였는가)와 `anchoring_files`(무엇을
+    나머지를 **키 순서를 구분해** 비교 — `JSON.stringify`), `changed_files`(무엇이 움직였는가)와 `anchoring_files`(무엇을
     대조했는가)를 따로 인쇄하며 JSON에 `versionOnlyExcluded[]`를 additive로 싣습니다.
     범위 결정은 `GATE_REVIEW.md`의 "Version-Only Manifest Scope Decision", 테스트는
-    `tests/impact-package-version-only.test.js`(9건, RED 선확인)입니다.
+    `tests/impact-package-version-only.test.js`(**17건**)입니다.
+
+    ⚠️ **이 문단 자체가 2026-08-05까지 폐기된 구현을 사실로 적고 있었습니다**: 비교를
+    "deep-equal", 테스트를 "9건, RED 선확인"이라고 썼는데 둘 다 같은 날 적대적 검증이 뒤집은
+    첫 구현의 서술입니다(`log.md` 2026-08-04 2차 항목). Node는 조건부 `exports`/`imports`를
+    **키 순서로** 해석하므로 순서를 무시하는 비교는 "version 올림 + `exports` 순서 뒤집기"를
+    조용히 제외했습니다 — 소비자가 무엇을 import하는지 결정하는 바로 그 변경입니다. 정정 배치가
+    위키 6문서를 고쳤지만 이 문서에서는 46번(N-14)만 손봤고, 이 문단은 1.29.0 배포 준비에서
+    게이트가 다시 지목해 발견했습니다. **낡은 주장은 그것을 만든 배치가 아니라 다음 게이트 발화가
+    찾습니다** — 이 항목이 관측하려던 바로 그 현상입니다.
 
     **위 11건이라는 숫자는 재측정에서 정정됐습니다.** 이 항목이 "11건"이라고 적은 것은
     특정 정의(릴리스가 만지는 버전 담지 파일 8종: `package.json`·CHANGELOG 2종·README 2종·

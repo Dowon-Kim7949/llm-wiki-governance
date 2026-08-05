@@ -713,6 +713,42 @@ on the commit that enabled it the gate produced 6 findings of which 1 was action
 the reported fact is correct, not that it is worth acting on. Pilot-repo confirmation of the new CI
 templates was skipped by direction. The `chars/4` proxy and the README headline ban are unchanged.
 
+## Release Plan (post-1.28.0) — the release commit stopped failing on its own manifest — **shipped as 1.29.0 (2026-08-05)**
+
+One item, taken straight out of the previous release's own cost. `impact.source_changed` became an
+error in 1.28.0, and the first thing it did was fire on the release commit that shipped it: a release
+changes `package.json` by definition, and ten non-exempt `verified` documents here cite that file.
+`impact` now reports such a manifest as changed but does not anchor on it. Recorded as N-13
+(chapter H of `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`, option (c), maintainer's decision
+2026-08-04) with the two rejected alternatives priced beside it; scope in `GATE_REVIEW.md` under
+*"Version-Only Manifest Scope Decision"*.
+
+- **Narrow on purpose.** `package.json` only — the root manifest, plus a nested one only when the
+  root declares `workspaces` and the path sits under the literal prefix of one of its globs. Not
+  `pyproject.toml`, not `Cargo.toml`: those need a parser, and zero dependencies is worth more than
+  the symmetry. The comparison is **order-sensitive**, because Node resolves conditional `exports` in
+  key order, so a reorder is a real change.
+- **Not silent.** `anchoring_files` prints beside `changed_files` with the excluded path named, and
+  `--format json` carries `versionOnlyExcluded[]`. An invisible carve-out is the same class of
+  failure as shipped text running ahead of behaviour, only in the other direction.
+- **`drift` is untouched.** `evidence.stale` is date-anchored, so a version bump still flags every
+  document citing the manifest there. The exclusion belongs to `impact` alone.
+- **Rejected, with reasons recorded:** dialing the rule down in this repository's own config would
+  have removed the block for *all* source changes — including the one true positive the gate caught
+  in 1.28.0 — and re-reviewing the fanout every release turns the gate into a rubber stamp while
+  forcing Review-Notes archive rotation at the five-note cap.
+
+**The numbers, measured on this repository.** A `package.json`-only diff: **10 findings → 0**. The
+eight version-bearing files a release touches: **11 → 4**, and this release commit measured exactly
+**4** — all citing `README.md` or the composite action, whose contents genuinely changed. **It does
+not reach zero, and that is stated wherever the change is described.** Resolving those four raised
+one second-order finding (the review-notes archive cites the documents that were just edited), so
+five were handled in total: fanout in a wiki is not one hop from source to document. Three of the four documents
+turned out to carry a stale claim and were edited rather than re-stamped; one of those was in the
+N-13 entry itself, which had survived the correction sweep that fixed the same false premise in six
+other documents. The first implementation was wrong three ways and adversarial verification caught
+all three before release; the test set went **9 → 17** after mutation testing found four holes in it.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.
