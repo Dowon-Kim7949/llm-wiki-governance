@@ -185,7 +185,15 @@ test("isTemplateDoc matches the enumerator review already used, and nothing else
   assert.equal(isTemplateDoc("docs/llm-wiki/templates/DECISION_LOG.template.md"), true);
   assert.equal(isTemplateDoc("docs/llm-wiki/domains/templates/nested.md"), true);
   assert.equal(isTemplateDoc("templates/core/wiki-document.md"), true, "the no-wiki-root fallback scope");
-  assert.equal(isTemplateDoc("docs\\llm-wiki\\templates\\win.md"), true, "windows separators resolve the same way");
+  // Native separators normalize on the platform that produced them, which is the
+  // only place a native path comes from: every caller passes
+  // toPosix(path.relative(...)), and toPosix splits on path.sep. Asserting the
+  // literal-backslash form unconditionally is NOT the same claim — a backslash is
+  // an ordinary filename character on POSIX, so that assertion passed on Windows
+  // and failed on Linux and macOS CI. path.join states the real contract on
+  // whichever platform is running.
+  assert.equal(isTemplateDoc(path.join("docs", "llm-wiki", "templates", "native.md")), true, "a native path from this platform normalizes");
+  assert.equal(isTemplateDoc(path.join("docs", "llm-wiki", "GLOSSARY.md")), false, "and a native non-template path stays out");
 
   assert.equal(isTemplateDoc("docs/llm-wiki/templates.md"), false, "a lookalike filename is not a template directory");
   assert.equal(isTemplateDoc("docs/llm-wiki/PUBLIC_API.md"), false);

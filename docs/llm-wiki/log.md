@@ -24,6 +24,37 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-06 - fix: N-14 테스트가 Windows에서만 참인 것을 단언해 CI가 두 커밋에서 빨갰다
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (릴리스 전 CI 확인 중 발견)
+- scope: tests, wiki
+- changed:
+  - `tests/template-scope.test.js` — 리터럴 백슬래시 단언을 `path.join` 기반 2건으로 교체
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`(46번 후기) · `log`(이 항목)
+
+### 무엇이 틀렸나
+
+`isTemplateDoc`는 `toPosix()`를 쓰고 `toPosix()`는 **`path.sep`으로만** 분리한다. 그래서
+`isTemplateDoc("docs\\llm-wiki\\templates\\win.md")`는 Windows에서 true, **POSIX에서 false**다 —
+POSIX에서 백슬래시는 구분자가 아니라 파일명 문자이기 때문이다. 그런데 테스트는 그 리터럴 형태를
+"windows separators resolve the same way"라며 **플랫폼 무관하게** 단언했다. 결과: Windows 로컬
+515/515 통과, CI에서 **ubuntu·macOS 8잡 전부 실패**(`not ok 205`), windows 4잡만 통과.
+
+**제품은 옳고 테스트가 과했다.** 모든 호출부는 `toPosix(path.relative(...))`를 넘기므로 낯선
+구분자가 술어에 도달하는 경로가 없고, `isAppendOnlyLog`도 같은 관례를 쓴다. 그래서 술어를
+양쪽 구분자 처리로 바꾸지 않고(형제 함수·`toPosix`와의 일관성을 깨뜨린다) 단언을 `path.join`
+기반으로 바꿨다 — 실행 중인 플랫폼의 네이티브 경로가 정규화된다는 **모든 플랫폼에서 참인**
+계약을 대신 고정한다.
+
+### 재사용 사실 — 로컬 초록은 CI 초록을 함의하지 않는다
+
+이 저장소의 로컬 게이트는 **Windows 한 조합**이고 CI는 **3 OS × 4 Node = 12잡**이다. 경로 구분자·
+대소문자·EOL을 만지는 테스트에서 로컬 통과는 증거가 아니다. `6e702a6`의 커밋 메시지와 그 앞
+로그 항목이 "515/515 tests, skipped 0"이라고 적은 것은 **Windows에서만 참이었다** — 그 문장을
+지우지 않고 여기서 정정한다(append-only). 다음부터 새 테스트가 경로를 문자열로 다루면
+커밋 전에 최소한 그 파일만이라도 POSIX 의미로 검토할 것.
+
 ## 2026-08-06 - release: prepare 1.29.1 (N-14 수정 배포 + 크기 판정을 MINOR에서 PATCH로 뒤집음)
 
 - status: needs_review → verified (에이전트 승격, 11건)
