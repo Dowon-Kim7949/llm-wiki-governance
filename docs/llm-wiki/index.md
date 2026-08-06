@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: wiki_index
 project: llm-wiki-governance
-last_updated: 2026-08-05
+last_updated: 2026-08-06
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-05
+reviewed_at: 2026-08-06
 wiki_block_version: v1
 source_files:
   - package.json
@@ -39,6 +39,7 @@ contains_sensitive_info: false
 - 이 완화는 **이 저장소 한정**입니다. 제품이 도입처로 내보내는 규칙(`templates/adapters/*`)은 여전히 사람 검토를 요구하고, `docs/llm-wiki/` 밖의 어떤 파일도 `verified`를 씨앗으로 삼을 수 없습니다. 전체 계약은 `AGENTS.md`의 "Wiki discipline"이 소유합니다.
 - **1.28.0(2026-08-03)부터 `impact --since <ref>`가 플래그 없이 빌드를 실패시킵니다**(`impact.source_changed` 기본 `error`). 소스를 바꾸면서 그 소스를 인용하는 `verified` 문서를 같은 변경에서 안 고치면 CI가 빨개집니다 — 이 저장소의 CI `governance` 잡이 `--since HEAD~1 --strict`로 실행합니다. 릴리스 노트(`doc_type: release_notes`)는 면제입니다. 완화는 `llm-wiki.config.json`의 `rules`/`rulesPreset`으로만 하고, 인용을 지워서 우회하지 않습니다.
 - **1.29.0(2026-08-05, N-13)부터 `version` 값만 바뀐 `package.json`은 `impact`의 앵커 대조에서 빠집니다**(변경된 것으로는 계속 보고, `impact` 한정 — 날짜 앵커 `drift`는 계속 지목합니다). 릴리스 커밋은 정의상 매니페스트를 바꾸고 이 저장소 비면제 `verified` 문서 10건이 그 파일을 인용해서, 매 릴리스마다 조치 불가능한 finding이 나왔습니다. **0이 되지는 않습니다** — 버전 담지 파일 8종 기준 11 → 4이고, 남는 4건은 내용이 실제로 바뀐 `README.md`·`ROADMAP.md`·action.yml을 인용합니다.
+- **1.29.1(2026-08-06, N-14)부터 `docs/llm-wiki/templates/` 하위 문서는 `drift`·`impact` 양쪽에서 빠집니다**(`review`가 열거하지 못하는 문서라 지목당해도 강등도 재스탬프도 불가능했습니다 — 해소 경로가 없는 finding). 같은 배치에서 `review`가 범위 밖 경로를 "not found"라고 답하던 거짓말을 고쳤고, append-only 로그를 명시 지정하면 `verified`로 스탬프하던 결함도 함께 막았습니다. 실측 `evidence.stale` 7 → 5이며 **0이 되지는 않습니다.**
 
 ## Recommended Read Order
 

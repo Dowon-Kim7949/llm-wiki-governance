@@ -749,6 +749,41 @@ N-13 entry itself, which had survived the correction sweep that fixed the same f
 other documents. The first implementation was wrong three ways and adversarial verification caught
 all three before release; the test set went **9 → 17** after mutation testing found four holes in it.
 
+## Release Plan (post-1.29.0) — the gate pointed at documents review could not touch — **shipped as 1.29.1 (2026-08-06)**
+
+One item again, and again it is the previous release's own cost. 1.29.0 shipped a **known issue** in
+both CHANGELOGs: the freshness gates flagged documents `review` structurally cannot re-stamp. Two
+enumerators disagreed about which documents exist — `review` loads content docs through
+`listWikiContentDocs`, which excludes `/templates/`, while `validate`, `drift`, and `impact` walk
+`listTargetMarkdown`, which is all of `docs/llm-wiki`. Recorded as N-14 (item 46 of
+`docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`), options (c) + (b), the recorded recommendation;
+scope in `GATE_REVIEW.md` under *"Template Scope Decision (N-14, 2026-08-06)"*.
+
+- **It was an unresolvable finding, not a noisy one.** Downgrading a stale template returned nothing,
+  `--approve-all` skipped it while reporting `needs_review_remaining: 0`, and naming it explicitly
+  answered `not found under docs/llm-wiki` about a file plainly inside `docs/llm-wiki`. With
+  `impact.source_changed` an `error` by default since 1.28.0, an adopter keeping wiki templates could
+  get a **failing build with no remedy**.
+- **The predicate is shared, the enumerators are not merged.** `isTemplateDoc` is exported and the two
+  freshness scans skip on it. Merging the enumerators would make templates *promotable* and break the
+  boundary in the other direction; sharing one predicate keeps the boundary and makes the two answers
+  unable to drift apart again.
+- **One adjacent defect fixed in the same batch.** The append-only log was skipped by `--approve-all`
+  but *stamped verified* when named explicitly — the same boundary with two answers. Both paths refuse
+  it now.
+- **Sized PATCH, with the reasoning on the record.** The note written at implementation time said
+  MINOR was the conservative read; the decision went the other way because no command, option, or
+  report field moves, and 1.29.0 was a MINOR precisely *for* the two output fields it added. The
+  behaviour change is permissive-only, so no consumer's build newly breaks.
+
+**The numbers, measured on this repository.** `evidence.stale` goes **7 → 5**; the two that vanish are
+exactly the templates with no resolution path, and the remaining five were ordinary post-release drift
+from 1.29.0. **It does not reach zero and is not meant to.** Six tests were added (**509 → 515**,
+`skipped 0`) with a non-template sibling carrying byte-identical frontmatter as a control, so they
+fail rather than pass vacuously if the gates stop firing for any other reason. RED was confirmed per
+test rather than as a file-level crash — this repository's tests guard their imports at load time, so
+stashing a new export whole produces one crash and proves nothing.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

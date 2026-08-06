@@ -47,7 +47,7 @@ contains_sensitive_info: false
 - **rules / rulesPreset** — finding 규칙의 severity를 프로젝트 단위로 조정하는 수단. `rules`는 규칙 id → `off`/`blocked`/`error`/`warning`/`info` 맵이고, `rulesPreset`은 `relaxed`/`standard`/`strict` 명명 번들(`src/commands/findings.js` `RULE_PRESETS`)을 바닥값으로 깐다 — 명시적 `rules` 항목이 항상 프리셋을 이긴다. `sensitive.*`는 어느 쪽으로도 끌 수 없다. 둘 다 finding severity만 바꾸며 `--strict`(exit code 의미론)와는 별개다.
 - **OKF v0.1** — 외부 지식 포맷 호환 프로필. `type`/`aliases`/`tags`와 위키 링크를 검증한다.
 - **not_enriched** — 생성 후 아직 실제 내용으로 보강되지 않은 문서 신호(`content.not_enriched`, P0-3에서 추가).
-- **템플릿 문서(template doc)** — `docs/llm-wiki/templates/` 하위 문서. **도입처가 복사해 쓰는 뼈대이지 그 저장소를 서술하는 문서가 아니므로** 검토(`review`) 대상도, 최신성 게이트(`evidence.stale`/`impact.source_changed`) 대상도 아니다. 판정의 단일 소스는 `src/commands/wiki-files.js#symbol:isTemplateDoc`이며 `listWikiContentDocs`가 쓰던 경계와 같다. 2026-08-06 이전에는 이 경계가 명령마다 달라서(N-14) 게이트는 지목하는데 `review`로는 손댈 수 없는 문서가 존재했다 — **해소 경로가 없는 finding**. 승격 대상이 아니라는 사실과 최신성 검사 대상이 아니라는 사실이 이제 같은 술어에서 나온다.
+- **템플릿 문서(template doc)** — `docs/llm-wiki/templates/` 하위 문서. **도입처가 복사해 쓰는 뼈대이지 그 저장소를 서술하는 문서가 아니므로** 검토(`review`) 대상도, 최신성 게이트(`evidence.stale`/`impact.source_changed`) 대상도 아니다. 판정의 단일 소스는 `src/commands/wiki-files.js#symbol:isTemplateDoc`이며 `listWikiContentDocs`가 쓰던 경계와 같다. 1.29.1(2026-08-06) 이전에는 이 경계가 명령마다 달라서(N-14) 게이트는 지목하는데 `review`로는 손댈 수 없는 문서가 존재했다 — **해소 경로가 없는 finding**. 승격 대상이 아니라는 사실과 최신성 검사 대상이 아니라는 사실이 이제 같은 술어에서 나온다.
 
 ## Evidence
 

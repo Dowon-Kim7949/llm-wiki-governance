@@ -1695,8 +1695,11 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     현 경계가 옳아 보이고, 그렇다면 최신성 게이트도 그것을 지목해선 안 됩니다. 다만 어느 쪽이든
     **열거자가 둘이라는 사실 자체가 결함**이라 결정이 필요합니다.
 
-    **2026-08-06 종결: 유지보수자가 권고대로 (c)+(b)를 골랐고 구현했습니다**(미배포 — 릴리스는
-    별도 결정). `isTemplateDoc`를 `wiki-files.js`에서 export해 `scanEvidenceDrift`·`scanReverseImpact`가
+    **2026-08-06 종결: 유지보수자가 권고대로 (c)+(b)를 골랐고 구현했습니다. 1.29.1로 배포했습니다**
+    (크기 판정은 유지보수자가 위임 → PATCH. 근거는 `GATE_REVIEW.md`의 Template Scope Decision 절과
+    `docs/llm-wiki/VERSIONING.md`: 명령·옵션·리포트 필드가 하나도 움직이지 않고 동작 변경은 발화가
+    줄어드는 방향뿐이다. 구현 시점 메모는 "MINOR가 보수적 읽기"라고 적었고 그 판단은 뒤집혔으므로,
+    이 문단이 그 경위를 남긴다). `isTemplateDoc`를 `wiki-files.js`에서 export해 `scanEvidenceDrift`·`scanReverseImpact`가
     루프 초입에서 템플릿을 건너뛰고(b), `review`의 거부 사유가 "not found under docs/llm-wiki"라는
     **거짓 답 대신 범위 밖**이라고 말합니다(c). 열거자를 하나로 합치지 않은 것은 의도입니다 —
     합치면 템플릿이 승격 대상이 되어 경계가 반대로 무너지므로, 두 열거자는 두되 **판정 술어를

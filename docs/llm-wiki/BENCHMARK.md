@@ -385,25 +385,17 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 
 ## Review Notes
 
-Older review notes (6 entries, 2026-07-22 → 2026-07-27) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (7 entries, 2026-07-22 → 2026-07-27) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-07-27에 **`B2_empty` 통제 arm을 구축·실행**해 tooling-vs-knowledge 교란요인을 닫았다
-  (유지보수자 지시, 유료 $5.95). 하네스: `runner.js`에 B2와 도구·프롬프트가 바이트 동일한
-  `B2_empty` arm + import-time `assertControlPromptParity` + `BENCH_WIKI_CWD` 누락 시 실행 거부,
-  신규 `make-stub-wiki.mjs`(지식만 제거한 스텁 위키), 신규 `aggregate.mjs`(3-arm 집계; 기존
-  손계산 수치 재현으로 검증). 유료 실행 전 무료 검증: 정답 경로 누출 0/13, search-docs 매치
-  12/3/18→1/0/1, 6개 태스크 패리티 OK. **결과: B2_empty = B의 1.140×(+14.0% input, +17.4% cost)**
-  — B2가 아니라 B보다도 위. 따라서 **−48.4%는 툴이 아니라 보강된 내용의 효과**이고, 부수적으로
-  **미보강 위키는 없느니만 못하다**는 독립적 발견을 얻었다. 불리·미확정도 함께 적었다: 6개 중
-  2개 태스크는 스텁 arm이 여전히 B를 이김, 스텁이 제목·경로를 남긴 관대한 통제라 +14%는 하한,
-  2026-07-22와의 격차 여전히 미해명. **이어서 3-arm 54개 답변을 블라인드 채점(무료)**해 정확도 축도
-  닫았다: B 0.910 · B2 **0.978** · B2_empty 0.911 — 즉 **스텁 위키는 정확도를 전혀 사주지 못하면서
-  토큰만 더 쓴다**(두 축 모두 원인은 내용). 절차 검증으로 arm B가 2026-07-24 채점과 정확히 재현됐다
-  (0.9097·62.5/69, 개별 결함 2건도 같은 arm에 재귀속). 채점자는 여전히 에이전트(사람 비준 미완).
-  §규율에 2026-07-27 규율을 추가했으나
-  **README 헤드라인 금지는 유지**한다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로
-  강등한다 — 사람 검토 후 재승인 예정(허위 검토 메타 미기입).
 - 2026-07-30에 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 2026-07-27 통제군(B2_empty) 실측·비준 이후 벤치 사실관계 변경이 없고, 1.27.1(문맥 규율)·1.27.2(프롬프트 형태 규율)는 벤치를 재실행하지 않았으며 이 문서도 그렇게 주장하지 않음을 확인했다. README 헤드라인 금지 유지.
 - 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-22 → 2026-07-27)을 `REVIEW_HISTORY.md`의 신규 `Benchmark` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서는 인수인계의 위반 목록에 없었다** — 그 목록이 손으로 작성돼 `EXAMPLES.md`와 함께 빠졌고, 전 문서 계수를 돌려서야 드러났다. 형식 두 가지를 함께 처리했다: 이 문서의 노트는 여러 줄로 감겨 있어 이전기가 항목 경계를 `- ` 시작 줄로 잡아야 했고(원문 줄바꿈 보존), 워킹트리 줄바꿈이 이 문서만 CRLF 혼재라 `.gitattributes`의 `eol=lf`에 맞춰 LF로 정규화됐다(인덱스는 이미 LF여서 git이 보는 diff는 이번 이동뿐이다). 수치·규율 서술은 한 글자도 바뀌지 않았고, README 토큰·속도 헤드라인 금지 규율도 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 게이트가 지목한 `GATE_REVIEW.md` 변경을 재대조했다: 이번 커밋은 새 절(`Detection Defaults and Freshness Scope Decision`·`Doc-Only Decisions`)을 **덧붙였을 뿐**(162줄 추가·0줄 삭제)이고 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`(Gate 22, 2026-07-21 수용)과 `bench/**`는 한 글자도 바뀌지 않았으며, 새 절의 `impact.source_changed` 기본 error는 CLI 탐지 규칙이라 이 문서의 Gate 22 임팩트 측정 수치·규율과 무관하므로 **본문 불변**이다(`GATE_REVIEW.md` 스스로 기록해 둔 section-anchor 오탐 사례의 재발화).
 - 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를 재확인했다. 이번 변경이 그 파일에 더한 것은 "Version-Only Manifest Scope Decision" 절과 Gate 23 승인 행·불변식 2건·CI 배선 결정에 붙인 SUPERSEDED 표시뿐이고, 벤치 범위를 정한 Gate 22·24 항목과 통제군(B2_empty) 서술에는 손대지 않았다 — 이 문서의 수치·규율(모든 proxy 수치는 chars/4이고 README 헤드라인은 금지)은 **불변**이다. 재스탬프만으로는 해소되지 않아 이 노트를 남긴다: `reviewed_at`이 이미 오늘이면 강등→승격 왕복이 byte-identical이 되어 문서가 change set에 들어가지 않는다(결함 N-11).
+- 2026-08-06(1.29.1 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를
+  재확인했다. 이번 커밋이 그 파일에 한 일은 N-14 절의 크기 판정 문단을 "MINOR가 보수적 읽기"에서
+  **PATCH로 확정**하고 그 근거·대가를 적은 것뿐이고, 이 문서가 인용하는
+  `#section:Impact Measurement Scope Decision`(Gate 22, 2026-07-21 수용)과 `bench/**`는 한 글자도
+  바뀌지 않았다 — 벤치 수치·통제군(B2_empty) 서술·**README 토큰/속도 헤드라인 금지** 규율 전부
+  **불변**이다. 재스탬프로는 해소되지 않는다(`reviewed_at`이 이미 오늘이라 왕복이 byte-identical —
+  결함 N-11), 그리고 이 문서는 노트 5건 상한이었으므로 **가장 오래된 1건을 `REVIEW_HISTORY.md`
+  `Benchmark` 절 끝으로 원문 그대로 옮기고**(6건 → 7건, 포인터도 함께) 이 노트를 더했다.

@@ -6,7 +6,7 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
-## Unreleased
+## 1.29.1 — 2026-08-06
 
 Resolves the known issue 1.29.0 shipped with (**N-14**): the freshness gates flagged documents
 `review` structurally cannot re-stamp. Two enumerators disagreed — `review` loads content docs
@@ -33,6 +33,15 @@ it**. Scope is recorded in `GATE_REVIEW.md` under *"Template Scope Decision (N-1
 Measured on this repository: `evidence.stale` goes **7 → 5**. The two that disappear are exactly the
 templates with no resolution path; the rest is ordinary post-release drift that a re-baseline clears.
 This does not reach zero and is not meant to.
+
+**Why this is a PATCH.** No command, option, or report field is added or removed — the content is two
+defect fixes plus the caveat and refusal text that states the boundary. That is the `patch` row of
+`docs/llm-wiki/VERSIONING.md` verbatim; 1.29.0 was a MINOR because it *added* `anchoring_files` and
+`versionOnlyExcluded[]` to `impact`'s output, and this release adds nothing of the kind. Behaviour
+moves in the permissive direction only — a finding stops firing, so an exit 1 becomes an exit 0 — so
+no consumer's build can newly break, which is exactly the asymmetry that made 1.28.0 an exception.
+The cost is stated rather than smoothed over: `review --approve <path>` on the append-only log no
+longer stamps it, and there is no flag to put templates back under the freshness gates.
 
 ## 1.29.0 — 2026-08-05
 

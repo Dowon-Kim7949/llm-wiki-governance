@@ -2657,10 +2657,22 @@ vacuously if the gates stop firing for any reason other than the path. RED was c
 not as a file-level crash: with the predicate present and the two call sites reverted, four fail and
 two pass (the not-found control and the predicate unit test are expected to pass either way).
 
-**Unreleased. No version bump and no tag are part of this change.** Sizing it is a maintainer call:
-the report surface gains no field, but which documents a default-`error` rule flags is observable
-behaviour, so MINOR rather than PATCH is the conservative read. The CHANGELOG entries sit under
-`Unreleased` and carry no version number until that decision is made.
+**Shipped as 1.29.1 (2026-08-06) — a PATCH.** The earlier note in this section read "MINOR rather
+than PATCH is the conservative read"; the decision went the other way, and the reasoning is recorded
+here rather than left as a version number nobody can account for. `VERSIONING.md` puts "버그 수정,
+메시지/출력 다듬기" under `patch` and reserves `minor` for a backward-compatible new command, option,
+or feature expansion. This release adds none: no command, no option, and — checked against the diff,
+not the intent — no field in any report or `--format json` payload. The 1.29.0 precedent points the
+same way instead of the opposite way, because that release was sized MINOR *for* the two fields it
+added to `impact`'s output (`anchoring_files`, `versionOnlyExcluded[]`), which this one has no
+counterpart to. And the observable behaviour moves in the permissive direction only: a finding stops
+firing, so an exit 1 becomes an exit 0. Nobody's build newly breaks, which is precisely the asymmetry
+that forced 1.28.0 to be recorded as an exception to this policy.
+
+**What PATCH costs, stated.** Two capabilities are gone with no flag to restore them: naming the
+append-only log to `review --approve <path>` no longer stamps it (it never should have), and a
+project that wants documents under `docs/llm-wiki/templates/` freshness-checked cannot ask for it.
+Both are intended, and neither is a contract this repository published.
 
 ## Release Caveats
 

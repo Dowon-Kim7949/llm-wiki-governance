@@ -10,7 +10,7 @@ last_updated: 2026-08-03
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-05
+reviewed_at: 2026-08-06
 wiki_block_version: v1
 source_files:
   - package.json
@@ -49,3 +49,4 @@ contains_sensitive_info: false
 - 2026-08-03에 HEAD의 루트 `README.md` 변경(impact 기본 error Upgrading 절·`drift --watch-needs-review`·release_notes 면제·adapter 본문 영어 고정)을 이 문서 전 항목과 대조했다. 이 문서는 impact/drift 게이트와 adapter 언어에 대해 아무 주장도 하지 않고(게이트 계약은 `AGENTS.md`·index.md에 위임), EN/KO 짝 갱신 규칙은 이번 커밋에서 `README.md`·`README.ko.md`가 함께 바뀌어 지켜졌으며, `review --approve-all --yes`와 `content.not_enriched`도 소스에서 재확인돼 **불변** — 본문 무수정(`package.json`은 이번 커밋에서 변경 없음).
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `package.json`, `README.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서가 소유한 것은 위키 운영 규칙(상태 전이·근거 규약·로그)이고 루트 README의 Upgrading 절·액션 핀은 그 규칙과 무관하며, `package.json`의 version 한 줄도 마찬가지다 — 본문 **불변**.
 - 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README에서 바뀐 것은 `impact` 행과 드리프트 불릿의 **버전만 올린 매니페스트 제외** 서술(그리고 그것이 `impact` 한정임을 명시한 범위 문장)이다. 이 문서가 소유한 것은 위키 운영 규칙이고 게이트별 계약 서술은 `PUBLIC_API.md`가 소유하므로 옮겨 적을 것이 없다 — 본문 **불변**. 재스탬프가 no-op이 되는 N-11 때문에 노트로 남긴다.
+- 2026-08-06(1.29.1 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README에서 바뀐 것은 `drift`·`impact`·`review` 행과 Upgrading 절에 붙은 **템플릿 문서 제외**(N-14) 서술과 액션 핀(`@v1.29.0` → `@v1.29.1`)이다. 이 문서가 소유한 것은 위키 운영 규칙(상태 전이·근거 규약·로그)이고 게이트별 계약 서술은 `PUBLIC_API.md`가 소유하므로 옮겨 적을 것이 없다 — 본문 **불변**. 이 문서는 `docs/llm-wiki/templates/`에 대해 아무 주장도 하지 않으므로 새 경계 서술과 충돌하지도 않는다.

@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-governance
-last_updated: 2026-08-05
+last_updated: 2026-08-06
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-05
+reviewed_at: 2026-08-06
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -100,6 +100,8 @@ npx llm-wiki drift --strict                 # 날짜 앵커 최신성 — 이쪽
 `impact`는 예외다. 2026-08-03(결정 21)부터 `impact.source_changed`의 기본 severity가 warning이 아니라 **error**라, `--strict` 없이 exit 1이고 이 규칙에 대해 `--strict`는 no-op이다 — 즉 위 블록의 `impact` 줄을 필수 체크에 넣는 순간, 자기를 인용하는 문서를 함께 건드리지 않고 소스만 바꾼 첫 커밋에서 빌드가 빨개진다. 되돌리는 길은 코드가 아니라 설정이다: `llm-wiki.config.json`의 `rules`에 `"impact.source_changed": "warning"`(또는 `"info"`/`"off"`)을 두거나, `rulesPreset: "relaxed"`(이 규칙을 `info`로 유지)를 쓴다. `strict` 프리셋은 이 규칙을 더 이상 나열하지 않는다(no-op이라서다). `drift`·`check-run`의 규칙은 아직 warning이라 두 명령은 계속 `--strict`가 있어야 빌드를 실패시킨다 — 의도된 비대칭이다.
 
 릴리스 커밋에 대한 예외가 하나 있다(N-13, 1.29.0부터): `version` 값만 바뀐 `package.json`은 `changed_files`에는 계속 세지만 앵커 대조에서는 빠지므로, 버전만 올리는 커밋이 그 매니페스트를 인용하는 문서들 때문에 실패하지 않는다. 요약에 `anchoring_files`와 제외된 경로가 함께 인쇄되고 `--format json`에는 `versionOnlyExcluded[]`가 붙는다. 다른 키가 바뀌었거나, `version`이 실제로 움직이지 않았거나(재포맷·줄바꿈 변환), 조건부 `exports`의 키 순서가 바뀌었거나, 매니페스트가 파싱되지 않거나, 비교할 기준 내용이 없으면 그대로 센다. `impact` 한정이므로 위 블록의 `drift --strict` 줄은 버전만 올려도 계속 지목할 수 있다. **릴리스 커밋의 게이트 비용이 0이 되지는 않는다** — 같은 커밋에서 `README.md`·`ROADMAP.md`·action.yml처럼 내용이 실제로 바뀐 파일을 인용하는 문서는 계속 발화하고, 그건 진짜 양성에 가깝다.
+
+예외가 하나 더 있다(N-14, 1.29.1부터): `docs/llm-wiki/templates/` 하위 문서는 `impact`와 `drift` **양쪽**에서 빠진다. 템플릿은 도입처가 복사해 쓰는 뼈대라 `review`가 열거하지 못하고, 그래서 게이트가 지목해도 강등도 재스탬프도 불가능한 — **해소 경로가 없는** — finding이 됐다. `impact.source_changed`는 기본 error이므로 위키 템플릿을 두는 저장소는 고칠 방법 없이 빌드가 빨개질 수 있었다. 이 제외는 `review`가 이미 쓰던 술어(`isTemplateDoc`)를 공유하므로 두 판정이 다시 갈라지지 않는다. 같은 배치에서 `review --approve <경로>`에 템플릿이나 append-only 로그를 주면 "not found"(거짓)가 아니라 **범위 밖**이라고 답하게 됐다.
 
 ## 드리프트 감시 범위 넓히기 (--watch-needs-review, 결정 28)
 

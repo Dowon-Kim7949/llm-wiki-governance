@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: review_history
 project: llm-wiki-governance
-last_updated: 2026-08-03
+last_updated: 2026-08-06
 author: Claude Code
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -153,7 +153,7 @@ reviewed_at: 2026-08-06
 - 2026-07-31(백로그 16 오탐률 측정 중 발견)에 Gate 20 서술의 스탬프 필드 목록을 **불완전한 상태에서 교정했다.** 세 필드만 열거하고 있었으나 같은 날 N-4 수정이 `tags` 상태 태그 동기화를 추가해 실제로는 네 곳을 쓴다(`src/commands.js:1393-1397`, `drift --downgrade`와 공유하는 `syncStatusTag`). `00_overview.md`는 여기에 "**3필드만**"이라고 단정해 사실과 어긋났고 그 문서도 같이 고쳤다 — **같은 계약이 세 문서(`PUBLIC_API.md`·이 문서·`00_overview.md`)에 재서술돼 있고 수정이 한 곳에만 도달한 사례**다. 이것이 백로그 16(중복·충돌 후보 탐지)이 겨냥하는 실패 양상 그 자체이며, 이번 측정에서 유일하게 소스로 검증된 진짜 충돌이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등했고 검토 메타는 날조하지 않았다.
 ## Benchmark
 
-원문서: [BENCHMARK.md](BENCHMARK.md) — 6건(2026-07-22 → 2026-07-27), 2026-08-03 이전분.
+원문서: [BENCHMARK.md](BENCHMARK.md) — 7건(2026-07-22 → 2026-07-27), 2026-08-03 이전분.
 
 - 2026-07-22에 Gate 22 베이스라인 + Gate 24 재측정(정직/불리) + B2 retrieval 델타를 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 승인했다(최초 verified 승격). **핵심 불변 조건**: 이 문서의 모든 수치(특히 B2 −81.5%/−80.5%)는 `chars/4` **프록시**이지 실제 LLM 실행 결과가 아니다. 따라서 README·런치 카피에 토큰/속도/생산성 수치를 싣는 것은 **여전히 금지**이며, 실측(`bench/real/` 실행)이 뒷받침될 때까지 이 규율을 유지한다. 실측 방법은 `bench/REAL_LLM_METHODOLOGY.md` 참조.
 - 2026-07-22에 **실제 LLM N=3 실측**(외부 프로젝트 `csap-roadkeeper-frontend`@`aws-global`, Opus 4.8)을 반영했다: "실측 · Real-LLM measurement" 섹션 추가(최신 위키에서 B2 −10% 토큰·−5% wall·정확도 18/18 동률·소스 fallback 0; stale 위키는 보안 오답 → 신선도-종속 정확도가 핵심)와 규율 갱신(스코프 명시 정직 수치 허용, 볼드 헤드라인·`chars/4` 프록시 수치는 계속 금지). 원자료: `bench/results/real-driver-csap-aws-global-pilot-2026-07-22.md`. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
@@ -185,6 +185,22 @@ reviewed_at: 2026-08-06
   된다(비준은 신뢰도를 올릴 뿐 표본을 늘리지 않는다). 신규 기록
   `bench/results/…-empty-control-2026-07-27-ratification.md`.
 - 2026-07-22에 실측 후속 엄밀성 하네스를 **scaffolded**(미실행)했다: SDK 경로 드라이버 `bench/real/agent.js`(Anthropic SDK tool_runner; read/grep + 읽기 전용 `llm-wiki` retrieval 툴; env로 target-agnostic; 읽기 전용)가 서브에이전트 경로에 없던 **input/output 토큰 분리**를 제공한다. `bench/tasks-csap.json`(6 태스크 재현), `bench/real/package.json`(SDK를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변), `runner.js`의 `BENCH_TASKS` 오버라이드, `DRIVER_RUNBOOK.md` § SDK path 실행법을 함께 추가했다. `--dry`로 배선 검증(모델 호출·비용 0). **유료 실행과 교차 에이전트(GPT) 드라이버는 보류**(유저 지시). 커밋되는 재현 산출물은 tasks-csap.json·package.json·runner.js·runbook이며 `agent.js`는 설계상 git-ignore(SDK dep 격리)다. 에이전트 편집이라 `needs_review` 유지.
+- 2026-07-27에 **`B2_empty` 통제 arm을 구축·실행**해 tooling-vs-knowledge 교란요인을 닫았다
+  (유지보수자 지시, 유료 $5.95). 하네스: `runner.js`에 B2와 도구·프롬프트가 바이트 동일한
+  `B2_empty` arm + import-time `assertControlPromptParity` + `BENCH_WIKI_CWD` 누락 시 실행 거부,
+  신규 `make-stub-wiki.mjs`(지식만 제거한 스텁 위키), 신규 `aggregate.mjs`(3-arm 집계; 기존
+  손계산 수치 재현으로 검증). 유료 실행 전 무료 검증: 정답 경로 누출 0/13, search-docs 매치
+  12/3/18→1/0/1, 6개 태스크 패리티 OK. **결과: B2_empty = B의 1.140×(+14.0% input, +17.4% cost)**
+  — B2가 아니라 B보다도 위. 따라서 **−48.4%는 툴이 아니라 보강된 내용의 효과**이고, 부수적으로
+  **미보강 위키는 없느니만 못하다**는 독립적 발견을 얻었다. 불리·미확정도 함께 적었다: 6개 중
+  2개 태스크는 스텁 arm이 여전히 B를 이김, 스텁이 제목·경로를 남긴 관대한 통제라 +14%는 하한,
+  2026-07-22와의 격차 여전히 미해명. **이어서 3-arm 54개 답변을 블라인드 채점(무료)**해 정확도 축도
+  닫았다: B 0.910 · B2 **0.978** · B2_empty 0.911 — 즉 **스텁 위키는 정확도를 전혀 사주지 못하면서
+  토큰만 더 쓴다**(두 축 모두 원인은 내용). 절차 검증으로 arm B가 2026-07-24 채점과 정확히 재현됐다
+  (0.9097·62.5/69, 개별 결함 2건도 같은 arm에 재귀속). 채점자는 여전히 에이전트(사람 비준 미완).
+  §규율에 2026-07-27 규율을 추가했으나
+  **README 헤드라인 금지는 유지**한다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로
+  강등한다 — 사람 검토 후 재승인 예정(허위 검토 메타 미기입).
 
 ## Domain Overview
 

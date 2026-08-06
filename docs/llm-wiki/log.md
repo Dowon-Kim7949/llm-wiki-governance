@@ -24,6 +24,70 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-08-06 - release: prepare 1.29.1 (N-14 수정 배포 + 크기 판정을 MINOR에서 PATCH로 뒤집음)
+
+- status: needs_review → verified (에이전트 승격, 11건)
+- actor: Claude Code (유지보수자 지시: "다음 작업 모두 진행, 판단에 맡긴다" — 남아 있던 두 항목이
+  push 승인과 릴리스 크기 판정이었다)
+- scope: 버전 범프, 버전 담지 문서 정렬, 위키 재승인, 팬아웃 해소
+- changed:
+  - `package.json`(1.29.0 → 1.29.1) · `tests/verification.test.js`(버전 단언)
+  - `CHANGELOG.md` · `CHANGELOG.ko.md` — `Unreleased` → `1.29.1 — 2026-08-06`, **왜 PATCH인가** 절 추가
+  - `README.md` · `README.ko.md` — `drift`·`impact`·`review` 행에 템플릿 제외 명기, Upgrading 절에
+    "게이트가 의도적으로 닿지 않는 두 경우"(1.29.0 매니페스트 + 1.29.1 템플릿) 추가, 액션 핀
+    `@v1.29.0` → `@v1.29.1`
+  - `ROADMAP.md` · `ROADMAP.ko.md` — post-1.29.0 shipped 절 신설
+  - `GATE_REVIEW.md` — N-14 절의 "Unreleased / MINOR가 보수적 읽기"를 **1.29.1 PATCH 확정**으로 교체
+    (판단이 뒤집힌 경위와 PATCH의 대가를 함께 적음)
+  - `docs/llm-wiki/` — `index`(1.29.1 카브아웃 불릿 신설) · `EXAMPLES`(CI 절에 템플릿 제외 단락) ·
+    `PUBLIC_API`(3곳) · `ARCHITECTURE_CONVENTIONS`(2곳) · `DOMAIN_FEATURES` · `GLOSSARY` ·
+    `domains/00_overview` · `HARNESS_GOVERNANCE_ROADMAP`(46번에 배포 버전·크기 근거) — N-14 스탬프에
+    **릴리스 번호 확정**(88bf8cc·0b8770c 선례: 날짜만 적으면 어느 npm 버전부터인지 알 수 없다)
+  - `docs/llm-wiki/BENCHMARK.md` · `REVIEW_HISTORY.md` — 노트 1건 회전(6건 → 7건, 포인터 동기화)
+  - `docs/llm-wiki/README.md` — Review Note 1건
+  - `outputs/team-briefing/` — 덱·노트·README 버전 라벨 v1.29.1, 타임라인에 1.29.1 항목과 노트 추가
+    (`.now` 표시를 1.29에서 옮겼다)
+- **`.github/actions/validate/action.yml`은 건드리지 않았다**: 기본값 `"1.29"`는 npm에서 1.29.x를
+  받으므로 patch 릴리스는 자동으로 반영된다(그 입력의 설명 자신이 "minor 릴리스마다 올려라"라고
+  적고 있다). 이것을 확인하고 넘어간 것이며 누락이 아니다.
+
+### 크기 판정 — MINOR 메모를 PATCH로 뒤집었다
+
+구현 시점(`6e702a6`) 메모는 "리포트 표면에 필드가 안 늘지만 기본 error 규칙이 지목하는 문서 집합이
+바뀌므로 MINOR가 보수적 읽기"라고 적었다. 판정은 **PATCH**로 갔고, 근거는 저장소 자신의
+`VERSIONING.md`다: patch = "버그 수정, 메시지/출력 다듬기", minor = "하위 호환되는 새 명령·옵션 추가,
+기능 확장". 이번 변경에는 명령·옵션이 없고, **diff를 직접 확인해** 리포트·`--format json`에 추가된
+필드가 하나도 없음을 봤다. 1.29.0 선례는 MINOR 쪽이 아니라 PATCH 쪽을 가리킨다 — 그 릴리스가
+MINOR였던 이유가 바로 `anchoring_files`·`versionOnlyExcluded[]` **필드 추가**였고 이번에는 그 대응물이
+없다. 동작 변경은 발화가 줄어드는 방향뿐이라 도입처 빌드가 새로 깨질 수 없고, 그것이 1.28.0을
+예외로 만든 비대칭이다. **PATCH의 대가도 적었다**: append-only 로그를 `review --approve`로 스탬프하는
+경로가 사라졌고 템플릿을 최신성 게이트로 되돌리는 플래그는 없다.
+
+### 팬아웃 (1차 4건 → 0, 2차 0건)
+
+커밋 전 `impact`(워킹트리 vs HEAD) 실측: `changed_files 19` · `anchoring_files 18(version-only
+manifest excluded: package.json)` · **findings 4** — N-13 제외가 또 한 번 자기 릴리스 커밋에서 작동했다.
+4건은 `BENCHMARK`(→`GATE_REVIEW.md`) · `EXAMPLES`(→`README.md`) · `docs/llm-wiki/README`(→`README.md`) ·
+`REVIEW_HISTORY`(→ 이번에 고친 위키 6문서)였다. 처리:
+
+- `EXAMPLES` — 내용 추가(템플릿 제외 단락). 실제로 낡아 있었다.
+- `docs/llm-wiki/README` — 본문 불변 확인 후 Review Note(노트 3건 → 4건, 상한 여유 있음).
+- `BENCHMARK` — 인용은 `GATE_REVIEW.md#section:Impact Measurement Scope Decision`인데 이번에 바뀐 절은
+  N-14 크기 판정 문단이라 **본문 불변**. 그런데 `reviewed_at`이 이미 오늘이어서 재스탬프가
+  byte-identical(N-11)이고 노트는 5건 상한이었다 → **가장 오래된 노트 1건을 `REVIEW_HISTORY.md`
+  `Benchmark` 절 끝으로 원문 그대로 옮기고**(헤더 6건 → 7건, 원문서 포인터도 7 entries) 새 노트를 더했다.
+- `REVIEW_HISTORY` — 위 회전으로 자신이 change set에 들어가면서 함께 해소됐다.
+
+**2차 팬아웃은 0건이었다.** 1.29.0에서는 위키 문서를 고치자 `REVIEW_HISTORY`가 2차로 떴는데, 이번에는
+그 문서가 1차 처리에 이미 포함돼 있었기 때문이다. 회전이 팬아웃을 하나 줄인 셈이다 — 다음 릴리스에서도
+`REVIEW_HISTORY`가 인용하는 문서를 고치면 같은 순서로 처리할 것.
+
+### 게이트
+
+`validate --strict` 0 · `validate-frontmatter` 0 · `impact` 0 · `drift` 0 · 515/515 tests(skipped 0) ·
+`review` 11건 승격 후 `needs_review_remaining: 0`. `check-run`은 2026-08-04 매니페스트를 대상으로
+warning 5 + info 1을 계속 낸다 — **정직한 것이라 조용히 만들지 않았다**(인용을 늘리는 것은 금지).
+
 ## 2026-08-06 - fix: N-14 종결 (게이트가 지목하지만 review로는 손댈 수 없던 문서) + 릴리스 후 드리프트 정리
 
 - status: needs_review → verified (에이전트 승격)
