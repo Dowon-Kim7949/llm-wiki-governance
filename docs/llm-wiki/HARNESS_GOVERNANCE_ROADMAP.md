@@ -9,11 +9,11 @@ tags:
 status: verified
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-08-05
+last_updated: 2026-08-06
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-05
+reviewed_at: 2026-08-06
 wiki_block_version: v1
 source_files:
   - package.json
@@ -1694,6 +1694,24 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     권고는 **(c) + (b)**입니다 — 템플릿은 도입처가 복사해 쓰는 뼈대이므로 승격 대상이 아니라는
     현 경계가 옳아 보이고, 그렇다면 최신성 게이트도 그것을 지목해선 안 됩니다. 다만 어느 쪽이든
     **열거자가 둘이라는 사실 자체가 결함**이라 결정이 필요합니다.
+
+    **2026-08-06 종결: 유지보수자가 권고대로 (c)+(b)를 골랐고 구현했습니다**(미배포 — 릴리스는
+    별도 결정). `isTemplateDoc`를 `wiki-files.js`에서 export해 `scanEvidenceDrift`·`scanReverseImpact`가
+    루프 초입에서 템플릿을 건너뛰고(b), `review`의 거부 사유가 "not found under docs/llm-wiki"라는
+    **거짓 답 대신 범위 밖**이라고 말합니다(c). 열거자를 하나로 합치지 않은 것은 의도입니다 —
+    합치면 템플릿이 승격 대상이 되어 경계가 반대로 무너지므로, 두 열거자는 두되 **판정 술어를
+    공유**시켜 다시 갈라질 수 없게 했습니다.
+    같은 배치에서 **부수 결함 하나를 함께 고쳤습니다**: append-only 로그는 `--approve-all`이
+    조용히 건너뛰면서도 **명시 지정하면 `verified`로 스탬프됐습니다**(같은 경계에 두 가지 답).
+    이제 양쪽 모두 범위 밖으로 거부합니다.
+    실측 효과는 이 저장소의 `evidence.stale` **7건 → 5건**입니다(사라진 2건이 정확히 해소 경로가
+    없던 `templates/DECISION_LOG.template.md`·`TASK_PROMPT.template.md`). 남는 5건은 릴리스
+    커밋이 만든 정상 드리프트라 재기준선으로 해소됩니다 — **0이 되는 변경이 아니고, 그럴 의도도
+    아닙니다.** 테스트는 `tests/template-scope.test.js` 6건이며 픽스처의 비템플릿 형제 문서가
+    대조군입니다(경로 외의 이유로 발화가 멎으면 대조군도 함께 멎어 테스트가 실패합니다).
+    RED을 파일 단위 크래시가 아니라 **테스트별로** 확인했습니다: 술어만 남기고 호출부 2파일을
+    되돌리면 4건 실패·2건 통과(not-found 대조군과 술어 단위 테스트는 통과가 정상).
+    CHANGELOG 2종의 "알려진 문제(N-14)" 항목은 이 배치로 해소됐습니다.
 
 ### 사람의 결정이 필요함
 

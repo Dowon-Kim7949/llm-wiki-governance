@@ -12,7 +12,7 @@ import { findMojibakeIndicators, hasUtf8Bom, readTextAuto, readUtf8 } from "../e
 import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
 import { fileChangedSince, lineRangeChangedSince } from "../git.js";
-import { isAppendOnlyLog, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
+import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
 import {
@@ -647,10 +647,13 @@ export function driftTargets(frontmatter, options = {}) {
 // those line ranges so unrelated edits elsewhere in the file are not drift.
 // Best-effort: silently skips when git is unavailable, and falls back to the
 // file-level check if a line-range query fails (e.g. an out-of-range line).
+// Template skeletons are out of scope (N-14, 2026-08-06): review cannot
+// re-stamp them, so flagging them produced findings with no way to clear them.
 export async function scanEvidenceDrift(cwd, options = {}) {
   const findings = [];
   for (const file of await listTargetMarkdown(cwd)) {
     const rel = toPosix(path.relative(cwd, file));
+    if (isTemplateDoc(rel)) continue;
     const parsed = parseFrontmatter(await readUtf8(file));
     const targets = driftTargets(parsed.frontmatter, options);
     if (!targets) continue;
@@ -728,12 +731,16 @@ export function driftFinding(rel, reference, baseline) {
 // file counts; line-range narrowing is out of scope) with one content-aware
 // carve-out the CALLER applies, not this scan: impactCommand withholds a
 // package.json whose diff moves nothing but `version` (N-13, 2026-08-04). A
-// document edited in the same change set is intentionally not flagged. Read-only.
+// document edited in the same change set is intentionally not flagged. Template
+// skeletons are out of scope for the same reason scanEvidenceDrift skips them
+// (N-14, 2026-08-06): review cannot re-stamp what it cannot enumerate.
+// Read-only.
 export async function scanReverseImpact(cwd, changedSet) {
   const findings = [];
   if (!changedSet || changedSet.size === 0) return findings;
   for (const file of await listTargetMarkdown(cwd)) {
     const rel = toPosix(path.relative(cwd, file));
+    if (isTemplateDoc(rel)) continue;
     if (changedSet.has(rel)) continue; // doc changed in the same diff → not drift
     const anchors = verifiedSourceAnchors(parseFrontmatter(await readUtf8(file)).frontmatter);
     if (!anchors) continue;

@@ -2623,6 +2623,45 @@ untracked document under `docs/llm-wiki/` (absent in CI, which clones) and two `
 warnings sit on documents that `review` structurally cannot re-stamp (defect N-14, roadmap item 46).
 `impact --since HEAD~1 --strict` is at zero.
 
+## Template Scope Decision (N-14, 2026-08-06)
+
+`review` and the freshness gates disagreed about which documents exist. `review` loads content docs
+through `listWikiContentDocs`, which excludes `/templates/`; `validate`, `drift`, and `impact` walk
+`listTargetMarkdown`, which is all of `docs/llm-wiki`. A verified template could therefore be
+reported as stale with **no way to clear the finding**: downgrading it returned nothing,
+`--approve-all` skipped it while reporting `needs_review_remaining: 0`, and naming it explicitly
+answered `not found under docs/llm-wiki` about a file that is plainly inside `docs/llm-wiki`. The
+entry above recorded exactly this on the 1.29.0 line, and the adopter-facing CHANGELOGs shipped it
+as a known issue rather than covering it up.
+
+**Decision: options (c) + (b) from roadmap item 46, the recorded recommendation.** Templates are
+skeletons an adopting repository copies, not documentation of the repository they sit in, so they
+are not review targets — and it follows that they must not be freshness targets either.
+`isTemplateDoc` is now exported from `wiki-files.js` and `scanEvidenceDrift` / `scanReverseImpact`
+skip on it at the top of their loops, using the **same predicate** `review` already filtered on.
+
+**Not merged into one enumerator, deliberately.** Unifying them would make templates promotable,
+which breaks the boundary in the opposite direction. Two enumerators with a shared predicate keeps
+the boundary while making it impossible for the two answers to drift apart again.
+
+**One adjacent defect fixed in the same batch.** The append-only log was skipped by `--approve-all`
+but *stamped verified* when named explicitly — the same boundary with two answers. Both paths now
+refuse it.
+
+**Measured, and not overstated.** This repository's `evidence.stale` count goes **7 → 5**. The two
+that disappear are precisely the templates with no resolution path; the remaining five are ordinary
+post-release drift that a re-baseline clears. It is not a change that reaches zero and it is not
+meant to be. `tests/template-scope.test.js` pins the behaviour in six tests whose fixture contains a
+non-template sibling with byte-identical frontmatter as a control, so the tests fail rather than pass
+vacuously if the gates stop firing for any reason other than the path. RED was confirmed per test,
+not as a file-level crash: with the predicate present and the two call sites reverted, four fail and
+two pass (the not-found control and the predicate unit test are expected to pass either way).
+
+**Unreleased. No version bump and no tag are part of this change.** Sizing it is a maintainer call:
+the report surface gains no field, but which documents a default-`error` rule flags is observable
+behaviour, so MINOR rather than PATCH is the conservative read. The CHANGELOG entries sit under
+`Unreleased` and carry no version number until that decision is made.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

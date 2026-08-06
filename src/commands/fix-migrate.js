@@ -522,7 +522,8 @@ export async function driftCommand(options) {
     { title: "Caveats", body: [
       downgrade
         ? "Downgraded drifted verified documents to needs_review (status + last_updated, plus the tags: status tag when the document already carries one). Re-review and re-verify after updating; nothing else was changed."
-        : "Report only; no files were written. Run drift --downgrade to flip drifted verified documents to needs_review."
+        : "Report only; no files were written. Run drift --downgrade to flip drifted verified documents to needs_review.",
+      "Documents under docs/llm-wiki/templates/ are out of scope (N-14, 2026-08-06): they are skeletons adopters copy, and review cannot promote or re-stamp them, so flagging them produced findings with no way to clear them."
     ] }
   ]);
 }

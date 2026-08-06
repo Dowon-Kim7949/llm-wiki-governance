@@ -6,7 +6,7 @@ tags:
 status: needs_review
 doc_type: change_log
 project: llm-wiki-governance
-last_updated: 2026-08-05
+last_updated: 2026-08-06
 author: cli-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -23,6 +23,69 @@ contains_sensitive_info: false
 # LLM-WIKI Change Log
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-08-06 - fix: N-14 종결 (게이트가 지목하지만 review로는 손댈 수 없던 문서) + 릴리스 후 드리프트 정리
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (유지보수자 지시: 남은 작업 처리, N-14는 "권고 방향으로")
+- scope: src, tests, wiki, 루트 문서, .gitignore, 미추적 파일 정리
+- changed:
+  - `src/commands/wiki-files.js` — `isTemplateDoc` export 신설
+  - `src/commands/scans.js` — `scanEvidenceDrift`·`scanReverseImpact`가 루프 초입에서 템플릿 skip
+  - `src/commands.js` — `review`의 거부 사유가 범위를 말하도록 교체(`refusalReasonForUnknownPath`),
+    append-only 로그를 명시 지정해도 거부, `impact`·`review` caveat 추가
+  - `src/commands/fix-migrate.js` — `drift` caveat 추가
+  - `tests/template-scope.test.js` — 신규 6건(509 → **515**, skipped 0)
+  - `GATE_REVIEW.md` — "Template Scope Decision (N-14, 2026-08-06)" 신설
+  - `CHANGELOG.md` · `CHANGELOG.ko.md` — `Unreleased` 절 신설(1.29.0이 알려진 문제로 내보낸 항목의 해소)
+  - `docs/llm-wiki/` — `PUBLIC_API`(drift·impact·review 3행) · `ARCHITECTURE_CONVENTIONS`(wiki-files
+    항목 + scans 항목) · `DOMAIN_FEATURES`(review 절) · `domains/00_overview`(Migrate & Repair 절) ·
+    `GLOSSARY`(**템플릿 문서** 용어 신설) · `HARNESS_GOVERNANCE_ROADMAP`(46번 종결) · `log`(이 항목)
+  - `.gitignore` — `outputs/dev-guide/`·`outputs/*.pptx`·`docs/plans/`·`.obsidian/` 추가
+  - 이동: 사내 추진 계획 문서 1건을 `docs/llm-wiki/` → `docs/plans/`(미추적 유지)
+
+### 무엇이 결함이었나
+
+문서 열거자가 둘이었다. `review`는 `listWikiContentDocs`(`/templates/` 제외), `validate`·`drift`·
+`impact`는 `listTargetMarkdown`(`docs/llm-wiki/` 전체)을 썼다. 그래서 `verified` 템플릿이 낡았다고
+지목당해도 **해소 경로가 없었다** — 강등하면 아무것도 돌려주지 않고, `--approve-all`은 건너뛰면서
+`needs_review_remaining: 0`을 보고하고, 명시 지정하면 `not found under docs/llm-wiki`라는 **거짓**
+답을 냈다(그 파일은 거기 있다). 권고 (c)+(b)를 그대로 채택했다. 열거자를 합치지 않은 것은 의도다 —
+합치면 템플릿이 승격 대상이 되어 경계가 반대로 무너진다. 대신 **판정 술어를 공유**시켰다.
+
+부수로 같은 형태의 결함 1건을 고쳤다: append-only 로그는 `--approve-all`이 건너뛰면서도 **명시
+지정하면 `verified`로 스탬프됐다**(같은 경계, 두 답). 이제 양쪽 모두 거부한다.
+
+### 측정과 그 한계
+
+`evidence.stale` **7 → 5**. 사라진 2건이 정확히 해소 경로가 없던 템플릿이고, 남은 5건은 1.29.0
+릴리스 커밋이 만든 통상 드리프트라 재기준선으로 해소했다(이 배치에서 처리). **0이 되는 변경이
+아니다.** RED은 파일 단위 크래시가 아니라 **테스트별로** 확인했다: 술어만 남기고 호출부 2파일을
+되돌리면 4 실패 / 2 통과(not-found 대조군·술어 단위 테스트는 통과가 정상). 픽스처의 비템플릿 형제
+문서는 frontmatter가 바이트 동일한 대조군이라, 경로 외의 이유로 발화가 멎으면 테스트가 실패한다.
+
+### 팬아웃 처리 (2차까지, 예상대로)
+
+1차 6건(`ARCHITECTURE_CONVENTIONS`·`DOMAIN_FEATURES`·`GLOSSARY`·`HARNESS_GOVERNANCE_ROADMAP`·
+`PUBLIC_API`·`domains/00_overview`)을 내용 갱신으로 해소하니 **2차 2건**이 떴다 —
+`REVIEW_HISTORY.md`(그 문서들을 인용하는 아카이브)와 `BENCHMARK.md`(`GATE_REVIEW.md` 인용).
+둘 다 노트 회전이 없어 실제 불변이므로 재기준선(status+tag만, `last_updated` 불변) 후 승격했다.
+**위키 문서를 고치면 2차 팬아웃이 온다는 1.29.0의 기록이 다시 재현됐다.**
+
+### Review Notes를 추가하지 않았다 (의도)
+
+`PUBLIC_API`·`GLOSSARY`·`domains/00_overview` 등이 이미 5건 상한이라 회전이 필요해진다.
+2026-08-04·2026-08-05 배치의 선례대로 **근거를 이 항목 하나에 모았다.**
+
+### 미추적 파일 결정 (유지보수자 결정 2건 집행)
+
+- **`outputs/dev-guide/`는 추적하지 않는다.** 이 저장소는 **PUBLIC**인데(`gh repo view`로 확인)
+  덱의 사례 연구가 사내 비공개 저장소 `github.com/dareesoft/sinkholemonitor-frontend`의 브랜치·
+  커밋까지 적고 있다. 추적하면 그것이 그대로 공개된다. **추적되는 `outputs/team-briefing/`에는 같은
+  참조가 없다** — 두 덱은 이 점에서 교환 가능하지 않다. 이로써 "덱 2종을 버전 정렬하라"는 규칙의
+  대상은 team-briefing뿐임이 확정된다.
+- **사내 추진 계획 문서는 `docs/plans/`로 옮겼다**(미추적·gitignore). 위키 문서가 아니라 frontmatter가
+  없어 `validate-frontmatter`가 error 2건을 내던 것이고, 게이트가 옳았다 — 문서의 위치가 틀렸다.
 
 ## 2026-08-05 - release: 1.29.0 준비 (N-13 제외 규칙 배포 + 게이트가 자기 문서의 낡은 주장을 잡았다)
 

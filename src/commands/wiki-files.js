@@ -26,3 +26,16 @@ export async function listWikiContentDocs(cwd) {
 export function isAppendOnlyLog(rel) {
   return toPosix(rel) === "docs/llm-wiki/log.md";
 }
+
+// True for template skeletons — the blanks an adopting repo copies, not
+// documentation of the repo they sit in. Same predicate listWikiContentDocs
+// filters on, exported so the freshness scans can agree with it (N-14,
+// 2026-08-06). Until then the two enumerators disagreed: drift/impact used
+// listTargetMarkdown and could report a template as stale, while review used
+// listWikiContentDocs and had no way to re-stamp it — a finding with no
+// resolution path, in this repo and in every adopter that keeps documents
+// under docs/llm-wiki/templates/.
+export function isTemplateDoc(rel) {
+  const posix = toPosix(rel);
+  return posix.includes("/templates/") || posix.startsWith("templates/");
+}

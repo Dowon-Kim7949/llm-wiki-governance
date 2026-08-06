@@ -5,6 +5,31 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## Unreleased
+
+1.29.0이 **알려진 문제(N-14)** 로 함께 내보냈던 것을 해소한다: 최신성 게이트가 `review`로는
+재스탬프할 수 없는 문서를 지목하는 문제다. 문서 열거자가 둘로 갈라져 있었다 — `review`는
+`docs/llm-wiki/templates/`를 제외하는 헬퍼를 쓰고, `validate`·`drift`·`impact`는 `docs/llm-wiki/`
+전체를 본다 — 그래서 `verified` 템플릿이 낡았다고 지목당하면 **해소할 방법이 없었다.**
+범위 결정은 `GATE_REVIEW.md`의 *"Template Scope Decision (N-14, 2026-08-06)"*이다.
+
+### Changed
+
+- **`drift`와 `impact`가 `docs/llm-wiki/templates/` 하위 문서를 더 이상 지목하지 않는다.** 템플릿은
+  도입처가 복사해 쓰는 뼈대이지 그 저장소를 서술하는 문서가 아니므로 검토 대상이 아니고, 그렇다면
+  최신성 검사 대상도 아니어야 한다. 특히 `impact.source_changed`는 기본이 `error`라, 위키 템플릿을
+  두는 도입처는 **해소 수단 없이 빌드가 실패**할 수 있었다. 판정 술어는 `review`가 이미 쓰던
+  것(`isTemplateDoc`)을 **공유**하므로 두 답이 다시 갈라질 수 없다.
+
+- **`review`가 파일이 없다고 우기는 대신 경계를 말한다.** 템플릿을 명시 지정하면 예전에는
+  `not found under docs/llm-wiki`라고 답했는데 — 거짓이고, 사용자를 오타 찾기로 보냈다 — 이제
+  범위 밖이라는 사유로 거부한다. append-only 로그도 같으며 이쪽은 **동작 변경**이다:
+  `--approve-all`은 늘 건너뛰었지만 명시 지정하면 `verified`로 **스탬프됐다.** 이제 두 경로 모두
+  거부한다.
+
+이 저장소 실측: `evidence.stale` **7건 → 5건**. 사라진 2건이 정확히 해소 경로가 없던 템플릿이고,
+남는 5건은 재기준선으로 해소되는 통상적인 릴리스 후 드리프트다. **0이 되지 않으며 그럴 의도도 아니다.**
+
 ## 1.29.0 — 2026-08-05
 
 변경은 하나이고, 그것이 존재하는 이유는 1.28.0이 켠 게이트가 **그것을 출하한 커밋에서 발화했기**

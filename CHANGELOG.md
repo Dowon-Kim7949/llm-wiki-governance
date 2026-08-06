@@ -6,6 +6,34 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## Unreleased
+
+Resolves the known issue 1.29.0 shipped with (**N-14**): the freshness gates flagged documents
+`review` structurally cannot re-stamp. Two enumerators disagreed — `review` loads content docs
+through a helper that excludes `docs/llm-wiki/templates/`, while `validate`, `drift`, and `impact`
+walk all of `docs/llm-wiki` — so a verified template could be reported stale with **no way to clear
+it**. Scope is recorded in `GATE_REVIEW.md` under *"Template Scope Decision (N-14, 2026-08-06)"*.
+
+### Changed
+
+- **`drift` and `impact` no longer flag documents under `docs/llm-wiki/templates/`.** Templates are
+  skeletons an adopting repository copies, not documentation of the repository they sit in, so they
+  are not review targets — and it follows that they must not be freshness targets either. This
+  matters most for `impact.source_changed`, which is `error` by default: an adopter keeping
+  documents under `docs/llm-wiki/templates/` could get a **failing build with no remedy**. The
+  predicate is the one `review` already filtered on (`isTemplateDoc`), shared rather than
+  duplicated, so the two answers cannot drift apart again.
+
+- **`review` states the boundary instead of denying the file exists.** Naming a template explicitly
+  used to answer `not found under docs/llm-wiki` — false, and it sent people hunting for a typo.
+  It now refuses with the scope as the reason. The same applies to the append-only log, and there
+  the behaviour changes: `--approve-all` always skipped it, but naming it explicitly **stamped it
+  verified**. Both paths now refuse it.
+
+Measured on this repository: `evidence.stale` goes **7 → 5**. The two that disappear are exactly the
+templates with no resolution path; the rest is ordinary post-release drift that a re-baseline clears.
+This does not reach zero and is not meant to.
+
 ## 1.29.0 — 2026-08-05
 
 One change, and it exists because the gate 1.28.0 turned on fired on the commit that shipped it.

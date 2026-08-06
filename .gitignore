@@ -6,3 +6,24 @@ node_modules/
 
 # Real-LLM bench driver (wired locally against a provider client + credentials; never committed)
 bench/real/agent.js
+
+# THIS REPOSITORY IS PUBLIC. The entries below are internal material that must not
+# be published by an accidental `git add -A`.
+#
+# outputs/dev-guide/ — the developer deck. Its case study names a PRIVATE company
+# repository (branch and commit included), so tracking it would publish that.
+# outputs/team-briefing/ stays tracked because it contains no such reference; the
+# two decks are NOT interchangeable on this point. This also settles the version
+# alignment question: dev-guide is a local artifact, so it is not part of a
+# release commit's alignment sweep.
+outputs/dev-guide/
+outputs/*.pptx
+outputs/*.inspect.ndjson
+
+# docs/plans/ — internal planning documents (schedules, staffing, rollout).
+# They are not wiki documents and must not sit under docs/llm-wiki/, where the
+# frontmatter gate would (correctly) reject them for having no frontmatter.
+docs/plans/
+
+# Editor state
+.obsidian/

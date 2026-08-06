@@ -53,7 +53,7 @@ import {
   renderGraphDot,
   renderGraphMermaid
 } from "./commands/wiki-graph.js";
-import { isAppendOnlyLog, listTargetMarkdown } from "./commands/wiki-files.js";
+import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown } from "./commands/wiki-files.js";
 import {
   ADAPTER_TARGETS,
   planAdapterSuggestions,
@@ -1062,7 +1062,8 @@ export async function impactCommand(options) {
       "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (file-level, git-diff based). Run it from the repo root.",
       "impact.source_changed is an error by default, so this command fails a build on its own; --strict does not change that. Dial it down per project with \"impact.source_changed\": \"warning\" (or \"info\"/\"off\") in llm-wiki.config.json rules, or rulesPreset: \"relaxed\". This complements the date-anchored evidence.stale (drift), it does not replace it.",
       "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release.",
-      "A package.json whose diff moves nothing but the version value is reported as changed but not used for anchoring (N-13, 2026-08-04): every release bumps it and no document's claims depend on the number. Any other key, an unparseable manifest, a version field added or removed, or a manifest with no baseline to compare against all still count. Version-only exclusion is package.json only, and never applies to pyproject.toml or Cargo.toml."
+      "A package.json whose diff moves nothing but the version value is reported as changed but not used for anchoring (N-13, 2026-08-04): every release bumps it and no document's claims depend on the number. Any other key, an unparseable manifest, a version field added or removed, or a manifest with no baseline to compare against all still count. Version-only exclusion is package.json only, and never applies to pyproject.toml or Cargo.toml.",
+      "Documents under docs/llm-wiki/templates/ are out of scope (N-14, 2026-08-06): they are skeletons adopters copy, and review cannot promote or re-stamp them, so flagging them produced findings with no way to clear them."
     ] }
   ]);
 }
@@ -1534,6 +1535,7 @@ function renderReviewList(reviewed, totalScanned, includeSensitive) {
     { title: "Needs Review (risk-ranked)", body: docLines.length ? docLines : ["none"] },
     { title: "Caveats", body: [
       "Read-only list. Risk-ranks needs_review docs (never-enriched / thin / no-evidence / broken-link first) for fast spot-checking. Restricted/sensitive docs are excluded unless --include-sensitive.",
+      "Scope: content documents under docs/llm-wiki, excluding docs/llm-wiki/templates/ (skeletons adopters copy) and the append-only log. The freshness gates (drift, impact) skip templates too, so this boundary no longer produces findings you cannot clear (N-14).",
       "Promotion to verified is never automatic: run review --approve <path> (or review --approve-all --yes) to stamp verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one. Docs with blocking/structural findings are refused until fixed. Human review is the default; if your project delegates the approval run, set llm-wiki.config.json \"reviewer\" so reviewed_by names whoever actually approves."
     ] }
   ]);
@@ -1591,6 +1593,30 @@ async function stampVerified(cwd, rel, reviewer, today) {
   return { changed: true, blocked: false };
 }
 
+// Why a path this command cannot promote is not simply "not found" (N-14,
+// 2026-08-06): review enumerates content docs (listWikiContentDocs, templates
+// excluded) while validate/impact/drift enumerate all of docs/llm-wiki
+// (listTargetMarkdown). Answering "not found under docs/llm-wiki" for a
+// template that is plainly there sent people hunting for a typo instead of
+// telling them the boundary. Resolves against the WIDER enumerator on purpose,
+// so the answer describes the file that exists rather than the set this command
+// happens to hold.
+async function refusalReasonForUnknownPath(cwd, given) {
+  const clean = toPosix(String(given ?? "").trim().replace(/^\.\//, "").replace(/^\/+/, ""));
+  if (!clean) return "not found under docs/llm-wiki";
+  const withMd = clean.endsWith(".md") ? clean : `${clean}.md`;
+  const candidates = new Set([clean, withMd, `docs/llm-wiki/${clean}`, `docs/llm-wiki/${withMd}`]);
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    if (!candidates.has(rel)) continue;
+    if (isTemplateDoc(rel)) {
+      return "outside review scope: templates are skeletons for adopters to copy, so review never promotes them (the freshness gates skip them too)";
+    }
+    return "outside review scope";
+  }
+  return "not found under docs/llm-wiki";
+}
+
 async function approveReview(options, { cwd, reviewed, docs, findingsByPath, approvePaths, approveAll }) {
   const reviewer = resolveReviewer(options, cwd);
   if (!reviewer) {
@@ -1628,7 +1654,14 @@ async function approveReview(options, { cwd, reviewed, docs, findingsByPath, app
 
   for (const rel of targets) {
     const doc = byPath.get(rel);
-    if (!doc) { refused.push({ path: rel, reason: "not found under docs/llm-wiki" }); continue; }
+    if (!doc) { refused.push({ path: rel, reason: await refusalReasonForUnknownPath(cwd, rel) }); continue; }
+    // --approve-all already skips the append-only log (it is filtered out of the
+    // review list), but naming it explicitly used to stamp it verified. Same
+    // boundary, two answers; N-14 (2026-08-06) made the explicit path agree.
+    if (isAppendOnlyLog(doc.path)) {
+      refused.push({ path: doc.path, reason: "outside review scope: the append-only log is not a review target" });
+      continue;
+    }
     const status = doc.frontmatter.status;
     if (status === "verified") { refused.push({ path: doc.path, reason: "already verified" }); continue; }
     if (status !== "needs_review") {
@@ -1707,7 +1740,8 @@ function finishReview(reviewed, { mode, approved, refused, reviewer, findings })
     { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
     { title: "Caveats", body: [
       "review --approve stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it never edits body, source_files, evidence, or last_updated.",
-      "verified is an explicit decision, never an automatic one: nothing promotes on its own — only --approve/--approve-all stamps — and any doc with blocking/structural findings is refused. Who may run it is your project's policy; reviewed_by records whoever did. Run validate --strict to confirm."
+      "verified is an explicit decision, never an automatic one: nothing promotes on its own — only --approve/--approve-all stamps — and any doc with blocking/structural findings is refused. Who may run it is your project's policy; reviewed_by records whoever did. Run validate --strict to confirm.",
+      "Scope: --approve-all covers content documents under docs/llm-wiki only; docs/llm-wiki/templates/ and the append-only log are outside it and are not counted as remaining. Naming one of them explicitly is refused with that reason, not with \"not found\" (N-14)."
     ] }
   ]);
 }
