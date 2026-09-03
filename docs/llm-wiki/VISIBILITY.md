@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: policy
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-09-03
 author: ai-generated
 last_edited_by: Claude Code
-reviewed_by: Dowon-Kim
-reviewed_at: 2026-07-21
+reviewed_by: Claude Code (delegated by Dowon-Kim)
+reviewed_at: 2026-09-03
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js

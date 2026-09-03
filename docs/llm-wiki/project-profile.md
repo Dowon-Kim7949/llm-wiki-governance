@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: project_profile
 project: llm-wiki-governance
-last_updated: 2026-08-19
+last_updated: 2026-09-03
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-08-20
+reviewed_at: 2026-09-03
 wiki_block_version: v1
 source_files:
   - package.json

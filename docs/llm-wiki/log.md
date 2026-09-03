@@ -24,7 +24,42 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
-## 2026-09-03 - chore: 공개 저장소가 비공개 벤치 대상의 내부 구조를 재구성 가능한 수준으로 담고 있었다
+## 2026-09-03 - chore(docs): sanitized public mirror의 새 root commit을 기준으로 evidence 재검증
+
+- status: verified → needs_review → verified (에이전트 승격)
+- actor: Claude Code (유지보수자 지시 — 공개 미러 정리)
+- scope: wiki (프론트매터 스탬프만)
+- changed:
+  - `docs/llm-wiki/project-profile.md` · `RELEASE_FLOW.md` · `VERSIONING.md` · `VISIBILITY.md` ·
+    `profiles/library.md` — `reviewed_at`·`last_updated` 재스탬프(`VISIBILITY.md`는 `reviewed_by`도)
+  - `log`(이 항목)
+- summary:
+  - 이 저장소는 익명화된 트리를 **단일 root commit**으로 새로 만든 sanitized public mirror다.
+    그 결과 모든 파일의 git 최종 변경 날짜가 root commit 날짜가 되었고, `reviewed_at`이 그보다
+    이른 `verified` 문서 5종에 대해 날짜 앵커 신선도 규칙(`evidence.stale`)이 **정상적으로**
+    발화했다(경고 14건, `drift` 5건).
+  - **파일 내용은 원본 익명화 커밋과 바이트 동일하다** — 같은 내용으로 원본 저장소에서는 이 게이트가
+    0건이다. 즉 이것은 문서가 낡았다는 신호가 아니라 **이력을 압축한 구조의 부작용**이다.
+  - 제품이 제공하는 공식 경로로만 해소했다: `drift --downgrade`로 5종을 `needs_review`로 내리고
+    `review --approve-all --yes`로 재스탬프했다. `review --approve`는 설계상 스탬프만 쓰고
+    본문·`source_files`·`evidence`를 건드리지 않는다.
+  - `reviewed_by`는 `llm-wiki.config.json`의 `reviewer`에서 오며 **에이전트를 이름으로 지목한다** —
+    스탬프가 사람 검토를 주장하지 않는다. 이 저장소의 자기승격 정책(`AGENTS.md` "Wiki discipline")
+    그대로이며, 사람이 검토했다고 기록하지 않았다.
+  - **측정값·실험 정의·redaction metadata는 건드리지 않았다.** 벤치 원시 JSON, 태스크 정의,
+    제품 소스(`src/`·`bin/`), 테스트, `package.json`, workflow는 이번 변경에 포함되지 않는다.
+    역사적 벤치 실행 날짜(2026-07-22/24/27)도 그대로다.
+- evidence:
+  - src/commands/scans.js
+  - llm-wiki.config.json
+- caveats:
+  - ⚠️ **`VISIBILITY.md`의 `reviewed_by`가 사람 이름(2026-07-21 실제 사람 검토)에서 에이전트로
+    바뀌었다.** 승격 스탬프가 이전 값을 덮기 때문이며, 그 결과 이 위키에서 실제 사람 검토 기록을
+    가진 비아카이브 문서가 하나 줄었다. 사람 검토 이력을 보존하려면 그 문서는 재스탬프 대상에서
+    빼야 하지만, 그러면 squash 미러에서는 `evidence.stale`이 계속 남는다 — **두 가지를 동시에
+    만족시킬 수 없다.** 어느 쪽을 택할지는 유지보수자 결정 사항으로 남긴다.
+  - 이 재검증은 소스 대조를 전제하지 않는다(이 저장소 정책 그대로). 따라서 이 미러에서도
+    `drift`·`impact`는 관측 도구가 아니다.
 
 - status: verified → needs_review → verified (에이전트 승격)
 - actor: Claude Code (유지보수자 지시 — 공개 저장소 익명화 검토)
