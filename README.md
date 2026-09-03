@@ -1,0 +1,220 @@
+> Language: [English](./README.md) | [한국어](./README.ko.md)
+
+# LLM-WIKI Governance
+
+**Governance for AI-written project docs.** `llm-wiki-governance` is a zero-dependency CLI that keeps an AI coding agent's project knowledge (`docs/llm-wiki/`) **trustworthy and current**: it ties every claim to real code, flags docs when that code moves on, keeps AI-written content behind human review, and enforces all of it in CI. Works on any stack, with any agent, and is **OKF-compatible**.
+
+## Why a governance layer?
+
+An *LLM wiki* — a distilled, interlinked knowledge base an agent reads instead of re-deriving your codebase on every task — is a proven pattern (popularized in 2026, and formalized by Google's Open Knowledge Format). The hard part was never *making* one. It's keeping it honest.
+
+| Approach | How the agent gets context | The catch |
+| --- | --- | --- |
+| **RAG** | Re-retrieves and re-derives from source on every query | Repetitive, costly, no shared source of truth |
+| **Plain LLM wiki** (a Markdown folder, e.g. an OKF project) | Reads a hand-written knowledge base | Goes stale silently → a doc that *lies* |
+| **Governed LLM wiki** (this tool) | Reads the same wiki — but **verified, drift-checked, CI-enforced** | — |
+
+**What "governed" means here:**
+
+- **Trust states** — AI-written docs stay `needs_review`; only a human promotes to `verified`. The CLI can *never* self-approve.
+- **Evidence + drift** — each claim links to a real file/line/symbol; when that source changes, `evidence.stale` / `drift` flags the doc for re-review.
+- **CI-enforced** — `validate` runs in pre-commit / GitHub Actions, so an unreviewed or drifted wiki fails the build instead of rotting quietly.
+- **Agent-queryable** — a read-only MCP server lets agents *ask* the wiki instead of re-scanning the code.
+- **Safe by construction** — preview-first writes, append-only change log, sensitive-value redaction, and **zero runtime dependencies**.
+
+```text
+Without:  task -> re-scan the codebase -> re-derive structure & rules -> work
+With:     task -> read index.md -> read the relevant (verified) wiki docs -> inspect only the source you need -> work
+```
+
+The CLI builds the structure and guardrails; an agent enriches the docs from real code; a human approves `verified`; CI keeps it honest. Useful for legacy maintenance, feature work, incident response, onboarding, handovers, and sharing project knowledge across agents.
+
+## Supported environments
+
+| | |
+| --- | --- |
+| **Runtime** | Node.js ≥ 18.18.0 · Windows, macOS, Linux |
+| **Dependencies** | none — no runtime third-party dependencies |
+| **Detects** | Node · Python · Go · Rust · JVM · PHP · Ruby · .NET · mobile (Android / Flutter / iOS / React Native) · infra (Docker / Compose / Kubernetes / Helm / Terraform) |
+| **Standards** | **OKF-compatible** — `--profile okf-v0.1` validates Open Knowledge Format `type`/`aliases`/`tags`; the core validator accepts OKF `type` as an alias for `doc_type` |
+| **Agents / editors** | Codex (`AGENTS.md`), Claude Code (`CLAUDE.md`), Cursor, GitHub Copilot, Windsurf, Gemini CLI — plus any MCP client via `llm-wiki mcp` |
+| **Standalone** | the CLI (init / validate / audit / graph / stats / CI) works fully **without any agent** |
+
+## Quick start
+
+```bash
+npm install -D llm-wiki-governance
+npx llm-wiki quickstart --write --type frontend --agent claude   # or --agent codex
+```
+
+`quickstart --write` detects the project, creates the wiki + adapter files, and prints a handoff prompt. Paste that prompt into your agent: it reads `docs/llm-wiki/index.md`, enriches the docs from real source files, and leaves everything `needs_review` for you to approve. Preview first with `quickstart --dry-run`.
+
+Add `--skills` (or `--agent claude|codex|cursor`) to also generate invocable, wiki-grounded automation prompts — a Claude skill (`.claude/skills/`, e.g. `/llm-wiki-feature`), a Codex skill (`.agents/skills/`), a Cursor rule, and an agent-neutral prompt — each carrying a snapshot of your project's domain map. They cover `bootstrap` (first-time enrichment of the init-generated skeleton, sharing its rules with `handoff`) plus ongoing `feature`/`fix`/`docs-sync` work. `--skills` emits every native format; a specific `--agent` emits that agent's format.
+
+**Already have an OKF (or plain Markdown) knowledge folder?** Point the CLI at it to add verification, drift detection, and CI *without changing the format* — `--profile okf-v0.1` treats it as first-class.
+
+## Recommended agent & model
+
+The CLI needs no model. Only the **enrichment** step — an agent reading code and writing accurate, source-backed docs — does, and that is where model quality matters most.
+
+| Task | Model tier |
+| --- | --- |
+| **Wiki enrichment** (write/refresh docs from code) | Your agent's **strongest reasoning/coding model** (e.g. a Claude Opus-class model, a high-reasoning GPT-5-class model, or each tool's top coding model). Accuracy and low hallucination matter here. |
+| **Routine upkeep** (`docs-sync` of small changes, running `validate`/`status`) | A mid-tier or economical model is fine. |
+| **The CLI itself** (`init`, `validate`, `audit`, `graph`, `stats`, `mcp` server) | No model — pure Node, runs anywhere and in CI. |
+
+The `llm-wiki mcp` server is deterministic (no model); the agent *calling* its tools can be any model, following the same enrichment guidance.
+
+## Core commands
+
+| Command | What it does |
+| --- | --- |
+| `quickstart --write` | Set up the wiki + adapter, print the agent handoff prompt (`--skills` also generates automation skills). |
+| `validate` | Structure & safety validation for local checks / CI (`--strict`, `--changed`). |
+| `audit` · `status` | Full findings report · current wiki state. |
+| `graph` · `stats` | Knowledge graph (text/JSON/Mermaid/DOT) · health snapshot (verified % / enrichment % / evidence coverage). |
+| `drift` · `fix` · `migrate` | Drift detection & downgrade · scoped safe autofix · contract upgrade (all preview-first). `drift --watch-needs-review` (off by default, accepted by `drift` only) widens the date-anchored freshness check to `needs_review` documents as well as `verified` ones; it deliberately does not widen `impact`. Since 1.29.1, documents under `docs/llm-wiki/templates/` are out of scope for `drift` — they are skeletons for adopters to copy, and `review` cannot re-stamp them, so flagging them produced findings with no way to clear them. |
+| `impact` | Diff-anchored reverse impact (`--since <ref>` for a PR / CI baseline): `verified` documents whose referenced source changed in the diff while the document itself did not. **Fails the build on its own** — `impact.source_changed` defaults to `error`, so this exits 1 with no flag, and `--strict` is a no-op for that rule. Ways back: `"impact.source_changed": "warning"` (or `"info"` / `"off"`) in the `rules` map of `llm-wiki.config.json`, or `rulesPreset: "relaxed"`, which keeps it at `info`. Since 1.29.0, a `package.json` whose diff moves nothing but `version` is reported as changed but not used for anchoring (this command only — `drift` still sees it), so a release commit does not fail on its own manifest. Since 1.29.1, documents under `docs/llm-wiki/templates/` are out of scope for this command and for `drift`. Read the *Upgrading* note under **Governance in practice** first. |
+| `review` | Human review workflow: lists the `needs_review` backlog risk-ranked (read-only). `review --approve <path> --reviewer "<name>"` stamps `verified` — only on that explicit flag, never automatically. Its scope is content documents under `docs/llm-wiki`; naming a template or the append-only log is refused with that reason (since 1.29.1 — it used to answer "not found" about a file that was plainly there). |
+| `check-run` | Audit what a skill run claims it did, from the run manifest it wrote: every changed source is referenced by a touched document, the log was appended, `validate` passed, and (for feature/fix) a `testEvidence` red→green trail is recorded. Read-only. |
+| `harness-health` | Inspect the harness instead of the documents: adapter files and generated skill artifacts stamped below the version this package ships, and skill bodies that no longer track their generator (no generation marker at all, or a marker whose body no longer hashes to it — `init --refresh` keeps both). Two further rules, an always-loaded context budget and a per-skill size cap, stay inert until you supply a number (`--preload-budget <n>` / `--skill-token-cap <n>`, or `harnessHealth` in `llm-wiki.config.json`); those sizes are the same `chars/4` proxy used elsewhere, never a measured token count. Read-only. |
+| `import-memory` | Convert an agent harness's portable memories (`ecc.memory.v1`) into `needs_review` wiki drafts. Preview by default; `--apply` writes. Never produces `verified`, never overwrites, and skips memories containing sensitive values. |
+| `handoff` · `prompt` | Agent handoff prompt · repeatable task prompts (bootstrap/feature/fix/refactor/docs-sync/okf-extract). |
+| `onboard` · `prepare` | Guided, read-only: learn a work area from real code evidence (`onboard [--domain]`) · scope a change before implementing (`prepare --task`). Assembled from the wiki; the CLI invents no explanation. |
+| `list-docs` · `search-docs` · `get-doc` · `get-related` | Read-only retrieval that returns document **content**: enumerate with `--status`/`--visibility`/`--doc-type` filters · zero-dependency keyword search (not semantic) · one document's frontmatter + body (`--section`, `--max-chars`) · resolved graph neighbours. Restricted/sensitive documents are excluded unless you pass `--include-sensitive`, and sensitive lines are redacted. |
+| `mcp` | Run the read-only MCP server (see below). |
+
+Add `--lang ko` (or set `lang` in `llm-wiki.config.json`) to see findings messages and `explain` output in Korean; rule IDs, the `--format json` shape, and default English output are unchanged.
+
+Generated wiki documents are English by default. Add `--doc-lang ko` (or set `docLanguage` in `llm-wiki.config.json`) to generate the wiki content — and the agent doc-writing instructions in the handoff/skill prompts — in Korean instead. `--doc-lang` is independent of `--lang`, and technical identifiers (paths, code symbols, JSON keys, frontmatter fields, status values, evidence locators) are never translated. Adapter bodies (`AGENTS.md`, `CLAUDE.md`, and the other agent adapter files) stay in English regardless of `--doc-lang` / `docLanguage` — the setting covers wiki documents and doc-writing instructions, not the adapter contract itself.
+
+Rule severities are tunable per project: set `rules` for individual finding IDs, or `rulesPreset: "relaxed" | "standard" | "strict"` in `llm-wiki.config.json` for a named bundle. Explicit `rules` always win over the preset, and `sensitive.*` can never be switched off. `relaxed` is the supported way to keep the old `impact` behaviour — it holds `impact.source_changed` at `info`; `standard` is a deliberate no-op baseline; `strict` turns on the opt-in lints and raises the governance core, and no longer lists `impact.source_changed`, because escalating a rule that is already an error would do nothing.
+
+Retrieval has opt-in token controls (default output unchanged): `get-doc --strict-section` withholds the full body when nothing matches (instead of falling back to a whole-doc read), `--max-chars <n>` caps the returned body exactly, `--compact` drops the frontmatter echo; and `prepare --compact` returns one bounded context bundle — a chosen path, at most three candidate docs, only the top doc's most-relevant section, and how to expand. These surface a diagnostic `estimatedTokens` (a `chars/4` proxy, not a measured token count).
+
+Full command, option, exit-code, and programmatic-API reference: run `npx llm-wiki help <command>` (offline), or see [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md).
+
+## How it works
+
+Every command runs the same read-first pipeline — detect the project, run the scan family, collect findings, then render a report and an exit code:
+
+```mermaid
+flowchart LR
+  A["llm-wiki (command)"] --> B["detectProject()"]
+  B --> C["scan* family"]
+  C --> D["findings[]"]
+  D --> E["report (text / json / markdown / html)"]
+  D --> F["exit code (0 pass / 1 error / 2 blocked / 3 usage)"]
+```
+
+The `scan*` family covers structure, frontmatter contract, `source_files` / `evidence`, links & the wiki graph, evidence drift, sensitive-info, and selected adapters. Writes happen only on the explicit `--write` / `--apply` / `--approve` paths — the pipeline above is read-only.
+
+A clean `validate` looks like this (text format; redacted):
+
+```text
+$ npx llm-wiki-governance validate --strict
+# LLM-WIKI Validate
+
+## Summary
+- result: pass
+- project_type: library
+- active_profiles: core, library
+- findings: 0
+
+## Wiki Graph
+- documents: 24
+- resolved_wiki_links: 18
+- orphan_documents: 0
+
+## Finding Summary
+- none
+```
+
+When something needs attention, findings are `severity · rule · path` — machine-greppable and explainable with `llm-wiki explain <rule>`:
+
+```text
+## Findings
+- [warning] evidence.stale docs/llm-wiki/DOMAIN_FEATURES.md: referenced source changed in git after review
+- [error]   frontmatter.required docs/llm-wiki/api.md: missing required field 'project'
+```
+
+## Governance in practice
+
+- **Verify deliberately.** Agent-written docs stay `needs_review`; a human promotes to `verified` after reading them. Nothing the CLI does can bypass that.
+- **Catch drift early.** Every doc cites `source_files` / precise `evidence`; when those change, `evidence.stale` and `drift` flag the doc. Run `drift --downgrade` to flip stale `verified` docs back to `needs_review`, and `drift --watch-needs-review` (off by default, `drift` only) to widen the date-anchored check to `needs_review` docs too. **Release notes are exempt:** a document whose `doc_type` — or OKF `type` — is `release_notes` is skipped by both `evidence.stale` and `impact.source_changed`, because a release note is an immutable record of a release that already shipped and it anchors `package.json`, which changes on every release. State the cost plainly: the exemption **removes release notes from a check they are currently inside**, so a release note will no longer be flagged when the source it cites moves. **A version-only manifest bump is exempt from `impact` — and only from `impact`:** a `package.json` whose diff moves nothing but the `version` value is reported as changed but not used for anchoring, because every release bumps it and no document's claims depend on the number. `drift`/`evidence.stale` is date-anchored — it asks *when* a file changed, not *what* changed in it — so a version bump will still make it flag a document that cites the manifest. Any other key, a `version` field added or removed, a version that did not actually move, an unparseable manifest, or a manifest with no baseline to compare against all still count for `impact` too. Comparison is order-sensitive (Node resolves conditional `exports` in key order, so reordering them is a real change), and the exclusion covers the root `package.json` plus declared `workspaces` members only — never `pyproject.toml` or `Cargo.toml`, which would need a parser this package does not ship.
+- **Keep it current in the same change.** Update the wiki alongside the code (`prompt --task docs-sync`, or the `docs-sync` skill), and run `validate --changed` in pre-commit / CI.
+- **Let agents self-serve.** Point your agent at the `mcp` server so it queries the wiki as tools instead of re-scanning the code.
+- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.29.2` (pin an exact tag). Before you add `impact` to a required check, read the *Upgrading* note directly below — it now fails a build without `--strict`.
+- **Make it readable.** `graph --format mermaid`, `stats`, and `audit --format html` help humans see the corpus; it stays Markdown-in-git (renders on GitHub/GitLab, Obsidian, MkDocs — not a static-site generator).
+
+### Upgrading: `impact` now fails a build
+
+**Breaking — this changes the exit-code contract.** `impact.source_changed` now defaults to **`error`**. It used to be a warning, and `impact` exited 0 unless you passed `--strict`. It now exits **1 with no flag at all**, and `--strict` is a no-op for this rule. In practice: after upgrading, the first commit that changes source without touching a document that cites it turns the build red.
+
+**It shipped in `1.28.0` — a MINOR.** By SemVer a change to an exit-code contract is a MAJOR; releasing it as a MINOR was the maintainer's explicit decision, and it is stated here rather than smoothed over. The consequence is concrete: **a project depending on `^1.27.2` picks this up automatically.** If you are not ready for the gate, put one of the two escape hatches below in your config *before* upgrading.
+
+Why it was turned on: it is the one rule that catches what this tool exists for — source moved, its documentation did not — and it was the only detection rule a project had to opt into before it could fail a build.
+
+**Two ways back**, both per project, neither of them a code change:
+
+```json
+{ "rules": { "impact.source_changed": "warning" } }
+```
+
+`"warning"` (or `"info"` / `"off"`) in the `rules` map of `llm-wiki.config.json` restores the advisory behaviour.
+
+```json
+{ "rulesPreset": "relaxed" }
+```
+
+`rulesPreset: "relaxed"` keeps the rule at `info`. Explicit `rules` still win over the preset. The `strict` preset no longer lists the rule, since escalating an error would be a no-op.
+
+**Two cases the gate deliberately does not reach.** A `package.json` whose diff moves nothing but `version` is not anchored on (1.29.0), so a release commit does not fail on its own manifest; and documents under `docs/llm-wiki/templates/` are out of scope for both `impact` and `drift` (1.29.1). The second one mattered if you keep wiki templates: `review` cannot promote or re-stamp a template, so a stale one used to fail your build with no remedy — downgrading it did nothing and approving it was refused as "not found". If you were pinned below 1.29.1 for that reason, upgrading is the fix.
+
+`drift` and `check-run` still need `--strict` to fail a build — their rules are still warnings. That asymmetry is deliberate and is pinned by tests. Alongside this, `doctor`'s CI-governance check now counts a bare `llm-wiki impact --since ...` step as an omission gate; it used to report "NO omission gate" for exactly that step.
+
+**On the record:** this rule's baseline false-positive rate was measured at **27% or 57%**, depending on one policy call that is still unmade (whether a shifted line anchor counts as a true positive), and a single hub file cited by many documents fans out to as many as **14 findings**. The default was turned on with those numbers known.
+
+## Does it actually help?
+
+Measured on an external Vue/Quasar app — 6 code-comprehension tasks, Claude Opus 4.8, answers graded blind to which arm produced them. An agent querying a **current, verified** wiki used **about 41% fewer input tokens** (pooled over four samples per task) than one reading source directly, at slightly better rubric accuracy. The control arm matters more than that number: the **same retrieval tools over a wiki with its content stripped out** cost **14% *more* than having no wiki at all** (N=3) — so the saving comes from the maintained content, not from handing the agent a search tool. It also means an unenriched wiki is worse than no wiki. Against a **stale** wiki, an earlier run produced a confidently wrong security answer, so the real payoff is **correctness that depends on freshness** — exactly what `verified` review, drift / `impact`, and `validate --changed` protect. Scope: one repository, one model, six tasks, N=3, agent-graded with the grading standard ratified by the maintainer on a sampled review — and on one of the six tasks retrieval *lost* at 3.17×. Method, full numbers, and the runs that went against us: [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md). The target was a **private third-party codebase**, so the published artifacts are anonymized — identifiers replaced by stable pseudonyms and the raw answer prose withheld, with every measurement left as the original. What was redacted, and why the historical run cannot be reproduced from this repository: [BENCHMARK_DISCLOSURE.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/BENCHMARK_DISCLOSURE.md).
+
+## Agent-native (MCP)
+
+`llm-wiki mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio (newline-delimited JSON-RPC 2.0, Node built-ins only — no third-party SDK). Register it in an MCP client:
+
+```json
+{ "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
+```
+
+It exposes **read-only** tools — governance (`validate`, `audit`, `next`, `status`, `doctor`, `stats`, `graph`, `explain`, `handoff`, `prompt`), retrieval (`list_docs`, `search_docs`, `get_doc`, `get_related`), guided (`onboard`, `prepare`), and the review backlog (`review`, list only) — so an agent can inspect the wiki but never write it: no write command is exposed, and `review` promotion to `verified` stays a human CLI action.
+
+**Boundary:** the server assumes a **local stdio subprocess** and uses `stdout` as the protocol channel; it has no authentication. Do not expose it over a network without your own auth proxy. Trust model: [SECURITY.md](./SECURITY.md#mcp-server-trust-model). Details: [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · [GATE_REVIEW.md](./GATE_REVIEW.md) (Gate 11).
+
+## Use it from code
+
+Import the package instead of shelling out — handy for CI wrappers, editor integrations, and tests:
+
+```js
+import { commands, normalizeOptions, run } from "llm-wiki-governance";
+
+const r = await commands.audit(normalizeOptions({ cwd: process.cwd() }));
+// r.command, r.result, r.findings, r.schemaVersion
+
+const code = await run(["validate", "--strict"]); // 0 pass / 1 error / 2 blocked / 3 usage
+```
+
+`--format json` output carries a top-level `schemaVersion` so wrappers can pin the contract. Full API in [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md).
+
+## Safety at a glance
+
+Preview-first everywhere (writes only with `--write` / `--apply`); `verified` is human-only in every command; `docs/llm-wiki/log.md` and existing adapter files are never overwritten; sensitive-looking values are never printed or written; no runtime third-party dependencies. Full scope decisions: [GATE_REVIEW.md](./GATE_REVIEW.md).
+
+## Learn more
+
+- [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) — full command / option / exit-code / configuration / programmatic-API / MCP reference.
+- [GATE_REVIEW.md](./GATE_REVIEW.md) — accepted safety scopes (fix / migrate / drift / MCP / skills) and release gates.
+- [ROADMAP.md](./ROADMAP.md) — direction and shipped history.
+- [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md) — operator guide: running LLM-WIKI on a small repo / medium repo / monorepo (flags, CI cost, doc-count strategy).
+- [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) — worked examples · [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) — maintainer release steps.
+- Community: [CONTRIBUTING.md](./CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) · [SECURITY.md](./SECURITY.md).

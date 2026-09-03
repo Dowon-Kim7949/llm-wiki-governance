@@ -1,0 +1,215 @@
+{
+  "schema": "llm-wiki-bench-real/1",
+  "executed": true,
+  "generatedAt": "2026-07-24T03:47:20.151Z",
+  "arm": "B",
+  "armLabel": "no-retrieval (read source)",
+  "repeats": 1,
+  "tasks": [
+    {
+      "id": "auth-signin",
+      "question": "How does a user sign in to this web app — what happens from submitting the login form to being authenticated, and where is the login request sent?",
+      "groundTruth": [
+        "<login-page>",
+        "<user-store>",
+        "<api-client>",
+        "<http-client>",
+        "<crypto-util>"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: How does a user sign in to this web app — what happens from submitting the login form to being authenticated, and where is the login request sent?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "[REDACTED FOR PUBLIC RELEASE - see docs/BENCHMARK_DISCLOSURE.md] The full answer text is withheld because it reconstructed the private target application's internals (module paths, endpoint routes, request/response field names, status codes, session-storage keys, idle-timer thresholds and backend hostnames) in enough detail to rebuild them. This run's measurements (inputTokens, outputTokens, wallMs, toolCalls, model) are unmodified, and its graded outcome is recorded in the companion grading worksheet under bench/results/.",
+          "inputTokens": 48396,
+          "outputTokens": 2049,
+          "wallMs": 32920,
+          "toolCalls": 7,
+          "openedPaths": [
+            "<login-page>",
+            "<api-client>",
+            "<user-store>",
+            "<http-client>",
+            "<crypto-util>"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          },
+          "answerOriginalChars": 3599,
+          "answerRedacted": true
+        }
+      ]
+    },
+    {
+      "id": "routing-map",
+      "question": "How does this app decide which page component to render for a given browser URL, and where is that URL-to-page mapping defined?",
+      "groundTruth": [
+        "<router-table>",
+        "<router-setup>"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: How does this app decide which page component to render for a given browser URL, and where is that URL-to-page mapping defined?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "[REDACTED FOR PUBLIC RELEASE - see docs/BENCHMARK_DISCLOSURE.md] The full answer text is withheld because it reconstructed the private target application's internals (module paths, endpoint routes, request/response field names, status codes, session-storage keys, idle-timer thresholds and backend hostnames) in enough detail to rebuild them. This run's measurements (inputTokens, outputTokens, wallMs, toolCalls, model) are unmodified, and its graded outcome is recorded in the companion grading worksheet under bench/results/.",
+          "inputTokens": 6975,
+          "outputTokens": 1306,
+          "wallMs": 20961,
+          "toolCalls": 4,
+          "openedPaths": [
+            "<router-setup>",
+            "<router-table>"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          },
+          "answerOriginalChars": 2419,
+          "answerRedacted": true
+        }
+      ]
+    },
+    {
+      "id": "api-layer",
+      "question": "How does the frontend talk to its backend — where is the server base URL configured, and how are requests authenticated across calls?",
+      "groundTruth": [
+        "<api-client>",
+        "<http-client>"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: How does the frontend talk to its backend — where is the server base URL configured, and how are requests authenticated across calls?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "[REDACTED FOR PUBLIC RELEASE - see docs/BENCHMARK_DISCLOSURE.md] The full answer text is withheld because it reconstructed the private target application's internals (module paths, endpoint routes, request/response field names, status codes, session-storage keys, idle-timer thresholds and backend hostnames) in enough detail to rebuild them. This run's measurements (inputTokens, outputTokens, wallMs, toolCalls, model) are unmodified, and its graded outcome is recorded in the companion grading worksheet under bench/results/.",
+          "inputTokens": 16059,
+          "outputTokens": 1968,
+          "wallMs": 28362,
+          "toolCalls": 4,
+          "openedPaths": [
+            "<http-client>",
+            "<api-client>"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          },
+          "answerOriginalChars": 3761,
+          "answerRedacted": true
+        }
+      ]
+    },
+    {
+      "id": "item-domain",
+      "question": "On the item-management screen, how does the page obtain its list of items from the server and hold that data for display?",
+      "groundTruth": [
+        "<item-list-page>",
+        "<item-store>",
+        "<api-client>",
+        "<search-store>"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: On the item-management screen, how does the page obtain its list of items from the server and hold that data for display?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "[REDACTED FOR PUBLIC RELEASE - see docs/BENCHMARK_DISCLOSURE.md] The full answer text is withheld because it reconstructed the private target application's internals (module paths, endpoint routes, request/response field names, status codes, session-storage keys, idle-timer thresholds and backend hostnames) in enough detail to rebuild them. This run's measurements (inputTokens, outputTokens, wallMs, toolCalls, model) are unmodified, and its graded outcome is recorded in the companion grading worksheet under bench/results/.",
+          "inputTokens": 80645,
+          "outputTokens": 1613,
+          "wallMs": 32269,
+          "toolCalls": 7,
+          "openedPaths": [
+            "<item-list-page>",
+            "<item-store>",
+            "<api-client>"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          },
+          "answerOriginalChars": 2581,
+          "answerRedacted": true
+        }
+      ]
+    },
+    {
+      "id": "session-timeout",
+      "question": "How does the app handle an idle user or an expired login session?",
+      "groundTruth": [
+        "<session-timeout-composable>",
+        "<http-client>",
+        "<main-layout>",
+        "<user-store>"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: How does the app handle an idle user or an expired login session?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "[REDACTED FOR PUBLIC RELEASE - see docs/BENCHMARK_DISCLOSURE.md] The full answer text is withheld because it reconstructed the private target application's internals (module paths, endpoint routes, request/response field names, status codes, session-storage keys, idle-timer thresholds and backend hostnames) in enough detail to rebuild them. This run's measurements (inputTokens, outputTokens, wallMs, toolCalls, model) are unmodified, and its graded outcome is recorded in the companion grading worksheet under bench/results/.",
+          "inputTokens": 57122,
+          "outputTokens": 2196,
+          "wallMs": 38604,
+          "toolCalls": 8,
+          "openedPaths": [
+            "<session-timeout-composable>",
+            "<http-client>",
+            "<main-layout>"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          },
+          "answerOriginalChars": 3646,
+          "answerRedacted": true
+        }
+      ]
+    },
+    {
+      "id": "state-mgmt",
+      "question": "After a user logs in, where is their user, menu, and group information stored so that other pages can use it?",
+      "groundTruth": [
+        "<user-store>",
+        "<login-page>",
+        "<session-storage-util>"
+      ],
+      "prompt": "You are a senior engineer answering a code-comprehension question about this repository.\n\nQuestion: After a user logs in, where is their user, menu, and group information stored so that other pages can use it?\n\nApproach: Answer by reading the SOURCE CODE only (grep for the terms, then read the matching files). Do NOT read docs/llm-wiki.\nAvailable tools: read, grep.\n\nGive a precise answer that names the responsible file(s) and symbol(s) and explains the mechanism.\nKeep the answer focused; do not read more than you need.",
+      "runs": [
+        {
+          "answer": "[REDACTED FOR PUBLIC RELEASE - see docs/BENCHMARK_DISCLOSURE.md] The full answer text is withheld because it reconstructed the private target application's internals (module paths, endpoint routes, request/response field names, status codes, session-storage keys, idle-timer thresholds and backend hostnames) in enough detail to rebuild them. This run's measurements (inputTokens, outputTokens, wallMs, toolCalls, model) are unmodified, and its graded outcome is recorded in the companion grading worksheet under bench/results/.",
+          "inputTokens": 74047,
+          "outputTokens": 1662,
+          "wallMs": 29975,
+          "toolCalls": 8,
+          "openedPaths": [
+            "<login-page>",
+            "<session-storage-util>",
+            "<user-store>"
+          ],
+          "wikiDocs": [],
+          "model": "claude-opus-4-8",
+          "grade": {
+            "graded": false,
+            "keyClaims": [],
+            "score": null
+          },
+          "answerOriginalChars": 2503,
+          "answerRedacted": true
+        }
+      ]
+    }
+  ],
+  "redaction": {
+    "publicRelease": true,
+    "answersWithheld": true,
+    "note": "Redacted for public release. Identifiers of the private benchmark target (module paths, endpoint routes, field names, status codes, storage keys, idle-timer thresholds, hostnames, repository and branch names) are replaced with stable pseudonyms, and each run's full answer prose is withheld. No measurement was changed: arm, repeats, dates, model, token counts, wall time and tool-call counts are the originals. See docs/BENCHMARK_DISCLOSURE.md."
+  }
+}

@@ -1,0 +1,4699 @@
+---
+title: LLM-WIKI Change Log
+tags:
+  - llm-wiki
+  - needs-review
+status: needs_review
+doc_type: change_log
+project: llm-wiki-governance
+last_updated: 2026-08-06
+author: cli-generated
+last_edited_by: Claude Code
+wiki_block_version: v1
+source_files:
+  - package.json
+evidence:
+
+related:
+  - docs/llm-wiki/index.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+# LLM-WIKI Change Log
+
+이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
+
+## 2026-09-03 - chore: 공개 저장소가 비공개 벤치 대상의 내부 구조를 재구성 가능한 수준으로 담고 있었다
+
+- status: verified → needs_review → verified (에이전트 승격)
+- actor: Claude Code (유지보수자 지시 — 공개 저장소 익명화 검토)
+- scope: bench, docs, wiki, src(주석), tests(픽스처)
+- changed:
+  - 대상의 프로젝트명이 파일명에 들어 있던 태스크 파일과 보고서 6종을 가명으로 rename(git mv, 이력 보존) → **`bench/tasks-external-vue-app.json`**, `bench/results/real-driver-external-vue-app-*`. 저장소 안의 모든 참조·frontmatter `source_files`/`evidence`를 함께 갱신
+  - `bench/results/real-B*.json` 5종 — `tasks[].runs[].answer` 프로즈 66건 보류(`answerRedacted: true` + `answerOriginalChars`), 최상위 `redaction` 메타 추가. **측정 필드는 무수정**
+  - `bench/results/*.md` 6종·`bench/tasks-external-vue-app.json`·`bench/real/DRIVER_RUNBOOK.md`·`bench/real/runner.js`·`bench/README.md` — 식별자 가명화, 채점 워크시트의 답변 전문 인용 4건을 공개용 요약으로 축약
+  - `docs/BENCHMARK_DISCLOSURE.md` + `.ko.md` — **신규**. 무엇을 측정했고 무엇을 지웠는지, 그리고 원본 corpus 없이는 재실행이 불가능하다는 사실
+  - `README.md`·`README.ko.md` — 벤치 문단에 익명화 고지 링크(패키지에 포함되는 문서)
+  - `docs/llm-wiki/BENCHMARK.md`·`DOMAIN_FEATURES.md`·`HARNESS_GOVERNANCE_ROADMAP.md`·`REVIEW_HISTORY.md`·`GATE_REVIEW.md`·`ROADMAP*.md`·`CHANGELOG*.md`·`outputs/distribution/CLAIMS.md`
+  - `src/commands.js`·`src/commands/domains.js` — 도메인 탐지 **예시 주석**의 업무 도메인 단어 교체(동작 무변경), `tests/verification.test.js` — 같은 픽스처 이름 교체
+  - `log`(이 항목)
+- summary:
+  - 공개 저장소가 담고 있던 것은 프로젝트·저장소·브랜치명뿐이 아니었다. **실제 dev 백엔드의 IP:포트와 사내 호스트명**, 로그인 2단계 흐름과 상태 코드 조합, 세션 스토리지 키와 그 암호화 취급, 유휴 타이머 임계값, 업무 필드명, 그리고 **비공개 앱의 소스 코드 스니펫**까지 있었다. 지시받은 패턴 목록에 없던 인프라 노출이 가장 민감했다.
+  - **원시 결과의 답변 프로즈는 가명 치환만으로 안전해지지 않는다.** 66건이 함수 단위 흐름에 라인 번호까지 붙은 정독 결과였다. 그래서 프로즈는 보류하고 측정값(`inputTokens`·`outputTokens`·`wallMs`·`toolCalls`·`model`·`arm`·`repeats`·날짜)은 한 자도 건드리지 않았다. 대응표는 저장소에 두지 않았다.
+  - **점수·표본 수·결론·기록된 한계는 보존했다.** retrieval이 진 태스크, 낡은 위키가 낸 보안 오답, 3.17배 손실, "agent-graded" 표기 규율까지 그대로다. 익명화는 성과를 다시 쓰는 작업이 아니다.
+  - **블랭킷 치환이 제품을 깨뜨렸다 — 게이트가 아니라 테스트가 잡았다.** `ApiService` 규칙이 제품 심볼 `domainApiServicesSection`에, 바레 `routes.ts` 규칙이 제품 자신의 앵커 예시 `src/routes.ts#route:/users`에 걸렸고, 업무 도메인 라우트 규칙이 같은 이름의 픽스처 **디렉터리** 경로에도 걸려 `src/pages<item-route>`라는 존재할 수 없는 경로를 만들어 테스트 4건이 실패했다. 세 규칙을 경계 인식 정규식으로 바꾸고 픽스처를 복구해 522/522로 되돌렸다. 규약: **식별자 치환은 대상 문자열이 제품 소스의 부분 문자열인지 먼저 확인한다.**
+  - **치환은 뜻도 깨뜨린다.** 축약형을 전칭으로 풀어 쓴 사실을 서술한 문장이 양변 동일("`X` → `X`")이 되고, 서로 다른 두 경로가 같은 가명으로 합쳐져 "A라 했으나 실제는 B" 문장이 무의미해졌다. 기계 치환 후 **문장 단위 손검수**가 필요하다는 뜻이고, 3곳을 손으로 고쳤다.
+  - 버전 접두어가 붙은 전체 경로만 규칙에 있어서, 문서 한 곳이 **접두어 없이 인용한 엔드포인트 조각 1건**이 규칙을 그대로 빠져나갔다. 전수 검색을 지시받은 패턴 목록이 아니라 **경로 형태**(`/auth/…`·`/api/…`)로 다시 돌려서 찾았다 — 목록 기반 검색만으로는 닫히지 않는다.
+  - 공개 재현용 합성 fixture는 **만들지 않았다.** `bench/tasks.json`(대상 = 이 저장소 자신) + `make-stub-wiki.mjs`가 이미 완전 공개 fixture이고 `runner.js --dry`가 이를 검증한다. 두 번째를 발명하면 근거는 안 늘고 패키지 범위만 넓어진다.
+- evidence:
+  - bench/tasks-external-vue-app.json
+  - bench/real/runner.js
+  - docs/BENCHMARK_DISCLOSURE.md
+- caveats:
+  - **이력 재작성은 하지 않았다.** 과거 커밋에는 원본 식별자가 그대로 남아 있다. 현재 트리 정리만으로 닫히지 않는 위험이며 유지보수자 결정 사항이다.
+  - 비공개 저장소의 **커밋 해시**는 거버넌스 측정 표에 남겼다. 그 측정의 재현 근거이고 해당 저장소 접근 없이는 무의미하다.
+  - 익명화된 대상의 **아키텍처 형상 서술**(예: 단일 대형 파사드)은 남겼다 — 앵커 축소 규칙이 그 저장소에서 무효로 측정된 이유 자체이기 때문이다.
+  - **이미 npm에 배포된 버전**은 이 변경의 영향을 받지 않는다.
+  - 미추적 상태인 2026-08-19 delegation-bench 산출물 5건에도 같은 식별자가 있으나, 유지보수자의 대기 중 작업이고 공개 경로에 없어 **건드리지 않았다**. 추적하려면 먼저 익명화가 필요하다.
+
+## 2026-08-20 - fix: 제품이 스스로 출력하는 MCP 툴 목록 3곳이 낡아 실제보다 적게 주장하고 있었다
+
+- status: verified → needs_review → verified (에이전트 승격)
+- actor: Claude Code (요청자 질문 — "기능 로직에 대한 질문 시 MCP 명령어가 별도로 존재하는가")
+- scope: src, tests, wiki
+- changed:
+  - `src/cli.js` — 최상위 도움말 Safety 블록의 `mcp` 줄(14종 → 17종)과 `help mcp`의 `Tools` 블록(10종 → 17종). 양쪽에 `review`는 MCP에서 목록 전용이라는 단서를 붙였다
+  - `src/mcp/dispatch.js` — `initialize` 응답의 `instructions`에 `review` 추가(승인은 사람의 CLI 액션이라는 단서 포함)
+  - `tests/mcp-tool-census.test.js` — 신규 가드 4건(518 → 522). 사본 표(`COPIES`) + 명시적 `span`으로 블록 단위 대조
+  - `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` — Conventions 규약 1건 추가, Review Notes 5건 상한 유지를 위한 회전 1건
+  - `docs/llm-wiki/REVIEW_HISTORY.md` — 회전 대상 수용(`Architecture Conventions` 48 → 49건)
+  - `log`(이 항목)
+- summary:
+  - 사용자가 "로직 질문 전용 MCP 명령이 따로 있느냐"고 물어 표면을 확인하다 발견했다. 질문의 답 자체는 **없다**이다 — 노출 툴 17종 중 질문에 답하는 툴은 0개이고, 가장 가까운 `prepare`도 설계상 결론을 내지 않고 읽을 범위만 좁힌다. 그런데 확인 과정에서 **제품이 자기 툴 목록을 세 곳에서 서로 다르게 적고 있는 것**이 드러났다.
+  - **세 사본의 낡은 정도가 전부 달랐다**: 최상위 도움말 14종(`onboard`·`review`·`prepare` 누락) · `help mcp` 10종(1.6 이후 한 번도 갱신 안 됨) · `initialize` instructions 16종(`review` 누락). 한 제품이 같은 질문에 세 가지로 답하고 있었다.
+  - 하필 빠진 것이 `prepare`였다. 질문의 범위를 좁히라고 만든 툴이 도움말에서 지워져 있으면, 그것을 읽은 에이전트는 그 툴이 없다고 결론 내리고 소스를 다시 읽는다 — 이 패키지가 없애려는 바로 그 비용이다.
+  - **기능은 한 줄도 바뀌지 않았다.** 세 툴은 `TOOL_DEFS`에 처음부터 있었고 MCP로 실제 호출된다(이 세션에서 `prepare`를 MCP로 직접 호출해 확인 — 936자 / 추정 234토큰 응답).
+  - 위키 3문서(`PUBLIC_API.md`·`DOMAIN_FEATURES.md`·`domains/00_overview.md`)와 README 2종은 이미 17종으로 정확했다. **틀린 것은 위키가 아니라 제품이 스스로 출력하는 문자열이었다** — 위키 게이트가 전부 초록이어도 도입처가 보는 표면은 거짓일 수 있다는 뜻이고, 그래서 가드를 위키가 아니라 `TOOL_DEFS` 대조로 세웠다.
+  - **첫 시도는 세 번째 사본(`help mcp`)을 놓쳤다.** 앵커가 걸린 한 줄만 보는 가드였기 때문에 구조적으로 볼 수 없었고, 그것을 찾은 것은 게이트가 아니라 세션 메모에 적혀 있던 "`help mcp`는 10개만 나열(미해결)"이라는 한 줄이었다. 가드를 블록 단위로 일반화하고 세 번째 사본을 낡은 상태로 되돌려 RED을 실제로 확인한 뒤 복원했다 — 이 누락 자체가 "사본을 손으로 세면 빠진다"는 규약의 근거다.
+- evidence:
+  - src/mcp/tools.js
+  - src/cli.js
+  - src/mcp/dispatch.js
+- caveats:
+  - 게이트 실측은 아래 최종 확인 참조. 가드 4건 중 완전성 검사 3건은 전부 수정 전 RED을 확인했고, 팬텀 방향 1건("없는 툴을 주장하지 않는다")은 반대 방향이라 처음부터 GREEN이다 — 이 배치가 실증한 결함을 잡는 가드는 아니고 같은 줄이 반대로 썩는 것을 막는 용도다.
+  - 팬텀 방향 가드는 목록이 기계 판독 가능한 Safety 줄에만 걸려 있다. `help mcp`와 instructions는 산문이라 완전성만 검사한다.
+  - README 2종과 위키 3문서는 **여전히 손으로 유지된다**(가드 범위 밖). 이번에는 그쪽이 맞고 제품이 틀렸지만, 반대로 썩는 것을 막는 장치는 없다.
+  - `verified` 9건의 재스탬프는 **소스 대조를 전제하지 않는다**(이 저장소 정책). 다만 MCP 목록을 실제로 주장하는 3문서는 이번에 눈으로 대조해 17종임을 확인했다.
+
+## 2026-08-19 - docs: 1.29.2 배포 이후 정렬 — ROADMAP 릴리스 절 2종, 팀 발표 덱, 드리프트 재기준선
+
+- status: verified → needs_review → verified (에이전트 승격)
+- actor: Claude Code (요청자 지시 — "현재 버전에 맞게 수정할 것은 없는가" 점검)
+- scope: docs, 관리 아티팩트
+- changed:
+  - `ROADMAP.md` · `ROADMAP.ko.md` — post-1.29.1 릴리스 계획 절 신설(**1.29.2로 배포**). 순수 삽입이며 기존 절은 한 줄도 고치지 않았다.
+  - `outputs/team-briefing/` 3종(`README.md`·`SPEAKER_NOTES.md`·`llm-wiki-briefing.html`) — 대상 버전 v1.29.1 → v1.29.2, 발전 타임라인에 1.29.2 항목 추가
+  - `docs/llm-wiki/` verified 10건 — `drift --downgrade` → `review --approve-all --yes`로 `reviewed_at` 재기준선(2026-08-06 → 2026-08-19)
+  - `log`(이 항목)
+- summary:
+  - 1.29.2는 배포까지 끝나 있었다(npm latest·태그 `v1.29.2`@`2fae37f`·README 액션 핀·버전 단언 테스트 전부 정렬). 빠져 있던 것은 **릴리스 서사**였다: 1.27.2·1.28.0·1.29.0·1.29.1이 모두 갖고 있는 ROADMAP 릴리스 절이 1.29.2만 없었고, 팀 발표 덱은 1.29.1에 머물러 있었다.
+  - 덱 갱신은 **블랭킷 치환을 쓰지 않았다.** 1.29.1 타임라인 항목과 그 발표자 노트는 역사이므로 그대로 두고, `now` 표시와 "가장 최근" 문구만 1.29.2로 옮긴 뒤 항목을 하나 더했다(17 → 18).
+  - 위키 10건의 드리프트는 1.29.2 릴리스 커밋이 `package.json`과 루트 `README.md`를 건드려 생긴 통상적인 **배포 후 날짜 앵커 드리프트**다. 문서 내용이 틀려서가 아니다.
+- evidence:
+  - package.json
+  - CHANGELOG.md
+  - tests/agent-token-discipline.test.js
+- caveats:
+  - 재스탬프는 **소스 대조를 전제하지 않는다**(이 저장소 정책). 그 대가로 `evidence.stale`은 여기서 관측 도구가 아니다.
+  - 덱 타임라인이 17 → 18 항목이 됐다. `.slide`는 `min-height:100dvh`라 내용이 잘리지는 않지만 슬라이드가 세로로 길어질 수 있어, **발표 해상도에서 6번 슬라이드를 눈으로 한 번 확인**할 것.
+  - `GATE_REVIEW.md`에는 1.29.2 절을 만들지 않았다 — 그 파일은 게이트·기본값 **결정**의 기록이고 1.29.2는 그 어느 것도 바꾸지 않았다(프롬프트 내용 추가).
+  - 게이트 실측: `validate --strict` 0 · `validate-frontmatter` 0 · `drift` 0 · `audit` 0 · `impact --since HEAD~1 --strict` 0 · 테스트 518/518(`skipped 0`).
+
+## 2026-08-18 - feature: 생성 프롬프트에 위임 예산을 추가했다(문맥 규율 네 번째 레버, 1.29.2)
+
+- status: verified → needs_review → verified (에이전트 승격)
+- actor: Claude Code (요청자 지시 — "llm-wiki-governance에서 작업한 뒤 최신 버전(1.29.2)으로 작업을 수행하겠다")
+- scope: src, tests, 관리 아티팩트, wiki, changelog, release metadata
+- changed:
+  - `src/task-prompts.js` — `delegationPolicy()` 신규 export, 호출 지점 3곳(`implementationPrompt`·`docsSyncPrompt`·`initialEnrichmentWorkflow`)
+  - `tests/agent-token-discipline.test.js` — 헤더의 레버 3개→4개 + 신규 테스트 3건
+  - 관리 스킬 아티팩트 16개(`init --write --refresh --skills`) · `package.json` 1.29.1→1.29.2 · `CHANGELOG(.ko).md` · `README(.ko).md`의 컴포지트 액션 태그
+  - `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` · `docs/llm-wiki/DOMAIN_FEATURES.md` · `log`(이 항목)
+
+### 무엇을 더했나
+
+1.27.1의 `contextBudget`은 **얼마나 읽을지**를 좁혔다. 남은 비용은 그것으로 닿지 않는다 — 여러 문서를
+훑는 탐색을 **비싼 문맥이 직접** 하고 있었다. `delegationPolicy()`는 **누가 읽을지**를 정한다: 탐색·
+스코핑은 더 싼 읽기 전용 위임으로 보내 브리프만 회수하고, 판단(설계 결정·회귀 판정·편집·위키/log
+서술)은 추론을 가진 쪽에 남기고, 기계적 마감(검사·run manifest·이미 정한 편집 적용)은 다시 위임
+가능으로 둔다.
+
+🚨 하한 두 개를 같은 블록에 넣었다. **경제성** — 브리프와 디스패치의 합이 파일 하나 읽기보다 비싸면
+위임하지 않고, 원자료를 되돌려주는 위임은 아무것도 사지 못한다. **안전** — 위임은 **미검증 주장을
+사지 못한다**(위임받은 쪽이 실제 소스를 읽고 근거를 보고하거나, 직접 읽는다). 이 둘이 없으면 같은
+블록이 "읽지 않을 구실"로 읽힌다.
+
+### 왜 에이전트 중립인가
+
+첫 초안은 `agents`에 `claude`가 있을 때만 하네스 특정 문장을 붙였다. **두 가지 이유로 기각했다.**
+① 생성 아티팩트 본문은 4개 형식(claude/codex/cursor/neutral)이 공유하는 **단일 텍스트**이고
+`artifactBody()`가 `agents: []`로 만드는데 `buildTaskPrompt`가 빈 배열을 `["codex","claude"]`로
+보정하므로 **중립 프롬프트와 Cursor 규칙에도 Claude 전용 문장이 새어 들어갔다.**
+② `initialEnrichmentWorkflow`는 `bootstrap`과 `handoff`가 **verbatim으로 공유**하는 구간이고
+`verification.test.js`가 `agents` 없이 계산한 결과를 부분문자열로 단언한다 — 에이전트별 분기는 그
+테스트를 깬다. 결론: 하네스 이름은 **어댑터(`templates/adapters/*`)의 몫**이고, 블록에는 "하네스가
+디스패치별 모델을 고를 수 있으면"이라는 조건부 표현만 남겼다.
+
+### 대가
+
+각 스킬 고정 본문이 약 30% 늘어난다(`fix` 프록시 1077→1406, `bootstrap` 1171→1501, `chars/4` 프록시
+— 실측 토큰이 아니다). 1.27.1과 같은 성질의 거래이며 **위임을 전혀 하지 않는 도입처에서는 순수
+비용**이다. ⚠️ `onboard`/`prepare`/`okf-extract`는 제외했고, `--refresh`가 그 아티팩트들을
+"already up to date"로 남긴 것이 **블록이 의도한 곳에만 들어갔다는 확인**이 됐다.
+
+## 2026-08-06 - fix: N-14 테스트가 Windows에서만 참인 것을 단언해 CI가 두 커밋에서 빨갰다
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (릴리스 전 CI 확인 중 발견)
+- scope: tests, wiki
+- changed:
+  - `tests/template-scope.test.js` — 리터럴 백슬래시 단언을 `path.join` 기반 2건으로 교체
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`(46번 후기) · `log`(이 항목)
+
+### 무엇이 틀렸나
+
+`isTemplateDoc`는 `toPosix()`를 쓰고 `toPosix()`는 **`path.sep`으로만** 분리한다. 그래서
+`isTemplateDoc("docs\\llm-wiki\\templates\\win.md")`는 Windows에서 true, **POSIX에서 false**다 —
+POSIX에서 백슬래시는 구분자가 아니라 파일명 문자이기 때문이다. 그런데 테스트는 그 리터럴 형태를
+"windows separators resolve the same way"라며 **플랫폼 무관하게** 단언했다. 결과: Windows 로컬
+515/515 통과, CI에서 **ubuntu·macOS 8잡 전부 실패**(`not ok 205`), windows 4잡만 통과.
+
+**제품은 옳고 테스트가 과했다.** 모든 호출부는 `toPosix(path.relative(...))`를 넘기므로 낯선
+구분자가 술어에 도달하는 경로가 없고, `isAppendOnlyLog`도 같은 관례를 쓴다. 그래서 술어를
+양쪽 구분자 처리로 바꾸지 않고(형제 함수·`toPosix`와의 일관성을 깨뜨린다) 단언을 `path.join`
+기반으로 바꿨다 — 실행 중인 플랫폼의 네이티브 경로가 정규화된다는 **모든 플랫폼에서 참인**
+계약을 대신 고정한다.
+
+### 재사용 사실 — 로컬 초록은 CI 초록을 함의하지 않는다
+
+이 저장소의 로컬 게이트는 **Windows 한 조합**이고 CI는 **3 OS × 4 Node = 12잡**이다. 경로 구분자·
+대소문자·EOL을 만지는 테스트에서 로컬 통과는 증거가 아니다. `6e702a6`의 커밋 메시지와 그 앞
+로그 항목이 "515/515 tests, skipped 0"이라고 적은 것은 **Windows에서만 참이었다** — 그 문장을
+지우지 않고 여기서 정정한다(append-only). 다음부터 새 테스트가 경로를 문자열로 다루면
+커밋 전에 최소한 그 파일만이라도 POSIX 의미로 검토할 것.
+
+## 2026-08-06 - release: prepare 1.29.1 (N-14 수정 배포 + 크기 판정을 MINOR에서 PATCH로 뒤집음)
+
+- status: needs_review → verified (에이전트 승격, 11건)
+- actor: Claude Code (유지보수자 지시: "다음 작업 모두 진행, 판단에 맡긴다" — 남아 있던 두 항목이
+  push 승인과 릴리스 크기 판정이었다)
+- scope: 버전 범프, 버전 담지 문서 정렬, 위키 재승인, 팬아웃 해소
+- changed:
+  - `package.json`(1.29.0 → 1.29.1) · `tests/verification.test.js`(버전 단언)
+  - `CHANGELOG.md` · `CHANGELOG.ko.md` — `Unreleased` → `1.29.1 — 2026-08-06`, **왜 PATCH인가** 절 추가
+  - `README.md` · `README.ko.md` — `drift`·`impact`·`review` 행에 템플릿 제외 명기, Upgrading 절에
+    "게이트가 의도적으로 닿지 않는 두 경우"(1.29.0 매니페스트 + 1.29.1 템플릿) 추가, 액션 핀
+    `@v1.29.0` → `@v1.29.1`
+  - `ROADMAP.md` · `ROADMAP.ko.md` — post-1.29.0 shipped 절 신설
+  - `GATE_REVIEW.md` — N-14 절의 "Unreleased / MINOR가 보수적 읽기"를 **1.29.1 PATCH 확정**으로 교체
+    (판단이 뒤집힌 경위와 PATCH의 대가를 함께 적음)
+  - `docs/llm-wiki/` — `index`(1.29.1 카브아웃 불릿 신설) · `EXAMPLES`(CI 절에 템플릿 제외 단락) ·
+    `PUBLIC_API`(3곳) · `ARCHITECTURE_CONVENTIONS`(2곳) · `DOMAIN_FEATURES` · `GLOSSARY` ·
+    `domains/00_overview` · `HARNESS_GOVERNANCE_ROADMAP`(46번에 배포 버전·크기 근거) — N-14 스탬프에
+    **릴리스 번호 확정**(88bf8cc·0b8770c 선례: 날짜만 적으면 어느 npm 버전부터인지 알 수 없다)
+  - `docs/llm-wiki/BENCHMARK.md` · `REVIEW_HISTORY.md` — 노트 1건 회전(6건 → 7건, 포인터 동기화)
+  - `docs/llm-wiki/README.md` — Review Note 1건
+  - `outputs/team-briefing/` — 덱·노트·README 버전 라벨 v1.29.1, 타임라인에 1.29.1 항목과 노트 추가
+    (`.now` 표시를 1.29에서 옮겼다)
+- **`.github/actions/validate/action.yml`은 건드리지 않았다**: 기본값 `"1.29"`는 npm에서 1.29.x를
+  받으므로 patch 릴리스는 자동으로 반영된다(그 입력의 설명 자신이 "minor 릴리스마다 올려라"라고
+  적고 있다). 이것을 확인하고 넘어간 것이며 누락이 아니다.
+
+### 크기 판정 — MINOR 메모를 PATCH로 뒤집었다
+
+구현 시점(`6e702a6`) 메모는 "리포트 표면에 필드가 안 늘지만 기본 error 규칙이 지목하는 문서 집합이
+바뀌므로 MINOR가 보수적 읽기"라고 적었다. 판정은 **PATCH**로 갔고, 근거는 저장소 자신의
+`VERSIONING.md`다: patch = "버그 수정, 메시지/출력 다듬기", minor = "하위 호환되는 새 명령·옵션 추가,
+기능 확장". 이번 변경에는 명령·옵션이 없고, **diff를 직접 확인해** 리포트·`--format json`에 추가된
+필드가 하나도 없음을 봤다. 1.29.0 선례는 MINOR 쪽이 아니라 PATCH 쪽을 가리킨다 — 그 릴리스가
+MINOR였던 이유가 바로 `anchoring_files`·`versionOnlyExcluded[]` **필드 추가**였고 이번에는 그 대응물이
+없다. 동작 변경은 발화가 줄어드는 방향뿐이라 도입처 빌드가 새로 깨질 수 없고, 그것이 1.28.0을
+예외로 만든 비대칭이다. **PATCH의 대가도 적었다**: append-only 로그를 `review --approve`로 스탬프하는
+경로가 사라졌고 템플릿을 최신성 게이트로 되돌리는 플래그는 없다.
+
+### 팬아웃 (1차 4건 → 0, 2차 0건)
+
+커밋 전 `impact`(워킹트리 vs HEAD) 실측: `changed_files 19` · `anchoring_files 18(version-only
+manifest excluded: package.json)` · **findings 4** — N-13 제외가 또 한 번 자기 릴리스 커밋에서 작동했다.
+4건은 `BENCHMARK`(→`GATE_REVIEW.md`) · `EXAMPLES`(→`README.md`) · `docs/llm-wiki/README`(→`README.md`) ·
+`REVIEW_HISTORY`(→ 이번에 고친 위키 6문서)였다. 처리:
+
+- `EXAMPLES` — 내용 추가(템플릿 제외 단락). 실제로 낡아 있었다.
+- `docs/llm-wiki/README` — 본문 불변 확인 후 Review Note(노트 3건 → 4건, 상한 여유 있음).
+- `BENCHMARK` — 인용은 `GATE_REVIEW.md#section:Impact Measurement Scope Decision`인데 이번에 바뀐 절은
+  N-14 크기 판정 문단이라 **본문 불변**. 그런데 `reviewed_at`이 이미 오늘이어서 재스탬프가
+  byte-identical(N-11)이고 노트는 5건 상한이었다 → **가장 오래된 노트 1건을 `REVIEW_HISTORY.md`
+  `Benchmark` 절 끝으로 원문 그대로 옮기고**(헤더 6건 → 7건, 원문서 포인터도 7 entries) 새 노트를 더했다.
+- `REVIEW_HISTORY` — 위 회전으로 자신이 change set에 들어가면서 함께 해소됐다.
+
+**2차 팬아웃은 0건이었다.** 1.29.0에서는 위키 문서를 고치자 `REVIEW_HISTORY`가 2차로 떴는데, 이번에는
+그 문서가 1차 처리에 이미 포함돼 있었기 때문이다. 회전이 팬아웃을 하나 줄인 셈이다 — 다음 릴리스에서도
+`REVIEW_HISTORY`가 인용하는 문서를 고치면 같은 순서로 처리할 것.
+
+### 게이트
+
+`validate --strict` 0 · `validate-frontmatter` 0 · `impact` 0 · `drift` 0 · 515/515 tests(skipped 0) ·
+`review` 11건 승격 후 `needs_review_remaining: 0`. `check-run`은 2026-08-04 매니페스트를 대상으로
+warning 5 + info 1을 계속 낸다 — **정직한 것이라 조용히 만들지 않았다**(인용을 늘리는 것은 금지).
+
+## 2026-08-06 - fix: N-14 종결 (게이트가 지목하지만 review로는 손댈 수 없던 문서) + 릴리스 후 드리프트 정리
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (유지보수자 지시: 남은 작업 처리, N-14는 "권고 방향으로")
+- scope: src, tests, wiki, 루트 문서, .gitignore, 미추적 파일 정리
+- changed:
+  - `src/commands/wiki-files.js` — `isTemplateDoc` export 신설
+  - `src/commands/scans.js` — `scanEvidenceDrift`·`scanReverseImpact`가 루프 초입에서 템플릿 skip
+  - `src/commands.js` — `review`의 거부 사유가 범위를 말하도록 교체(`refusalReasonForUnknownPath`),
+    append-only 로그를 명시 지정해도 거부, `impact`·`review` caveat 추가
+  - `src/commands/fix-migrate.js` — `drift` caveat 추가
+  - `tests/template-scope.test.js` — 신규 6건(509 → **515**, skipped 0)
+  - `GATE_REVIEW.md` — "Template Scope Decision (N-14, 2026-08-06)" 신설
+  - `CHANGELOG.md` · `CHANGELOG.ko.md` — `Unreleased` 절 신설(1.29.0이 알려진 문제로 내보낸 항목의 해소)
+  - `docs/llm-wiki/` — `PUBLIC_API`(drift·impact·review 3행) · `ARCHITECTURE_CONVENTIONS`(wiki-files
+    항목 + scans 항목) · `DOMAIN_FEATURES`(review 절) · `domains/00_overview`(Migrate & Repair 절) ·
+    `GLOSSARY`(**템플릿 문서** 용어 신설) · `HARNESS_GOVERNANCE_ROADMAP`(46번 종결) · `log`(이 항목)
+  - `.gitignore` — `outputs/dev-guide/`·`outputs/*.pptx`·`docs/plans/`·`.obsidian/` 추가
+  - 이동: 사내 추진 계획 문서 1건을 `docs/llm-wiki/` → `docs/plans/`(미추적 유지)
+
+### 무엇이 결함이었나
+
+문서 열거자가 둘이었다. `review`는 `listWikiContentDocs`(`/templates/` 제외), `validate`·`drift`·
+`impact`는 `listTargetMarkdown`(`docs/llm-wiki/` 전체)을 썼다. 그래서 `verified` 템플릿이 낡았다고
+지목당해도 **해소 경로가 없었다** — 강등하면 아무것도 돌려주지 않고, `--approve-all`은 건너뛰면서
+`needs_review_remaining: 0`을 보고하고, 명시 지정하면 `not found under docs/llm-wiki`라는 **거짓**
+답을 냈다(그 파일은 거기 있다). 권고 (c)+(b)를 그대로 채택했다. 열거자를 합치지 않은 것은 의도다 —
+합치면 템플릿이 승격 대상이 되어 경계가 반대로 무너진다. 대신 **판정 술어를 공유**시켰다.
+
+부수로 같은 형태의 결함 1건을 고쳤다: append-only 로그는 `--approve-all`이 건너뛰면서도 **명시
+지정하면 `verified`로 스탬프됐다**(같은 경계, 두 답). 이제 양쪽 모두 거부한다.
+
+### 측정과 그 한계
+
+`evidence.stale` **7 → 5**. 사라진 2건이 정확히 해소 경로가 없던 템플릿이고, 남은 5건은 1.29.0
+릴리스 커밋이 만든 통상 드리프트라 재기준선으로 해소했다(이 배치에서 처리). **0이 되는 변경이
+아니다.** RED은 파일 단위 크래시가 아니라 **테스트별로** 확인했다: 술어만 남기고 호출부 2파일을
+되돌리면 4 실패 / 2 통과(not-found 대조군·술어 단위 테스트는 통과가 정상). 픽스처의 비템플릿 형제
+문서는 frontmatter가 바이트 동일한 대조군이라, 경로 외의 이유로 발화가 멎으면 테스트가 실패한다.
+
+### 팬아웃 처리 (2차까지, 예상대로)
+
+1차 6건(`ARCHITECTURE_CONVENTIONS`·`DOMAIN_FEATURES`·`GLOSSARY`·`HARNESS_GOVERNANCE_ROADMAP`·
+`PUBLIC_API`·`domains/00_overview`)을 내용 갱신으로 해소하니 **2차 2건**이 떴다 —
+`REVIEW_HISTORY.md`(그 문서들을 인용하는 아카이브)와 `BENCHMARK.md`(`GATE_REVIEW.md` 인용).
+둘 다 노트 회전이 없어 실제 불변이므로 재기준선(status+tag만, `last_updated` 불변) 후 승격했다.
+**위키 문서를 고치면 2차 팬아웃이 온다는 1.29.0의 기록이 다시 재현됐다.**
+
+### Review Notes를 추가하지 않았다 (의도)
+
+`PUBLIC_API`·`GLOSSARY`·`domains/00_overview` 등이 이미 5건 상한이라 회전이 필요해진다.
+2026-08-04·2026-08-05 배치의 선례대로 **근거를 이 항목 하나에 모았다.**
+
+### 미추적 파일 결정 (유지보수자 결정 2건 집행)
+
+- **`outputs/dev-guide/`는 추적하지 않는다.** 이 저장소는 **PUBLIC**인데(`gh repo view`로 확인)
+  덱의 사례 연구가 사내 비공개 저장소 `github.com/external-organization/external-frontend-a`의 브랜치·
+  커밋까지 적고 있다. 추적하면 그것이 그대로 공개된다. **추적되는 `outputs/team-briefing/`에는 같은
+  참조가 없다** — 두 덱은 이 점에서 교환 가능하지 않다. 이로써 "덱 2종을 버전 정렬하라"는 규칙의
+  대상은 team-briefing뿐임이 확정된다.
+- **사내 추진 계획 문서는 `docs/plans/`로 옮겼다**(미추적·gitignore). 위키 문서가 아니라 frontmatter가
+  없어 `validate-frontmatter`가 error 2건을 내던 것이고, 게이트가 옳았다 — 문서의 위치가 틀렸다.
+
+## 2026-08-05 - release: 1.29.0 준비 (N-13 제외 규칙 배포 + 게이트가 자기 문서의 낡은 주장을 잡았다)
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (유지보수자 지시: "태그 및 배포가 완료되도록 하라")
+- scope: release metadata, docs, wiki, outputs
+- changed:
+  - `package.json`(1.28.0 → **1.29.0**) · `tests/verification.test.js`(버전 단언) ·
+    `.github/actions/validate/action.yml`(`version` 입력 기본값 1.28 → **1.29**)
+  - `CHANGELOG.md` · `CHANGELOG.ko.md` — 1.29.0 절 신규(Changed / Added / 정직성 노트)
+  - `README.md` · `README.ko.md` — 액션 핀 `@v1.28.0` → `@v1.29.0`, `impact` 행의 매니페스트
+    카브아웃에 "1.29.0부터" 표기 추가
+  - `ROADMAP.md` · `ROADMAP.ko.md` — post-1.28.0 shipped 절 신규(기각한 대안 2건과 실측 숫자 포함)
+  - `docs/llm-wiki/` — `HARNESS_GOVERNANCE_ROADMAP`(**낡은 주장 2건 정정** + 배포 버전 확정) ·
+    `index`(N-13 항목에 버전 확정) · `EXAMPLES`(같음) · `ARCHITECTURE_CONVENTIONS`(N-13 스탬프
+    5곳) · `DOMAIN_FEATURES`(1곳) · `log`(이 항목)
+  - `outputs/team-briefing/` — 덱·노트·README 버전 라벨 v1.28.0 → v1.29.0, 타임라인에 1.29 항목
+    추가(`now` 마커 이동), 1.29 한 줄 설명 추가
+
+### 버전 판단
+
+**MINOR(1.29.0).** `impact`의 안정 출력 표면에 `anchoring_files`(리포트 줄)와
+`versionOnlyExcluded[]`(JSON)가 **추가**됐으므로 `VERSIONING.md`의 patch 정의("메시지/출력
+다듬기")를 넘어서고, 제거·이름변경·JSON 형태 파괴가 없으므로 major도 아니다. 동작 변경 방향은
+**허용 쪽**이다(발화가 줄어 exit 1 → exit 0). 1.28.0처럼 계약을 어기는 예외가 아니라 규칙대로의
+MINOR이므로 `VERSIONING.md`의 예외 절은 건드리지 않았다.
+
+### 게이트가 잡은 것 — 1차 4건(조치 3 / 불변 1) → 2차 1건 → 0
+
+커밋 전 예측(`impact`, 워킹트리 vs HEAD)을 릴리스 메타데이터만 바꾼 상태에서 돌려 **4건**을 얻었다.
+`anchoring_files: 23 (version-only manifest excluded: package.json)` — **방금 배포하는 그 제외
+규칙이 자기 릴리스 커밋에서 실제로 동작했다**(11 → 4). 4건은 전부 내용이 진짜로 바뀐
+`README.md`(3건)·`.github/actions/validate/action.yml`(1건)을 인용하므로 잡음이 아니다.
+
+⚠️ **그 4건을 해소하니 2차 발화가 1건 나왔다**: `REVIEW_HISTORY.md`가 방금 고친 4문서 중
+`ARCHITECTURE_CONVENTIONS`·`DOMAIN_FEATURES`·`EXAMPLES`·`HARNESS_GOVERNANCE_ROADMAP`을
+`source_files`로 인용하는 아카이브이기 때문이다. **위키 문서를 고치는 것이 위키 문서를 인용하는
+문서를 깨운다** — 이 저장소의 팬아웃은 소스→문서 1홉이 아니다. 노트 회전을 하지 않았으므로
+아카이브 내용은 실제로 불변이고, 재기준선(status+tag만, `last_updated` 불변)으로 해소했다.
+최종 `impact`: **findings 0 · exit 0**(changed_files 39 · anchoring_files 38). 이 커밋의 정직한
+숫자는 "4건"이 아니라 **1차 4 + 2차 1 = 5건 처리**다.
+
+- **`HARNESS_GOVERNANCE_ROADMAP.md` — 조치(가장 중요).** N-13 항목이 비교 방식을 **"deep-equal"**,
+  테스트를 **"9건, RED 선확인"**이라고 아직 적고 있었다. 둘 다 **`e355cd1`이 폐기한 첫 구현의
+  서술**이다(현재는 키 순서를 구분하는 `JSON.stringify` 비교, 테스트 17건). 2026-08-04 정정 배치는
+  같은 거짓 전제를 위키 6문서에서 고쳤지만 이 문서에서는 46번(N-14)만 손댔고, **이 문단은 그 사이
+  살아남아 이번 릴리스의 게이트가 다시 지목했을 때 발견됐다.** 본문을 고치고 그 경위를 문단에
+  명시했다 — **낡은 주장은 그것을 만든 배치가 아니라 다음 게이트 발화가 찾는다**는 것이 이 항목이
+  관측하려던 현상 자체다.
+- **`index.md` · `EXAMPLES.md` — 조치.** 카브아웃을 날짜(`2026-08-04`)로만 적고 있어 어느 npm
+  버전부터 쓸 수 있는지 알 수 없었다. `1.29.0`을 명시했다.
+- **`docs/llm-wiki/README.md` — 불변.** 이 문서가 소유한 것은 위키 운영 규칙이고 루트 README에서
+  바뀐 것은 액션 핀 문자열과 `impact` 행의 버전 표기다. 게이트별 계약 서술은 `PUBLIC_API.md`가
+  소유하므로 옮겨 적을 것이 없다 — 재스탬프로 해소했다(`reviewed_at` 2026-08-04 → 2026-08-05이라
+  N-11의 byte-identical no-op에 걸리지 않는다).
+
+게이트가 지목하지 않았지만 같은 배치에서 맞춘 것: `ARCHITECTURE_CONVENTIONS`(5곳)·
+`DOMAIN_FEATURES`(1곳)의 N-13 스탬프에 릴리스 번호를 확정했다. 88bf8cc의 선례(갓 나간 기능의
+"미릴리스" 표기를 실제 버전으로 확정)를 따른 것이며, 두 문서 모두 이 change set에 들어가므로
+자기제외로 새 finding을 만들지 않는다.
+
+**Review Note는 추가하지 않았다.** 문서당 5건 상한(`tests/review-notes-cap.test.js`)에
+`HARNESS_GOVERNANCE_ROADMAP`은 이미 5건이고, 상한 회전은 아카이브 헤더·포인터 줄의 숫자 3개를 같이
+올려야 해서 그 자체가 실패 이력이 있다. 근거는 이 log 항목 하나에 모았다 — 2026-08-04 배치와 같은
+판단이다.
+
+### 남긴 것
+
+**N-14는 그대로다**(로드맵 46번). `review`는 위키의 `templates/` 하위를 못 봐서
+`docs/llm-wiki/templates/*.template.md` 2건의 `evidence.stale`은 **해소 경로가 없다.** 덮지 않고
+CHANGELOG 2종의 "알려진 문제"로 도입처에도 공개했다. `check-run`의 `run.doc_gap` 4건도 그대로다 —
+어떤 위키 문서도 그 파일들을 인용하지 않아서이며, **인용을 늘려 게이트를 조용히 만들지 않는다**(규칙
+자신이 경고하는 안티패턴).
+
+## 2026-08-04 - fix(follow-up): 적대적 검증이 방금 출하한 제외 규칙에서 결함 3건을 찾았다
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (오케스트레이션: 읽기전용 검증 에이전트 4대를 커밋 `2ae88cd`에 붙였다)
+- scope: src, tests, docs, templates, ci
+- changed:
+  - `src/commands.js` — `versionOnlyManifestChanges` 재작성: **순서 구분 비교**(`JSON.stringify`),
+    **`version`이 실제로 달라야 함**, 중첩 매니페스트는 루트가 선언한 `workspaces` 접두사 아래만
+    대상. `node:util` `isDeepStrictEqual` import 제거
+  - `tests/impact-package-version-only.test.js` — 9건 → **17건**. 신규 8건은 검증이 찾은 울타리
+    구멍을 막는다. 파일 상단에 **import 자기검사** 추가(hasGit()가 모든 throw를 먹어 전체 파일이
+    `# skipped 9` + exit 0으로 조용히 죽을 수 있었다)
+  - `tests/impact-default-gate.test.js` — prose census를 `src/` 3파일 → **14개 출하 표면**으로
+    확장(README 2종·`docs/OPERATIONS.md`·`GATE_REVIEW.md`·템플릿 2종·컴포지트 액션·CI 워크플로 포함),
+    패턴에 "`--strict` is what makes it block" 추가. 문장 단위 판정
+  - `docs/OPERATIONS.md`(32행) · `.github/actions/validate/action.yml`(9행) · `GATE_REVIEW.md`
+    (Gate 23 승인 행 + 불변식 2건 + CI 배선 결정) — 확장된 census가 찾아낸 낡은 주장 정정
+  - `README.md` · `README.ko.md` — 제외를 **`impact` 한정**으로 범위 명시(drift 불릿에 있어서
+    `evidence.stale`도 면제되는 것처럼 읽혔다) + 순서 구분·workspaces 범위 반영
+  - `docs/llm-wiki/` — `PUBLIC_API` · `ARCHITECTURE_CONVENTIONS` · `DOMAIN_FEATURES` ·
+    `domains/00_overview` · `EXAMPLES` · `index`(전부 "키 순서는 의미 없다"를 주장하고 있었다),
+    `HARNESS_GOVERNANCE_ROADMAP`(46번 N-14 서술 정정), `log`(이 항목 + `last_updated`)
+
+### 내용
+
+- **결함 1 (가장 심각) — `exports` 키 순서는 의미를 갖는데 비교가 순서를 무시했다.** Node는 조건부
+  `exports`/`imports`를 **키 순서로** 해석하므로 `{node, default}`와 `{default, node}`는 다른 파일을
+  로드한다. `isDeepStrictEqual`은 순서를 무시하니 "version 올림 + `exports` 순서 뒤집기"가 조용히
+  제외됐다 — 소비자가 무엇을 import하는지 결정하는 바로 그 변경이다. 검증 에이전트가 실제 CLI
+  실행으로 재현했다(`result=pass impacted=0`). 그런데 우리는 그 근거("JSON에서 키 순서는 의미 없다")를
+  **출하 문서에 사실로 적어 두기까지 했다.** 이제 `version`을 뺀 나머지를 `JSON.stringify`로 비교한다 —
+  순서는 살고 들여쓰기·BOM·줄바꿈은 여전히 무시된다.
+- **결함 2 — `version`이 안 바뀌어도 제외가 발동했고, 출력은 그것을 "version-only"라고 불렀다.**
+  양쪽에 문자열 `version`이 있기만 하면 통과해서, 재포맷이나 CRLF 변환이 제외되면서
+  `version-only manifest excluded`로 보고됐다. 이제 두 값이 **실제로 달라야** 한다.
+- **결함 3 — basename 매치가 매니페스트가 아닌 `package.json`까지 잡았다.** 테스트 픽스처·샘플·
+  vendored 사본에서는 `version` 값 자체가 시험 대상일 수 있다(검증이 `0.9.0`→`2.0.0` 픽스처로 실증).
+  이제 **루트 `package.json`은 항상**, 중첩 매니페스트는 **루트가 `workspaces`를 선언하고 그 glob의
+  리터럴 접두사 아래 있을 때만** 대상이다.
+- **울타리가 주장보다 약했다.** mutation 테스트로 구멍 4개가 드러났다: `--since` 테스트가
+  `sinceRef`와 하드코딩 `HEAD`를 구분하지 못했고(픽스처가 둘을 동일하게 만들었다 — 여러 커밋 뒤
+  base에 대한 진짜 `engines` 변경이 보고되지 않는 시나리오를 검증이 실측했다), "필터는
+  `impactCommand`에 있다"는 결정에 **단언이 하나도 없었고**(예측기를 `changedFiles`로 옮기면
+  501개 테스트가 전부 통과하면서 `validate --changed`가 조용히 좁아진다), 출력 테스트가 무조건
+  인쇄되는 caveat 문구에 매치돼 요약 줄을 삭제해도 통과했고, "`package.json` 한정" 약속에 부정
+  케이스가 없었다. 넷 다 이제 고정됐다.
+- **census가 자기 주장을 못 지켰다.** `tests/impact-default-gate.test.js`의 census 테스트는
+  주석에 "출하 표면 전수"라고 적고 실제로는 `src/` 3개 파일만 읽었다. 14개 표면으로 넓히자
+  **즉시 2건이 더 나왔다**: `docs/OPERATIONS.md`가 방금 정반대로 고쳐 쓴 절을 네 줄 위에서
+  가리키며 "`--strict`가 막는 것"이라고 적고 있었고, `GATE_REVIEW.md`의 CI 배선 결정에도 같은
+  주장이 남아 있었다. 컴포지트 액션 입력 설명도 `strict: true`가 필요한 것처럼 읽혔다.
+- **`help impact`가 자기와 반대되는 문서로 독자를 보내고 있었다.** `src/cli.js`가 가리키는
+  `GATE_REVIEW.md` Gate 23 절이 "이 규칙은 **절대** error/blocked 기본이 될 수 없다"고 단언한다.
+  결정 21이 그 불변식을 의도적으로 깼으므로, 역사 기록은 남기고 **SUPERSEDED 표시**를 달았다.
+- **정직성 정정 2건**: 앞선 커밋 메시지가 "impact and audit at zero"라고 적었지만 `audit`은
+  `findings: 4`다(미추적 문서 2 + N-14로 해소 불가능한 `evidence.stale` 2). 같은 메시지 뒷부분이
+  둘 다 공개하고 있으므로 요약 한 줄이 과장이었다. 그리고 `log.md`의 `last_updated`가 2026-08-03인데
+  본문에 2026-08-04 항목이 있었다 — 어떤 게이트도 이 불일치를 보지 못한다(N-12와 같은 계열).
+
+### 검증
+
+- `tests/impact-package-version-only.test.js` 17/17. 신규 8건 중 5건은 수정 전 **RED 확인**
+  (순서 변경·버전 무변경·비매니페스트·픽스처·workspaces 미선언), 3건은 이미 통과(보수적 폴백).
+- 확장된 census는 통과 전에 **실패했다** — 그 실패가 위 정정 2건을 찾아낸 방법이다.
+- 전체 스위트·게이트 결과는 이 항목 아래 커밋의 요약 참조.
+
+## 2026-08-04 - feat: 릴리스마다 발화하던 게이트를 매니페스트 버전 한 줄에서 떼어냈다 (N-13, 결정 c)
+
+- status: needs_review → verified (에이전트 승격)
+- actor: Claude Code (유지보수자 결정: 로드맵 45번 N-13의 선택지 A/B/C 중 **(c)**)
+- scope: src, tests, docs, templates
+- changed:
+  - `src/git.js` — 신규 `fileAtRef(cwd, ref, relPath)`: 특정 ref 시점의 파일 내용. 실패는
+    `null`(모른다)이며 "빈 파일"이 아니다(`git show`가 잘못된 ref와 없는 경로에 같은 128을 낸다)
+  - `src/commands.js` — 신규 `versionOnlyManifestChanges`, `impactCommand`가
+    `scanReverseImpact` 호출 전에 적용. 요약에 `anchoring_files` 추가, JSON에 additive
+    `versionOnlyExcluded[]` 추가, Caveats에 제외 규칙 1줄
+  - `src/commands/scans.js`(주석) · `src/cli.js`(`help impact`) · `src/commands/findings.js`
+    (규칙 설명) · `src/i18n.js`(한국어 설명) — "File-level in v1"을 내용 기준 카브아웃 1건이
+    있는 file-level로 정정
+  - `tests/impact-package-version-only.test.js` — 신규 9건(RED 선확인: 6 실패 / 3은 보수적
+    폴백이라 원래 통과)
+  - `docs/OPERATIONS.md` · `templates/github-actions/llm-wiki-validate.yml` ·
+    `templates/git-hooks/pre-commit` — **1.28.0 이후 이미 거짓이던** "이 규칙은 warning이고
+    `--strict`가 있어야 막는다" 문장 3곳 교정
+  - `README.md` · `README.ko.md` — `impact` 행 + 드리프트 절에 제외 규칙
+  - `GATE_REVIEW.md` — "Version-Only Manifest Scope Decision" 신규
+  - `docs/llm-wiki/` — `PUBLIC_API` · `ARCHITECTURE_CONVENTIONS` · `DOMAIN_FEATURES` ·
+    `domains/00_overview` · `EXAMPLES` · `index` · `HARNESS_GOVERNANCE_ROADMAP`(45번 종결), `log`
+
+### 내용
+
+- **문제**: 릴리스 커밋은 정의상 `package.json`을 바꾸고, 이 저장소의 비면제 `verified` 문서
+  18건 중 **10건**이 그 파일을 인용한다. 결정 21로 규칙이 error가 된 뒤부터 **매 릴리스가
+  조치 불가능한 finding을 만들어냈다.** 1.28.0에서는 커밋 전에 예측해 대상 문서를 같은 커밋에
+  담아 통과시켰다 — 비용이 사라진 게 아니라 앞으로 옮겨간 것이었다.
+- **조치**: `version` 값만 바뀐 `package.json`은 `changed_files`에는 그대로 세면서 앵커 대조
+  집합에서만 뺀다. 양쪽을 `JSON.parse`하고 `version`을 제외한 나머지를 `isDeepStrictEqual`로
+  비교하므로 키 순서·공백은 영향이 없다. **증명하지 못하면 제외하지 않는다**: 다른 키 변경,
+  `version` 필드 추가·삭제, 한쪽 파싱 실패, 기준 blob 없음(신규·미추적·git 실패), 작업트리
+  파일 삭제는 전부 그대로 센다.
+- **경계**: 필터를 공유 프리미티브 `changedFiles`가 아니라 `impactCommand`에 두었다. 프리미티브를
+  좁히면 `validate --changed`의 범위와 `prepare`의 작업트리 힌트가 조용히 함께 좁아진다.
+  `scanReverseImpact`도 host가 될 수 없다 — `(cwd, changedSet)`만 받아 `--since` ref를 모른다.
+  date-앵커 `evidence.stale`은 무엇이 바뀌었는지가 아니라 언제 바뀌었는지를 보므로 무접촉이다.
+- **숫자를 정정했다.** 로드맵 45번의 "11건"은 릴리스가 만지는 버전 담지 파일 8종 기준일 때만
+  맞다. 실제 `88bf8cc`의 impacted는 **0**(위키 16건이 같은 change set에 있어 자기제외),
+  위키 갱신을 뺀 반사실은 **14**, `package.json` 단독은 **10**이다. (c)의 효과는
+  매니페스트 단독 10 → **0**, 버전 담지 8종 11 → **4**, `src/cli.js`까지 바뀌는 실제 릴리스
+  커밋 14 → **10**이다. **0이 되지 않으며 그렇게 주장하지 않는다** — 남는 문서들은 내용이 실제로
+  바뀐 `README.md`·`ROADMAP.md`·action.yml을 인용하므로 진짜 양성에 가깝다.
+- **기각**: (b) config 완화는 매니페스트만이 아니라 모든 소스 변경의 차단력을 없앤다(1.28.0에서
+  게이트가 잡은 진짜 1건도 묻혔을 것). (a) 매 릴리스 재검토는 11건 중 10건이 "불변" 노트가
+  되는데 Review Notes 5건 상한 때문에 릴리스마다 아카이브 회전을 강제하고 게이트를 고무도장으로
+  만든다.
+- **N-7은 값싼 후속이 아니다**(이 저장소 자기 기록의 이전 주장 정정). `#symbol:`은 AST 해석기가
+  아니라 존재 여부 바닥선이고 `#section:`은 헤딩 존재 확인뿐이라 심볼의 라인 범위를 모른다.
+  대상 문서들의 정밀 앵커는 전부 symbol/section이고 line 로케이터가 없어 **해소 0건**이다.
+
+### 게이트 팬아웃 처리 — 이번 커밋 자신이 N-13의 사례가 됐다
+
+- 커밋 전 `impact`(작업트리)가 **verified 7건**을 지목했다: `BENCHMARK`(←`GATE_REVIEW.md`) ·
+  `GLOSSARY`(←`src/commands.js`) · `profiles/library`·`project-profile`(←`src/cli.js`) ·
+  `README`(←`README.md`) · `RELEASE_FLOW`(←`templates/github-actions/llm-wiki-validate.yml`) ·
+  `REVIEW_HISTORY`(←이번에 편집한 위키 6건). 전부 대조했고 **거짓이 된 문장은 없었다** —
+  `GLOSSARY`·`RELEASE_FLOW`는 규칙 severity·`--strict` 계약 문장을 본문에 갖고 있지 않고,
+  `project-profile`의 정밀 앵커 `src/cli.js#symbol:main`도 무변경이다(바뀐 것은 `COMMAND_HELP`).
+- 해소는 이 저장소의 문서화된 경로(`status` 강등 → `review --approve-all --yes`의 `reviewed_at`
+  재스탬프)로 했고 **Review Note는 추가하지 않았다.** 7건 전부 "불변" 노트가 될 것이고, 그것은
+  방금 (a)를 기각한 이유 자체다(문서당 5건 상한 → 릴리스마다 아카이브 회전 → 고무도장).
+  재검토 근거는 문서마다 흩뿌리지 않고 이 항목 하나에 남긴다. 재기준선 커밋의 순 diff는
+  `reviewed_at`뿐이다 — 본문이 안 바뀐 문서의 `last_updated`는 **일부러 건드리지 않았다.**
+- 같은 배치에서 1.28.0 배포가 남긴 `evidence.stale` 4건(`RELEASE_FLOW`·`VERSIONING`·
+  `templates/DECISION_LOG`·`templates/TASK_PROMPT`, 전부 `package.json` 기준)도 함께 재기준선을
+  시도했다. **앞의 2건은 해소됐고 뒤의 2건은 해소하지 못했다** — 신규 결함 **N-14**(로드맵 46번):
+  `review`는 `listWikiContentDocs`(`/templates/` 제외)를 쓰고 `validate`/`impact`/`drift`는
+  `listTargetMarkdown`(전체 포함)을 써서, 이 2건은 **게이트가 지목할 수는 있지만 `review`로는
+  승격도 재스탬프도 불가능하다.** 강등해 보니 승격 목록에 나타나지 않고 `needs_review_remaining: 0`
+  으로 조용히 보고돼 문서가 `needs_review`에 갇혔고, `git checkout`으로 원상복구했다.
+  두 문서는 `verified` + 미해소 `evidence.stale`이라는 **이번 배치 시작 시점 상태 그대로**다.
+
+### 검증
+
+- `node --test tests/*.test.js` → **501 pass / 0 fail / 0 skipped**(직전 492). 신규 9건은
+  구현 전 RED 확인(6 실패).
+- `node scripts/lint-syntax.mjs` → OK(71 files).
+- `validate --strict` · `validate-frontmatter` · `impact --since HEAD~1 --strict` · `drift` ·
+  `check-run` — 커밋 후 재실행 결과를 같은 배치에서 확인.
+
+## 2026-08-03 - release: 1.28.0 준비 (동작 파괴 변경을 MINOR로 — 유지보수자 결정)
+
+- status: verified (에이전트 승격)
+- actor: Claude Code (유지보수자 지시: "배포를 진행하되 1.x.x 버전으로")
+- scope: release, docs
+- changed:
+  - `package.json`(1.27.2 → **1.28.0**) · `tests/verification.test.js`(버전 단언) ·
+    `.github/actions/validate/action.yml`(`version` 입력 기본값 `1.27` → `1.28`)
+  - `CHANGELOG.md` · `CHANGELOG.ko.md` — 1.28.0 절 신규(Breaking / Added / Changed / Fixed / 정직성 노트)
+  - `README.md` · `README.ko.md` — Upgrading 절의 "다음 릴리스는 MAJOR·미릴리스" 서술을
+    "1.28.0(MINOR)로 배포됨"으로 교정, 액션 핀 `@v1.27.2` → `@v1.28.0`
+  - `ROADMAP.md` · `ROADMAP.ko.md` — post-1.27.2 라인을 shipped로 등재
+  - `src/cli.js` — `drift`의 usage 요약과 `help drift`가 `--strict`·`--watch-needs-review`를 나열
+  - `docs/llm-wiki/` — `ARCHITECTURE_CONVENTIONS` · `DOMAIN_FEATURES` · `PUBLIC_API`의
+    "미릴리스" 표기를 실제 버전(1.27.1 / 1.28.0)으로 확정, `VERSIONING`(예외 절 신규),
+    `index`(게이트 기본값 안내 1줄), 재검토 노트 11건 + `REVIEW_HISTORY`(회전 6건), `log`
+  - `outputs/team-briefing/` — 덱·노트·README 버전 라벨 v1.27.2 → v1.28.0, 타임라인 1.28 항목 추가
+
+### 내용
+
+- **SemVer 판단은 유지보수자의 것이다.** `impact.source_changed`를 warning → error로 바꾼 것은
+  exit code 계약 변경이라 MAJOR(2.0.0)에 해당한다고 보고했고, 유지보수자가 1.x.x를 지시했다.
+  그래서 이 배포의 핵심 작업은 **위험을 문서로 상쇄하는 것**이다: `^1.27.2`를 쓰는 도입처가
+  자동으로 올라온다는 사실과 **돌아가는 길 2가지**(config `rules`의
+  `"impact.source_changed": "warning"|"info"|"off"`, 또는 `rulesPreset: "relaxed"`)를
+  CHANGELOG 2종·README 2종·ROADMAP 2종에 모두 적었다. 숨기지 않고 "MINOR인데 동작이 깨진다"고 쓴다.
+- **출하 표면의 공백 1건을 배포 전에 막았다.** 이번 라인이 `drift`에 `--watch-needs-review`를
+  추가하고 `--strict`를 받게 했는데, `src/cli.js`의 usage 요약과 `help drift` 어느 쪽도 두 옵션을
+  나열하지 않았다. 옵션 검증 표(`COMMAND_OPTION_RULES`)만 갱신되고 도움말이 뒤처진 상태 —
+  이 라인이 반복해서 고쳐 온 "명령이 자기 표면을 잘못 말한다" 계열의 6번째 사례다.
+- **"미릴리스" 표기 확정.** 위키가 `import-memory`·`rulesPreset`·`testEvidence`·`estimated-tokens`를
+  아직 미릴리스라고 적고 있었는데 이들은 **1.27.1에 이미 나갔다**(사실과 다른 서술). 1.28.0에
+  나가는 항목(`harness-health`·`ci_governance`·어댑터 7종 v2)과 함께 실제 버전으로 확정했다.
+  `HARNESS_GOVERNANCE_ROADMAP.md`의 "미릴리스라 지금이 최적기" 서술은 **작성 시점의 판단 기록**이라
+  손대지 않았다.
+- **릴리스 경로에서 새 기본값을 처음 마주쳤고, 그 숫자가 이 배치의 실측이다.** 커밋 후 게이트는
+  `result: pass`·impacted 0을 보고하지만, 그건 **커밋 뒤가 아니라 커밋 전에 처리했기 때문**이지
+  발화 대상이 없어서가 아니다. 릴리스 커밋은 언제나 `package.json`을 바꾸는데, 그 파일을 인용하는
+  `verified` 문서가 많다. 커밋 전에 change set으로 예측한 결과 **비면제 11건**이 발화 대상이었고
+  전부 같은 커밋에 담았다(`domains/00_overview`·`EXAMPLES`·
+  `HARNESS_GOVERNANCE_ROADMAP`·`index`·`profiles/library`·`project-profile`·위키 `README`·
+  `RELEASE_FLOW`·`templates/` 2종·`VERSIONING`). **릴리스 노트 33건은 결정 28의 면제로 0건** —
+  면제가 없었다면 44건이었다. 11건 전부를 실제 diff와 대조해 재검토하고 Review Note로 기록했다.
+  결과: **10건은 "불변"**(인용 소스는 바뀌었으나 문서가 그 파일에서 취하는 주장은 안 바뀜),
+  **1건은 실제 갱신 필요**(`VERSIONING.md` — 이번 배포가 자기 SemVer 계약의 예외라는 사실을
+  본문에 명시). 즉 **11건 중 1건이 조치 대상**으로, 직전 커밋(6건 중 1건)과 같은 비율이다.
+- **이것은 매 릴리스마다 재발한다.** 허브 fan-out 비용이 릴리스 경로에서 구체적 숫자로 확인된
+  첫 사례이며, 유지보수자가 판단할 열린 항목으로 `HARNESS_GOVERNANCE_ROADMAP.md`에 남겼다.
+  선택지는 (a) 매 릴리스 11건 재검토를 계속, (b) 이 저장소 config에서 규칙 완화,
+  (c) 버전만 바뀐 `package.json`을 다르게 취급하는 제품 변경 — 셋 다 오늘 고르지 않았다.
+- 검증: 492 tests pass · `validate --strict` 0 · `validate-frontmatter`는 워킹트리에 있는
+  **다른 에이전트의 미추적 문서** 때문에 로컬에서 error 2건을 내지만 미추적이라 CI(clone)에는 없다.
+  그 문서는 커밋하지 않는다.
+
+## 2026-08-03 - feat!: 누락 차단 게이트가 기본으로 빌드를 실패시킨다 (사람 결정 11건 집행)
+
+- status: verified (에이전트 승격)
+- actor: Claude Code
+- scope: src, tests, docs
+- **BREAKING**: `impact.source_changed`가 `warning` → `error`. 다음 배포는 SemVer **MAJOR**다. 이 배치에서 버전 범프·태그는 하지 않았다.
+- changed:
+  - `src/commands/scans.js` · `src/commands/findings.js` · `src/commands.js` · `src/cli.js` · `src/git.js` · `src/commands/fix-migrate.js`
+  - `tests/impact-default-gate.test.js` · `tests/freshness-scope.test.js` · `tests/check-run-tracked-selection.test.js` (신규 3종) + 기존 4종 갱신
+  - `README.md` · `README.ko.md` · `GATE_REVIEW.md` · `SECURITY.md` · `docs/OPERATIONS.md` · `.github/ISSUE_TEMPLATE/sensitive_false_positive.md`(신규)
+  - `docs/llm-wiki/` — 로드맵 · `PUBLIC_API` · `ARCHITECTURE_CONVENTIONS` · `DOMAIN_FEATURES` · `domains/00_overview` · `index` · `log`
+
+### 내용
+
+유지보수자가 J장 사람 결정 **11건을 전부 결정**했다: 21번 기본화(권고와 반대), 22번 N-6 수정, 나머지 9건 권고대로.
+
+**21번 — 이 라인의 유일한 breaking change.** `impact.source_changed`를 기본 `error`로 올렸다(push 사이트와 `defaultSeverity` 동시). `--strict`는 이 규칙에 대해 no-op이 됐다. **돌아가는 길을 계약으로 만들었다** — config `rules`의 `"warning"`/`"info"`/`"off"`, 또는 `rulesPreset: "relaxed"`. 돌아갈 길 없는 breaking change는 결정이 아니라 매복이다. 프리셋 불변식도 정확해졌다: "error/blocked 기본값 금지"는 **dialable한 error 규칙이 없던 시절의 우연**에 기대고 있었으므로, "안전 규칙과 `blocked` 금지 + `error`는 허용 목록(`PRESET_DIALABLE_ERROR_RULES`)만"으로 다시 썼다.
+
+**파급이 예상보다 컸다.** `doctor`의 CI 거버넌스 판정이 `--strict` 없는 `impact` 단계를 "게이트 아님"으로 보고하고 있었고, **그 낡은 믿음을 단언하는 테스트 2건이 통과한 채였다.** 이제 `impact`는 단독으로 게이트로 세고 `drift`·`check-run`은 여전히 `--strict`가 필요하다(그쪽 규칙은 warning이므로). 비대칭을 테스트로 고정했다.
+
+**22번 — N-6.** `check-run`이 **git 추적 매니페스트를 우선**한다. 커밋하는 저장소는 로컬과 CI가 같은 파일을 본다. **추적분 전용으로 만들지 않았다** — 그러면 매니페스트를 gitignore하는 2개 저장소(우리 포함)가 영구히 `run.manifest_missing`이 되고 `AGENTS.md` 75행의 우리 워크플로가 검증 불가가 된다. 대신 신규 **info** finding `run.manifest_untracked`가 "클린 체크아웃은 이 파일을 못 본다"고 말한다. info인 이유: gitignore는 정당한 정책이고, 이 도구는 결과를 **예측 가능하게** 만들라고 요청받았지 정책을 판정하라고 요청받지 않았다.
+
+**23번 — `run.change_set_undeclared`(warning).** 매니페스트의 `changedSource` 자기신고를 git과 대조한다. **첫 구현이 노이즈였고 출하 전에 잡았다**: 미추적 파일까지 보다가 `.obsidian/` 에디터 설정과 개인 메모에 발화했다. **추적 중인 수정분만** 보도록 좁혔다. 공백 4의 절반이 닫혔다 — `run.doc_gap`은 선언 목록을 순회하므로 빈 선언에 여전히 침묵하지만, 선언 자체가 이제 검증된다.
+
+**24번 — 측정했고, 조건이 실패해서 출하하지 않았다.** 권고는 "(a) 도입, 단 소급 발화량 선측정을 조건으로"였다. 5개 저장소 `verified` 129건에서 재 보니 **42건 발화, 그중 실제 승격 우회 0건**이다. 33건은 검토 스탬프가 **바로 다음 커밋**에 도착했고, 9건은 `reviewed_at`이 날짜 단위라 같은 날 강등→재승인을 구분 못 하는 산출물이며, 19건은 `review` 명령이 존재하기도 전이다. 게다가 `frontmatter.verified_review`가 이미 같은 상태를 보고 129건 전부 초록이다 — **이미 clean을 보고하는 검사 위에 42건을 얹는 규칙**이었다. **조건이 실패했을 때 그대로 진행하는 것은 권고를 따르는 게 아니라 권고의 조건만 버리는 것이다.** 측정이 더 나은 규칙을 지목했다(`reviewed_at`이 승격 커밋보다 **앞서는** 경우만 → 전 코퍼스에서 1건, 그것이 원래 찾던 모양) — 다음 결정 후보로 남겼다.
+
+**28번 — 면제의 성격이 브리프와 다르다는 것을 실측이 드러냈다.** 릴리스 노트 33건이 이미 `verified`라 면제는 비용 상한이 아니라 **커버리지 제거**(52건 중 33건)다. 그럼에도 옳은 거래인 이유: 릴리스 노트는 이미 출하된 릴리스의 불변 기록인데 `package.json`을 앵커로 잡아 매 릴리스 낡고, **21번 이후로는 무관한 소스가 움직였다는 이유로 빌드를 실패시킬 수 있다.** 이 저장소 `impact` 23건 중 16건이 정확히 그것이었고 **면제 후 23 → 9**가 됐다. 즉 28번이 21번을 실사용 가능하게 만들었다. 옵트인 `--watch-needs-review`는 `drift` 전용·기본 off이며 `impact`는 넓히지 않았다(error 규칙에 미검토 문서가 빌드를 실패시킬 권한을 주면 안 된다).
+
+**문서 결정 5건**: 20번 유보 확정 · 25번 신고 경로만(예외 기구 없음, 단 "예외를 도입하면 누가 선언하는가"를 같이 정하도록 명시) · 26번 어댑터 영어 고정 명시 · 29번 **R0 상한 확정 + 자기승격을 선언적 예외로 명시**(로드맵 F장에 전용 절 신설) · 30번 로드맵을 `index.md` 읽기 순서에 추가.
+
+### 검증
+
+- **RED 선확인**: 신규 테스트 전건. 21번은 4건 RED → GREEN, 22번·28번은 구현 후 작성분이라 **소스를 임시로 되돌려 RED를 사후 확인**했다(복구는 `git checkout`이 아니라 되돌리는 편집으로).
+- 491 tests(477 → +14) · lint OK(70 files) · `validate --strict`·`validate-frontmatter --strict`·`drift --strict`·`audit` 0.
+- `templates/adapters/*`·`templates/core/*`·`src/task-prompts.js` 미변경.
+
+### 주의: 이 커밋에 포함하지 않은 것
+
+워킹트리에 **다른 에이전트(Codex)의 진행 중 작업**이 섞여 있었다. `index.md`에 추가된 읽기 순서 항목이 **미추적·프론트매터 없는 문서**를 링크하고 있어 클린 체크아웃에서 링크 검사와 `validate-frontmatter`를 깨뜨린다 — 그 한 줄만 이 커밋에서 뺐다. 같은 작업의 `log.md` 항목은 `actor: Codex`로 귀속돼 있고 무해하므로 **append-only 계약대로 남겼다.** 해당 문서 자체는 미추적 상태 그대로 두었다.
+
+## 2026-08-03 - docs: 기능 추가·수정 요청 관리 대시보드 및 자동 작업 계획
+
+- status: needs_review
+- actor: Codex
+- scope: docs
+- changed:
+  - `docs/llm-wiki/REQUEST_AUTOMATION_PLAN.md` (신규)
+  - `docs/llm-wiki/index.md`
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+- 현재 패키지 v1.27.2에 구현된 `prepare`·retrieval·작업 프롬프트/스킬·검증·run manifest/`check-run`·HTML/JSON 리포트·프로그램 API·읽기 전용 MCP를 기반으로 요청 관리 및 자동 작업 시스템의 1차-A 8주 계획을 작성했다.
+- 현재 패키지가 제공하지 않는 요청 DB·실시간 포털·스케줄러/워커·에이전트 직접 실행기·SSO/RBAC·외부 커넥터를 신규 구축 범위로 명확히 분리했다.
+- Teams/Microsoft 365·Jira·Slack 연동은 1차-B 4주 후속 단계로 두고, 주 요청 원장 1개와 알림 채널 1개를 먼저 파일럿하도록 범위를 제한했다.
+
+### 근거와 검토 항목
+
+- 근거: `package.json`, `src/{cli,index,commands,task-prompts,report}.js`, `src/commands/{guided,skills}.js`, `src/mcp/tools.js`, `.github/actions/validate/action.yml`.
+- 외부 제품의 상세 API·인증 방식·조직별 계정 정책은 구현 착수 시 공식 문서와 사내 보안 정책을 기준으로 별도 확정해야 한다.
+- 에이전트 편집 문서는 작업 끝에 저장소의 자기승격 정책에 따라 `review --approve-all --yes`로 승인한다.
+
+## 2026-08-03 - fix(후속): 문서가 자기 상태를 두 곳에 적는데, 두 값이 어긋나도 아무 게이트가 보지 않았다
+
+- status: verified (에이전트 승격)
+- actor: Claude Code
+- scope: docs, tests
+- changed:
+  - `docs/llm-wiki/` 13개 문서의 `tags` 상태 태그 복구
+  - `tests/status-tag-consistency.test.js` (신규 가드 2건)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+앞 항목의 `impact` 24건을 정책대로 해소하면서 **내가 직접 만든 결함**이다. 강등 헬퍼가 상태 태그를 `needs_review`(언더바)로 썼는데 이 저장소의 태그 어휘는 `needs-review`(하이픈)다. `syncStatusTag`는 **자기가 아는 상태 태그만** 고치므로 알 수 없는 값을 조용히 그대로 두었고, 이어서 `review --approve`가 그 위에 `status: verified`를 찍었다. 결과적으로 **13개 문서가 `status: verified`와 `tags: needs_review`를 동시에 주장**하게 됐다.
+
+**그리고 게이트 5종 전부가 이것을 보지 못했다** — 467 tests · lint · `validate --strict` · `validate-frontmatter --strict` · `drift --strict` · `audit` 전부 초록이었다. 문서가 자기 상태를 두 곳에 적는데 **두 값의 일치를 검사하는 곳이 없다.** 발견 경위도 우연이 아니라 규율이었다: 승인 스윕 뒤 프론트매터를 표본 확인하다 걸렸다. 자동 해소가 표준이 된 저장소에서는 스윕 결과를 눈으로 한 번 보는 절차가 유일한 관측점이다.
+
+신규 가드 `tests/status-tag-consistency.test.js` 2건(전건 RED 선확인 — 실제로 문서 하나를 깨뜨려 실패를 본 뒤 되돌렸다. `git checkout --`이 아니라 되돌리는 편집으로 복구했다): 상태 태그와 `status` 필드의 일치, 그리고 언더바 철자의 재유입 금지. 후자를 따로 고정한 이유는 그 철자가 **`syncStatusTag`에 보이지 않아 승격/강등 왕복을 그대로 통과**하기 때문이다.
+
+**제품 규칙(`content.*` finding)으로 올리지 않았다** — finding 표면 추가는 동결 계약이라 별도 결정이 필요하다. 도입처에도 같은 일이 생길 수 있으므로 그 결정 후보로 남긴다.
+
+### 검증
+
+- 신규 가드 2건 RED 선확인 → 복구 후 GREEN.
+- 52문서 전수 재검사: 모순 0건.
+
+## 2026-08-03 - feat: 하네스 자신을 보는 첫 번째 눈 (`harness-health`, Phase 1 R0) + J장 전제 재검토
+
+- status: verified (에이전트 승격)
+- actor: Claude Code
+- scope: src, tests, docs
+- changed:
+  - `src/commands/harness-health.js` (신규) · `src/commands/adapters.js` · `src/commands/skills.js` · `src/commands/findings.js` · `src/commands.js` · `src/cli.js` · `src/config-file.js` · `src/index.js`
+  - `tests/harness-health.test.js` (신규, 16건) · `tests/verification.test.js`
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` · `PUBLIC_API.md` · `ARCHITECTURE_CONVENTIONS.md` · `DOMAIN_FEATURES.md` · `REVIEW_HISTORY.md` · `log.md`
+  - `README.md` · `README.ko.md` · `GATE_REVIEW.md`
+
+### 내용
+
+**1. `harness-health` (Phase 1, R0).** 결정 27번 권고 (b)를 채택해 `harness-health`만 만들고 `fleet`은 보류했다. 이 명령은 위키 문서가 아니라 **하네스 자신**(어댑터·생성된 스킬 산출물·항상 선적재되는 표면)을 본다. 존재 이유는 실물 결함 두 개다 — `scanAdapters`는 파일 존재와 `docs/llm-wiki/index.md` 문자열만 보므로 어댑터 마커를 영영 읽지 않고, `init --refresh`는 산출물 **본문**을 비교하므로(`stripMarker(current) === stripMarker(next)`) v5 생성기가 만든 v4 스탬프 산출물을 "already up to date"라고 보고한다. 두 번째 결함은 이 저장소에서 재현되며, refresh가 버전을 비교하게 되는 날 실패하도록 테스트로 고정했다.
+
+규칙은 4개(`harness.marker_drift` · `harness.user_modified` · `harness.preload_budget` · `harness.skill_too_long`), 전부 기본 warning이고 `--strict`에서 error다. **예산 규칙 2개는 숫자를 주기 전까지 침묵한다** — 이 저장소는 chars/4 프록시에서 유도한 임계값을 만들어 배포하지 않는다. 어댑터에는 콘텐츠 해시가 없어 "손댔는지"가 판정 불가이므로 `userModified: null`로 보고한다. 템플릿 diff로 추정하는 대안은 **정당한 커스터마이즈를 전부 발화시키므로**(이 저장소에 두 건) 채택하지 않았다.
+
+**2. 오탐률 측정이 규칙 하나를 늘렸다.** 완료 조건("숫자 없으면 미완")을 채우려고 5개 저장소를 읽기 전용으로 돌렸더니 도입처 2곳이 findings 0건이었다. 침묵을 신뢰하지 않고 확인한 결과 — **마커가 아예 없는 산출물 18건에 명령이 눈을 감고 있었다.** 즉 **가장 많이 밀린 하네스가 가장 깨끗하게 보고되고 있었다.** `--refresh`는 이미 그 상태를 손편집과 동일하게 취급하므로 `harness.user_modified`의 범위를 둘 다로 넓혔다. 이 수정이 없었으면 합계는 33이 아니라 15였고 **오탐률은 그래도 0이었다** — 오탐 0이 미탐을 배제하지 않는다는 실물 사례다.
+
+최종: 5개 저장소 **91개 산출물 · findings 33건 · 오탐 0건**(한 저장소는 진짜 0건). 한계 둘을 함께 기록했다 — "참"은 보고된 사실이 정확하다는 뜻이지 조치 가치가 있다는 뜻이 아니고, 측정에 쓴 codex 어댑터 `v2` 템플릿은 아직 미배포다.
+
+**3. J장 11건 전수 재검토.** 지시받은 목록은 "21·22·25"였는데 **전수 대조 결과가 두 방향으로 달랐다**: 22번은 본문 어디에도 그 전제가 없어 영향이 0이고, **24·28·29·30번이 빠져 있었다.** 최종 집계는 핵심 4(21·24·28·29) · 부분 5(20·23·25·27·30) · 없음 2(22·26). 전제를 셋으로 쪼개 보니(P1 verified는 사람 / P2 여기서 게이트를 관측할 수 있다 / P3 복구는 사람 재승인뿐) 가장 널리 퍼진 것은 **P3**인데 지시 목록은 P3 계열을 하나도 담지 못했다. **목록을 받으면 먼저 전수 조사한다** — 이 라인에서 다섯 번째로 값을 한 규율이다.
+
+본문은 두 종류로 나눠 처리했다. **표준 규칙 문장**(불변 조건 목록·R3 표·용어 사전·위험 등록부·백로그 33·G-3 안전 지표)은 제자리 교정했고, **과거 관측·측정 문장과 숫자**는 역사적 기록이므로 고치지 않고 오늘의 결정에 다시 쓰이는 자리에만 무효 표시를 달았다. 지시가 언급하지 않은 최고 심각도는 불변 조건 목록의 두 줄이었다 — `verified`는 사람만 승인 / AI의 `review --approve` 금지. 뒤쪽은 `CLAUDE.md`가 요구하는 것의 **정확한 반대**였다.
+
+**4. 라벨 30건 재현 명령.** 판정은 유지보수자 몫이므로 **재라벨링을 하지 않았다.** 표에 쓰인 저장소명 축약형(같은 이름의 별개 저장소가 형제로 존재해 축약형을 그대로 붙여넣으면 틀린 저장소를 본다)을 전칭으로 풀고 행별 명령 60줄을 추가했다. **판정을 복사하지 않았다** — 두 곳에 적으면 한쪽이 조용히 낡고, 그 실패 모드가 바로 이 절이 찾아낸 가장 강한 참 양성 패턴이다.
+
+### 검증
+
+- **RED 선확인**: 신규 테스트 16건 전건, 그리고 미탐 수정분 1건도 별도로 RED를 먼저 확인했다.
+- 467 tests(451 → +16) · lint OK(66 files) · 게이트 5종 exit 0.
+- 판정 행 30개가 커밋 전 상태와 **바이트 단위로 동일**함을 대조로 확인했다.
+- 재현 명령은 표본 5행을 직접 실행해 확인했다(자기제외 규칙 포함: `rev-parse <sha>:<doc> <sha>^:<doc>` 두 값 일치).
+- `templates/adapters/*`·`templates/core/*`·`src/task-prompts.js` 미변경(`git status`로 확인).
+
+### 남은 것
+
+- Phase 1 범위 7항목 중 6항목 미착수(검토 경과일 · 승격 우회 탐지 · `needs_review` 옵트인 · 루트 거버넌스 문서 옵트인 · 중복 후보 · `fleet`) — 각각 별도 결정 대기.
+- 사람 결정 11건 중 9건의 브리프가 갱신됐다. **결정 자체는 그대로 사람 몫이다.**
+- 라벨 30건 사람 교차검증.
+- 배포 결정(`v1.27.3`) — 이번 변경도 미배포 상태에 쌓인다.
+
+## 2026-08-03 - fix(후속): 커밋 후 `impact`가 2건 울렸고, 새 정책대로 해소했다
+
+- status: verified (에이전트 승격)
+- actor: Claude Code
+- scope: docs
+- changed:
+  - `docs/llm-wiki/profiles/library.md` · `docs/llm-wiki/project-profile.md` (강등 → 재승인, `reviewed_at` 재기준선)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+앞 항목을 커밋한 뒤 게이트를 다시 읽었더니 `impact --since origin/main --strict`가 **exit 1 / 2건**이었다(커밋 전에는 0 — `evidence.stale`·`impact`가 `git log`를 보므로 미커밋 소스 변경을 못 보는, 이 저장소에 이미 기록된 함정이다). 잡힌 문서는 `profiles/library.md`·`project-profile.md`이고 둘 다 `src/cli.js`를 인용한다.
+
+**내용 대조 결과 주장은 영향받지 않았다** — 이번 `src/cli.js` 변경은 help 산문뿐이고 두 문서가 그 파일에 대해 말하는 것(진입점·인자 파싱)은 그대로다. 새 정책은 소스 대조를 요구하지 않지만, 이번 건은 대조해도 재기준선이 맞는 경우다.
+
+**해소 경로에 주의할 점이 있다.** `review --approve`는 이미 `verified`인 문서를 거부하므로(기록된 결함) `reviewed_at`만 갱신하는 도구 경로가 없다. `reviewed_at`을 손으로 올리면 `reviewed_by: Dowon-Kim`이 그대로 남아 **사람이 오늘 검토했다고 주장**하게 된다. 그래서 `status`·`tags`만 `needs_review`로 내린 뒤(내용이 안 바뀌었으니 `last_updated`는 보존) `review --approve-all --yes`로 재승인해 `reviewed_by`가 에이전트로, `reviewed_at`이 오늘로 스탬프되게 했다. 같은 실행에서 앞 항목이 강등한 3건(`PUBLIC_API`·로드맵·`REVIEW_HISTORY`)도 함께 승격됐다.
+
+### 검증
+
+- 게이트 5종 전부 exit 0(`validate --strict`·`validate-frontmatter --strict`·`drift --strict`·`impact --since origin/main --strict`·`audit`), 451 tests·lint OK(64 files).
+- `verified` 51/52 · health 99 · `needs_review` 1(`log.md`, 구조적 제외).
+
+## 2026-08-03 - fix: 도구는 키보드 앞에 누가 있는지 알 수 없다 (배포 텍스트 5곳 완화)
+
+- status: needs_review → 같은 작업 안에서 에이전트 승격
+- actor: Claude Code
+- scope: src, docs, tests
+- changed:
+  - `src/commands.js` (review list caveat · approve caveat)
+  - `src/cli.js` (`--help` 요약 1곳 · `help review` 토픽 1곳)
+  - `src/mcp/tools.js` (`review` 툴 설명 — 좁은 census에서 빠졌던 다섯 번째)
+  - `tests/self-approval-policy.test.js` (신규 가드 2건)
+  - `tests/measured-defects.test.js` (needle 갱신 — 문장이 바뀌었으므로)
+  - `docs/llm-wiki/PUBLIC_API.md` · `HARNESS_GOVERNANCE_ROADMAP.md` · `REVIEW_HISTORY.md` · `log.md`
+
+### 내용
+
+자기승격 정책(직전 항목)이 배포 텍스트를 거짓으로 만들었다. `review`가 인쇄하는 caveat 2곳과 help 2곳, MCP 툴 설명 1곳이 **"사람이 결정한다"를 도구의 보장처럼 단정**하고 있었는데, 같은 날 에이전트가 40건을 승격한 직후에는 전부 거짓으로 읽힌다. N-10과 같은 계열의 다섯 번째다.
+
+**고친 방향: 도구는 키보드 앞에 누가 있는지 알 수 없으므로 알 수 있는 것만 말한다.** 스스로 승격하는 경로는 없고, 명시적 `--approve`만이 스탬프하며, `reviewed_by`가 실행자를 기록한다. 사람 검토가 기본값이라는 것과, 승인 실행을 위임하는 프로젝트는 config `reviewer`를 실제 승인자 이름으로 두라는 안내를 함께 넣었다.
+
+**census를 두 번 돌렸고 그게 결정적이었다.** 좁은 패턴(`human decision`·`human-only`·`human review`…)으로는 **4곳**이 나왔다. 넓게(`human` 전수) 다시 훑어 **5곳**이 됐다 — 빠진 것은 `src/mcp/tools.js`의 `promotion to verified stays a human CLI action`이고, MCP 표면은 애초에 후보로 떠올리지도 않았다. **N-10의 "3곳 예상 → 8곳"과 같은 실패를 같은 주에 두 번 겪지 않은 유일한 이유가 패턴을 넓힌 것이다.**
+
+**바꾸지 않은 것과 그 이유.** `src/task-prompts.js`의 "verified is human-approved only"(5곳)·`doc-content.js`/`doc-templates.js`의 생성 문서 안내·`findings.js`/`i18n.js`의 remediation·`report.js` 푸터는 **도입처를 향한 권고**이며 도구 동작에 대한 거짓 주장이 아니다. 특히 task-prompts는 모든 도입처의 에이전트가 읽는 지시문이므로, 이 저장소의 충돌은 그 파일을 고쳐서가 아니라 `AGENTS.md`가 우선한다는 **선후관계를 명시**해서 해소했다(`AGENTS.md` "Wiki discipline"에 precedence note 추가).
+
+`PUBLIC_API.md`의 명령 표는 이미 정확했다(`자동 승격 절대 없음`, reviewed_by 해소 순서) — 손대지 않고 노트로만 기록했다.
+
+**로드맵에는 열린 항목을 표시했다.** 자기승격 정책이 그 문서의 설계 전제를 최소 네 곳에서 제거했다(공백 3 · R2 사람 관문 · F장 R3 목록 · 용어표 "사람만"). 740행의 "사정거리는 활동량에 따라 감쇠하고 사람만 복구할 수 있다"도 이 저장소에는 더 이상 성립하지 않는다. J장 결정 21·22·25번은 전제를 공유하므로 재검토가 필요하지만 **본문 재작성은 별도 배치로 남겼다** — 아직 사람 결정을 기다리는 브리프를 에이전트가 다시 쓰는 것이 되기 때문이다.
+
+### 검증
+
+- `npm test`: **451 tests / 451 pass / 0 fail**(신규 2). `npm run lint`: OK(64 files).
+- 신규 가드 2건은 양방향이다: 금지 문구 6개가 `src/commands.js`·`src/cli.js`·`src/mcp/tools.js`에 재유입되면 실패하고, 완화 문구가 삭제되면 실패한다(빈 caveat으로 전자를 우회하는 것을 막는다). 과잉 주장을 실제로 재주입해 RED을 확인했다.
+- 기존 `tests/measured-defects.test.js`의 needle을 갱신했다 — 그 테스트의 `statement()` 가드가 "문장이 이동하면 아무것도 검사하지 않는다"고 즉시 알려줬고, 이 저장소가 문자열 단언에 가드를 붙이기로 한 규율이 값을 냈다.
+- 계약 표면 불변: 명령·옵션·`--format json` shape·exit code·동결 `commands` 맵 무변경(프로즈만).
+
+## 2026-08-03 - policy: 이 저장소는 자기 문서를 스스로 승격한다 (유지보수자 결정)
+
+- status: needs_review → 같은 작업 안에서 에이전트 승격
+- actor: Claude Code
+- scope: policy, docs, config, tests
+- changed:
+  - `llm-wiki.config.json` (`reviewer` 키 추가 — `Claude Code (delegated by Dowon-Kim)`)
+  - `AGENTS.md` (필수 운영 규칙 + "Wiki discipline" — 절대 금지 → 범위 한정 정책, 계약 정본)
+  - `CLAUDE.md` (Required rules; 이 저장소 어댑터만, 템플릿은 불변)
+  - `.orca/agents/03-implement.md` (implement 역할의 금지 줄 → 승격 지시)
+  - `CONTRIBUTING.md` · `CONTRIBUTING.ko.md` (LLM-WIKI 규율 절)
+  - `docs/llm-wiki/index.md` (Status + Operating Rules; 선적재 문서라 가장 중요)
+  - `docs/llm-wiki/README.md` (Operating Rules)
+  - `docs/llm-wiki/GLOSSARY.md` (`status`·`verified` 정의 교정 + `human_verified` 용어 신설)
+  - `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` (Conventions에 정책 + 가드 기록; Review Notes 1건 아카이브 이전)
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (`Architecture Conventions` 44 → 45건)
+  - `tests/self-approval-policy.test.js` (신규 가드 2건)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+유지보수자가 **이 저장소에 대해서만** 문서 확인·승격·수정을 자동화하기로 결정했다. 근거는 국지적이다 — 이 저장소는 전체가 바이브코딩 산출물이자 제품의 dogfood이고, "사람이 문서를 큐레이션하는 코드베이스"를 전제한 규칙을 자기 자신에게 적용할 이유가 없다. 도입처로 나가는 규칙은 바뀌지 않는다.
+
+**결정 두 건과 그 대가.**
+
+1. **`reviewed_by`는 에이전트를 지목한다.** 이것이 이 변경의 핵심 설계 판단이다. `resolveReviewer`는 `--reviewer` > config `reviewer` > `gitUserName` 순이므로, 그냥 `review --approve`를 실행하면 에이전트가 한 일에 `Dowon-Kim`이 찍힌다 — 이 라인이 일주일간 고쳐 온 결함(N-10: 도구가 인쇄하는 텍스트가 자기 행위를 거짓으로 서술)과 **정확히 같은 형태**다. 그래서 config `reviewer`를 `Claude Code (delegated by Dowon-Kim)`으로 두었다: 코드 변경 0, 도입처 영향 0, 스탬프는 사람 검토를 주장하지 않는다. 사람이 자기 검토를 남길 때는 `--reviewer Dowon-Kim`이 config를 이긴다. **config 기본값을 에이전트로 둔 이유**는 위험한 방향이 에이전트→사람 사칭이고 에이전트 실행이 압도적으로 많을 것이기 때문이다.
+2. **드리프트는 소스 대조 없이 해소한다**(유지보수자 선택). 대가를 명시한다: `evidence.stale`·`impact`는 이 저장소에서 다시는 빨개지지 않으므로 **관측 도구가 아니게 된다.** 로드맵 J장의 오탐률·팬아웃 측정처럼 게이트 발화를 관측 대상으로 삼는 작업은 이제 다른 저장소를 써야 한다. 이 손실은 결정 21번의 근거 수집에 직접 영향을 준다.
+
+**규칙 문장 8곳을 전수 갱신했다.** `AGENTS.md`(2곳)·`CLAUDE.md`·`.orca/agents/03-implement.md`·`CONTRIBUTING.md`/`.ko.md`·`index.md`·`README.md`·`GLOSSARY.md`. **한 곳만 고치면 다음 세션이 다른 곳을 근거로 또 거절한다** — 이 라인에서 네 번 지시받고 네 번 거절한 근거가 `AGENTS.md` L47이었다. 계약 정본은 `AGENTS.md` "Wiki discipline"으로 못 박고 나머지는 그것을 가리킨다.
+
+**바뀌지 않은 것(경계).** `templates/adapters/*` 7종의 "Use `verified` only after human review."는 그대로다 — 도입처로 복사되는 문장이다. `templates/core/wiki-document.md`는 계속 `needs_review`를 씨앗으로 삼는다. `README.md`의 "`verified` is human-only in every command"도 그대로 두었다: 그 주장은 **명령 표면**에 대한 것이고(어떤 명령도 스스로 승격하지 않으며 명시적 `--approve`만이 스탬프한다) 여전히 참이다 — 바뀐 것은 누가 그 명령을 실행하느냐다. 제품 코드는 한 줄도 바꾸지 않았고 도구의 거부 조건(blocking·구조적 finding·`review.not_enriched`)은 안전 바닥으로 남는다.
+
+**신규 가드 `tests/self-approval-policy.test.js` 2건, 두 실패 모드 전부 RED 선확인.** (1) config `reviewer`가 없거나 git 신원과 같으면 실패 — 삭제하면 폴백이 되살아나 사람을 사칭하는데 다른 어떤 게이트도 이걸 못 본다(둘 다 파싱·검증·배포를 통과한다). (2) 어댑터 템플릿 7종이 human-review 문장을 잃으면 실패 — 미래의 에이전트가 이 저장소의 `CLAUDE.md`를 읽고 템플릿을 "동기화"해 제품의 중심 주장과 반대되는 것을 배포하는 경로를 막는다.
+
+부수로 `human_verified` tier의 이름-의미 불일치를 `GLOSSARY.md`에 용어로 신설해 기록했다: 정의가 "`verified` + reviewer 메타 존재"일 뿐 사람인지 검사하지 않으므로, 이 저장소의 그 수치는 에이전트 승인분을 포함한다. 코드 수정은 제품 규칙 변경이라 범위 밖으로 뒀다.
+
+## 2026-08-03 - docs: Review Notes 5건 상한은 아무도 검사할 수 없는 규칙이었다
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs, tests
+- changed:
+  - `tests/review-notes-cap.test.js` (신규 가드 3건 — 5건 상한 · 아카이브 헤더 건수 · 원문서 포인터 대조)
+  - `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` (규칙 술어 "무거운 문서"→"모든 문서" + 건수 손계산 금지 규칙 신설; Review Notes 1건 아카이브 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/PUBLIC_API.md` (38건 → 5건, 34건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (10건 → 5건, 6건 이전; `needs_review` 유지)
+  - `docs/llm-wiki/BENCHMARK.md` (8건 → 5건, 4건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/EXAMPLES.md` (8건 → 5건, 4건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/domains/00_overview.md` (8건 → 5건, 4건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/DOMAIN_FEATURES.md` (포인터 거짓 건수 48→52 교정, 1건 이전; `verified`→`needs_review`)
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (신규 5개 절 + `Domain Features` 헤더 48→52 · `Architecture Conventions` 43→44, source_files·related에 원문서 7건 등재; `verified`→`needs_review`)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+인수인계의 열린 항목 5번("Review Notes 5건 상한 위반 3건, 별도 배치 필요")을 처리했다. **먼저 재고 조사를 했고, 인수인계보다 나쁜 상태가 나왔다** — 지시받은 목록을 그대로 믿지 않은 것이 이 배치의 유일한 방법론적 선택이다.
+
+**사실 세 가지.**
+
+1. **위반은 3건이 아니라 5건이었다.** `BENCHMARK.md`(8건)·`EXAMPLES.md`(8건)가 목록에서 빠져 있었고, 로드맵도 9건이 아니라 이미 10건이었다. 이 목록은 `PUBLIC_API.md`와 `domains/00_overview.md`의 2026-08-03 노트, 그리고 인수인계 메모에 각각 손으로 적혀 있었다 — 세 곳이 같은 방식으로 틀렸다.
+2. **아카이브 헤더가 이미 거짓 건수를 담고 있었다.** `Domain Features` 절이 "48건"이라 적고 실제로는 51건을 담고 있었다. 경위를 특정했다: 2026-07-31에 3건을 받았는데(그 이전 자체는 로그에 남아 있다) 2026-08-03의 갱신이 그것을 모르는 **낡은 47에서 +1**을 계산했다. 같은 종류의 오류가 2026-07-31에 이미 한 번 교정됐고(39→41, 44→47) **곧바로 재발했다.**
+3. **상한을 강제하는 장치가 없었고, 규칙 술어가 검사 불가능했다.** 규칙은 적용 범위를 "무거운 위키 문서"라고 적었는데 "무거운"은 테스트가 평가할 수 있는 술어가 아니다. 2026-07-30에 규칙이 생긴 뒤 나흘간 아무것도 발화하지 않았다.
+
+**한 것.** 가드를 먼저 쓰고 3건 전건 RED를 확인한 뒤(위반 5문서 · `Domain Features` 48≠51 · `DOMAIN_FEATURES.md` 포인터 48≠51) 이전을 실행했다. 이전은 **원문 그대로**이며, 커밋 전 상태와 대조해 **176건 항목 전수가 byte-identical하게 보존**됨을 검증했다(항목 다중집합 비교, 유실 0·변형 0). 총 54건이 7개 문서에서 아카이브로 이동했고 각 문서는 4건 + 이번 노트 = 5건이 됐다. 규칙 범위를 모든 위키 문서로 바꾸고, **아카이브 건수를 손으로 적지 않는다**는 규칙을 신설했다 — 원문서 포인터 · 아카이브 헤더 · 실제 항목 수 세 값이 항상 같아야 하며 가드가 이 등식을 고정한다.
+
+형식 두 가지를 함께 처리했다. `BENCHMARK.md`의 노트는 **여러 줄로 감겨** 있어 항목 경계를 `- ` 시작 줄로 잡아야 했고(원문 줄바꿈 보존), 이 문서만 워킹트리 줄바꿈이 **CRLF 혼재**라 `.gitattributes`의 `eol=lf`에 맞춰 LF로 정규화됐다(인덱스는 이미 LF여서 git이 보는 diff는 이동뿐이다).
+
+### 검증
+
+- `npm test`: **447 tests / 447 pass / 0 fail**(신규 3, 전건 RED 선확인).
+- `npm run lint`: OK(63 files).
+- `validate --strict` 0 · `validate-frontmatter --strict` 0 · `drift --strict` 0 · `impact --since origin/main --strict` 0 · `audit` 0.
+- 이 배치는 **소스 파일을 한 줄도 바꾸지 않았다**(신규 테스트 파일만 추가). 그래서 "커밋 전 게이트 0은 거짓 안심"이라는 이 저장소의 함정이 이번에는 적용되지 않지만, 그래도 커밋 후 재확인해 같은 값임을 기록한다.
+
+### 대가 (숨기지 않는다)
+
+- **`verified` 19/52 → 12/52, health 79 → 74.** 7개 문서를 규칙대로 강등했고 재승인은 사람 몫이다. 순수 이력 이동이라 문서의 주장은 하나도 바뀌지 않았지만, 그것이 강등을 면제하지는 않는다.
+- **강등은 게이트 사정거리를 줄인다**(기록된 공백 2 — `drift`·`impact` 둘 다 `verified`만 본다). 이 배치가 게이트 0인 이유의 일부는 검사 대상이 7개 줄었기 때문이다. 재승인 전까지 이 7개는 드리프트 감시 밖에 있다.
+- **`REVIEW_HISTORY.md`가 이제 원문서 7건에 드리프트-민감하다.** source_files에 7개를 등재했으므로 그중 아무 문서에 새 note가 붙어도 이 아카이브가 `evidence.stale`/`impact`로 발화한다. 기존 모델(2건)의 확장이고 의미상 옳지만(아카이브 내용은 그 문서들에서 파생된다) 소음원이 2→7로 늘어난 것은 사실이며, N-7·N-8의 로케이터 존중 논의에 데이터 포인트로 남긴다.
+
+### 부수 효과 (의도한 것이 아님)
+
+`HARNESS_GOVERNANCE_ROADMAP.md`가 **오르판에서 빠졌다**(35 → 34). `REVIEW_HISTORY.md`의 `related`가 inbound 링크를 만들었기 때문이다. 이것은 백로그 30번(로드맵을 `index.md` 읽기 순서에 넣을지)의 **사람 결정을 대체하지 않는다** — 그래프 도달성과 사람이 읽는 진입점은 다른 문제이고, 이 링크는 아카이브에서 나온 것이라 신입에게 로드맵을 소개하지 않는다.
+
+### 열린 것
+
+- 재승인 7건(`ARCHITECTURE_CONVENTIONS`·`PUBLIC_API`·`BENCHMARK`·`EXAMPLES`·`DOMAIN_FEATURES`·`domains/00_overview`·`REVIEW_HISTORY`) + 기존 로드맵 1건. **`review --approve`는 실행하지 않았다.**
+- 가드는 이 저장소 전용(`tests/`)이다. 상한·건수 등식을 **제품 규칙**(`content.*` finding)으로 올릴지는 게이트 결정이 필요해 범위 밖으로 뒀다 — 도입처에도 같은 손계산 드리프트가 생길 수 있다.
+
+## 2026-08-03 - measure: 기준선 오탐률 30건 라벨링 — 그리고 332건 기준선으로는 그 질문에 답할 수 없었다
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (신규 절 "기준선 오탐률 라벨링 30건" + 332건 각주 정정 + 결정 21번 부족 근거 1·3번 갱신; `verified`→`needs_review`)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+유지보수자 승인으로 결정 21번의 마지막 공백(기준선 오탐률)을 측정했다. 읽기 전용이며 도입 저장소 4곳에 **쓰기·커밋·체크아웃 0건**이다(모든 읽기가 `git show <rev>:<path>`·`git diff <sha>^ <sha>`이므로 워킹트리를 건드리지 않고, `core.autocrlf` 유령 diff 함정도 함께 피한다). 판정 규칙은 재추측하지 않고 제품의 `verifiedSourceAnchors`를 import했다.
+
+**먼저 발견한 것: 332건 기준선은 오탐률을 정의할 수 없는 구성이다.** 로드맵 각주는 "프론트매터는 해당 rev의 blob을 읽었습니다"라고 적었는데 **사실이 아니다.** 두 구성을 재현해 확정했다 — 역사적 구성(그 커밋 시점 프론트매터)은 3곳 합계 **19건**이고 검증점 `545ea15`가 **0건**인데, 반사실 구성(HEAD 프론트매터 × 과거 diff)은 **344건**에 `545ea15`가 **정확히 10건**이다. 로드맵의 332·RED 44·"10건 재현 성공"은 전부 후자다(344와의 차이는 그 뒤 늘어난 커밋 2건). 실제로 `545ea15` 시점 external-frontend-b는 위키 19개에 `verified`가 **0개**였다.
+
+문제는 반사실 구성에서 **문서가 diff보다 나중에 쓰였다는 것**이다. 이미 그 변경이 반영된 문서를 두고 "이 변경이 이 문서의 주장을 무효화했는가"는 물을 수 없다. 팬아웃 규모 측정에는 타당하고(완화안 비교 −78% 등은 유효) 참/거짓 판정에는 쓸 수 없다. 그래서 라벨링을 역사적 구성으로 옮겼다.
+
+**층화 표본, 합산 금지.** 역사적 구성 전수는 5개 저장소 78커밋에서 140건인데 **121건이 우리 저장소**다(도입처 위키가 기준선 시점에 어렸다). 두 층은 다른 질문이므로 도입처는 **19건 전수(census)**, 우리 저장소는 **121건 중 11건 무작위**(xorshift32 시드 20260803, 안정 정렬 후 Fisher-Yates — 재현 가능)로 잡아 합계 **30건**을 라벨링했다.
+
+**결과**: 도입처 19건 = TP 4 / borderline 9 / noise 6 → **TP 21%**(borderline=noise) 또는 **68%**(borderline=TP). 우리 11건 = TP 4 / borderline **0** / noise 7 → **36%**, 정책과 무관하게 불변. 합계 30건 = **27% 또는 57%**.
+
+**이 측정의 핵심**: 결정 21번에 붙어 있던 정책 질문("라인 밀림을 참으로 볼지")은 취향이 아니라 **앵커 양식의 문제**다. 우리 borderline이 0인 이유는 우리 문서가 `#symbol:` 앵커를 쓰기 때문이고(앵커 인구조사와 일치: 우리 라인 범위 0, 도입처 58), 그래서 그 판정은 **우리 비율을 전혀 움직이지 않고 도입처만 21%→68%로 뒤집는다.**
+
+**참 양성 8건이 전부 한 패턴이다**: 6건이 문서가 **명시적으로 열거한 목록**(props·emits·타입·명령)이 불완전해진 경우이고, 특히 "**14 emits**"처럼 **개수를 적어 둔 문서**가 가장 강한 참 양성을 만든다. 독립 확인도 둘 있다 — `E2E_WORKFLOWS.md`의 `onMounted` 열거 누락은 **유지보수자가 이후 실제로 그 절을 추가**했고(뒷 rev에 "장비 목록 로딩(`<get-devices>`, `:896`)"), 이동 심볼 2건은 v1.11.1 릴리스 노트의 doc-sync 기록과 일치한다. 반대로 noise 13건 중 1건(`VISIBILITY.md` × `PROFILE_DOCS` 추가)은 **유지보수자가 같은 형상을 이미 noise로 판정해 Review Note에 적어 둔 것과 내 판정이 일치**했다.
+
+**한계를 명시한다**: 도입처 n=19(전수지만 작다 — 그들의 위키가 기준선 시점에 `verified`가 거의 없었다는 별개 정보다) · 커밋 단위 ≠ PR 단위 · 해소 비용 미측정 · **라벨러가 에이전트 1명이고 사람 교차검증이 없다**. 직전 배치에서 내 라벨이 실제로 한 번 틀렸으므로(TP 과소 계상 방향) 이번에는 그 교훈을 규칙으로 적용했다 — 문서의 계약 문장을 전수로 훑고, 판정이 갈리는 4건은 원문을 직접 열어 확인했다.
+
+## 2026-08-03 - fix(후속): 승인 일괄 편집이 위키 밖 4파일을 함께 뒤집었고, 게이트는 그것을 볼 수 없었다
+
+- status: needs_review
+- actor: Claude Code
+- scope: src(없음), tests, docs
+- changed:
+  - `tests/shipped-assets.test.js` (**신규** 2건, 뒤집힌 상태에서 RED 선확인)
+  - `adapters/README.md`·`rules/README.md`·`templates/core/wiki-document.md`·`tests/fixtures/README.md` (**되돌림** — `verified`→`needs_review` 원복)
+  - `docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,PUBLIC_API,BENCHMARK,EXAMPLES,GLOSSARY,index,profiles/library,project-profile}.md` (`reviewed_at`만 2026-08-03으로 재기준선 — 유지보수자 확인 근거)
+  - `docs/llm-wiki/domains/00_overview.md` (`drift` 서술의 누락 계약 보완; `verified`→`needs_review`)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (오탐률 라벨 4/7 → **5/6** 정정 + 방법론 주의)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+유지보수자가 앞 항목의 강등 5건을 `verified`로 되돌렸는데, 같은 편집이 **`docs/llm-wiki/` 밖 4파일**(`adapters/README.md`·`rules/README.md`·`templates/core/wiki-document.md`·`tests/fixtures/README.md`)도 함께 뒤집었다. 네 파일 모두 **`reviewed_by`/`reviewed_at`이 아예 없는 채 `status: verified`** 였다 — 이 제품이 사용자에게 강제하는 frontmatter 계약(`frontmatter.js:134`) 위반인데, **스캔 범위가 `docs/llm-wiki`라서 어떤 검증 명령도 볼 수 없었다.** 442 tests·lint·`validate --strict`·`validate-frontmatter --strict` 전부 초록이었다.
+
+가장 무거운 것은 `templates/core/wiki-document.md`다 — **새 문서가 어떤 모양인지 보여주는 템플릿이 `status: verified`로 배포된다**(`templates`·`adapters`·`rules`는 `package.json` `files[]`에 있다). 기능 회귀는 아니다: 런타임 생성기는 `src/commands/doc-templates.js`이고 어떤 소스도 이 템플릿 파일을 읽지 않으며 생성기는 여전히 `needs_review`를 낸다. **배포되는 예시가 제품의 중심 규칙과 반대로 적혀 있던 것**이고, 이는 N-10(배포되는 텍스트가 거짓)과 같은 부류다.
+
+**신규 가드 `tests/shipped-assets.test.js` 2건**을 먼저 뒤집힌 상태에 대해 RED로 확인한 뒤 되돌렸다. 불변식 둘: (1) 템플릿은 `verified`를 씨앗으로 삼을 수 없다 — 생성 시점에 "verified는 사람의 결정"이 성립해야 한다. (2) 위키 스캔 밖 markdown이 `verified`를 주장하면 `reviewed_by`/`reviewed_at`을 갖춰야 한다. 범위를 "배포 대상"이 아니라 **"스캔 경계 밖 전부"**로 잡았다(그래서 배포되지 않는 `tests/fixtures/README.md`도 잡힌다) — 공백은 배포 여부가 아니라 스캔 경계이기 때문이며, 배포되는 항목은 메시지에 `[SHIPS to npm]`으로 표시한다. 배포 디렉터리 목록은 `package.json` `files[]`에서 읽어 손으로 베끼지 않는다.
+
+**되돌린 뒤 남은 문제는 되돌리기가 아니라 `reviewed_at`이었다.** 뒤집기는 `status`·`tags` 2줄만 바꿨고 `reviewed_at`은 그대로여서, `ARCHITECTURE_CONVENTIONS.md`·`PUBLIC_API.md`가 **`reviewed_at: 2026-07-31`인 채 `verified`** 가 됐다 — 오늘 소스 변경보다 이전이라 `needs_review`였을 때는 없던 `evidence.stale`이 새로 생겼다(신선도가 `verified`에만 적용되는 공백 2). `validate --strict`가 6 → **8**로 늘었다. 유지보수자 확인을 받아 8문서의 `reviewed_at`만 2026-08-03으로 재기준선했다(선례 `52aa90b`; `status`·본문·`last_updated`·`source_files`/`evidence` 불변).
+
+**그리고 `impact`의 마지막 1건이 내 오분류를 드러냈다.** `domains/00_overview.md`를 노이즈로 판정한 근거는 "`review --approve` 서술이 이미 정확하다"였는데, **같은 문서의 `drift [--downgrade]` 서술이 같은 `tags` 동기화를 빠뜨린 채였다.** N-4가 두 명령을 한 helper로 묶었으므로 계약도 양쪽에 있어야 했다 — 게이트가 옳았고 라벨러가 틀렸다. 보완 후 **오탐률 라벨을 4/7(36%) → 5/6(45%)로 정정**했고, 무작위 30건 라벨링은 "변경과 관련된 문장"이 아니라 **문서의 계약 문장 전수**를 훑는 규칙으로 해야 한다는 주의를 로드맵에 남겼다.
+
+**게이트 4종 전부 초록이다**(이 라인에서 처음): 444 tests(신규 2)·lint OK(62 files)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0·**`impact --since origin/main --strict` 0 / exit 0**. `verified` **19/52(37%)**, health 79, `stale_verified` 0. `00_overview.md` 1건만 사람 재승인 대기이며 **`review --approve`는 이번에도 실행하지 않았다.**
+
+## 2026-08-03 - fix: 명령이 자기 쓰기 범위를 거짓으로 말하고 있었다 (N-10)
+
+- status: needs_review
+- actor: Claude Code
+- scope: src, tests, docs
+- changed:
+  - `src/commands.js` (`review` LIST caveat · APPROVE caveat · 주석 2곳)
+  - `src/cli.js` (`helpText`의 review·drift 줄 · `COMMAND_HELP.review` Approve 절 · `COMMAND_HELP.drift` Scope 절)
+  - `src/commands/fix-migrate.js` (`drift --downgrade` caveat)
+  - `tests/measured-defects.test.js` (신규 4건, 전건 RED 선확인)
+  - `docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md` (`## Evidence` 재서술 교정 + 스탬프 seam에 `syncStatusTag` 추가; `verified`→`needs_review`)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (인벤토리·공백 표 2곳 교정, C-1 행 보완, **N-10 결함 표 + 기준선 오탐률 두 번째 데이터 포인트** 신설; `verified`→`needs_review`)
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES에서 각 1건 수신, 아카이브 건수 43·48로 갱신; `verified`→`needs_review`)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+`review --approve`는 caveat에 "stamps **ONLY** status + reviewed_by + reviewed_at"이라고, `drift --downgrade`는 "status + last_updated **only**"라고 인쇄했다. 2026-07-31 N-4 수정 이후 두 명령은 공유 `syncStatusTag`로 `tags`의 상태 태그도 쓴다. **쓰기를 수행하는 명령이, 그 쓰기를 설명하는 자리에서 사실과 다른 말을 하고 있었다** — 거버넌스 도구에서 이건 단순 오타가 아니라 계약 위반이다.
+
+발견 경로를 남긴다: **유지보수자의 실제 승인 실행**이 드러냈다(리포트는 2~3필드를 주장했고 diff는 문서당 3줄이었다). 배포된 어떤 검증 명령도 이것을 보지 못했다 — 문자열은 `validate`의 스캔 대상이 아니고, 머지 후에는 `impact`가 볼 diff가 없고, 같은 날 `reviewed_at`이 `evidence.stale`의 날짜 앵커를 덮는다(N-9).
+
+**작업 지시가 예상한 규모보다 컸다. 3곳이 아니라 8곳이었고, 2곳이 아니라 배포되는 출력 3곳이었다.**
+
+- 소스 8곳: `commands.js`의 LIST caveat(**MCP로도 노출되는 읽기 전용 표면**)·APPROVE caveat·주석 2곳, `cli.js`의 `helpText` 2줄·`COMMAND_HELP.review`·`COMMAND_HELP.drift`, `fix-migrate.js`의 drift caveat.
+- 지시가 놓친 것은 **`drift --downgrade` 쪽 전부**였다. N-4가 두 명령을 같은 helper로 묶었으므로 여진도 양쪽에 생겼다.
+- 위키 5곳(4문서): 지시는 "`PUBLIC_API.md`·`DOMAIN_FEATURES.md`·`domains/00_overview.md`는 이미 정확하므로 추가 강등 0건"이라고 적었지만, **정확했던 것은 각 문서의 산문·표뿐이고 같은 문서의 `## Evidence` 재서술 3건은 거짓인 채였다.** `DOMAIN_FEATURES.md`는 "스탬프 필드 목록을 교정했다"는 Review Note를 달고도 자기 Evidence 줄이 거짓이었다.
+
+**같은 계약이 소스 8곳 + 위키 5문서 7곳에 재서술돼 있고, 두 차례의 수정이 각각 일부에만 도달했다**(N-4 → 백로그 16 프로토타입 → 이번). 백로그 16(중복·충돌 후보 탐지)의 근거가 세 번째로, 가장 강하게 확인됐다.
+
+**기준선 오탐률의 두 번째 데이터 포인트(결정 21번의 유일한 공백)**: 이 배치의 전체 diff에 `impact`가 `verified` 11문서를 발화했고, 문서를 직접 대조해 **참 양성 4 / 노이즈 7 = TP 36%**로 분류했다. 상세와 분류 근거는 로드맵 N-10 절에 있다. 첫 데이터 포인트(1/1)와 합치면 **12건 중 5건**이 참이다.
+
+노이즈 7건 중 **`BENCHMARK.md` 1건은 기계적으로 예방 가능하다**: 인용이 `GATE_REVIEW.md#section:Impact Measurement Scope Decision`인데 바뀐 것은 같은 파일의 **다른 절**이고, `scanReverseImpact`가 로케이터를 버려서(`scans.js:584-587`) 섹션 정보가 판정에 쓰이지 않는다. N-7(라인 범위)·N-8(디렉터리)과 같은 뿌리가 **섹션 앵커에서도** 성립한다는 첫 실물이다. 나머지 6건은 순수 경로 앵커라 파일 단위로는 피할 수 없다. 아울러 이 11건 중 1건은 소스 때문이 아니라 **이 배치가 `GATE_REVIEW.md`에 절을 추가했기 때문에** 발화했다 — 근거를 남기는 행위가 발화 수를 늘린다.
+
+테스트는 4건 전부 수정 전 소스에서 RED임을 먼저 확인했다(list caveat · approve caveat · drift caveat · help 4표면). 문자열 단언은 텍스트가 이동하면 조용히 아무것도 검사하지 않게 되므로, 각 단언에 **가드**(해당 문장이 실제로 필드 열거인지 먼저 확인)를 붙였다. 442 tests(신규 4)·lint OK(61 files)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0.
+
+**열린 상태 2건을 정직하게 남긴다.**
+
+1. **커밋 후 재측정으로 `impact --since origin/main --strict`가 7건 / exit 1이다**(`domains/00_overview.md`·`EXAMPLES.md`·`GLOSSARY.md`·`index.md`·`profiles/library.md`·`project-profile.md`·`BENCHMARK.md`). 전부 위 분류에서 **노이즈**로 판정한 문서이고 내용 갱신이 필요 없다 — 남은 것은 `reviewed_at` 재기준선이며 **그것은 사람 검토 행위다**(선례: `52aa90b`). `review --approve`는 이미 `verified`인 문서를 거부하므로 도구 경로가 없다(기록된 미해결 결함). 이 상태로 PR을 올리면 CI가 빨갛다. `validate --strict`도 같은 이유로 6건(`evidence.stale`)이다 — `00_overview.md`만 빠지는데 `reviewed_at`이 2026-08-03이라 날짜 앵커가 덮기 때문이고, 이것이 drift·impact 상보성의 또 하나의 실물이다. **커밋 전 두 명령이 0이었던 것은 미커밋 소스 변경을 `git log`가 못 보기 때문이며, 이 저장소에 이미 기록된 함정이다.**
+2. Review Notes 5건 상한: `ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`는 아카이브 이전으로 5건을 유지했지만, `PUBLIC_API.md`는 **38건**, `HARNESS_GOVERNANCE_ROADMAP.md`는 **9건**으로 상한을 넘어 있다(아카이브 섹션 없음). 33건 이전은 이 배치 범위 밖이라 별도 배치가 필요하다 — 2026-07-31에 기록한 "상한 과소 집행"이 그대로다.
+
+강등 5건으로 `verified` 20/52 → **15/52(29%)**, health 79 → 76, `stale_verified` 0. **`review --approve`는 이번에도 실행하지 않았다.**
+
+## 2026-07-31 - measure(후속): 게이트가 이 측정의 커밋에서 울렸고, 다시 옳았다
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - `docs/llm-wiki/DOMAIN_FEATURES.md` (Review Notes 8건 → 5건, 오래된 3건을 아카이브로 원문 이전)
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (Domain Features 섹션에 3건 수신; `verified`→`needs_review`)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (이 관측을 N-1 절에 기록)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+앞 항목의 측정 결과를 커밋한 뒤 CI와 같은 기준으로 예행했다(`impact --since origin/main --strict`). **exit 1 / 1건.** 잡힌 문서는 `REVIEW_HISTORY.md`이고, 그 문서가 `DOMAIN_FEATURES.md`를 `source_files`로 인용하는데 이번에 그 문서를 편집했기 때문이다 — **문서→문서 앵커**라 허브 파일과 똑같은 방식으로 팬아웃을 만든다.
+
+처음엔 노이즈로 보였다. 아카이브는 원문서의 과거 Review Notes를 원문 그대로 담을 뿐이라, 원문서에 새 항목이 붙는 것이 아카이브의 주장을 무효화하지 않는다. **그런데 아니었다.** 아카이브 계약이 "원문서는 최근 5건만 유지하고 오래된 항목은 여기로 옮긴다"인데 Review Note를 덧붙여 `DOMAIN_FEATURES.md`가 8건이 됐으므로 **실제로 아카이브 부채가 생겼다.** 오래된 3건(2026-07-28 ECC · 07-29 1.27.1 · 07-30 unhobbling)을 아카이브 섹션 끝으로 원문 그대로 옮겨 5건으로 되돌렸다. **참 양성이다.**
+
+기준선 오탐률 측정의 **첫 데이터 포인트로 기록한다(1/1 참 양성).** 함께 남길 것 세 가지.
+
+1. **팬아웃이 크다는 것과 노이즈라는 것은 다른 진술이다.** 문서→문서 앵커는 팬아웃 원인이면서 동시에 진짜 의무를 가리킬 수 있다 — N-1 완화안을 "발화 억제"가 아니라 "심각도·정렬 신호"로 쓰라는 권고의 근거다.
+2. **해소 수단이 여전히 비대칭이다.** 이 finding은 `impact`에서 나왔고 `impact`에는 `--downgrade` 같은 대응 수단이 없다. 내용 갱신으로 해소할 수 있었던 것은 운이 좋았고, 내용이 이미 정확한 경우라면 남는 선택지는 손으로 강등하는 것뿐이다(기록된 미해결 결함).
+3. **5건 상한이 과소 집행되고 있다.** 상한은 일반 규칙으로 적혀 있는데 아카이브 섹션이 있는 문서는 2건뿐이다 — `HARNESS_GOVERNANCE_ROADMAP.md`(8건)·`domains/00_overview.md`(7건)는 상한을 넘었지만 아카이브 대상이 아니라 아무 신호도 나지 않는다. 규칙과 집행 범위가 어긋나 있고, Phase 1의 길이 상한 항목과 같은 부류다.
+
+강등이 4건이 됐다(`verified` 20/52 → **16/52**). 전부 사람 재승인 대기이며 `review --approve`는 이번에도 실행하지 않았다.
+
+## 2026-07-31 - measure: 완화안을 고를 수 없다는 것도 결론이다 (N-1 근거 · 백로그 16 · 결정 브리프 11건)
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (N-1 완화 근거 측정 절 + 백로그 16 오탐률 절 + 신규 결함 N-7~N-9 + 백로그 42~44 + **J장 사람 결정 브리프 11건** 신설; `verified`→`needs_review`)
+  - `docs/llm-wiki/domains/00_overview.md` (사실과 어긋난 문장 교정; `verified`→`needs_review`)
+  - `docs/llm-wiki/DOMAIN_FEATURES.md` (불완전한 서술 교정; `verified`→`needs_review`)
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+유지보수자 지시로 읽기 전용 측정 2건을 병렬로 돌리고 사람 결정 11건의 브리프를 썼다. **5개 저장소에 쓰기·커밋·체크아웃 0건**이고 프로토타입은 스크래치패드에만 두었다. 소스 코드와 테스트는 건드리지 않았다.
+
+**측정 1 — N-1 허브 파일 팬아웃 완화 근거.** 결론은 완화안 선택이 아니라 **선택할 수 없다는 사실**이다.
+
+- **(a) 라인 범위 앵커 우선은 앵커만 고쳐서는 효과가 0이다.** `scanReverseImpact`가 로케이터를 버리고(`scans.js:584-587`이 base 경로만 담고 `:702`가 문자열 집합 비교만 한다) 입력인 `changedFiles`는 `git diff --name-only`라 **라인 정보가 파이프라인에 아예 없다.** 코드 주석도 `File-level in v1`이라고 적어 두었다. `lineRangeChangedSince`의 유일한 호출부는 `scanEvidenceDrift`이고 `src/commands.js:16`의 import는 죽은 코드다.
+- 47커밋/332 findings에 대해 세 안을 돌린 결과: (a) **−5.1%**(external-frontend-b·external-vue-app은 정확히 0), (b) 대표 앵커 **−78%**, (c) 허브 경고 완전 준수 가정 **−31.3%**. 그런데 (b)는 문서 다수를 **영구 침묵**시키고(external-frontend-b 21/33이 한 번도 발화할 수 없게 된다 — 대표가 디렉터리 앵커로 뽑히면 change set의 파일 경로와 절대 일치하지 않는다), (c)는 **RED 커밋 빈도를 전혀 줄이지 않는다**(44/47 그대로). 참 양성 손실은 (a) 17.6%(전수) / (b) 28.6~30% / (c) 30%(borderline 포함 90%)다.
+- **"배럴 파일" 전제가 사실이 아니었다.** 문법적 재수출 배럴은 도입처 3곳에 **0개**이고 우리 저장소에도 1개(로직 2605줄과 섞인 하이브리드)뿐이다. 실제 허브는 god-object 파사드·라우트 테이블·메뉴 트리·매니페스트다. 따라서 경고를 문법으로 정의하면 **N-1을 하나도 못 잡는다** — 판정은 팬아웃 수여야 하고, 그것은 도구가 이미 계산할 수 있으며 정의상 오탐이 없다.
+- 앵커 인구조사: 1137건 중 **864건(76.0%)이 순수 파일 경로**이고 `source_files` 843건은 **100%**가 그렇다. 라인 범위로 자동 전환 가능한 비율은 앵커 단위 23.5% / 게이트 단위 30.1%인데 **external-frontend-b 0.6%·external-vue-app 0.0%** 다. 도출된 심볼 범위가 파일에서 차지하는 비율은 중앙값 9.7%지만 17건은 75%를 넘어(Vue store·React 컴포넌트) 좁혀도 파일 단위와 같다. **(a)의 수익은 최악의 팬아웃 파일에서 가장 낮다.**
+
+**측정 2 — 백로그 16 중복·충돌 오탐률.** 권고는 **(나) 제한적 착수**다. 문서 단위는 오탐 83~99%로 기각(진짜 4건 중 2건을 전 임계값에서 놓쳤다), 충돌 신호는 전부 보류(semver 오탐 ~100%, 극성 100%). 채택안은 **섹션 단위 + 본문 문자 8-gram 단독(0.25) + `doc_type`·스캐폴드 헤딩 제외**이고, 이 구성에서 64,452 섹션쌍 → **후보 3건·오탐 0건**이다. 오탐 원인은 97.7%가 기계적으로 제거 가능하고, 그 원인 중 하나가 **N-1과 같은 허브 앵커 공유**다.
+
+### 이 측정이 우리 위키의 거짓 문장을 하나 찾아냈다
+
+백로그 16 프로토타입이 **소스로 검증되는 충돌 1건**을 냈다. 같은 날 N-4 수정이 `src/commands.js`를 바꾸고 `PUBLIC_API.md`만 갱신해서, 같은 계약을 재서술한 `domains/00_overview.md`가 `review --approve`가 "**3필드만**" 스탬프한다고 단정한 채 남았다 — 실제로는 `status`·`reviewed_by`·`reviewed_at`·`tags` 상태 태그 **네 곳**을 쓴다(`src/commands.js:1393-1397`). `DOMAIN_FEATURES.md`도 세 필드만 열거해 불완전했다. 둘 다 고치고 규칙대로 강등했다.
+
+**배포된 어떤 명령도 이것을 보지 못했고, 사람 재승인도 통과시켰다.** 경위를 세 갈래로 확인했다.
+
+- 머지 후에는 워킹트리 diff가 비어 `impact`가 볼 대상이 없고, `reviewed_at`(2026-07-31)이 소스 변경일과 같아 `evidence.stale`의 날짜 앵커가 "검토가 덮었다"고 판정한다. **규칙은 옳고 관측 시점이 지나갔을 뿐이다** — PR base로 되돌려 다시 돌리면 `00_overview.md`가 정확히 잡힌다(오늘 재실행 = 3건).
+- `DOMAIN_FEATURES.md`는 별개 이유로 면제됐다. **승인 스탬프 커밋 1건이 PR 범위 안에서 그 문서를 건드렸기 때문에 자기제외 규칙이 PR 내내 면제했다** — 신규 결함 N-9로 기록했다.
+- 그리고 이것은 D-1·D-4와 **같은 구조**다: 같은 계약을 여러 문서가 재서술하고 수정이 한 곳에만 도달한다. **중복 탐지를 먼저 세우면 충돌의 상당 부분이 부수적으로 예방된다**는 것이 (나)를 (다) 보류보다 택한 근거다.
+
+### 신규 결함 3건과 기존 기록 정정 2건
+
+신규: **N-7** 라인 범위 앵커 58/58이 같은 파일의 광역 앵커에 가려져 5개 저장소에서 한 번도 발동하지 않는다(`scans.js:637`) / **N-8** 디렉터리 앵커 19건이 `impact`에는 위음성이고 `drift`에는 최대 노이즈다 / **N-9** `impact` 자기제외가 PR 범위 전체에 걸린다.
+
+정정: **① "external-vue-app 10건 중 9건이 `<api-client>`"는 저장소 오귀속이었다.** 그 형상은 external-frontend-b의 것이고(10건 인용 / 9건 verified, 같은 형상 diff로 정확히 9건 재현) external-vue-app은 오늘 `verified`가 총 8건이라 구조적으로 불가능하다. external-vue-app은 `core.autocrlf=true`이고 워킹트리가 현재 완전히 깨끗해, 기록된 "워킹트리 exit 1 / 10건"은 **냉시작 인덱스의 개행 정규화가 만든 유령 diff** 위에서 측정됐을 가능성이 높다. **팬아웃이라는 결론은 유효하고 근거 저장소만 바뀐다.** ② **"문서 미갱신 실존 커밋 9건"은 표본이었다** — 같은 규칙을 전수 적용하면 47건이고 RED는 44건(93.6%)이다. 결론은 표본보다 강해졌다.
+
+### 새로 관측된 것: 정상 작업이 게이트의 사정거리를 깎는다
+
+측정 중 external-vue-app에 fix 커밋 2건이 들어와 `verified` 20→8, 허브 팬아웃 14→4가 됐다. **게이트 회피가 아니라 규칙의 정상 작동이다** — 실제 버그 수정이고, 작업 중 에이전트가 문서를 편집했으니 `needs_review`가 맞다. 그런데 강등된 문서는 `drift`·`impact` 둘 다에서 보이지 않으므로(공백 2), 하루의 평범한 작업이 그 저장소 게이트의 사정거리를 **60% 줄였고** 되돌리는 수단은 사람의 재승인뿐이다. 결정 21번과 공백 2의 우선순위에 직접 걸리는 사실이다.
+
+### 결정 21번에 여전히 부족한 것 (가장 중요한 산출물)
+
+**기준선 332건의 오탐률이 없다.** 이번 측정은 "완화안이 무엇을 지우는가"만 라벨링했고 "원래 몇 %가 참인가"는 재지 않았다 — `--strict` 기본화의 정당성이 직접 걸린 숫자다. 다음 측정 1순위는 **무작위 30건 라벨링**이고, 함께 필요한 정책 결정은 **"라인 근거 밀림을 참 양성으로 볼지"** 다(이 한 판정이 손실률을 30%→90%, 17.6%→35.3%로 뒤집는다). 그 밖에 PR 단위 RED률, 해소 비용, config 탈출구 검증, 저장소 간 민감도 차이의 정당화가 비어 있다.
+
+### 하지 않은 것
+
+`review --approve`/`--approve-all`은 **한 번도 실행하지 않았다**(AGENTS.md L47·R3-3). 강등 3건은 손으로 했고 `tags`도 함께 맞췄다. Phase 1 착수, N-1·N-2·N-5·N-6 구현, 도입 저장소 4곳에 대한 쓰기는 모두 하지 않았다. 검증: `validate --strict` 0 · `validate-frontmatter --strict` 0. `verified` 20/52 → **17/52** (강등 3건 — 사람 재승인 대기).
+
+## 2026-07-31 - fix: 측정으로만 보이던 결함 2건(N-3·N-4)을 고쳤다
+
+- status: needs_review
+- actor: Claude Code
+- scope: code+docs
+- changed:
+  - `src/commands.js` (`validateFrontmatterCommand`, `stampVerified`)
+  - `src/commands/fix-migrate.js` (신규 `syncStatusTag`, `driftCommand`)
+  - `tests/measured-defects.test.js` (신규 8건), `tests/verification.test.js` (단언 2건 갱신)
+  - `docs/llm-wiki/PUBLIC_API.md`, `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`, `GATE_REVIEW.md`, `docs/llm-wiki/log.md`
+
+### 내용
+
+둘 다 **이 저장소 안에서는 보이지 않던** 결함이다. 하나는 warning급 frontmatter finding이 있는 위키가 있어야 보이고, 다른 하나는 승인이나 강등을 거친 문서가 있어야 보인다.
+
+- **N-3**: `validate-frontmatter`만 2단계 사다리(`fail`/`pass`)를 써서, warning만 있는 실행이 본문에 `result: pass`를 찍으면서 `--strict` exit는 1이었다. 다른 모든 명령과 같은 4단계(`blocked`/`fail`/`warning`/`pass`)로 통일하고 JSON 페이로드에 `result`를 additive로 실었다. **보고 값의 변경**이라 계약 변경으로 기록했다 — 구 동작을 고정하던 `tests/verification.test.js`의 단언 2건은 이유를 옆에 적고 갱신했다. exit code 의미는 불변이다.
+- **N-4**: `review --approve`와 `drift --downgrade`가 각각 `status:`만 고치고 `tags:`를 두어, 문서가 `status: verified`인 채 `needs-review` 태그를 유지할 수 있었다. **어느 경로로 강등했느냐에 따라 결과가 갈리던 비대칭**을 양쪽 모두 `syncStatusTag` 하나를 호출하게 해서 없앴다. 의도적으로 보수적이다 — **이미 있는** 상태 태그만 고치고 없으면 만들지 않으며, 재작성이 만들 수 있는 중복도 접는다. 승격 게이트는 손대지 않았고, 에이전트가 `review --approve`를 실행하지 않는다는 규칙도 그대로다.
+
+### 수정이 또 수정을 필요로 했다 (CodeQL)
+
+`syncStatusTag`의 인라인 리스트 패턴 2개가 `[^\r\n]*` 다음에 `\[`를 두어 접두부와 여는 대괄호가 모호해졌다 — `tags:[[[[…` 같은 입력에서 **2차 백트래킹**이고, 이 헬퍼가 도는 대상이 바로 문서 본문(비신뢰 입력)이다. PR #1의 CodeQL이 `js/polynomial-redos`(high)로 잡았고 **로컬 게이트로는 잡을 수 없었다**. 접두부에서 `[`를 빼 대괄호 위치를 유일하게 만들어 선형으로 되돌렸다(실측: 구 25k 350ms·50k 1692ms → 신 1ms 미만).
+
+**회귀 테스트는 첫 판이 틀렸고 그것도 측정이 잡았다.** 처음 쓴 적대적 입력에는 상태 태그가 없어 재작성이 no-op이 되고, 정작 취약 패턴이 있는 dedupe 단계에 도달하지 못했다 — 수정 전 소스에서도 통과하는 공허한 가드였다. 커밋된 버전은 수정 전 RED·수정 후 GREEN을 확인했다.
+
+### 남은 것
+
+측정이 찾은 6건 중 4건은 열려 있다. **N-1(허브 파일 팬아웃)** 이 그중 중요한 것이고 사람 결정 21번(`impact --strict` 기본화)을 실질적으로 막고 있다 — 완화안이 전부 미설계라 여기서 임의로 고르지 않았다. N-2는 백로그 13번과 같은 항목이고, N-5·N-6은 그 뒤에 있다.
+
+- evidence:
+  - src/commands.js#symbol:validateFrontmatterCommand
+  - src/commands/fix-migrate.js#symbol:syncStatusTag
+- caveats:
+  - 438 tests(429+신규 9, 전건 RED→GREEN 확인)·lint OK(61)·`validate --strict` 0·`validate-frontmatter` 0·`drift` 0·`impact --since origin/main --strict` 0.
+  - `PUBLIC_API.md`를 편집해 `verified`→`needs_review`로 강등했다. 사람 재승인 필요.
+
+## 2026-07-31 - measure: 게이트를 도입처 4곳에 예행하고 백로그 17·18·19를 닫았다
+
+- status: needs_review
+- actor: Claude Code (읽기 전용 측정 4건 병렬 실행)
+- scope: docs
+- changed:
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`
+  - `docs/llm-wiki/log.md`
+
+### 내용
+
+Phase 0의 유일한 미충족 완료 조건이던 **"파일럿 초록 확인"** 을 측정으로 닫았다. 도입 저장소 4곳(`external-frontend-a`·`external-frontend-b`·`external-vue-quasar-app`·`external-project-c`)에 이 브랜치의 CLI를 읽기 전용으로 실행했다 — **쓰기·커밋·체크아웃 0건**. 함께 백로그 17번(`needs_review` 감시 폭발 반경)과 18번(파일럿 마찰 이력)도 측정했다.
+
+- **게이트**: 새로 배선한 `impact --strict`·`drift --strict`는 4곳 전부 exit 0. 그러나 `external-frontend-b`의 초록은 **무의미하다**(위키 33개가 전부 diff 안이라 볼 대상이 없다). 문서를 갱신하지 않은 실존 커밋 9건을 시뮬레이션하면 **전부 RED** — 다음 PR부터 울리는 것이 정상이다. external-project-c의 빨간불은 새 게이트가 아니라 기존 검사 2건(중복 YAML 키, 테스트 근거 누락)이고 둘 다 실재 결함이다.
+- **팬아웃**: 두 저장소에서 독립적으로 `<api-client>` 같은 배럴 파일 1개 변경이 문서 9~10건을 동시에 발화시켰다. `impact --strict` 기본화(사람 결정 21번)의 비용 대부분이 여기에 있다.
+- **옵트인 비용**: `needs_review`까지 신선도를 넓히면 우리 저장소 추가분 **+65건인데 100%가 릴리스 노트**이고 살아있는 문서는 0건이다. 릴리스 노트는 `package.json`을 앵커로 잡아 재승인으로만 지워지는 영구 트레드밀이다. `doc_type: release_notes` 면제를 함께 내보내면 3개 저장소 전부 추가분 0.
+- **마찰 이력 세 패턴**: 3곳 모두 게이트 0개(규율이 사람 기억에 의존, 동일 커밋 위키 갱신률이 100%/94%/0%로 갈림) · 도입처 어댑터 동결(3곳 중 2곳이 v1인데 `scanAdapters`가 마커를 안 봐서 audit은 영구 clean) · 위키의 브랜치 격리와 1회 전면 폐기(external-vue-app의 38파일이 머지 없이 버려지고 22파일로 재구축).
+
+### 신규 결함 6건 (N-1~N-6)
+
+허브 파일 팬아웃 · `scanAdapters` 마커 미검사 · `validate-frontmatter --strict`의 `result`/exit 불일치 · `review --approve` 태그 미동기화의 도입처 실증(12/22 문서) · `reviewed_by` 표기 3종 분열 · `check-run`의 워킹트리 의존. 백로그 37~41번으로 올렸다.
+
+### 남긴 한계
+
+백로그 16번(중복·충돌 오탐률)은 **여전히 미측정**이다. RED 9건은 재구현 시뮬레이션이며 현재 앵커 기준의 예측이지 과거 재현이 아니다. 세 저장소 모두 히스토리가 정지해 있어 **활발히 개발 중인 저장소의 정상 상태 추가분은 못 쟀다**.
+
+- evidence:
+  - src/commands/scans.js#symbol:verifiedSourceAnchors
+  - src/commands/scans.js#symbol:scanReverseImpact
+  - src/commands/adapters.js#symbol:scanAdapters
+  - src/git.js#symbol:lineRangeChangedSince
+- caveats:
+  - 에이전트 편집이므로 `HARNESS_GOVERNANCE_ROADMAP.md`는 `verified`에서 `needs_review`로 강등했다. 사람 재승인 필요.
+
+## 2026-07-31 - review: 유지보수자가 11건을 verified로 승인 (사람이 직접 실행)
+
+- status: needs_review
+- actor: **유지보수자 Dowon-Kim**(`review --approve` 직접 실행) + Claude Code(태그 동기화·검증·커밋)
+- scope: docs
+- changed:
+  - 재기준선 7건: `BENCHMARK`·`EXAMPLES`·`index`·`profiles/library`·`project-profile`·`RELEASE_FLOW`·`VERSIONING`
+  - 이번 라인이 강등했던 4건: `GLOSSARY`·`PUBLIC_API`·`DOMAIN_FEATURES`·`HARNESS_GOVERNANCE_ROADMAP`
+  - `log.md`
+
+### 내용
+
+11건 전부 `verified` + `reviewed_by: Dowon-Kim` + `reviewed_at: 2026-07-31` 스탬프. 거부 0건, finding 0건. **에이전트는 이 라인 전체에서 `review --approve`를 한 번도 실행하지 않았다** — 유지보수자가 두 차례 지시했으나 `AGENTS.md`의 유일한 금지이자 이번 라인에서 R3-3으로 성문화한 규칙이라, 대신 `drift --downgrade`로 강등해 두고 승격만 사람에게 넘겼다.
+
+### 후속 정리 1건
+
+`review --approve`는 `status`·`reviewed_by`·`reviewed_at`만 찍고 **`tags`는 동기화하지 않는다**(기존 확인된 동작). 손으로 강등했던 5건이 `status: verified` + `needs-review` 태그로 불일치 상태가 되어 태그를 `verified`로 맞췄다. `drift --downgrade`를 거친 6건은 status만 바뀌고 태그가 `verified`로 남아 있어 영향이 없었다 — **강등 경로에 따라 결과가 갈리는 비대칭**이며, 재기준선 경로 부재와 같은 묶음의 후속 과제다.
+
+### 상태 회복
+
+verified 19%→**38%**(20/52), health 73→**79**. 강등 이전(33%·78)보다도 높다 — 이번 라인이 보강한 `GLOSSARY`·`HARNESS_GOVERNANCE_ROADMAP`가 새로 verified가 됐기 때문이다. `validate --strict` 0·`validate-frontmatter` 0·게이트(`origin/main` 기준) pass·429 tests·lint OK.
+
+## 2026-07-31 - chore: CI 게이트가 처음으로 잡은 문서(VERSIONING) 해소 + 배운 것 기록
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - `VERSIONING.md` (verified → **needs_review 강등**)
+  - `HARNESS_GOVERNANCE_ROADMAP.md` (게이트 실전 교훈 + `impact`의 비대칭 결함 기록)
+
+### 무슨 일
+
+PR #1의 `governance` 잡이 실패했다. 로컬에서는 `impact --since main --strict`가 통과했는데 CI는 실패 — **로컬 `main`이 `origin/main`보다 2커밋 앞서 있어서 기준이 달랐다**(`0b56a56`·`949d21b`가 미push 상태였고, 이 PR에 함께 들어간다).
+
+CI가 잡은 것은 진짜였다: `0b56a56`이 `RELEASE_CHECKLIST.md`에 2줄을 더했는데 그것을 근거로 삼는 `VERSIONING.md`가 그대로였다. 내용을 대조하니 **version-agnostic 정책 서술은 여전히 정확**하다(2026-07-15에 같은 상황을 같은 결론으로 처리한 선례가 이 문서 Review Notes에 있다). 그래서 강등으로 해소했다 — 주장을 **제거**하는 안전한 방향이고, 승격은 사람 몫이다.
+
+### 배운 것 2가지
+
+1. **`drift`와 `impact`의 상보성이 실물로 확인됐다.** `VERSIONING.md`는 `drift`에 안 걸리고 `impact`에만 걸렸다. `RELEASE_CHECKLIST.md` 변경일과 문서 `reviewed_at`이 같은 날(2026-07-30)이라 날짜 앵커는 덮은 것으로 보지만 diff 앵커는 pre-merge에서 본다. 설계 의도가 맞았다.
+2. **기준 ref를 틀리면 게이트 통과를 착각한다.** 로컬 예행은 CI와 같은 ref(`origin/<base>`)로 해야 한다. 게이트를 켜지 않았다면 이 함정은 영원히 안 보였을 것이다.
+
+### 발견된 비대칭
+
+**`drift`에는 `--downgrade`가 있는데 `impact`에는 대응 수단이 없다.** `impact`가 지목해도 해소 명령이 없어 frontmatter 직접 편집(GAP 3 우회 경로)밖에 남지 않는다. 재기준선 경로 부재와 함께 Phase 1 후보로 묶었다.
+
+## 2026-07-31 - chore: 드리프트된 verified 6건을 needs_review로 강등 (재승인 준비)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "reviewed_at 올려" → 도구 지원 경로인 `drift --downgrade` 선택)
+- scope: docs
+- changed:
+  - `BENCHMARK.md`·`EXAMPLES.md`·`index.md`·`profiles/library.md`·`project-profile.md`·`RELEASE_FLOW.md` (verified → **needs_review**, `last_updated` 갱신)
+  - `HARNESS_GOVERNANCE_ROADMAP.md` (Phase 0 완료 조건 갱신 + 신규 결함 기록)
+
+### 왜 이 경로인가
+
+유지보수자가 `reviewed_at` 갱신을 지시했으나 **에이전트는 `review --approve`를 실행하지 않는다**(`AGENTS.md`: "the one thing this project exists to protect"; 이번 라인에서 R3-3으로 성문화). 확인해 보니 **그 명령으로는 애초에 불가능**하기도 했다 — 이미 `verified`인 문서를 `already verified`로 거부하고 목록에도 넣지 않는다.
+
+그래서 도구가 지원하는 유일한 왕복 경로인 `drift --downgrade`(주장을 **제거**하는 안전한 방향)를 실행했다. 승격은 사람이 `review --approve`로 한다.
+
+### 정직성 표기
+
+`validate --strict`가 6건 → **0건**이 됐고 CI 게이트도 초록이 됐지만, **주장을 낮춰서 0이 된 것이지 확신이 올라가서 0이 된 것이 아니다.** verified 비율 33%→19%, health 78→73이 현재의 진짜 상태다. 사람이 재승인하면 되돌아온다.
+
+### 발견된 미기록 결함
+
+**`verified` 문서의 재기준선(내용 불변, `reviewed_at`만 갱신) 지원 명령이 없다.** 남는 선택지는 2단계 왕복이거나 frontmatter 직접 편집인데, 후자는 **사례집 GAP 3의 우회 경로 그 자체**다. 도구가 정상 경로를 주지 않아 사람을 우회 경로로 미는 구조다. Phase 1 후보로 로드맵에 올렸다.
+
+## 2026-07-31 - docs: Phase 0 잔여 — 기준선·R3 금지 목록·실패 사례집 (유지보수자 지시)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "Phase 0 잔여 작업 진행")
+- scope: test, docs
+- changed:
+  - `tests/known-gaps.test.js` (신규 5건 — 미해결 공백 3종의 characterization test)
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (verified → **needs_review 강등**; A-3b·F장 R3 목록·G-1·G-2·Phase 0 진행 상황 표)
+  - `docs/llm-wiki/log.md`
+
+### 한 일
+
+로드맵 백로그 8번(Phase 0의 마지막 항목)을 채웠다. 코드 동작 변경 0건.
+
+1. **기준선(A-3b)** — 5개 저장소 읽기 전용 실측. 도입 저장소에는 아무것도 쓰지 않았다.
+2. **R3 자동 변경 금지 목록(F장)** — 12항목. 각 항목에 "왜 R3인가"와 "자동화가 할 수 있는 최대치"를 함께 적었다.
+3. **실패 사례집(G-2)** — G-2가 요구한 6건 전부를 **실행 가능한 테스트로 고정**했다. 산문은 코드가 바뀌어도 조용히 낡지만 테스트는 소리를 낸다.
+
+### 측정에서 새로 드러난 것
+
+- **도입 4곳이 차단력 기준으로 재판정해도 여전히 `none detected`다.** 자문용 호출만 있는 상태가 아니라 문자 그대로 아무것도 없다는 뜻이라, 판정 기준을 바꾼 뒤 이 진술이 더 강해졌다.
+- **도입 저장소의 선적재가 우리보다 크다** — external-frontend-a ~3.8k, external-vue-app ~3.4k vs 우리 ~1.44k. 주범은 `index.md`(2106 토큰 vs 우리 428). 1.27.2의 선적재 축소가 **도입처로 전파되지 않았다** — 어댑터·진입 문서에 갱신 경로가 없다는 공백 5와 같은 뿌리다.
+- **"방치된 `needs_review`"는 실측상 문제가 아니다** — external-vue-app 1일, external-project-c 4일. 우리 median 15일도 35건 중 31건이 릴리스 노트다. 백로그 11번의 근거를 이 수치가 **약화**시킨다.
+
+### 정직성 표기
+
+- A-3의 "약 8.9k 토큰"과 A-3b의 선적재 수치는 **분모가 달라 비교 불가**임을 문서에 명시했다. 개선폭으로 읽히면 측정 없는 주장이 된다.
+- `tests/known-gaps.test.js`는 **바람직하지 않은 현재 동작을 단언**한다. 실패하면 좋은 소식(공백이 닫힘)이며 단언을 뒤집으라는 지시를 파일 상단에 적었다.
+- Phase 0 완료 조건 중 **파일럿 초록 확인은 미충족**이며 충족된 척하지 않는다. `validate --strict` 0도 미충족(6건, 전부 사람 재기준선 대기).
+
+### 검증
+
+429 tests 통과(424 + 신규 5)·lint OK·validate-frontmatter 0.
+
+## 2026-07-31 - feat: Phase 0 게이트 배선 — 경보기를 처음으로 스피커에 연결 (유지보수자 승인)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 승인: "다음 후보 작업 진행, 파일럿 3곳에 대한 것은 PASS")
+- scope: code, ci, test, docs
+- changed:
+  - `src/commands.js` (`classifyCiInvocations` 신설, `describeCiGovernance` 재정의, 호출 정규식에 `llm-wiki.js` 형태 추가)
+  - `.github/actions/validate/action.yml` (`command`·`run` 입력 추가, `validate` 하드코딩 해체, 명령별 플래그 허용)
+  - `templates/git-hooks/pre-commit` (`impact --strict` 추가)
+  - `templates/github-actions/llm-wiki-validate.yml` (`impact --since origin/<base> --strict` + `fetch-depth: 0`)
+  - `.github/workflows/ci.yml` (`governance` 잡 신설)
+  - `tests/ci-governance-check.test.js` (9건 추가·기존 재작성, 배포 아티팩트 계약 테스트 4건 포함)
+  - `docs/OPERATIONS.md` ("Wiring the gate" 절 신설)
+  - `GATE_REVIEW.md` ("Phase 0 Gate Wiring" 결정 기록)
+  - docs/llm-wiki: `PUBLIC_API.md`·`DOMAIN_FEATURES.md`(둘 다 needs_review 유지), `log.md`
+
+### 문제
+
+**경보기는 있는데 벨이 안 울렸다.** 누락을 exit code로 막는 명령은 `impact --since --strict` 하나인데, 이 프로젝트가 배포하는 채널 4종 전부 그것을 실행하지 않았다. 검증 계열은 **존재하는 문서**를 검사하지, **손댔어야 할 문서**를 볼 수 없다. 즉 거버넌스 도구를 팔면서 도입자에게 건네는 4개 채널 전부가 거버넌스를 강제하지 못했고, 우리 CI에도 게이트가 없었다.
+
+거기에 `ci_governance` 점검 자체가 **호출 존재를 게이트 존재로 오인**했다 — 항상 exit 0인 `doctor` 호출도 "1 found"로 셌다.
+
+### 판단
+
+- **호출은 게이트가 아니다.** blocking/advisory로 나누고, 누락 게이트가 없으면 안심되는 숫자 대신 그 사실을 문장으로 말한다. 누락 계열(`impact`/`check-run`/`drift`)은 finding이 warning이라 **`--strict`가 있어야** blocking이다.
+- **검출기가 우리 자신의 호출 형태를 못 봤다.** `node bin/llm-wiki.js <command>`가 정규식에 안 걸려 이 저장소의 게이트가 스스로에게 보이지 않았다.
+- **한계를 숨기지 않고 적었다.** 호출은 보지만 실행 디렉터리는 못 본다(YAML 파싱은 zero-dep 정체성 비용). 매칭 파일을 보고하고 수치를 상한으로 읽으라고 `doctor`와 OPERATIONS 양쪽에 명시했다.
+- **`fetch-depth: 0`은 게이트의 일부다.** 없으면 `--since`가 base ref를 못 찾아 **조용히 퇴화한다** — 게이트가 깨지는 최악의 방식.
+- **액션의 명령은 상수가 아니라 입력이다.** 읽기 전용 11종만 허용하고 쓰기 명령은 exit 3. 기본값 `validate`라 기존 사용자 무변경.
+
+### 알려진 상태 (중요)
+
+**게이트가 이 브랜치에서 실제로 exit 1이다.** `verified` 5건이 이번에 바꾼 `src/cli.js`에 근거를 두고 있고, 2026-07-30부터 밀려 있던 사람 재기준선을 아직 안 받았다 — **진짜 양성**이다. 게이트를 켠 첫날 자기 저장소에서 울린 셈이고, 재기준선이 배경 잡무에서 머지 차단 요인으로 승격됐다. 첫 진짜 finding을 없애려고 게이트를 약화시키는 것이야말로 이 프로젝트가 막으려는 실패라 그대로 뒀다.
+
+### 범위 밖 / 미측정
+
+**파일럿 3곳 확인은 유지보수자 지시로 생략했다** — 이 템플릿을 도입했을 때 그 3곳이 초록으로 남는지는 **미측정**이다. Phase 0에서 남은 것: 기준선 수치 기록과 R3 금지 목록(백로그 8번), 사람 결정 3건(`impact --strict` 기본화·run manifest 커밋 정책·어댑터 언어 정책).
+
+### 검증
+
+424 tests 통과(415 + 신규 9, RED 선실패 확인)·lint OK(59 files). 액션의 인자 조립 로직을 직접 실행해 조합별로 확인하고, 만들어진 인자열을 실제 CLI에 통과시켜 usage error(exit 3)가 없음을 확인했다. `doctor`가 이 저장소에 대해 `omission gate present`를 보고한다(그 전에는 빈 임시 디렉터리만 검사하는 호출 2건을 "1 found"로 보고).
+
+## 2026-07-31 - fix: Phase 0 결함 배치 8건 — 감지는 되는데 말하지 못하던 표면들 (유지보수자 승인)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 승인: 로드맵 Phase 0 중 "결함 수정 먼저" 조각을 선택)
+- scope: code, test, docs
+- changed:
+  - `src/cli.js` (`explain`에 `cwd` 허용, `drift`에 `strict` 허용, `prompt --task` 헬프를 `SUPPORTED_TASK_PROMPTS`에서 렌더)
+  - `src/commands.js` (`selectLatestManifest` 신설, `review`의 `NEVER_APPROVE_RULES` 게이트)
+  - `src/commands/findings.js` (`review.not_enriched` 규칙 신설, `strict` 프리셋에 `impact.source_changed: error`, `prompt.unsupported_task` 목록 파생)
+  - `src/commands/fix-migrate.js` (`drift`의 findings 배선·result 계산, `runMechanicalRemediation`의 append-only 로그 가드)
+  - `src/git.js` (`changedFiles`의 `--since` 경로에 미추적 파일 포함)
+  - `tests/phase0-defects.test.js` (신규 16건, 전건 RED 선실패 확인)
+  - `GATE_REVIEW.md` ("Phase 0 Defect Batch" 결정 기록)
+  - docs/llm-wiki: `PUBLIC_API.md`(verified → **needs_review 강등**), `DOMAIN_FEATURES.md`(강등), `log.md`
+
+### 문제
+
+로드맵의 결론은 "기능 부족이 아니라 **연결 부족**"이었다. 이 배치는 그 진단이 맞는 8곳을 고쳤다 — 도구가 **볼 수 있는 것보다 말할 수 있는 것이 적었다**.
+
+- `drift`는 드리프트를 별도 배열에 담고 `result: pass`·exit 0을 보고했으며 `--strict`를 거부했다 → 어떤 파이프라인도 드리프트로 실패할 수 없었다.
+- `review --approve`는 blocked/error만 거부했는데 `content.not_enriched`는 warning이라, 손대지 않은 스캐폴드가 `verified`가 될 수 있었고 안전선이 `--strict` 사용 여부에 의존했다.
+- `check-run`은 파일명 사전순 마지막을 "최신"으로 골랐고, 이름이 `run-<task>-<타임스탬프>`라 **task 이름이 타임스탬프를 이겼다**. 실측: 이 저장소에서 최신은 2026-07-30 feature 실행인데 2026-07-27 fix 실행을 검사하고도 pass를 보고했다.
+- `impact --since <ref>`는 미추적 파일을 놓쳤다 → 누락을 exit code로 막는 유일한 명령이 PR 작업트리라는 정확히 그 상황에서 눈이 멀었다.
+- `rulesPreset: strict`는 표현·메타데이터 규칙 7건을 올리면서 누락을 잡는 **유일한** 규칙(`impact.source_changed`)은 warning으로 뒀다.
+- `fix --write`에 append-only 로그 가드가 없었다(잠재; 오늘 해당 계획 0건).
+- `explain --cwd`가 exit 3(문서는 일반 옵션으로 제시), `prompt --task` 헬프가 8종 중 6종만 나열.
+
+### 판단
+
+- **severity는 보고의 문제, 승격 가능성은 문서의 사실이다.** 스캐폴드 거부는 severity가 아니라 규칙 id(`NEVER_APPROVE_RULES`)로 판정한다. 규칙 1건으로 좁게 유지했다 — 낡은 근거나 깨진 링크 같은 warning은 사람이 보고 승인해도 되는 것들이고, 그것까지 막으면 `review`가 무용해진다.
+- **기본 exit code는 전부 보존했다.** `drift`는 `--strict` 없이는 여전히 0이라 기존 파이프라인에 넣어도 깨지지 않는다.
+- **화이트리스트는 코드 경로로 정한다.** `explain --cwd`는 `main()`이 모든 명령에 `applyProjectConfig`를 적용해 설정의 `lang`이 산문 언어를 바꾸기 때문에 실효 옵션이며, 테스트로 확인했다(monorepo 배치에서 배운 교훈의 재적용).
+- **헬프는 단일 소스에서 파생한다.** 손으로 옮겨 적은 목록이 드리프트했으므로 `SUPPORTED_TASK_PROMPTS`에서 렌더한다.
+
+### 범위 밖 (여전히 열림)
+
+배포 아티팩트 4종 게이트 배선, `ci_governance` 차단력 기준 재정의, run manifest 커밋 정책(Gate 26 번복 — 사람 결정), `check-run` × `git diff` 교차검증(동작 변경 — 사람 결정), 벤치 하네스 회귀 테스트.
+
+### 검증
+
+415 tests 통과(399 + 신규 16, 전건 RED→GREEN 확인)·lint OK(59 files)·`validate --strict` 5(전부 기존 `evidence.stale` 재기준선 대기분으로 이 배치와 무관)·`validate-frontmatter` 0. `drift --strict`가 이 저장소의 5건에 대해 exit 1, 평시 `drift`는 exit 0.
+
+## 2026-07-31 - docs: 6건 승인 스탬프 반영 + GLOSSARY의 config 키 목록 오류 수정
+
+- status: needs_review
+- actor: 유지보수자(Dowon-Kim, `review --approve` 스탬프) + Claude Code(GLOSSARY 수정)
+- scope: docs
+- changed:
+  - `ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`·`PUBLIC_API.md`·`REVIEW_HISTORY.md`·`domains/00_overview.md`·`HARNESS_GOVERNANCE_ROADMAP.md` (needs_review → **verified**, reviewed_by: Dowon-Kim, reviewed_at: 2026-07-31 — 사람이 직접 실행)
+  - `GLOSSARY.md` (verified → **needs_review 강등**; 내용 수정)
+
+### 내용
+
+- 유지보수자가 앞선 monorepo 계약 배치의 문서 6건을 `review --approve`로 승인했다. 에이전트는 승인 명령을 실행하지 않는다.
+- 남은 `evidence.stale` 6건을 근거 대조하던 중 `GLOSSARY.md`에서 **재기준선만으로는 해소되지 않는 실제 오류**를 찾았다: `llm-wiki.config.json` 항목이 인식 키를 4개(`type`/`profiles`/`agents`/`strict`)로 적고 있었으나 `src/config-file.js`는 11개를 받는다(`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage` 누락). 키 목록을 소스와 맞추고, 상세 계약 소유권은 PUBLIC_API Configuration 절로 넘겼으며, `rules`/`rulesPreset` 용어 항목을 신설했다.
+- 나머지 5건(`BENCHMARK`·`EXAMPLES`·`index`·`profiles/library`·`project-profile`)은 근거 대조 결과 **내용 갱신 불필요**다: staleness를 유발한 `0b56a56`·`49fc3ea`는 `src/`에 순수 additive(+132/-0)이고, 이 문서들은 monorepo 옵션 검증 표면이나 어댑터 v2 프롬프트 형태를 서술하지 않는다. `reviewed_at` 재기준선만 남았고 그것은 사람 검토 행위다.
+
+### 근거
+
+- `src/config-file.js#symbol:loadProjectConfig` — 인식 키 11개.
+- `git diff --stat 0b56a56^..HEAD -- src/` — 132 insertions, 0 deletions.
+
+## 2026-07-31 - fix: monorepo의 CLI 계약을 나머지 28개 명령과 균일화 (exit code 동작 변경, 유지보수자 승인)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 승인: 앞선 보고에서 exit code 계약 변경이라 승인이 필요하다고 알린 뒤 "작업 진행")
+- scope: code, test, docs
+- changed:
+  - `src/cli.js` (`COMMAND_OPTION_RULES`에 `monorepo` 추가, `COMMAND_HELP.monorepo` 신설)
+  - `tests/cli-monorepo-contract.test.js` (신규 6건)
+  - `GATE_REVIEW.md` ("Monorepo CLI Contract Parity" 결정 기록)
+  - docs/llm-wiki: `ARCHITECTURE_CONVENTIONS.md`(verified → **needs_review 강등**), `DOMAIN_FEATURES.md`, `PUBLIC_API.md`, `domains/00_overview.md`, `REVIEW_HISTORY.md`, `log.md`
+
+### 문제
+
+`monorepo`만 29개 명령 중 유일하게 `COMMAND_OPTION_RULES`와 `COMMAND_HELP` **양쪽**에서 빠져 있었다. `validateCommandOptions`는 등록되지 않은 명령에 대해 조기 return하므로 결과적으로 **아무 옵션이나 무검증 통과**했다. 실측: `monorepo --strict --write` → exit 0(다른 명령은 미지원 옵션에 exit 3), `help monorepo` → `Unknown help topic` exit 3.
+
+### 화이트리스트를 코드 경로로 정한 것이 핵심
+
+앞선 문서 작업에서 나는 이 표의 "옵션 없음"이 의도된 계약이라고 적었는데 **그것이 틀렸다**. `monorepoCommand`는 `{ ...options }`를 각 패키지 `validateCommand`로 전파한다.
+
+- `--strict`·`--agent`는 **실제로 적용된다** → 허용. 테스트로 재현 확인: workspaces 픽스처에서 `--strict` 없이 `evidence.missing` warning/`result: warning`, `--strict`로 error/`result: fail`.
+- `--type`·`--profile`은 `monorepoCommand`가 패키지별로 `type: null`·`profiles: []`로 덮어쓰므로 받아도 무효 → 거부.
+- 확정 집합: `cwd`·`strict`·`agent`·`format`·`out`.
+
+`COMMAND_HELP.monorepo`는 나머지 28개와 같은 형식(Usage/Purpose/Notes/JSON)으로 신설하고, JSON 최상위 키와 "workspaces 없는 저장소는 `workspaces_detected: 0`으로 pass" 한계를 함께 적었다.
+
+### 호출자에게 달라지는 것 (동작 변경)
+
+이전에 **exit 0으로 조용히 통과하며 옵션을 무시**했던 호출이 이제 exit 3이다: `monorepo --write`, `--apply`, `--type <t>`, `--profile <p>`, 그 외 허용 집합 밖 옵션. JSON shape·동결 `commands` 맵·MCP 툴·프로그래매틱 export는 불변이다.
+
+### 테스트 (RED → GREEN)
+
+신규 `tests/cli-monorepo-contract.test.js` 6건. 수정 전 실행 결과 **3 fail / 3 pass**:
+
+- RED: 미지원 옵션 거부(`got []`), `--type`/`--profile` 거부, `help monorepo` exit 0
+- 수정 전에도 통과(회귀 가드): 허용 옵션 무오류, **`--strict`가 패키지별 severity를 실제 승격**, findings의 패키지 경로 prefix
+
+수정 후 6/6 통과. 전체 **399 tests / 399 pass / 0 fail**(393 → 399), `npm run lint` OK(58 files).
+
+### 위키 갱신
+
+- `ARCHITECTURE_CONVENTIONS.md`: Conventions에 "허용 옵션 집합은 명령이 실제로 적용하는 옵션과 일치해야 하고, 신규 명령은 두 맵에 함께 등록한다"는 규칙 추가 + Evidence에 `COMMAND_OPTION_RULES` 추가. `src/cli.js`를 참조하는 `verified` 문서라 편집으로 **needs_review 강등**. Review Notes가 6건이 되어 가장 오래된 2026-07-27(야간) 항목을 `REVIEW_HISTORY.md`로 원문 이전(아카이브 41 → 42건).
+- `PUBLIC_API.md`: 같은 날 내가 적은 "옵션 없음이 의도된 계약" 서술을 **정정**하고, Stability의 "알려진 계약 이탈" 항목을 확정 계약 + 동작 변경 고지로 교체.
+- `DOMAIN_FEATURES.md`·`domains/00_overview.md`: monorepo 서술에 허용 옵션 계약 반영(같은 날 기존 2026-07-31 노트에 이어서 기록).
+
+### 검증
+
+- `npm test`: 399 / 399 pass / 0 fail. `npm run lint`: OK(58 files).
+- `validate --strict` / `validate-frontmatter` / `impact` / `check-run` 결과는 아래 caveats 참조.
+
+### caveats
+
+- **`impact`가 `verified` 문서 5건을 flag한다.** 처음 실행에서는 `src/cli.js`를 참조하는 `ARCHITECTURE_CONVENTIONS.md`·`EXAMPLES.md`·`index.md`·`profiles/library.md`·`project-profile.md` 5건이었다. `ARCHITECTURE_CONVENTIONS.md`를 갱신해 해소한 뒤 다시 실행하니 `GATE_REVIEW.md`를 참조하는 `BENCHMARK.md`가 새로 들어와 다시 5건이 됐다(내가 `GATE_REVIEW.md`에 결정을 기록했기 때문). 최종 목록: `BENCHMARK.md`·`EXAMPLES.md`·`index.md`·`profiles/library.md`·`project-profile.md`.
+- 이 5건 중 **내용 갱신이 필요한 것은 없다**(grep으로 확인): 네 문서는 `monorepo`·옵션 검증 표면을 서술하지 않고, `BENCHMARK.md`의 `GATE_REVIEW.md` 참조는 Gate 22(Impact Measurement) 섹션을 가리키는데 내가 추가한 것은 무관한 monorepo CLI 결정이다. 파일 단위 게이트의 과다 flag이며, **재기준선(`reviewed_at` 갱신)은 사람 검토 행위라 에이전트가 하지 않는다** — 유지보수자 판단으로 남긴다.
+- 편집한 위키 문서는 전부 `needs_review`다. 사람 검토 전 `verified` 승격 금지.
+- 미릴리스 변경이다(`main` 한정). 릴리스 시 CHANGELOG에 **동작 변경**으로 기재해야 한다 — additive-only 관례에서 벗어나는 항목이다.
+
+## 2026-07-31 - 승인 후보 문서의 사실 오류 수정 (문서 전용, 코드 변경 없음)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "오류에 대한 모든 수정작업")
+- scope: docs only (제품 코드·공개 계약·테스트 무변경)
+- changed:
+  - `docs/llm-wiki/domains/00_overview.md`
+  - `docs/llm-wiki/DOMAIN_FEATURES.md`
+  - `docs/llm-wiki/PUBLIC_API.md`
+  - `docs/llm-wiki/REVIEW_HISTORY.md` (verified → **needs_review로 강등**)
+  - `docs/llm-wiki/log.md`
+
+### 배경
+
+`review` 백로그 35건 중 릴리스 노트 아카이브 31건을 제외한 실검토 대상 4건의 근거를 대조하다가 사실 오류를 찾았다. 대조 방법이 관건이었다: **문서를 읽는 것으로는 잡히지 않고 명령을 실행해야 드러나는 종류**였다. 직전 재승인 커밋 `95d2f16`이 "after fact-checking them"이었는데도 남아 있었다.
+
+### 1) `domains/00_overview.md` — 도메인 지도의 구조적 누락 교정
+
+- 이 지도는 1.7 시점의 8개 도메인에 멈춰 있었고, `src/cli.js#symbol:COMMANDS`와 대조하니 **명령 11개가 어느 도메인에도 없었다**: `impact`(1.17)·`check-run`(1.19)·retrieval 4종(1.18)·guided 2종(1.24)·`review`(1.26)·`monorepo`(1.10)·`import-memory`. 명령 표면의 38%가 빠진 지도였고, `onboard`가 신입에게 읽히는 문서라 영향이 컸다.
+- Change tracking·Retrieval·Review·Scale·Import 5개 도메인을 추가하고 `onboard`/`prepare`를 Guide에 합류시켰다. frontmatter `evidence` 7건·본문 Evidence 7건을 추가했고, 인용한 심볼 7개는 모두 소스에서 존재를 먼저 확인했다.
+- Agent-native 항목의 MCP 노출 툴 목록을 **10종 → 17종**으로 정정했다.
+
+### 2) `DOMAIN_FEATURES.md` — MCP 툴 목록 정정 + Review Notes 상한 준수
+
+- L80의 MCP 노출 툴 목록이 1.6 시점의 10종이었다. `MCP_TOOLS.length`를 직접 실행해 **17종**을 확인하고 정정했으며, 열거 대신 단일 소스 `TOOL_DEFS`를 함께 가리키도록 해 재발 여지를 줄였다.
+- 이 문서의 다른 서술은 이번 세션에 소스·실행으로 대조했고 부합했다(`--type` 검증 exit 3, `rulesPreset` 3종, `run.*` 6룰, `impact` diff 앵커, retrieval 4종, `review`의 blocked/error 거부, `import-memory` MCP 미노출).
+- Review Notes가 6건이 되어 이 문서 자체 규칙(최근 5건)을 위반하게 되므로, 가장 오래된 2026-07-27(야간) 항목을 `REVIEW_HISTORY.md`로 **원문 그대로** 옮기고 아카이브 포인터를 46 → 47건으로 갱신했다.
+
+### 3) `PUBLIC_API.md` — 사실 오류 3건 + 계약 이탈 2건 기록
+
+실측 exit code로 확인한 내용이다.
+
+- `prompt --task` 지원 값 6종 → **8종**(`onboard`/`prepare` 누락). CLI가 미지원 값에 스스로 출력하는 목록과 대조. `prompt --task banana` → **exit 2**(blocked).
+- Key Options의 `--cwd <path>`가 공통 옵션처럼 제시돼 있었으나 `explain`은 받지 않는다. `explain related.missing --cwd .` → **exit 3**. 예외와 단일 소스(`COMMAND_OPTION_RULES`)를 명시했다.
+- Stability에 **알려진 계약 이탈** 항목을 신설했다: `monorepo --strict --write` → **exit 0**(옵션 무검증, 29개 명령 중 유일), `help monorepo` → **exit 3**(help 토픽 누락). **문서를 실제 동작에 맞춰 정당화하지 않았다** — "옵션 없음"이 의도된 계약이고 그것을 강제하지 못하는 것이 결함이라고 적었다.
+- `monorepo` 행에 workspaces 없는 저장소에서 `pass`를 반환한다는 한계를 추가했다.
+- 이 문서의 MCP 툴 목록(17종)은 이미 정확했다.
+
+### 4) `REVIEW_HISTORY.md` — 아카이브 건수 오류 2건 교정 (신규 발견)
+
+- 이 문서의 두 섹션 헤더가 실제 항목 수와 어긋났다: Architecture Conventions **39 → 41건**, Domain Features **44 → 47건**(옮긴 1건 포함), 날짜 범위도 둘 다 `→ 2026-07-24`에서 `→ 2026-07-27`로 정정했다. 원문서들의 포인터(41건·46건)가 맞고 아카이브 자체의 헤더가 낡아 있었다.
+- 편집했으므로 규칙대로 `verified` → `needs_review`로 강등했다. 승인 대상이 3건에서 4건으로 늘었다.
+
+### 검증
+
+- `npm test`: 393 tests / 393 pass / 0 fail.
+- `npm run lint`: OK.
+- `validate --strict`: findings 1 — `GLOSSARY.md`의 기존 `evidence.stale`(커밋 `0b56a56`이 만든 것, 이번 작업과 무관). **편집한 4개 문서 귀속 finding은 0건**.
+- `validate-frontmatter`: 0 findings.
+- run manifest `.llm-wiki/runs/run-docs-sync-20260731T010000Z.json` → `check-run --run`으로 검증.
+
+### caveats
+
+- 코드는 한 줄도 바꾸지 않았다. `monorepo` 옵션 무검증과 `help monorepo`는 **코드 결함**이며, 수정하면 지금 exit 0으로 통과하는 호출이 exit 3으로 바뀌어 exit code 계약에 영향이 있다 — `AGENTS.md`가 명시적 사람 승인을 요구하는 범주라 **승인 대기**로 남기고 문서에는 결함으로 기록했다.
+- 편집한 4개 문서는 전부 `needs_review`다. 사람 검토 전 `verified` 승격 금지.
+- `ARCHITECTURE_CONVENTIONS.md`의 아카이브 포인터(41건, → 2026-07-27)는 실제와 일치해 손대지 않았다(`verified` 유지).
+
+## 2026-07-31 - 자기관리형 하네스 거버넌스 로드맵 신규 작성 (조사 + 문서, 코드 변경 없음)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: 자기관리형 AI 하네스 거버넌스 시스템의 목표와 로드맵 설계)
+- scope: docs only (제품 코드·공개 계약·테스트 무변경)
+- changed:
+  - `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` (신규)
+  - `docs/llm-wiki/log.md`
+
+### 무엇을 했나
+
+- 읽기 전용 조사 후 통합 로드맵 문서 1건을 새로 썼다. 별도 ADR은 만들지 않았다 — 승인된 아키텍처 결정이 아직 없기 때문이다.
+- 조사 범위: 도구 실행 12종(`prepare --compact`·`onboard`·`stats`·`validate --strict`·`doctor`·`next`·`review`·`fix` dry-run·`check-run`·`impact --since --strict`·`monorepo`·`help`), 소스 36파일, 테스트 9파일 393건, CI/배포 아티팩트 4종, 그리고 **실사용 저장소 4곳**(`external-frontend-a`·`external-frontend-b`·`external-vue-quasar-app`·`external-project-c`).
+- 읽기 전용 하위 에이전트 5개를 병렬로 돌렸고, 결론은 전부 파일·명령 실행으로 재확인했다.
+
+### 조사에서 확인된 구조적 공백 5건
+
+1. **누락 차단 게이트가 어디에도 배선되지 않았다.** 누락을 exit code로 막는 명령은 `impact --since --strict` 하나인데, 배포 아티팩트 4종(훅 템플릿·composite action·워크플로 템플릿·자기 저장소 CI) 전부 검증 계열만 실행한다. 실사용 4곳 전부 `ci_governance: none detected`(4곳에서 직접 실행 확인).
+2. **낡음 판정이 `verified` 문서에만 걸린다.** `verifiedSourceAnchors`가 비-verified를 즉시 배제하고 `drift`·`impact`가 둘 다 여기서 나온다. 자기 저장소 51문서 중 35(69%)가 사각지대이며, `drift --downgrade`로 강등하면 감시 대상에서 빠지는 역설이 있다.
+3. **`verified` 승격 경계가 강제되지 않는다.** 파일럿에서 API 수정 커밋 하나가 도메인 문서를 `needs_review`에서 `verified`로 되돌렸고 리뷰 메타는 변경되지 않았다(git diff 확인). 매니페스트의 승격 기록 필드는 `check-run`이 읽지 않는다.
+4. **제안자와 검증자가 이미 같다.** 매니페스트는 에이전트 자기신고이고, 변경 소스를 빈 배열로 신고하면 문서 갭 규칙이 원리적으로 뜰 수 없다. Gate 26이 근거로 적은 diff 교차검증은 미구현이다.
+5. **하네스 자체가 거버넌스 밖에 있다.** 스캔 범위가 `docs/llm-wiki/` 하위뿐이라 루트 거버넌스 문서는 검사되지 않고, 어댑터에는 마커가 없어 갱신 경로 자체가 없으며, 길이 상한·중복·충돌 감지가 전무하고 되돌리기 인프라가 없다.
+
+### 새로 확인된 제품 결함 12건 (전부 소스 또는 실행으로 확인)
+
+- `monorepo`가 명령별 옵션 화이트리스트에 누락돼 아무 옵션이나 무검증 통과(29개 명령 중 유일)
+- `help monorepo`가 알 수 없는 토픽으로 exit 3
+- 공개 API 문서와 CLI help의 작업 프롬프트 목록이 6종(실제 8종)
+- `explain`이 `--cwd`를 받지 않는데 문서는 일반 옵션으로 제시
+- 기계적 자동수정 루프에 append-only 로그 가드가 없어 `fix --write`가 로그 frontmatter를 고칠 수 있음(현재 미발화, 잠재)
+- `review --approve`가 warning만 있는 문서를 승격 가능 — 보강되지 않은 스캐폴드도 verified 가능
+- `ci_governance`가 차단력 없는 호출을 게이트로 계수. 자기 저장소에서 스모크 테스트 호출을 게이트로 오인해 `1 found` 보고
+- `check-run`의 최신 매니페스트 선택이 파일명 사전순이라 task 이름이 타임스탬프를 지배. 실측으로 3일 전 매니페스트를 검사 중
+- `drift`가 CI 게이트로 사용 불가 — 드리프트 결과가 findings 배열이 아니라 별도 배열로 가고 result가 pass. 실측: findings 0건 / drift findings 1건
+- `impact --since <ref>`가 미추적 파일을 놓침(`--since` 없는 경로는 포함)
+- run manifest 위치 정책 불일치 — 자기 저장소는 gitignore, 파일럿은 30개 커밋됨
+- 벤치 하네스에 회귀 테스트 0건이고 프록시 arm이 배포 retrieval 코드를 호출하지 않음
+
+### 로드맵의 핵심 제안
+
+- Phase 0의 첫 항목을 기준선 측정이 아니라 **게이트 배선**으로 바꾼다. 지금 상태 위에 5개 층을 얹으면 전부 공허해진다.
+- Phase 1은 읽기 전용 `harness-health`와 `fleet` 롤업. Phase 2는 제안만, Phase 3에서 제안자와 검증자를 분리하고 평가 기준을 동결, Phase 4는 사람 승인 PR, Phase 5는 허용 목록 R1만(되돌리기 인프라 신설이 선행 조건), Phase 6은 지속형 운영.
+- 에이전트 계층은 별도 패키지로 분리할 것을 추천한다(무의존성·동결 계약·Node 하한·실패 격리·보안 경계 근거). 단 Phase 1~2의 대부분은 결정적 계산이라 핵심에 스캐너로 넣는다.
+
+### 검증
+
+- `npm test`: 393 tests / 393 pass / 0 fail(문서 전용 변경이라 무영향 확인).
+- `npm run lint`: OK, 57 files parsed clean.
+- `validate --strict`: result warning, findings 1, exit 1 — 직전 커밋 `0b56a56`이 만든 `GLOSSARY.md`의 실제 드리프트이며 이번 작업과 무관하다. **이번 신규 문서에서 발생한 finding은 0건**이다.
+- `validate-frontmatter`: files_checked 52, findings 0, result pass.
+- `stats`: documents 51 → 52, needs_review 35 → 36, verified 16 유지, health 77 유지.
+- run manifest `.llm-wiki/runs/run-docs-sync-20260731T000000Z.json` 작성 후 `check-run --run`으로 검증: **result warning, `run.unvalidated` 1건, exit 0**. 매니페스트의 `validated.result`를 정직하게 `warning`으로 적었기 때문이다(위 pre-existing 드리프트 때문에 위키 전체 result가 pass가 아니다). 계약에 "통과했으나 무관한 기존 경고가 있음"을 표현할 수단이 없다는 점이 이 실행으로 드러났고, 로드맵 Phase 3 항목으로 반영했다.
+
+### caveats
+
+- 신규 문서는 `needs_review`다. 사람 검토 전 `verified` 승격 금지.
+- 코드 변경은 하나도 하지 않았다. 로드맵은 제안이며 승인 전 구현하지 않는다.
+- orphan 총계는 35건으로 **변하지 않았다**(예상은 36건이었으나 실측이 달랐다). 신규 문서가 orphan에 들어간 대신, 신규 문서의 `related`가 `BENCHMARK.md`에 inbound 링크를 만들어 그 문서가 orphan에서 빠졌다. 신규 문서를 읽기 순서에 넣으려면 `verified`인 `index.md`를 편집해야 하고 그러면 규칙상 강등되므로, 사람 결정 사항으로 백로그에 남겼다.
+- `check-run`이 기본 선택으로는 이 매니페스트를 고르지 못한다(위 결함 8). `--run`으로 명시 지정해 검증했다 — 결함을 실사용으로 재확인한 셈이다.
+- 파일럿 조사는 `external-frontend-a` 한 곳만 깊게 했다. 나머지 3곳의 마찰 이력은 미조사이며 로드맵에 근거 부족 항목으로 표기했다.
+
+## 2026-07-30 - 어댑터 v2 전면 적용 · 액션 CLI 버전 정정 · doctor CI 거버넌스 점검
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: 실사용 검증에서 확인된 P0 3건 처리)
+- scope: templates, ci, src, docs
+- changed:
+  - `templates/adapters/{codex,gemini,copilot,cursor,windsurf,jetbrains,antigravity}/*` (7종)
+  - `.github/actions/validate/action.yml`, `RELEASE_CHECKLIST.md`
+  - `src/commands.js` (`describeCiGovernance`, `CI_GOVERNANCE_INVOCATION`, `doctor`)
+  - `tests/ci-governance-check.test.js` (신규 7 케이스)
+  - docs/llm-wiki: `DOMAIN_FEATURES.md`, `PUBLIC_API.md`, `domains/00_overview.md`, `log.md`
+
+### 1) 어댑터 v2를 8종 전체로 확장
+
+- 1.27.2는 `templates/adapters/claude-code/CLAUDE.md` 1종만 `adapter v2`였고 나머지 7종은 `wiki-block v1`(패키지 초기 커밋 이후 무변경)이었다. **선적재 축소라는 릴리스 간판 기능이 Claude Code 사용자에게만 도달하고 있었다.**
+- 7종을 v2 형태로 재작성했다: 항상 읽는 문서 2개(index·project-profile) + 나머지는 `search-docs`/`prepare --compact`/`get-doc --section --strict-section` 온디맨드 안내.
+- 각 파일 고유 형식은 보존했다(cursor `.mdc` frontmatter, jetbrains info-level 안내문, antigravity 마커와 UTF-8/한국어 보존 문구, codex `# Project Agent Guide` 구조).
+- 본문 언어를 claude-code 참조 구현에 맞춰 영어로 통일했다. 이전 상태(claude만 영어, 7종은 한국어)는 1.16.0 English-first 방향과 어긋났다.
+- 호환성: 마커 문자열은 어떤 코드도 파싱하지 않는다(`src/commands/adapters.js#symbol:scanAdapters`는 `docs/llm-wiki/index.md` 포함 여부만 검사). 기존 어댑터 파일은 여전히 덮어쓰지 않는다.
+
+### 2) composite action의 CLI 버전 기본값 정정
+
+- `.github/actions/validate/action.yml`의 `version` 입력 기본값이 `"1.26"`이었다. 관례는 릴리스마다 `X.Y`를 올리는 것인데(1.25→1.26은 반영됨) 1.27 라인에서 누락됐다. 결과적으로 액션을 `@v1.27.2`로 핀한 소비자도 CLI는 1.26.x를 실행했다.
+- `"1.27"`로 정정하고, 왜 놓쳤는지에 대한 지속 대책으로 `RELEASE_CHECKLIST.md`의 Release Metadata에 이 값과 README의 액션 태그 참조를 확인하는 항목을 추가했다.
+
+### 3) `doctor`에 `ci_governance` 점검 추가
+
+- 위키가 완비돼 있어도 그것을 **강제하는 장치가 있는지**는 `doctor`가 전혀 보고하지 않았다. 가장 흔한 도입 공백인데 제품이 침묵하고 있었다.
+- `.github/workflows/*.yml|yaml`과 `.git/hooks/pre-commit`에서 실제 llm-wiki 호출을 찾아 파일명을 대거나, 없으면 `none detected`와 함께 누락을 실제로 막는 명령(`impact --since <base> --strict`)을 안내한다.
+- read-only이며 exit code에 영향을 주지 않는다. YAML 파싱 없이 정규식만 쓰므로 무의존성 유지.
+- **구현 중 교정:** 처음엔 `"llm-wiki"` 부분문자열로 검사했는데, 파일럿 저장소의 무관한 워크플로 잡 이름 `llm-wiki-review:`가 걸려 **거버넌스가 없는데 있다고 보고**했다. 없는 게이트를 있다고 알리는 것이 위험한 방향이므로 호출 정규식(`CI_GOVERNANCE_INVOCATION`)으로 좁혔다. 대신 `core.hooksPath`로 훅 위치를 옮긴 저장소는 `none detected`로 나오는 false negative를 감수한다(안전한 방향).
+
+### 검증
+
+- `npm test`: 393 tests / 393 pass / 0 fail (신규 `tests/ci-governance-check.test.js` 7 케이스 포함 — 오탐 방지 케이스를 명시적으로 고정).
+- `npm run lint`: 56 files parsed clean.
+- 실측: 이 저장소 `1 found (.github/workflows/ci.yml)`, 파일럿 3개 저장소 전부 `none detected`.
+
+### caveats
+
+- 미릴리스 변경이다. 릴리스 시 `action.yml`의 `version`을 그 릴리스의 `X.Y`로 다시 확인해야 한다.
+- 어댑터 언어를 영어로 통일한 것은 판단이 들어간 변경이다. 한국어 유지가 정책이라면 되돌려야 한다.
+- 이 항목의 편집 문서는 모두 `needs_review`다. 사람 검토 전 `verified` 승격 금지.
+
+## 2026-07-30 - 브리핑 덱 슬라이드 11(타임라인) 표시 버그 수정
+
+- status: needs_review
+- actor: Claude Code (유지보수자 보고: 공유 Artifact에서 11장이 빈 화면)
+- scope: team-materials only (위키 문서·코드 변경 없음)
+- changed:
+  - outputs/team-briefing/llm-wiki-briefing.html — 등장 애니메이션 IntersectionObserver 임계값 0.55가 화면보다 긴 슬라이드(타임라인, 14개 항목)에서 영영 충족되지 않아 `.anim` 내용이 opacity:0으로 남던 버그 수정: 노출 임계값을 0.12로 낮추고, 현재 장 카운터/진행바는 스크롤 위치 기반 계산으로 분리. 공유 Artifact 동일 링크로 재게시.
+- summary: 콘텐츠 변경 없음(순수 표시 로직). 버전 라벨·장수(22장) 불변.
+
+## 2026-07-30 - 1.27.2 사람 재승인 + 브리핑 덱 재정렬
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "1. 재승인 요청 2. 재승인 3. 재정렬 작업 진행하라" — 재승인은 유지보수자의 사람 결정을 세션이 집행)
+- scope: docs + team-materials
+- changed:
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md, REVIEW_HISTORY.md — `review --approve`(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30)로 verified 승격; 두 문서에 재승인 review note 추가(5건 상한 유지, 초과분 아카이브 이동)
+  - docs/llm-wiki/ 내 verified 11개 문서(EXAMPLES·index·profiles/library·project-profile·README·releases/v0.1.7·v0.1.8·RELEASE_FLOW·templates 2종·VERSIONING) — 1.27.1 릴리스일 소스 변경이 남긴 evidence.stale 13건을 reviewed_at 재기준선(2026-07-30)으로 해소(1.26.0 이후 52aa90b 선례; frontmatter reviewed_at만 변경)
+  - outputs/team-briefing/llm-wiki-briefing.html·SPEAKER_NOTES.md·README.md — 버전 라벨 v1.27.1→v1.27.2, 타임라인 1.27 항목에 unhobbling 추가; 공유 Artifact 동일 링크로 재게시
+- evidence:
+  - src/commands.js#symbol:reviewCommand — 승격 스탬프 seam(자동 승격 없음, blocking finding 거부)
+- summary: validate --strict 0 findings(exit 0). REVIEW_HISTORY에는 승격 전 source_files grounding(두 원문서)을 부여해 verified 후 evidence.ungrounded가 나지 않게 했다.
+- caveats:
+  - REVIEW_HISTORY는 아카이브 문서라 향후 이전 항목이 추가될 때마다 다시 needs_review로 강등된다(정상 동작).
+
+## 2026-07-30 - 프롬프트 형태 규율(unhobbling) + 1.27.2 준비
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: Boris Cherny 3원칙 도입 판단 후 "모든 작업을 진행해줘. 이후 1.27.2 버전으로 배포할 수 있도록 하자")
+- scope: code + docs + templates + release-prep
+- changed:
+  - templates/adapters/claude-code/CLAUDE.md — 어댑터 마커 v1→v2: `@`-include를 index+project-profile로 축소, 무거운 문서는 on-demand retrieval 안내
+  - CLAUDE.md — 새 템플릿과 byte-identical로 교체(이 저장소 선적재 ~30.3k→~1.4k 토큰, chars/4 프록시)
+  - src/task-prompts.js — `implementationPrompt`(feature/fix/refactor)·`docsSyncPrompt`를 Goal/Hard lines/Exit criteria 3블록으로 재구성(계약·안전 줄 전부 보존, steering만 제거, 자율성 문구 명시)
+  - src/commands/skills.js — `SKILL_ARTIFACT_VERSION` 4→5
+  - tests/agent-token-discipline.test.js — 신규 2건(3블록 형태+계약 줄 보존 / 절차형 원샷 체크리스트 유지 경계)
+  - .claude/skills/·.agents/skills/·.cursor/rules/·.llm-wiki/prompts/ — feature/fix/docs-sync 12개 아티팩트 `--refresh` 재생성(bootstrap/onboard/prepare는 본문 불변으로 up-to-date)
+  - docs/llm-wiki/REVIEW_HISTORY.md — 신규 아카이브: ARCHITECTURE_CONVENTIONS(40건)·DOMAIN_FEATURES(45건)의 오래된 Review Notes 원문 이전, 원문서는 최근 5건만 유지
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md, docs/llm-wiki/DOMAIN_FEATURES.md — 프롬프트 형태 규율·어댑터 축소·Review Notes 상한 컨벤션 반영
+  - GATE_REVIEW.md — "Prompt-Shape Discipline (Unhobbling) Scope Decision" 기록(수용/기각 범위·계측화된 삭제 기준·미측정 정직 기록)
+- evidence:
+  - src/task-prompts.js#symbol:implementationPrompt — 3블록 프롬프트
+  - templates/adapters/claude-code/CLAUDE.md — 선적재 축소 어댑터 템플릿
+  - tests/agent-token-discipline.test.js — RED 선실패 확인 후 GREEN(386 tests)
+- summary: 검증 기계(validate/check-run/tests)가 종료 시점에 계약을 강제하므로 단계 서술(steering)만 제거해도
+  안전하다는 분류 규칙으로 unhobbling을 적용했다. 프롬프트 재구성의 과제 성과 효과는 미측정이며(벤치 arm 미실행,
+  유지보수자 결정) 절감 주장은 하지 않는다 — 선적재 수치는 파일 크기 산술(chars/4 프록시)일 뿐이다.
+- caveats:
+  - 검증·안전 계약(needs_review/verified 사람 전용·민감정보·mustReadSource·STOP)은 전부 불변.
+  - 기존 사용자 어댑터/스킬 파일은 덮어쓰지 않는다(신 템플릿은 신규 생성에만, 스킬은 관리-미수정 파일만 `--refresh`).
+  - 절차형 원샷 워크플로(bootstrap/onboard/prepare/okf-extract)는 의도적으로 체크리스트 유지.
+
+## 2026-07-29 - 에이전트 문맥 규율 3건 + 1.27.1 릴리스
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시: "모든 작업을 진행하라. 모든 작업 진행 후, 커밋/푸시하여 1.27.1로 배포하라")
+- scope: code + docs + release
+- changed:
+  - src/task-prompts.js — 신규 순수·export `contextBudget()`, 8개 태스크 프롬프트 전부에 배선
+  - src/commands/skills.js — `manifestContractSection` payload 상한, `SKILL_ARTIFACT_VERSION` 3→4
+  - package.json — `test:quiet` 스크립트(`--test-reporter=dot`) 추가, version 1.26.3→1.27.1
+  - tests/agent-token-discipline.test.js — 신규 4건, tests/verification.test.js — 버전 단언 갱신
+  - .claude/skills/·.agents/skills/·.cursor/rules/·.llm-wiki/prompts/ — 24개 아티팩트 `--refresh` 재생성
+  - CHANGELOG.md·CHANGELOG.ko.md·README.md·README.ko.md·ROADMAP.md·ROADMAP.ko.md — 1.27.1 릴리스 문서
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md, docs/llm-wiki/DOMAIN_FEATURES.md
+- evidence:
+  - src/task-prompts.js#symbol:contextBudget — 문맥 예산 단일 소스
+  - src/commands/skills.js#symbol:manifestContractSection — 매니페스트 계약 + 상한
+  - src/commands.js#symbol:checkRunCommand — 실제로 읽는 필드 집합(대조 검증: summary/actor/timestamp/activeProfiles는 미독)
+- summary: 유지보수자가 실행 화면을 보고 "이 표시가 토큰을 먹는가"를 물은 것이 출발점이다. 조사 결과 터미널
+  렌더링(색상·접기 라벨·`… +43 lines`)은 모델에 들어가지 않아 무료지만 그 안의 내용은 비용이며, UI에서
+  접히거나 잘린 것은 절약이 아니다(모델은 이미 전체를 받았다). 무통제 지점 3곳을 생성기 쪽에서 닫았다:
+  (1) `check-run`이 읽지도 않는 매니페스트 산문 → 계약이 스스로 상한 선언(필드 집합이 전부, summary 두 문장,
+  diff·로그·테스트 출력 금지), (2) 무제한 소스 읽기 → 단일 소스 `contextBudget()`가 8개 프롬프트+handoff+
+  생성 스킬에 위치 특정·라인 범위/섹션·compact retrieval 플래그·테스트 요약 보고를 주입, (3) 테스트 출력
+  전량 → `npm run test:quiet`. 1.25가 CLI가 **돌려주는** 양을 통제했다면 이 배치는 에이전트가 **끌어오는**
+  양을 통제한다.
+- caveats:
+  - **안전 불변식**: 문맥 예산은 소스를 **어떻게** 읽을지만 좁히고 **읽을지 여부**는 건드리지 않는다.
+    "근거가 간결함보다 우선, 좁혀 읽어 확인 못 하면 더 읽어라"를 프롬프트 본문에 명시해 `task-path.js`의
+    `mustReadSource`(코드 변경·위험 작업)와 정합을 유지했다.
+  - **대가는 정직하게**: 스킬 고정 본문이 약 30% 늘어난다(`feature` 프록시 775→1010). 절감은 **측정하지
+    않았으므로 주장하지 않는다** — `estimateTokens`는 chars/4 프록시이고 README 헤드라인 금지 정책은 유지.
+  - 버전: `1.27.0`은 배포되지 않는다(유지보수자가 `1.27.1`을 지정, 결번을 확인 후 선택).
+  - `docs/llm-wiki/BENCHMARK.md`는 GATE_REVIEW.md 변경으로 `evidence.stale`이라 `drift --downgrade`로
+    정직하게 needs_review 강등(에이전트는 verified 승격·재승인 불가).
+- verification: 384 tests(신규 4; `contextBudget` export 부재로 수정 전 소스에서 파일 전체 실패 = RED 확인)
+  · lint OK(56 files) · validate --strict 0 · validate-frontmatter --strict 0 · check-run
+- review items:
+  - ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md(이번 편집)와 BENCHMARK.md(강등), 그리고 1.26.3 이후
+    누적된 needs_review 백로그의 사람 재승인 — `llm-wiki review`로 위험도 순 확인 후 `--approve`.
+  - 문맥 예산의 실효 절감은 미측정. 측정하려면 유료 벤치(보류 중) 또는 whole-task 러너 arm이 필요하다.
+
+## 2026-07-28 - ECC 기법 추출 배치 4건 구현 (병렬 워크트리 → 직렬 통합; 미릴리스)
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시 — ECC를 의존성이 아니라 기법 소스로 차용)
+- scope: code + skills + docs
+- changed:
+  - src/commands.js, src/commands/findings.js, src/commands/skills.js, src/i18n.js, src/cli.js — (1) run manifest optional `testEvidence {red, green}` + `check-run`의 `run.test_evidence_missing`(warning; feature/fix+changedSource 있을 때만, 구 manifest 면제) + feature/fix 스킬 완성 계약 갱신
+  - src/commands/skills.js — (2) 생성 스킬 아티팩트 토큰 예산 스탬프(`estimated-tokens`, chars/4 PROXY 명시; Claude/Codex frontmatter·Cursor/중립 HTML 코멘트; 마커 v2→v3)
+  - src/commands/findings.js, src/config-file.js, src/commands.js — (3) config `rulesPreset`(relaxed/standard/strict; `RULE_PRESETS` 단일 소스; 병합 시점 확장; 명시 rules 우선; sensitive.* 보호; unknown exit 3; doctor 에코)
+  - src/commands/import-memory.js(신규 leaf), src/cli.js, src/index.js — (4) `import-memory` 단방향 임포터(ECC `ecc.memory.v1` → needs_review 위키 초안; preview 기본·`--apply`; verified 구조적 불가; 민감 히트 기본 skip; MCP 미노출)
+  - .claude/skills/, .agents/skills/, .cursor/rules/, .llm-wiki/prompts/ — dogfood 스킬 24개 `--refresh` 재생성
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 반영 및 `needs_review` 강등
+  - GATE_REVIEW.md — "ECC Technique Extraction Scope Decision"(수용 4건 + 기각 2건: confidence 스코어링·instincts)
+- summary:
+  - ECC 하네스(github.com/affaan-m/ECC)의 기법 4건을 하우스 방식(zero-dep·additive·preview-first)으로 재구현했다. 4건을 독립 워크트리에서 병렬 구현(각자 RED 선실패 확인) 후 충돌 0으로 직렬 squash-merge했다.
+- verification:
+  - 380 tests(347→380, 신규 33) 전부 pass · lint OK(55 files) · validate --strict 0
+- evidence:
+  - src/commands/import-memory.js
+  - src/commands/findings.js#symbol:RULE_PRESETS
+  - src/commands.js#symbol:checkRunCommand
+  - src/commands/skills.js#symbol:tokenBudgetField
+- caveats:
+  - 미릴리스(main 한정, 푸시 보류 정책 유지). 에이전트 편집 문서는 needs_review — 사람 검토 후 재승인 필요. real/유료 벤치(pass@k)는 이 배치에서 제외(승인 대기).
+
+## 2026-07-28 - 감사 잔여 3건 반영분 사람 검토·재승인 + 드리프트 재베이스라인
+
+- status: verified (approved docs) / append by agent under maintainer instruction
+- actor: 유지보수자(Dowon-Kim) 검토·승인 지시, Claude Code 실행
+- scope: docs (frontmatter 스탬프만)
+- changed:
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 사람 검토 완료 후 `review --approve --reviewer Dowon-Kim`으로 `needs_review`→`verified` 재승인(도구가 status·reviewed_by·reviewed_at 3필드만 스탬프; body/source_files/evidence/last_updated 미변경)
+  - docs/llm-wiki/{domains/00_overview,EXAMPLES,GLOSSARY,index,profiles/library,project-profile}.md — `reviewed_at`만 2026-07-28로 재베이스라인(GLOSSARY는 2026-07-24부터). 직전 커밋(d3c492b·0985a33·46304de)의 additive 소스 변경이 date-앵커 drift(`evidence.stale` 8건)를 활성화했으나, 해당 문서들의 주장은 이번 변경으로 달라지지 않았음을 유지보수자가 확인.
+- summary:
+  - 감사 잔여 3건(A/B/C) 커밋 후 남은 거버넌스 정리: 강등됐던 3문서를 사람 검토를 거쳐 재승인하고, diff/date 드리프트가 flag한 6문서를 재베이스라인해 `validate --strict`를 0으로 복귀시켰다(1.26.3 전례와 동일한 처리).
+- verification:
+  - `validate --strict` 0 findings · `drift` pass · `validate-frontmatter --strict` pass · 347 tests(직전 실행 기준, 이 커밋은 frontmatter 스탬프만이라 코드 불변)
+- evidence:
+  - src/commands.js#symbol:reviewCommand
+- caveats:
+  - 푸시는 유지보수자 지시로 계속 보류(main 로컬 4커밋 ahead). 릴리스 프레이밍(MINOR 1.27.0 제안)·CHANGELOG·버전 범프는 릴리스 결정 시점에 처리한다.
+
+## 2026-07-27 - 감사 잔여 3건: frontmatter 테스트 공백 · 중복 키 last-wins · MCP inputSchema 미강제
+
+- status: needs_review
+- actor: Claude Code (야간 자율 실행; 커밋/배포는 사람 승인 대기)
+- scope: src + tests + docs
+- changed:
+  - tests/verification.test.js — (A) `parseFrontmatter`/`validateFrontmatter` negative-path 유닛 테스트 7건(rule별·parse-error별 + `validateFrontmatterCommand` 배선 증명), (B) duplicate-key 3건, (C) CLI `--type` 검증 1건
+  - src/frontmatter.js — `parseFrontmatter`가 additive `duplicateKeys: string[]` 반환(last-wins 의미론 유지)
+  - src/commands.js — 두 seam(`validateFrontmatterCommand`·`summarizeDocumentStatuses`)에 `duplicateKeyFinding` push
+  - src/commands/findings.js — `frontmatter.duplicate_key` 레지스트리 등록(warning, toggleable)
+  - src/i18n.js — 동 rule의 KO message/explanation 카탈로그 항목
+  - src/mcp/validate-args.js — 신규 순수·zero-dep 검증기 `validateToolArguments`(TOOL_DEFS가 쓰는 JSON-Schema 서브셋만)
+  - src/mcp/dispatch.js — `handleToolCall`이 실행 전 인자 검증, 위반 시 `-32602 Invalid params`(`data:{tool,errors}`)
+  - src/mcp/tools.js — stale enum을 단일 소스에서 파생(`KNOWN_TYPES`[mobile/infra 포함]·`SUPPORTED_TASK_PROMPTS`·`SUPPORTED_LANGS`·visibility) + `all` 미수용 명시
+  - src/detector.js — `KNOWN_TYPES` export(= `KNOWN_PROFILES` − `okf-v0.1`)
+  - src/cli.js — `--type`을 `KNOWN_TYPES`로 검증(미지원 유형 usage error, exit 3)
+  - tests/mcp.test.js — 위반 클래스별 6건(-32602) + valid-call·enum 회귀
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 반영 후 `verified`→`needs_review` 강등
+- summary:
+  - 2026-07-27 저장소 품질 감사의 미착수 3건을 구현했다(결정 4건은 유지보수자가 감사 세션에서 확정: warning rule 신설 · `-32602`+unknown-arg 거부 · CLI `--type` 검증 · 게이트 불필요).
+  - **(A)** 파서/검증기의 **negative path**(파스 오류 4종 + rule별 위반: exists/status/last_updated/visibility/contains_sensitive_info + tags/source_files/related의 array 형태)에 표적 테스트가 0건이던 공백을 메웠다(소스 변경 없음). 기존 `tests/frontmatter.test.js`는 positive path·OKF alias·aliases/evidence array·verified_review 분기를 이미 커버하고 있었고, 이번 추가는 그와 상보적이다.
+  - **(B)** 중복 frontmatter 키의 silent last-wins를 `frontmatter.duplicate_key`(warning)로 표면화했다 — 중복 키는 grounding 리스트를 조용히 버리거나 `contains_sensitive_info`를 뒤집을 수 있다. 파서 의미론·기존 문서 형태는 불변, message에 값 미노출.
+  - **(C)** 선언만 되고 강제되지 않던 MCP `inputSchema`를 실행 전 검증으로 만들었다(`validate {strict:"true"}`가 non-strict로 실행되던 류의 silent 오동작 제거). 강제 전에 스키마 자체를 감사해 stale enum(mobile/infra 누락)을 단일 소스 파생으로 교정했다. CLI `--type`도 같은 정신으로 검증한다 — 작은 동작 변경(이전 `--type banana` exit 0 → 이제 exit 3)이라 릴리스 시 Fixed 항목감.
+- verification:
+  - 347 tests pass(신규 17; B 3건·C 7건이 수정 전 소스에서 실패함을 stash로 확인) · lint OK(50 files) · `validate --strict` findings 0 · `validate-frontmatter` pass
+- evidence:
+  - src/frontmatter.js
+  - src/mcp/validate-args.js
+  - src/mcp/dispatch.js
+  - src/detector.js
+  - src/cli.js
+- caveats:
+  - 미릴리스(main 한정, 커밋도 사람 승인 대기). 신규 rule + 새로 거부되는 MCP 호출/`--type`은 1.19 전례상 MINOR(1.27.0) 프레이밍이 정직하다 — 판단은 유지보수자 몫.
+  - config 파일의 `type` 키는 여전히 문자열 검증만 한다(enum 미검증) — 이번 합의 범위(CLI 플래그) 밖이라 남겼다. 후속 후보.
+  - 세 문서는 에이전트 편집이라 `needs_review`로 강등했다. tags의 `verified`는 알려진 비동기(도구가 tags를 건드리지 않음) — 재승인 때 손으로 맞추는 기존 관례를 따른다.
+
+## 2026-07-27 - 릴리스 1.26.3 + 버그 수정 반영분 재승인
+
+- changed:
+  - package.json 1.26.2→1.26.3 · tests/verification.test.js 버전 단언 갱신
+  - CHANGELOG.md · CHANGELOG.ko.md — 1.26.3 섹션(Fixed 2건 · additive 1건 · Documentation)
+  - README.md · README.ko.md — 핵심 명령 표에 읽기 전용 retrieval 행(`list-docs`/`search-docs`/`get-doc`/`get-related`) 추가, 컴포지트 액션 핀 예시 `@v1.26.0`→`@v1.26.3`
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 사람 검토 후 `needs_review`→`verified` 재승인(`review --approve --reviewer "Dowon-Kim"`) + Review Notes 1줄 추가
+  - docs/llm-wiki/domains/00_overview.md — `reviewed_at` 2026-07-24→2026-07-27만 재baseline(본문·`source_files`·`evidence`·`last_updated` 미변경)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,BENCHMARK}.md — tags의 `needs-review`를 `verified`로 맞춰 status와 일치시켰다(나머지 verified 문서 14건은 이미 일치)
+  - outputs/team-briefing/{llm-wiki-briefing.html,SPEAKER_NOTES.md,README.md} — 대상 버전 라벨 v1.26.2→v1.26.3
+- summary:
+  - 직전 항목의 버그 수정 2건(config UTF-8 BOM · `--no-adapters` 순서 의존)을 `1.26.3` 패치로 배포한다. 사용자가 Windows에서 저장한 config 하나로 모든 명령이 멈추는 문제라 npm에 도달해야 의미가 있다.
+  - 유지보수자(Dowon-Kim)가 문서 내용을 확인해 재승인을 지시했고, 강등돼 있던 핵심 3문서를 저장소 자신의 `review --approve`로 스탬프했다(도구가 프론트매터 3필드만 건드림). `src/cli.js` 변경으로 남아 있던 `evidence.stale` 1건은 `domains/00_overview.md`의 `reviewed_at`만 갱신해 해소했다 — 주장 내용이 이번 변경으로 달라지지 않았음을 대조 확인한 뒤다.
+  - 감사가 지적했던 README 갭 2건도 이 릴리스에 실었다: retrieval CLI 명령이 표에 없었고(1.18.0 도입 후 누락 — npm 페이지가 MCP 표면만 알렸다), 액션 핀 예시가 19개 릴리스 전 태그를 가리켰다.
+- verification:
+  - 330 tests pass · lint OK(49 files) · `validate --strict` findings 0 · `validate-frontmatter` pass
+- evidence:
+  - package.json · CHANGELOG.md · README.md
+- caveats:
+  - `review --approve`는 설계상 tags를 건드리지 않으므로 강등 때 뒤집힌 태그가 승격 후에도 남는다. 이번에는 손으로 맞췄고, 도구가 tags까지 동기화하게 만드는 것은 "3필드만 스탬프한다"는 문서화된 계약을 바꾸는 일이라 이 패치 범위에 넣지 않았다.
+  - 감사의 나머지 항목(frontmatter negative-path 테스트 공백 · 중복 키 last-wins · MCP `inputSchema` 미강제)은 여전히 미착수다.
+  - 팀 브리핑 덱은 라벨만 올렸다(기능 변화가 없어 타임라인 항목은 추가하지 않음). 공개된 Artifact 링크 재배포는 릴리스 후 별도로 처리한다.
+
+## 2026-07-27 - 버그 수정 2건: config UTF-8 BOM · `--no-adapters` 순서 의존
+- changed:
+  - src/config-file.js — config 읽기를 `readUtf8`→`readTextAuto`(BOM 인식)로 교체, `mergeConfigIntoOptions`에 `noAdapters` 가드 추가
+  - src/cli.js — `defaultOptions()`에 `noAdapters: false` 추가, `--no-adapters` 분기를 선언적으로 변경(순회 후 일괄 적용), `applyProjectConfig`의 `usedConfigAgents`에 가드 추가
+  - tests/verification.test.js — 신규 4건(BOM 3종 로드 · BOM이 malformed를 구제하지 않음 · `--no-adapters` 순서 무관 · config 재주입 차단)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md — 반영 후 `verified`→`needs_review` 강등
+- summary:
+  - **버그 1 (config BOM)**: Windows PowerShell `Out-File -Encoding utf8`·구형 메모장이 기본으로 붙이는 UTF-8 BOM 때문에 유효한 JSON인 `llm-wiki.config.json`이 `JSON.parse`에서 던져 **모든 명령**이 `is not valid JSON`(exit 3)으로 죽었고, 메시지가 원인을 알려주지 않았다. 1.14.1이 detector 매니페스트에 쓴 `readTextAuto`를 재사용해 고쳤다(UTF-16LE/BE도 함께 해결). 위키 문서 읽기는 mojibake 스캔 보존을 위해 raw `readUtf8` 그대로다.
+  - **버그 2 (`--no-adapters`)**: 플래그가 자기 파싱 분기에서 `options.agents`를 비워 결과가 **플래그 순서에 의존**했고(`--agent claude --no-adapters` ≠ `--no-adapters --agent claude`), 비워진 목록이 "CLI 미지정"으로 읽혀 config `agents`가 재주입됐다 — 이 저장소에서는 어댑터를 끄는 플래그가 `agents=[codex,claude]`를 만들어 사용자가 지정하지도 않은 에이전트를 늘렸다. 플래그를 선언적으로 바꾸고 `options.noAdapters`로 의도를 config 병합까지 전달해 둘 다 막았다.
+  - 두 수정 모두 additive·zero-dep·Node built-ins. 영향 범위는 config 로딩 전역과 `--no-adapters`를 받는 `init` 뿐이며, 진짜 malformed JSON은 여전히 exit 3이고 config가 CLI 미지정 값을 채우는 기존 동작은 불변이다.
+- verification:
+  - 330 tests pass(신규 4) · lint OK(49 files) · `validate --strict` 0 · `validate-frontmatter` pass
+  - 신규 테스트 3건이 **수정 전 소스에서 실패**함을 `git stash`로 확인했다(회귀를 실제로 잡는지 검증). 나머지 1건은 "BOM이 malformed JSON을 구제하지 않는다"는 과교정 방지 가드라 양쪽에서 통과하는 것이 정상이다.
+  - 4개 인코딩(UTF-8 BOM/무BOM/UTF-16LE/UTF-16BE) 모두 exit 0으로 로드 확인.
+- evidence:
+  - src/config-file.js#symbol:loadProjectConfig · src/config-file.js#symbol:mergeConfigIntoOptions · src/cli.js#symbol:parseArgs · src/cli.js#symbol:applyProjectConfig
+- caveats:
+  - `defaultOptions()`에 `noAdapters` 키가 늘어 `normalizeOptions()` 반환 객체에 키 1개가 추가된다(additive; 키 집합을 단언하는 테스트는 없음을 확인).
+  - `impact`가 이 diff로 `verified` 문서 **8건**을 flag했다. 내용이 실제로 바뀐 3건만 갱신·강등했고, 나머지 5건(`index.md`·`EXAMPLES.md`·`project-profile.md`·`profiles/library.md`·`domains/00_overview.md`)은 `src/cli.js`를 폭넓게 참조할 뿐 이번 변경으로 주장이 달라지지 않아 **손대지 않았다** — 재baseline(reviewed_at 갱신)은 사람의 몫이며 에이전트가 검토 메타를 새로 찍지 않는다.
+  - 감사에서 함께 확인된 나머지 항목(frontmatter negative-path 테스트 공백, frontmatter 중복 키 last-wins, MCP `inputSchema` 미강제, README의 retrieval CLI 명령 누락, README의 `actions/validate@v1.26.0` 핀 stale)은 이번 범위에 넣지 않았다.
+
+## 2026-07-27 - Orca 병렬 에이전트 개발 프로세스 배선(개발 도구, 배포 무관)
+- changed:
+  - AGENTS.md — `## Orca Parallel Agent Rules` 섹션 추가(wiki-block은 불변)
+  - docs/ORCA_PARALLEL_DEV.md — 신규. worktree 규약·병렬/순차 판단·워크플로 A/B/C·완료 기준·핸드오프 포맷·권한 정책·로컬 MCP·Orca 스킬
+  - .orca/README.md, .orca/agents/0{1..5}-*.md — research/plan/implement/review/release 5개 역할 시작 프롬프트
+  - .mcp.json — 신규. 개발용 로컬 MCP 서버(`node ./bin/llm-wiki.js mcp`; 배포판 `npx`가 아님)
+  - .claude/settings.json — 신규. 파괴적 명령 `deny` 14개 + 사람 권한 명령 `ask` 12개(Bash·PowerShell 양쪽)
+- summary:
+  - 여러 코딩 에이전트를 Orca worktree에서 병렬 실행하되 **승인은 사람만** 하는 개발 프로세스를 문서와 설정으로 고정했다. 제품이 강제하는 규율(에이전트는 쓰고 사람만 verified)을 개발 프로세스 자신에게도 적용한 것이다.
+  - **권한표는 규약일 뿐 통제가 아니다**는 점을 명시하고, 실제 강제 지점 두 곳(`.claude/settings.json`의 deny/ask, GitHub branch protection)을 문서에 못박았다. `review --approve`는 `deny`가 아니라 `ask`에 뒀다 — 유지보수자가 에이전트 세션으로 실행하는 기존 흐름을 끊지 않으면서 무언 실행만 막는다.
+  - 구현 역할은 새 워크플로를 발명하지 않고 저장소가 이미 제공하는 스킬(`/llm-wiki-prepare`→`/llm-wiki-feature`/`fix`)을 타도록 배선했다 — 그래야 run manifest·`check-run` 감사 추적이 남는다.
+- verification:
+  - 326 tests pass · lint OK(49 files) · `validate --strict` result pass, findings 0 · `validate-frontmatter` pass · `audit` pass · `check-run` pass
+  - `.mcp.json`·`.claude/settings.json` JSON 파싱 확인
+- evidence:
+  - AGENTS.md · docs/ORCA_PARALLEL_DEV.md · .claude/settings.json
+- caveats:
+  - `src/` 변경 없음. `package.json` `files`는 allowlist라 `.orca/`·`.mcp.json`·`docs/`는 npm 패키지에 포함되지 않는다 — 배포 영향 없음.
+  - 새 문서는 `docs/llm-wiki/` 밖(OPERATIONS.md와 같은 이유: 운영 가이드이지 거버넌스 위키 문서가 아님)이라 `validate` 스캔 대상이 아니다. 위키 문서 내용 변경이 없어 다른 문서의 status는 건드리지 않았다.
+  - `.claude/settings.json`의 deny/ask 규칙은 선언·JSON 검증만 했고 실제 차단 동작은 미검증이다(검증하려면 파괴적 명령을 시도해야 함). 세션 시작 시점에 없던 설정 파일이라 Claude Code 재시작 전까지는 적용되지 않을 수 있다.
+
+## 2026-07-27 - BENCHMARK.md verified 재승격 + 팀 브리핑 덱 갱신·Artifact 재게시
+- changed:
+  - docs/llm-wiki/BENCHMARK.md — `review --approve`로 `needs_review`→`verified`(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27)
+  - outputs/team-briefing/llm-wiki-briefing.html — 버전 v1.26.0→v1.26.2, 실측 슬라이드를 3-arm 통제 실험으로 교체, MCP 툴 개수 10→17 교정
+  - outputs/team-briefing/{SPEAKER_NOTES.md, README.md} — 대상 버전 v1.26.2, 21번 슬라이드 스크립트를 3-arm 서사로 교체, 타임라인 heading 갱신
+- summary:
+  - 덱을 갱신하며 **낡은 사실 2건**을 발견해 교정했다: (1) 실측 슬라이드가 폐기된 **−10%** 수치를 그대로 쓰고 있어 README와 모순됐다 → 3-arm 통제 실험(약 41% 절감 / 통제군 +14% / 정확도 0.978 vs 0.910)으로 교체하고 지는 태스크·채점 방식 caveat을 각주에 넣었다. (2) MCP 읽기 전용 툴이 **10개**로 적혀 있었으나 실제 **17개**다(1.6 시점 수치가 방치됨).
+  - 덱의 새 메시지는 "이득은 도구가 아니라 **내용**" — 통제 arm 결과를 발표 서사의 중심에 놓았다.
+  - Artifact를 **같은 URL로 재게시**했다(v1.25.0 내용 → v1.26.2). 재게시 전 게시본을 fetch해 다른 세션 변경이 없음을 확인했다.
+- verification:
+  - validate --strict 0. 덱은 npm 패키지 미포함(`outputs/`)이라 배포 영향 없음.
+- evidence:
+  - outputs/team-briefing/llm-wiki-briefing.html · docs/llm-wiki/BENCHMARK.md
+- caveats:
+  - 덱 버전은 `package.json`(1.26.2)에 맞췄다. 타임라인 항목은 기능 단위라 `1.26`으로 유지한다.
+
+## 2026-07-27 - 채점 기준 사람 비준(승인) 기록 + 릴리스 1.26.2 (문서 전용)
+- changed:
+  - bench/results/…-ratification.md(판정 (a) 승인 기록), …-grading.md·…-empty-control-2026-07-27.md(caveat 갱신)
+  - docs/llm-wiki/BENCHMARK.md(§실측·§통제 arm caveat 갱신, Review Notes 추가, frontmatter/§Evidence에 비준 기록 등재, `verified`→`needs_review`)
+  - README.md·README.ko.md(범위 문구 "에이전트 채점"→"에이전트 채점, 채점 기준 사람 표본 비준")
+  - outputs/distribution/{CLAIMS,README,launch-post,reddit-post,reply-kit}.md(선행 조건 해소·표기 통일)
+  - package.json(1.26.1→1.26.2), tests/verification.test.js, CHANGELOG.md·CHANGELOG.ko.md
+- summary:
+  - 유지보수자(Dowon-Kim)가 비준 워크시트를 검토하고 **(a) 승인**했다 — 채점 기준이 arm 간 일관 적용됨. 점수 변경 사유 없음(B 0.910·B2 0.978·B2_empty 0.911 유지).
+  - **표기를 전 문서에서 통일했다: "agent-graded, 채점 기준 사람 비준(표본)".** 54개 전량 독립 재채점이 아니므로 **"human-graded"로는 절대 쓰지 않는다** — 이 구분을 흐리지 않는 것이 이번 반영의 핵심 규율이다.
+  - 두 README가 패키지 포함 파일이라 npm 페이지 반영을 위해 1.26.2로 배포했다(1.26.1과 동일한 사유).
+  - 이로써 배포 선행 조건 2개(README 결정·사람 비준)가 모두 해소됐다. **게시 자체는 여전히 하지 않았다.**
+- verification:
+  - 326 tests · validate --strict 0 · validate-frontmatter 0.
+- evidence:
+  - bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-ratification.md · README.md · package.json
+- caveats:
+  - **README 헤드라인 금지 불변.** 비준은 채점 신뢰도를 올릴 뿐 표본(단일 레포·단일 모델·6 태스크·N=3)을 늘리지 않는다.
+  - BENCHMARK.md는 에이전트 편집이라 `needs_review`로 강등 — 사람 재검토 후 재승인 필요.
+
+## 2026-07-27 - 릴리스 1.26.1 (문서 전용): 교정된 README를 npm 페이지에 반영
+- changed:
+  - package.json(1.26.0→1.26.1), tests/verification.test.js(버전 단언), CHANGELOG.md·CHANGELOG.ko.md(1.26.1 섹션)
+- summary:
+  - 앞선 README 교정(폐기된 −10% 인용 → 통제 arm 포함 결과, CI 예시 태그 `@v1.26.0`)은 `README.md`·`README.ko.md`가 npm `files` allowlist에 들어 있어 **새 배포 없이는 npm 패키지 페이지에 반영되지 않는다**. main 푸시는 GitHub만 갱신한다. 그래서 문서 전용 패치로 배포했다.
+  - v1.26.0 이후 변경된 패키지 포함 파일은 정확히 두 README뿐이다(나머지는 bench/·docs/llm-wiki/·outputs/ = 미배포). 코드·CLI·`1.0.0` 계약 변경 없음.
+- verification:
+  - 326 tests · validate-frontmatter 0 · validate --strict 0 · `npm pack --dry-run` → llm-wiki-governance-1.26.1.tgz(73 files).
+- evidence:
+  - package.json · README.md · CHANGELOG.md
+- caveats:
+  - 팀 브리핑 덱은 **의도적으로 v1.26.0에 둔다** — 1.26.1은 기능 변화가 없는 문서 교정이라 발표 스토리가 달라지지 않는다(별도 지시 시 정렬). 공유 Artifact 링크는 여전히 v1.25.0 내용이라 재게시 대기 중.
+  - 벤치 채점의 사람 비준은 여전히 미완이며, 이 릴리스는 그 상태를 바꾸지 않는다.
+
+## 2026-07-27 - README(EN/KO) 스토어프론트 2건 반영: 통제 결과로 교체(보수적 −40.7%) + CI 예시 태그 갱신
+- changed:
+  - README.md·README.ko.md — (1) "Does it actually help?/실제로 도움이 되나?" 문단을 폐기된 2026-07-22 −10% 인용에서 **통제 arm 포함 결과**로 교체, (2) CI 예시 액션 핀 `@v1.7.0`→`@v1.26.0`
+  - outputs/distribution/{CLAIMS,README-note,launch-post,reddit-post,reply-kit}.md — 반영 상태 기록 및 수치 정합화
+- summary:
+  - 유지보수자가 두 건 모두 승인하고 **보수적 pooled −40.7%**("약 41%")를 선택했다(N=3 단독 −48.4% 아님). EN/KO 동시 반영.
+  - 새 문단은 헤드라인 금지를 지킨다: 수치가 제목·태그라인·배지가 아니라 **문단 안**에 있고, 4개 조건(단일 레포·단일 모델·6 태스크·N=3·에이전트 채점)과 **진 태스크(3.17×)**를 함께 싣는다. 통제 arm(+14%)과 stale 위키 보안 오답도 같은 문단에 남겨 신선도-종속 정확도 논지를 유지했다.
+  - **정합성 교정:** 배포 드래프트 3곳에 "README에는 성능 수치를 넣지 않았다"는 문장이 남아 있었는데 이번 반영으로 **사실이 아니게 되어** 전부 고쳤다("조건과 함께 문단에 싣되 헤드라인은 아님"). 드래프트의 48% 인용도 README와 맞춰 ~41%로 통일했다(CLAIMS.md에 규칙 명시).
+  - `@v1.26.0` 태그가 origin에 실재함을 확인하고 핀했다.
+- verification:
+  - 326 tests · validate --strict 0.
+- evidence:
+  - docs/llm-wiki/BENCHMARK.md · outputs/distribution/CLAIMS.md
+- caveats:
+  - 여전히 **아무것도 게시하지 않았다**. 공개 전 선행 조건(채점 워크시트 사람 비준)도 그대로 남아 있다.
+
+## 2026-07-27 - BENCHMARK.md verified 승격 + 배포 준비 자료 재작성 (게시 행위 없음)
+- changed:
+  - docs/llm-wiki/BENCHMARK.md — `review --approve`로 `needs_review`→`verified`(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-27). 유지보수자가 통제 arm·블라인드 채점 반영분을 검토 완료.
+  - outputs/distribution/{README, CLAIMS, README-note, registries, launch-post, reddit-post, reply-kit}.md — 신규(옛 킷은 `7509020`에서 stale로 삭제됐었음)
+- summary:
+  - 로드맵이 비었고(모든 게이트 accepted·출시 완료) 채택 지표가 사실상 0(스타 3·포크 0·이슈 0)이라, 유지보수자가 다음 방향으로 **배포(A)**를 선택했다. 단 **게시 행위는 범위에서 제외** — 자료만 준비하고 공개는 유지보수자 몫.
+  - 자료 전체가 `CLAIMS.md`(허용/금지 문구 + 근거 대응표) 아래에서 작성됐다: **README 성능 헤드라인 금지 유지**, 수치를 쓸 때는 4개 조건(단일 레포·단일 모델·6 태스크·N=3·에이전트 채점)과 진 태스크(routing-map 3.17×)를 함께 적는다. chars/4 프록시 수치는 공개 문구 사용 금지.
+  - 가장 설득력 있는 공개 카드는 자기 범주에 불리한 결과로 잡았다 — **"미보강 위키는 없느니만 못하다(+14%)"**.
+  - `README-note.md`에 스토어프론트 미정합 2건을 초안만 제시했다(미적용, 유지보수자 결정 필요): README:145가 폐기된 −10% 실측을 인용 중, README:140 CI 예시가 `@v1.7.0`(19개 릴리스 전) 핀.
+- verification:
+  - validate --strict 0 · `npm pack --dry-run`에 `outputs/` 0건(패키지 미포함 확인).
+- evidence:
+  - docs/llm-wiki/BENCHMARK.md · bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-grading.md
+- caveats:
+  - **아무것도 게시·제출하지 않았다.** 모든 파일은 초안이며 공개는 유지보수자 계정으로만 이뤄진다.
+  - 공개 전 선행 조건 2개를 자료에 명시했다: (1) 채점 워크시트의 **사람 비준**(남은 유일한 방법론 갭), (2) README 2건 결정.
+  - npm 다운로드는 채택 지표가 아니다(자체 CI 매트릭스 설치 + 미러). 정직한 카운터는 스타·포크·이슈.
+
+## 2026-07-27 - `B2_empty` 통제 arm 구축·실행: 토큰 절감은 툴이 아니라 위키 내용의 효과
+- changed:
+  - bench/real/runner.js(`B2_empty` arm + `assertControlPromptParity` + BENCH_WIKI_CWD 가드 + dry 패리티 출력), bench/real/make-stub-wiki.mjs(신규), bench/real/aggregate.mjs(신규), bench/real/DRIVER_RUNBOOK.md(통제 arm 절차·해석표)
+  - bench/results/real-B2_empty-2026-07-27T03-38-58-669Z.json(원자료 18런), bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27.md(실행 기록)
+  - docs/llm-wiki/BENCHMARK.md(§통제 arm 신설, §규율에 2026-07-27 규율 추가, frontmatter/§Evidence 등재, `verified`→`needs_review` 강등)
+- summary:
+  - 2026-07-24 결과(B2가 B 대비 input −48.4%)는 **왜** 줄었는지 답하지 못했다 — 위키 **내용** 때문인지 단순히 **검색 툴**이 있어서인지. 이 교란요인이 README 헤드라인 금지의 최대 근거였다. `B2_empty`(B2와 도구·프롬프트 바이트 동일, 조회 대상만 지식 제거된 스텁 위키)로 분리했다.
+  - **결과: B2_empty = B의 1.140×(input +14.0%, cost +17.4%), B2 대비 2.21배.** 통제군이 B2가 아니라 **B보다도 위**에 떨어졌다 → **−48.4%는 보강된 내용의 효과**이며 retrieval 툴 자체는 순손실이다. 행동 지표가 뒷받침한다: 소스 미열람 응답 런 = B2 8/18 vs B2_empty **0/18**, 소스 열람/런 = B 3.22·B2 0.67·B2_empty 2.39.
+  - **부수 발견: 미보강 위키는 없느니만 못하다(+14%).** `content.not_enriched`가 잡는 바로 그 상태이며 보강·검토 규율의 직접 근거다.
+  - 유료 실행 전 무료 검증을 통과시켰다: 정답 경로 누출 **0/13**, search-docs 매치 12/3/18→1/0/1(툴은 정상 작동), 6개 태스크 프롬프트 패리티 OK, BENCH_WIKI_CWD 누락 시 exit 3.
+- verification:
+  - 326 tests · validate --strict 0 · validate-frontmatter 0 · npm run lint OK. `aggregate.mjs`는 기존 2026-07-24 손계산 수치(0.516×/0.581× 및 태스크별 6개 비율)를 그대로 재현해 검증했다.
+- evidence:
+  - bench/real/runner.js#symbol:assertControlPromptParity · bench/real/make-stub-wiki.mjs · bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27.md
+  - **정확도 축도 닫았다(같은 날, 무료 블라인드 채점).** 3-arm 54개 답변을 arm 라벨 제거·셔플 후 채점: **B 0.910 · B2 0.978 · B2_empty 0.911**(환각 B 1건·나머지 0). **B2_empty = B** — 스텁 위키는 정확도를 전혀 사주지 못하면서 토큰만 +14% 더 쓴다. 절차 검증: arm B가 2026-07-24 채점과 **정확히 재현**(0.9097·62.5/69)됐고 개별 결함 2건도 같은 arm에 독립 재귀속됐다. 신규 `bench/real/make-grading-worksheet.mjs`(라벨 제거+해시 셔플, map 분리)로 재현 가능하게 만들었다.
+- caveats:
+  - **README 헤드라인 금지 유지.** 최대 반론은 닫혔으나 단일 레포·단일 모델·6 태스크·N=3, 2026-07-22(−10%)와의 격차 미해명, 채점자가 사람이 아닌 에이전트(같은 모델 계열)라는 점은 그대로다.
+  - 스텁이 제목·경로를 남긴 **관대한** 통제라 +14%는 하한이다. 6개 중 2개 태스크(item-domain 0.90×·session-timeout 0.69×)는 스텁 arm이 여전히 B를 이겼다 — 뭉개지 않고 기록했다.
+  - 비용 $5.9516로 사전 추정($3~5.5)을 초과했다. 실측 누적 약 **$17.10** / 런북 $19 캡 — 잔여 약 $1.90이라 추가 유료 arm은 새 예산 결정이 필요하다.
+  - external-vue-app 저장소는 무변경(읽기 전용 하네스). API 키는 User 범위 환경변수에서 실행 시점에만 읽어 대화·저장소에 남기지 않았다.
+
+## 2026-07-27 - verified 문서 12개 재기준 (1.26.0 버전 범프 후 evidence.stale 해소)
+- changed:
+  - docs/llm-wiki/{EXAMPLES.md, index.md, profiles/library.md, project-profile.md, PUBLIC_API.md, README.md, releases/v0.1.7.md, releases/v0.1.8.md, RELEASE_FLOW.md, templates/DECISION_LOG.template.md, templates/TASK_PROMPT.template.md, VERSIONING.md} — frontmatter `reviewed_at` 2026-07-24→2026-07-27만 갱신
+- summary:
+  - 1.26.0 릴리스 커밋(`5e640f7`)이 `package.json`·`README.md`를 건드려, 이들을 참조하는 verified 문서 12개가 `evidence.stale` 14건으로 잡혔다. 이 문서들은 의도적으로 버전 비의존으로 작성돼(`project-profile`이 명시) 버전 범프로 주장이 달라지지 않으며, 변경은 버전 숫자·추가 문서뿐이다. 유지보수자(Dowon-Kim)가 재기준을 지시해 기존 방식(`ddbf6ca`·`b9fd3cd` 선례)대로 `reviewed_at`만 오늘로 옮겨 drift를 해소했다.
+  - 변경 범위 확인: git diff가 12파일 × 1줄이며 바뀐 라인은 `reviewed_at`뿐이다 — 본문·`last_updated`·`source_files`·`evidence`·`status`는 불변.
+- verification:
+  - validate --strict 0(이전 14 evidence.stale → 0) · drift 0 · validate-frontmatter 0.
+- evidence:
+  - package.json · README.md (1.26.0 범프가 재검토를 촉발)
+- caveats:
+  - 릴리스 자체는 이 drift에 막히지 않았다 — Publish·CI는 `validate-frontmatter`와 `doctor`만 검사한다. 이 항목은 순수 거버넌스 정리다.
+  - 31개 needs_review 이력 문서(릴리스 노트)는 의도적으로 그대로 둔다.
+
+## 2026-07-27 - 릴리스 1.26.0 준비 (Harden & Adopt: Gate 20 `review` + Track A 위생 + Track C 도입 문서)
+- changed:
+  - package.json(1.25.0→1.26.0), tests/verification.test.js(버전 단언 1.26.0)
+  - CHANGELOG.md·CHANGELOG.ko.md(1.26.0 섹션 신설), README.md·README.ko.md(Core commands 표에 `review` 행 추가 — 이번 릴리스 헤드라인인데 누락돼 있었음)
+  - ROADMAP.md·ROADMAP.ko.md("Harden & Adopt" 섹션을 제안→**1.26.0 출시됨**으로 전환, 3개 결정 확정 결과·미완 2건 명시), GATE_REVIEW.md(Review Workflow Scope Decision 제목에 shipped in 1.26.0 표기)
+  - .github/actions/validate/action.yml(CLI 버전 핀 `1.25`→`1.26`)
+  - outputs/team-briefing/{llm-wiki-briefing.html, SPEAKER_NOTES.md, README.md}(대상 버전 v1.26.0 정렬, 타임라인에 1.26 항목 추가; 노트·README는 v1.23.0에 머물러 있던 스테일도 함께 해소)
+- summary:
+  - 1.25.0 이후 main에 쌓인 미배포 작업을 1.26.0으로 묶었다. 새 CLI 명령 `review`가 추가되므로 **MINOR**다.
+  - 내용: Gate 20 `review`(needs_review 백로그 위험도 정렬 나열 = 읽기 전용 기본, `--approve`/`--approve-all --yes`로만 `status: verified`+`reviewed_by`+`reviewed_at` 스탬프, 자동 승격 없음, blocking/구조적 finding 문서 거부, reviewed_by 미해소 시 스탬프 거부, MCP는 LIST만), Track A 위생(Node 내장 커버리지·`node --check` lint·CodeQL·action 버전 핀·CODEOWNERS/MAINTAINERS — 런타임 의존성과 devDependency 모두 0 유지), Track C 도입 문서(SECURITY MCP 신뢰 모델·docs/OPERATIONS.md·examples/·README How it works).
+- verification:
+  - 326 tests · validate --strict 0 · validate-frontmatter --strict 0 (아래 릴리스 커밋 시점 기준).
+- evidence:
+  - package.json · CHANGELOG.md · ROADMAP.md · .github/actions/validate/action.yml · src/commands.js#symbol:reviewCommand
+- caveats:
+  - `docs/llm-wiki/releases/v1.26.0.md` 큐레이션 노트는 만들지 않았다 — 1.19~1.25도 만들지 않아 최근 관행과 일치시켰다(릴리스 본문은 `release-notes`가 생성).
+  - **README 성능 헤드라인은 이 릴리스에서도 금지 유지**(유지보수자가 2026-07-27 재확인). 빈-위키 통제 arm 미실행.
+  - 버전 범프로 package.json을 참조하는 verified 문서에 `evidence.stale`이 발생하면, 사람 확인을 전제로 `reviewed_at`만 재기준하는 기존 방식으로 해소한다.
+
+## 2026-07-27 - BENCHMARK.md에 2026-07-24 SDK 경로 유료 실측 + 블라인드 채점 반영 (문서-실행 지연 해소)
+- changed:
+  - docs/llm-wiki/BENCHMARK.md — §실측 2 신설, §규율에 2026-07-24 이후 규율 추가, §토큰-효율 벤치 확장 제목·도입부 축 정정, §한계 범위 한정, frontmatter(`last_updated` 2026-07-22→2026-07-27, source_files +3, evidence +2)·§Evidence 등재, Review Notes 추가
+  - bench/results/real-driver-external-vue-app-sdk-2026-07-24.md — caveat #3의 자기모순 교정("Correctness is unmeasured" → 같은 파일의 블라인드 채점 결과를 반영하되 사람 비준은 미완으로 명시)
+- summary:
+  - 커밋 `0e2b012`(2026-07-24)이 real SDK 경로 external-vue-app 벤치(N=3) 결과와 블라인드 채점 워크시트를 `bench/results/`에만 남기고 위키 문서를 갱신하지 않아, BENCHMARK.md가 실행 사실보다 뒤처져 있었다. 그 상태로 `verified` 승격을 요청받아 먼저 문서를 사실에 맞췄다.
+  - 반영한 수치(전부 원자료 전사, 지어낸 값 없음): input B2/B **0.516×(−48.4%)**, cost 0.581×(−41.9%), pooled(N=1+N=3) **0.593×(−40.7%)**, 블라인드 루브릭 채점 B **0.910** vs B2 **0.971**·환각 0, 픽스처 22/22 verified·validate 0·drift 0, 유료 총 **$11.15**($19 캡 이내).
+  - 불리한 사실도 함께 기록했다: routing-map은 B2가 **3.17× 패**, 2026-07-22 실측(−10%)과의 **격차가 완전히 설명되지 않음**(드라이버 경로·토큰 회계·픽스처 3요인으로 방향만 설명), `B2_empty_wiki` 통제 arm 미실행이라 "위키 내용 vs retrieval 툴" 미분리, 채점은 **에이전트 루브릭 채점**(사람 블라인드 채점 아님).
+  - 축 혼동 교정: 이전 제목 "토큰-효율 벤치 확장 (설계, executed:false)"가 "유료 실측이 전혀 없다"로 오독될 수 있어, 2026-07-24 실행은 **retrieval 축(B vs B2)**이고 **B3/whole-task real 하네스는 여전히 `executed:false`**임을 분리 명시했다.
+- verification:
+  - validate --strict 0 · validate-frontmatter --strict 0 · 326 tests(문서 변경이라 코드 무영향).
+- evidence:
+  - bench/results/real-driver-external-vue-app-sdk-2026-07-24.md · bench/results/real-driver-external-vue-app-sdk-2026-07-24-grading.md · bench/real/runner.js · bench/tasks-external-vue-app.json
+- caveats:
+  - **README·런치 카피의 토큰/속도 헤드라인은 계속 금지**(단일 레포·단일 모델·6 태스크·N=3·에이전트 채점·통제 arm 미실행). 인용 시 pooled −40.7% 기준 + 지는 태스크 + 정확도 결과를 함께 적는다.
+  - 에이전트(Claude Code) 편집이라 BENCHMARK.md는 `needs_review` 유지 — 사람 검토 후 `review --approve`로 승격 예정(허위 검토 메타 미기입).
+
+## 2026-07-24 - verified 문서 13개 재검토·재기준 (2026-07-24 additive 커밋 후 evidence.stale 해소)
+- changed:
+  - docs/llm-wiki/{domains/00_overview.md, EXAMPLES.md, GLOSSARY.md, index.md, profiles/library.md, project-profile.md, README.md, RELEASE_FLOW.md, VERSIONING.md, templates/DECISION_LOG.template.md, templates/TASK_PROMPT.template.md, releases/v0.1.7.md, releases/v0.1.8.md} — frontmatter `reviewed_at` 2026-07-23→2026-07-24만 갱신(본문·`last_updated`·source_files/evidence 불변)
+- summary:
+  - 위 "Harden & Adopt" 커밋(Gate 20 review·Track A 위생·Track C 문서)이 참조 소스(src/commands.js·src/cli.js·src/mcp/tools.js·package.json·README.md 등)를 건드려, 이들을 참조하는 verified 문서 13개가 `evidence.stale`(22건)로 잡혔다. 변경은 전부 additive이고 각 문서의 주장은 여전히 정확함을 사람(Dowon-Kim)이 "모든 문서 확인 완료"로 재검토·확인했으므로, `reviewed_at`을 오늘로 재기준해 drift를 해소했다(과거 사이클과 동일한 방식, 본문 변경 없음).
+- verification:
+  - validate --strict 0(이전 22 evidence.stale → 0)·validate-frontmatter 0.
+- evidence:
+  - package.json · src/commands.js · src/cli.js · src/mcp/tools.js · README.md (2026-07-24 additive 변경이 재검토를 촉발)
+- caveats:
+  - release notes·BENCHMARK 등 32개 needs_review 이력 문서는 의도적으로 needs_review 유지(승격 대상 아님). 문서 내용은 바꾸지 않았고 review 날짜만 재기준했다.
+
+## 2026-07-24 - post-1.25 "Harden & Adopt" 라인 인세션 구축 완료 (Gate 20 review + Track A 위생 + Track C 도입 문서)
+- changed:
+  - (Track B/Gate 20 review 명령 — 아래 Gate 20 항목의 정정·보강) src/commands.js(`reviewCommand` + REVIEW_RISK_WEIGHTS + buildReviewEntry/renderReviewList/approveReview/stampVerified/resolveReviewer/finishReview), src/git.js(`gitUserName`), src/commands/fix-migrate.js(`upsertFrontmatterScalar`), src/commands/findings.js(`review.reviewer_unresolved`/`review.confirmation_required`), src/config-file.js(`reviewer`/`reviewedBy` 키), src/cli.js·src/index.js·src/mcp/tools.js(3표면 배선; MCP는 LIST만), tests/verification.test.js(+6)·tests/mcp.test.js(+1). GATE_REVIEW.md(Gate 20 `proposed`→`accepted`, 미해결 3문항 표준안 확정)
+  - (Track A 위생/공급망, docs/llm-wiki 밖) .github/actions/validate/action.yml(version 기본 `latest`→`1.25` 핀), .github/workflows/ci.yml(Node 내장 커버리지 잡 + `node --check` lint 게이트), .github/workflows/codeql.yml(신규), .github/workflows/bench.yml(신규; workflow_dispatch+주간, 비차단, chars/4 프록시 명시), .github/CODEOWNERS(신규), MAINTAINERS.md(신규), .editorconfig(신규), scripts/lint-syntax.mjs(신규), package.json(lint/test:coverage/sbom/bench 스크립트), CONTRIBUTING.md·CONTRIBUTING.ko.md(품질 게이트·zero-dep 입장 섹션)
+  - (Track C 도입 문서, docs/llm-wiki 밖) SECURITY.md·SECURITY.ko.md(MCP 서버 신뢰 모델 섹션), docs/OPERATIONS.md(신규; 규모별 운영 가이드), examples/README.md(신규; init→enrich→validate→review end-to-end 워크스루 + 진짜 quickstart 출력 스냅샷), README.md·README.ko.md(`## How it works` mermaid 파이프라인+샘플 audit, MCP 툴 목록 정확화+신뢰모델 포인터, OPERATIONS 링크)
+- summary:
+  - 외부 심층분석 기반 post-1.25 로드맵을 인세션에서 구축했다. 유지보수자가 3개 결정을 권장안으로 확정(커버리지=Node 내장, lint=zero-dep, Gate 20 수용). Gate 20 `review`는 `/llm-wiki-feature`로 도그푸딩 구축했다.
+  - **정정**: 아래 Gate 20 항목은 "319 tests"로 기록했으나 실제 신규 테스트는 review 6개 + MCP 1개 = 총 **326 tests**다. review 구현은 아래 항목이 서술한 index.js 배선 하나뿐 아니라 `reviewCommand` 본체·CLI/MCP 배선·findings/config/git/stamp seam 전부를 포함한다(그 항목은 병렬 fork가 좁게 기록).
+  - Track A는 zero-runtime-dep AND zero-devDep을 보존한다(커버리지=Node 내장, lint=`node --check`, 나머지 GitHub 네이티브·npm 스크립트). Track C 문서는 전부 docs/llm-wiki 밖이라 검증 대상이 아니고 EN/KO 쌍을 유지한다.
+- verification:
+  - 326 tests·validate --strict 0·validate-frontmatter 0·check-run --strict pass(8 changedSource ⊆ 3 touchedDocs)·`npm run lint` OK(46파일)·bench `--against baseline` 실행 정상(프록시).
+- evidence:
+  - src/commands.js#symbol:reviewCommand · src/git.js#symbol:gitUserName · src/commands/fix-migrate.js#symbol:upsertFrontmatterScalar · GATE_REVIEW.md(Review Workflow Scope Decision, accepted 2026-07-24)
+- caveats:
+  - Gate 20만 신규 게이트(accepted). Track A/C는 위생·문서라 게이트 불요.
+  - 커밋/푸시/버전/배포 없음 — 전부 main 스테이징, 유지보수자 검토 대기.
+  - PUBLIC_API/ARCHITECTURE_CONVENTIONS/DOMAIN_FEATURES는 에이전트 편집이라 needs_review로 강등 — 사람 재검토 후 verified 재승인 필요(허위 검토 메타 미기입). 새 `review` 명령이 이 백로그 처리 도구다.
+  - README 성능 헤드라인 여전히 금지(bench는 chars/4 프록시). bench CI 잡은 비차단·정보용(게이트 아님).
+
+## 2026-07-24 - Gate 20: read-only `review` 워크플로 완성 (프로그래매틱 API 배선 + 검증 + 문서 반영)
+- changed:
+  - src/index.js (동결 프로그래매틱 `commands` 맵·import·export에 `review` 추가; Options typedef에 approve/approveAll/yes/reviewer)
+  - docs/llm-wiki/PUBLIC_API.md·ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md (review 명령·기능·Evidence 반영; verified→needs_review 강등 + 2026-07-24 Review Note)
+  - (이 세션 이전 스테이징된 seam은 유지: src/commands.js `reviewCommand`·src/cli.js 배선·src/commands/{findings,fix-migrate}.js·src/config-file.js·src/git.js·src/mcp/tools.js)
+- summary:
+  - GATE_REVIEW "Review Workflow Scope Decision"(accepted 2026-07-24, Dowon-Kim 인세션)의 read-only `review` 명령을 완성했다. 대부분 구현(`reviewCommand` + CLI 배선 + MCP LIST 툴 + findings/config/git/stamp seam)은 이미 스테이징돼 있었고, 누락된 것은 프로그래매틱 API 배선(`src/index.js`의 동결 `commands` 맵에 `review` 키) 하나뿐이라 CLI↔API 명령집합 일치 테스트가 실패(318/319)하고 있었다 — 이를 배선해 319/319로 복구했다.
+  - `review`는 needs_review 백로그를 `audit` findings로 위험도 정렬(never-enriched/thin/no-evidence/broken-link 우선)해 문서별 품질·evidence 요약과 함께 나열(list, read-only)하고, 명시적 `--approve <path>`/`--approve-all --yes`로만 `status: verified`+`reviewed_by`+`reviewed_at`만 스탬프한다. 자동 승격 없음, blocking/구조적 finding(blocked/error) 문서 거부, body/source_files/evidence/last_updated 미변경(`drift --downgrade`의 역방향). reviewed_by는 `--reviewer`>config `reviewer`>git `user.name`, 미해소 시 스탬프 거부(공란/날조 금지). `--approve-all`은 `--yes` 필수. MCP는 LIST만 노출(승격은 CLI 전용).
+  - 스모크 검증(실 저장소, 쓰기 없음): `review` list = needs_review 33건·모두 approvable; `review --approve-all`(--yes 없음) → `review.confirmation_required`로 거부·0건 스탬프·reviewer=Dowon-Kim(git 해소); `review --approve <없는경로>` → not-found 거부. 319 tests·validate --strict 0·validate-frontmatter 0.
+- evidence:
+  - src/index.js#symbol:commands (동결 맵에 `review` — CLI `COMMANDS`와 1:1)
+  - src/commands.js#symbol:reviewCommand
+  - src/git.js#symbol:gitUserName · src/commands/fix-migrate.js#symbol:upsertFrontmatterScalar · src/commands/findings.js (`review.reviewer_unresolved`/`review.confirmation_required`)
+  - GATE_REVIEW.md ("Review Workflow Scope Decision", accepted 2026-07-24)
+- caveats:
+  - 위키 문서 3건(PUBLIC_API/ARCHITECTURE/DOMAIN_FEATURES)은 에이전트 편집이라 verified→needs_review로 강등했다 — 사람 검토 후 재승인 필요(허위 검토 메타 미기입).
+  - 이 세션에서 실 저장소의 어떤 문서도 verified로 승격하지 않았다(`review --approve` 미실행). verified 승격은 사람의 CLI 액션이다.
+  - 커밋/푸시/버전 범프/배포는 사용자 지시 대기(미릴리스, main 한정).
+
+## 2026-07-24 - ROADMAP: post-1.25 "Harden & Adopt" 라인 작성 (외부 심층분석 기반, 제안·미승인)
+- changed:
+  - ROADMAP.md·ROADMAP.ko.md (신규 "Release Plan (post-1.25) — Harden & Adopt" 섹션 + last_updated 2026-07-23→2026-07-24 + source_files에 .github/actions/validate/action.yml·.github/workflows/ci.yml 추가)
+- summary:
+  - 외부 3자 공개-저장소 심층분석(2026-07-24)을 입력으로, measure-first 라인(Gate 27까지 완료)·global-reach 프로그램과 조화시키고 zero-dep 정체성 제약 안에서 post-1.25 발전 로드맵을 작성했다. 3개 트랙: A(엔지니어링 위생·공급망 견고화 — action version:latest 고정·Node 내장 커버리지·CodeQL/SBOM·CODEOWNERS·lint 입장), B(거버넌스 완성 — Gate 20 review 워크플로 결정·MCP 접근경계 문서), C(도입 자산 — 예제/픽스처·규모별 가이드·아키텍처 다이어그램·벤치 CI 가드).
+  - 두 정체성 결정(커버리지=nyc/c8 아닌 Node 내장; lint=zero-dep 유지 vs 범위 한정 devDep)을 조용히 처리하지 않고 명시적 결정 지점으로 노출했다(권장: 둘 다 zero-dep 보존). Gate 20은 리포트가 독립적으로 최상위 기능 격차로 지목 + 내부 오랜 초안-미승인 → 이 라인의 헤드라인으로 수용 권장.
+  - 전부 부가적·opt-in·무런타임 의존성·1.0.0 계약 불변. **허위 승인 메타 미기입**: 신규 게이트는 모두 PROPOSED이며 유지보수자 승인 대기(코드 전 GATE_REVIEW 범위 결정 규율). README 성능 헤드라인 금지 유지(chars/4 프록시).
+- evidence:
+  - .github/actions/validate/action.yml (version 기본값 "latest" — 11행, 리포트 #8)
+  - .github/workflows/ci.yml (Node 20+ 매트릭스 — 내장 커버리지 경로 성립)
+  - GATE_REVIEW.md (Gate 20 proposed_for_next)
+- caveats:
+  - 로드맵은 방향 제안일 뿐 승인이 아니다. 각 기능 게이트는 코드 전에 유지보수자가 GATE_REVIEW에 accepted를 남겨야 한다.
+  - 에이전트 편집이라 ROADMAP 두 문서는 needs_review 유지(이미 needs_review). 커밋/푸시는 사용자 지시 대기.
+
+## 2026-07-23 - 1.25.0 릴리스: D(스킬 간소화 + 안전한 --refresh) + 문서 현행화 + 버전 범프
+- changed:
+  - src/commands/skills.js (feature/fix/docs-sync 런타임 맵[liveWikiMapSection]·manifest 압축·bootstrap 스냅샷 유지; content-hash 마커[withGeneratedMarker/isManagedUnmodified, node:crypto]; --refresh 로직)
+  - src/cli.js (--refresh 플래그·init/quickstart 배선·help usage·Safety 노트)
+  - tests/verification.test.js (스킬 간소화 계약 보존 + --refresh 동작 테스트; 버전 어서션 1.25.0; 신규 도메인맵 assertion을 런타임 지시로 갱신)
+  - package.json (1.24.0 → 1.25.0)
+  - CHANGELOG.md·CHANGELOG.ko.md (1.25.0 항목)
+  - ROADMAP.md·ROADMAP.ko.md (1.25 항목 + 1.24 상태 released 현행화)
+  - GATE_REVIEW.md (토큰 효율 게이트 accepted for 1.25.0 — built)
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md·PUBLIC_API.md (제안→1.25.0 현행화 + 릴리스 Review Note; needs_review 유지)
+  - .claude/.agents/.cursor/.llm-wiki 스킬 아티팩트 재생성(간소화 본문 + 마커; onboard/prepare 신규)
+- summary:
+  - 유지보수자(Dowon-Kim) 지시로 D를 구축하고 토큰 효율 게이트를 1.25.0으로 수용·배포한다. feature/fix/docs-sync 스킬은 생성 시점 도메인맵 스냅샷 대신 실행 시점(prepare --compact/onboard)에 맵을 조립해 고정 본문이 도메인 수와 무관해지고 stale되지 않으며(bootstrap은 최초 보강용이라 스냅샷 유지), manifest는 필드 계약으로 압축했다(안전 규칙 전부 유지). content-hash 마커 기반 --refresh는 사용자 미수정 관리 스킬만 갱신하고 사용자·커스텀 스킬은 절대 덮어쓰지 않는다(dry-run이 create/refresh/conflict/up-to-date 구분).
+  - 실측 스킬 크기: feature 3224→3182·fix 3186→3144·docs-sync 2853→2811(소규모 −42, 도메인 수와 무관하게 평탄; 도메인 많을수록 예전 대비 큰 절감), bootstrap 4075→3951(manifest 압축). 저장소 dogfood 스킬을 마커 포함해 재생성.
+  - additive·opt-in·zero-dep(node:crypto는 내장)·Windows/UTF-8·1.0.0 계약 불변. 319 tests·validate --strict 0.
+- evidence:
+  - src/commands/skills.js#symbol:writeSkillArtifacts
+  - src/commands/skills.js#symbol:isManagedUnmodified
+  - src/cli.js#symbol:parseArgs
+- caveats:
+  - 벤치 수치는 chars/4 PROXY(진단)이며 README 헤드라인 금지 유지. real/유료 벤치 미실행(executed:false) — 사람 결정 대기.
+  - 이 릴리스에 편집된 wiki 문서는 에이전트 편집이라 needs_review로 배포하며, 사람 재검토 후 별도 커밋으로 verified 승격 예정(1.24.0과 동일 패턴). 허위 검토 메타 미기입.
+
+## 2026-07-23 - 토큰 효율 후속(패스 2): 벤치 B3 arm + whole-task guided-compact + MCP compact/dedup (비유료, 유료 보류)
+- changed:
+  - bench/lib/strategies.js (신규 strategyWikiRetrievalCompact = B3_retrieval_compact)
+  - bench/run.js (B3 롤업·세션뷰·verdict·renderMarkdown 배선; A/B/B2 출력 불변)
+  - bench/results/current.json·current.md (B3 포함 재생성; baseline.*는 frozen 유지)
+  - bench/whole-task/runner.js (arm에 guided-compact 추가, dry)
+  - src/mcp/tools.js (get_doc에 strictSection/compact/maxChars, prepare에 compact/maxChars 배선)
+  - src/commands/retrieval.js (getDocCommand compact 시 text 리포트 Body는 포인터, 본문은 structuredContent/JSON에만 — MCP 중복 회피)
+  - tests/mcp.test.js (신규 2: buildToolOptions 토큰 제어 매핑, get_doc --compact dedup)
+  - GATE_REVIEW.md·docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md·BENCHMARK.md (상태·근거 반영)
+- summary:
+  - "유료는 최대한 보류, 나머지 비유료 clearing 작업 진행" 지시에 따라 활주로를 치웠다. (E-비유료) proxy 벤치에 B3(compact/section-scoped 읽기) arm을 추가·실행: B3 vs B2 −34.5% 토큰이나 grounding 100%→83.3%(evidence가 미선택 섹션) — verdict가 정직하게 보고. whole-task에 guided-compact arm(dry). (MCP) get_doc/prepare에 토큰 제어 옵션 배선 + content/structuredContent 본문 중복 조사: 기본 불변, opt-in compact에서만 본문을 structuredContent에만 두어 중복 회피.
+  - 모든 벤치 수치는 chars/4 PROXY(진단)라 README 헤드라인 금지 유지. 실제 유료 실행 없음(executed:false). real 하네스 B3·empty-wiki 통제·D(스킬 간소화·refresh)는 사람 결정·검토 대기.
+- evidence:
+  - bench/lib/strategies.js#symbol:strategyWikiRetrievalCompact
+  - src/mcp/tools.js#symbol:buildToolOptions
+  - src/commands/retrieval.js#symbol:getDocCommand
+- caveats:
+  - MCP 클라이언트가 content와 structuredContent를 둘 다 모델 입력에 넣는지는 이 저장소에서 측정 불가 — 단정하지 않았고 기본 동작을 바꾸지 않았다. compact는 opt-in.
+  - 미릴리스(main 작업 트리). 커밋/푸시/버전/배포/유료 벤치 안 함. 에이전트 편집 → 관련 문서 needs_review 유지.
+
+## 2026-07-23 - 토큰 효율: 가장 싼 안전한 경로 + compact retrieval (제안·부분 구축) + --doc-lang help 갭 수정
+- changed:
+  - src/cli.js (--doc-lang을 init/quickstart/handoff/prompt usage에 노출; 신규 opt-in 플래그 --strict-section/--compact/--max-chars 파싱·검증·help)
+  - src/commands/task-path.js (신규 순수 leaf: classifyTaskRisk·selectTaskPath)
+  - src/commands/retrieval.js (estimateTokens[chars/4 PROXY]·clampText·selectSections strict 모드·섹션 제목 가중·getDocCommand opt-in strictSection/compact/maxChars)
+  - src/commands/guided.js (prepareCommand의 opt-in --compact 번들)
+  - tests/verification.test.js (신규 8: 경로 선택기 2·retrieval 토큰 제어 3·prepare compact 2·parseArgs 1; help --doc-lang 어서션)
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md·PUBLIC_API.md (기능·근거 반영, verified→needs_review 강등)
+  - docs/llm-wiki/BENCHMARK.md (벤치 arm 설계 추가, executed:false)
+  - GATE_REVIEW.md (Token-Efficiency Scope Decision, proposed)
+  - README.md·README.ko.md (토큰 제어 옵션 안내)
+- summary:
+  - 목표는 스킬 문장 축소가 아니라 "올바른·검증된 코드 변경까지의 총토큰" 축소이며 정확도·문서 최신성·사람 검토를 희생하지 않는다. A(경로 선택기: 작업 텍스트·후보 수·status만으로 source_direct/wiki_first/hybrid, 위험·stale·코드변경이면 mustReadSource·source_direct 금지), C(get-doc/selectSections 토큰 제어: strict no-fallback·제목 가중·정확 maxChars·compact·chars/estimatedTokens), B(prepare --compact 단일 번들)을 구현했다. D(스킬 간소화·안전한 --refresh)·E(벤치 B3/compact arm 분리, dry)는 설계만 기록.
+  - 모두 additive·opt-in·zero-dep·Windows/UTF-8. 신규 옵션 미사용 시 기본 출력 byte-identical. redaction 후 클램프로 잘린 꼬리에도 비밀 미노출. 경로 선택에 정답 파일명·내부 심볼 미사용(벤치 누출 가드).
+- evidence:
+  - src/commands/task-path.js#symbol:selectTaskPath
+  - src/commands/retrieval.js#symbol:selectSections
+  - src/commands/guided.js#symbol:prepareCommand
+  - src/cli.js#symbol:helpText
+- caveats:
+  - estimatedTokens는 chars/4 PROXY(진단용)일 뿐 실제 토큰이 아니다 — README 성능 헤드라인 금지. 실제 유료 벤치 미실행(executed:false).
+  - 에이전트(Claude Code) 편집이라 관련 verified 문서를 needs_review로 강등했다. 사람 검토 후 재승인 필요. D·E 및 실제 다중 프로젝트·다중 모델 벤치는 사람 결정 대기.
+  - 미릴리스(main 작업 트리 스테이징). 커밋/푸시/버전 범프/배포 안 함.
+
+## 2026-07-23 - 생성 문서 언어 선택 (--doc-lang / config docLanguage, 긴급 i18n, 1.24.0)
+
+- status: needs_review
+- actor: Claude Code (유저 지시 — 긴급 국제화 수정 태스크)
+- scope: src, tests, docs, GATE_REVIEW, CHANGELOG, README, package.json
+- summary:
+  - 버그: `init`/`quickstart`이 일부 생성 본문(`index.md`·위키 `README.md`·초기 `log.md`·도메인 overview 빈-도메인 안내·per-domain 문서)에 한국어를 하드코딩해 영어 우선 제품의 해외 사용자가 일부 한국어 문서를 받았다.
+  - 교정: 생성 문서 본문·에이전트 문서 작성 지시 언어를 고르는 전역 `--doc-lang en|ko`(기본 `en`)와 config `docLanguage`를 추가했다. 기본 실행은 완전한 영어(본문·제목·placeholder·review note·초기 log에 한국어 0), `--doc-lang ko`는 한국어 경험 재현·완성. `--lang`(findings 언어)과 독립. 잘못된 값은 usage error(exit 3). CLI가 config보다 우선.
+- changed:
+  - src/commands/doc-content.js (신규: 생성 문서 본문의 단일 언어 선택 계층 — index/readme/log/project-profile/DOMAIN_FEATURES/overview/default/domain 본문의 EN 기본·KO 변형; 헤딩·제목·코드·경로·식별자 미번역)
+  - src/commands/doc-templates.js (`docMetadata`에 `docLang` 스레드, 본문을 doc-content에 위임; 하드코딩 한국어 제거)
+  - src/task-prompts.js (`documentLanguageDirective`; `initialEnrichmentWorkflow`·bootstrap·feature/fix/docs-sync/okf-extract·`apiServiceInventoryChecklist`에 docLang 반영), src/commands/skills.js (스킬 본문에 언어 지시 주입)
+  - src/commands.js (init/quickstart/handoff/prompt 경로에 `normalizeLang(options.docLang)` 스레드; init 결과에 `docLanguage` 노출), src/cli.js (`--doc-lang` 파서·`defaultOptions.docLang`·GLOBAL_OPTIONS), src/config-file.js (`lang`/`docLanguage` 로드·검증·병합; CLI 우선), src/index.js (Options typedef)
+  - tests/verification.test.js (신규 14개: EN 기본 무-한국어 전수 스캔·KO 생성·mix·config·override·exit3·domain·bootstrap/handoff/skills 언어·미덮어씀·스킬 미요청 불변·절대경로/민감정보 부재·UTF-8 라운드트립; 기존 3개를 영어 기본값에 맞춰 갱신)
+  - GATE_REVIEW.md·CHANGELOG.md/.ko.md·README.md/.ko.md·docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,EXAMPLES}.md (기능 반영; 위키 문서는 needs_review 유지), package.json (1.24.0)
+- evidence:
+  - src/commands/doc-content.js
+  - src/commands/doc-templates.js#symbol:docMetadata
+  - src/task-prompts.js#symbol:documentLanguageDirective
+  - src/config-file.js#symbol:mergeConfigIntoOptions
+- caveats:
+  - AI 편집이라 관련 위키 문서는 `needs_review` 유지 — 사람 검토 후 재승인 예정(허위 verified/reviewed 금지).
+  - OKF profile/템플릿/변환 가이드는 이 릴리스에서 두 언어 모두 영어 유지(포맷-표준 아티팩트, 기본 경로 밖 opt-in `--profile okf-v0.1`) — 필요 시 후속.
+- verification: 307 tests pass · validate --strict 0 · audit 0 · validate-frontmatter 0 · npm pack에 doc-content.js 포함 · 스모크(EN 17문서 한국어 0 / KO 17문서 한국어) 통과.
+
+## 2026-07-23 - Guided Onboarding and Task Preparation (onboard·prepare, 1.24 대상)
+
+- status: needs_review
+- actor: Claude Code (유저 지시 — Codex 작성 태스크 프롬프트)
+- scope: src, tests, docs, bench, GATE_REVIEW
+- changed:
+  - GATE_REVIEW.md (신규 게이트 "Guided Onboarding and Task Preparation Scope Decision"; 방향 승인 기록, 허위 verified/reviewed 금지)
+  - src/commands/guided.js (신규: read-only `onboardCommand`/`prepareCommand`; retrieval 프리미티브·그래프·evidence 파서 재사용, 민감 제외·redact, EN/KO, 비단정 어법)
+  - src/commands/retrieval.js (`loadContentDocs`/`applyFilters`/`redactSensitive`/`docSummary` export; 검색 랭킹을 순수 `rankDocsByQuery`로 추출[`requireAll` 옵션], search-docs 동작 보존)
+  - src/commands.js (guided 배럴 re-export), src/cli.js (COMMANDS·COMMAND_OPTION_RULES·`--domain`/`--goal` 파서·prepare 필수 task·help), src/index.js (동결 commands 맵·exports·Options typedef), src/mcp/{tools.js,dispatch.js} (read-only onboard/prepare 툴·buildToolOptions·instructions)
+  - src/task-prompts.js (`onboard`/`prepare` 워크플로 + 공통 `guidedGroundingRules` 단일 소스; implementationPrompt에 prepare 인지·충돌-시-중단 스텝), src/commands/skills.js (SKILL_TASKS에 onboard/prepare; read-only 태스크는 매니페스트 대신 read-only 주석)
+  - bench/whole-task/{METHODOLOGY.md,tasks.sample.json,runner.js,RESULT_TEMPLATE.md} (전체 작업 실험 뼈대 — retrieval 벤치와 분리, dry-run 전용, 수치 미생성)
+  - tests/verification.test.js·tests/mcp.test.js (onboard/prepare/스킬/호환 테스트 + command-set·CODEX_SKILL_TASKS 단언 갱신)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,EXAMPLES}.md (기능·Evidence 반영 → verified에서 needs_review로 강등), README.md/.ko.md·ROADMAP.md/.ko.md·CHANGELOG.md/.ko.md (Unreleased/1.24 항목)
+- summary:
+  - 신입 → onboard(도메인 학습) → prepare(작업 범위 조사) → feature/fix(구현) → 사람 검토 흐름을 만드는 읽기 전용 guided 표면 2개를 추가했다. CLI는 기존 위키+evidence+그래프+검색에서 결정적으로 조립할 뿐 설명을 창작하지 않는다(코드가 최종 사실). 검색은 `rankDocsByQuery` 단일 소스 재사용(중복 엔진 없음).
+- tests:
+  - npm test 293/293 pass (신규 ~10). 검증(validate/audit/frontmatter)은 이 항목 뒤 단계에서 실행·기록.
+- caveats / review items:
+  - additive·read-only·zero-dep·1.0.0 계약 불변; 옵션 미사용 시 기본 출력 byte-identical. **미배포**(npm 1.23.0 유지) — 릴리스·태그·npm publish는 이번 범위 밖.
+  - 편집한 verified 위키 4종을 `needs_review`로 강등(허위 검토 메타 없음). 신규 소스가 참조되는 다른 verified 문서의 evidence.stale는 `drift --downgrade`로 정직하게 needs_review 처리한다(사람 재검토 필요).
+  - 보류(초안): guided feature/fix CLI 모드·사람 승인 `review` 명령·언어서버/AST 분석기.
+
+## 2026-07-23 - 옛 PPTX(outputs/llm-wiki-team-introduction-v1.5.1.pptx) 삭제
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: outputs
+- changed:
+  - outputs/llm-wiki-team-introduction-v1.5.1.pptx 삭제
+- summary:
+  - v1.5.1 시절 팀 소개 PPTX. 현재는 유지관리되는 HTML 덱(`outputs/team-briefing/`, v1.23.0)으로 대체된 구자료라 제거. git 이력에 남아 복구 가능. `outputs/`엔 이제 `audits/`·`team-briefing/`만 남는다.
+
+## 2026-07-23 - 배포 킷(outputs/distribution/) 삭제
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: outputs/distribution
+- changed:
+  - outputs/distribution/{DISTRIBUTION_KIT,launch-post,reddit-r-claudeai-post,reply-kit}.md 삭제(디렉터리 소멸)
+- summary:
+  - 1.16.0 개명·런칭(P2) 때 만든 일회성 런칭 마케팅 카피 킷. 제품 기능 아님(npm 미포함·코드/문서 미참조), v1.16.x로 스테일이라 유지보수자 판단으로 제거. git 이력에 남아 복구 가능.
+- caveats:
+  - 향후 외부 배포(MCP 레지스트리·awesome-list 제출·커뮤니티 런칭)를 재개하면 git 이력에서 복원하거나 최신 버전 기준으로 다시 작성한다.
+
+## 2026-07-23 - 팀 브리핑 덱 v1.22.0 → v1.23.0 갱신 (배포 후 정합)
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: outputs/team-briefing
+- changed:
+  - outputs/team-briefing/llm-wiki-briefing.html (버전 표기 v1.23.0; 타임라인에 1.23 항목[최초 위키 작성 `bootstrap` 스킬·Codex 네이티브 스킬] 추가·`now` 이동)
+  - outputs/team-briefing/SPEAKER_NOTES.md (대상 버전 v1.23.0; 타임라인 노트 11에 1.23 반영)
+  - outputs/team-briefing/README.md (대상 버전 v1.23.0)
+- summary:
+  - 1.23.0 npm 배포 후 팀 덱을 해당 버전으로 정합했다. 온라인 Artifact를 같은 링크(claude.ai/code/artifact/13dfc476…)로 재게시. 슬라이드 수 22 불변(타임라인 항목만 추가).
+- caveats:
+  - outputs/는 npm files allowlist 밖(사내 자료, 기본 비공개).
+
+## 2026-07-23 - release-prep 1.23.0 + 재검증(bootstrap/Codex 반영분)
+
+- status: needs_review
+- actor: Claude Code (유저 지시; 워크트리 `worktree-release-1.23.0-prep`)
+- scope: release, docs
+- changed:
+  - package.json (1.22.0→1.23.0) + tests/verification.test.js(버전 단언) + CHANGELOG.md/.ko.md(1.23.0) + ROADMAP.md/.ko.md(1.23 항목·last_updated)
+  - 재검증 16문서(frontmatter만): ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·PUBLIC_API·EXAMPLES는 needs_review→verified 승격(+재승인 Review Note); 00_overview·GLOSSARY·index·profiles/library·project-profile·README(wiki)·releases/v0.1.7·v0.1.8·RELEASE_FLOW·templates/DECISION_LOG.template·templates/TASK_PROMPT.template·VERSIONING는 reviewed_at 2026-07-23으로 갱신(드리프트 해소)
+- summary:
+  - 1.23.0 release-prep(커밋 전용, 태그·npm 배포 없음). 1.23.0 `package.json` 범프가 package.json/소스를 참조하는 verified 문서 12개에 evidence.stale를 유발 → reviewed_at 2026-07-23 갱신으로 해소, 강등했던 4개는 사람 검토(reviewed_by: Dowon-Kim) 후 verified 재승인.
+- tests:
+  - npm test 284/284 pass, validate-frontmatter 0, validate --strict 0.
+- caveats / review items:
+  - reviewed_by: Dowon-Kim는 유지보수자 지시(재승인)에 따른 표기. npm 배포(v1.23.0 태그)는 별도 명시 승인 시 진행.
+
+## 2026-07-23 - 최초 위키 작성 전용 bootstrap 스킬 + Codex 네이티브 스킬 생성
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: src, tests, docs
+- changed:
+  - src/task-prompts.js (신규 `bootstrap` 태스크 + 최초 보강 단일 소스 `initialEnrichmentWorkflow`·`evidenceFocus`; `SUPPORTED_TASK_PROMPTS` 확장)
+  - src/commands.js (`buildHandoff`가 `initialEnrichmentWorkflow` 재사용; 중복 `handoffEvidenceGuidance` 제거; `SKILL_RELOAD_NOTE`를 `.agents/skills` 포함하도록 일반화)
+  - src/commands/skills.js (`SKILL_TASKS`에 bootstrap; `selectedSkillFormats`에 codex; `.agents/skills/<slug>/SKILL.md` 타깃 + `renderCodexSkill`)
+  - src/cli.js (`prompt --task` usage/설명에 bootstrap), src/mcp/tools.js (`prompt` 툴 task enum·설명에 bootstrap)
+  - tests/verification.test.js·tests/mcp.test.js (신규 9 테스트; 기존 "no skills" 테스트를 codex→copilot로 정정)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,EXAMPLES}.md, README.md, README.ko.md
+- summary:
+  - `init --write` 뼈대를 실제 코드 근거로 **최초 보강**하는 절차를 반복 가능한 `bootstrap` 스킬/`prompt --task bootstrap`으로 제공. 규칙은 `handoff`와 단일 소스에서 공유.
+  - Codex 네이티브 스킬(`.agents/skills/<name>/SKILL.md`, `name`/`description` frontmatter) 생성. `--agent codex` 또는 `--skills`로 claude/cursor와 대칭 트리거.
+- design decisions:
+  - 공통 규칙을 leaf 모듈 `task-prompts.js`의 `initialEnrichmentWorkflow`에 두어 `commands.js`↔`commands/skills.js` 순환 import를 피함.
+  - Codex 경로는 요구대로 `.agents/skills/`만 사용(`.codex/skills` 신설 안 함).
+  - 안전 계약 유지: preview-first·`--write`에서만 쓰기·기존 스킬 미덮어씀(kept/skipped 표기)·절대경로/username 미포함·needs_review·verified 자동승격 금지·zero-dep.
+  - 초기화 순서: `bootstrap` 스킬은 `init --write`가 뼈대·도메인 문서를 쓴 뒤 생성되며(같은 write 흐름), dry-run은 파일이 없어도 결정적으로 계획 출력.
+- tests:
+  - `npm test` 284/284 pass. `validate-frontmatter` 0. `validate --strict` 0. CLI 스모크(codex/claude/--skills) 통과.
+- caveats / review items:
+  - `--agent codex`의 스킬 생성은 **신규 동작**(기존엔 codex 단독 선택 시 아티팩트 0). 스킬을 요청하지 않은 기존 호출(예: `--agent copilot`, 옵션 미사용)은 byte-identical.
+  - 편집한 verified 위키 4종(ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·PUBLIC_API·EXAMPLES)을 `needs_review`로 강등 — 사람 재검토 후 재승격 필요.
+
+## 2026-07-23 - 팀 브리핑 덱 v1.19.0 → v1.22.0 갱신
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: outputs/team-briefing
+- changed:
+  - outputs/team-briefing/llm-wiki-briefing.html (버전 표기 v1.22.0; 타임라인에 1.20–1.22 항목 추가; BCG '측정' 조건 ◐ 착수 → ✔ 실측 완료; 마무리 직전 '첫 실측 결과(N=3)' 슬라이드 신규 → 21장→22장)
+  - outputs/team-briefing/SPEAKER_NOTES.md (대상 버전·22장; 노트 10/11 갱신; 노트 21 실측 신규·마무리 22로 재번호; 정직 원칙 팁 갱신)
+  - outputs/team-briefing/README.md (대상 버전 v1.22.0·22장; 대응표에 '측정/벤치 결과 변경' 행 추가)
+- summary:
+  - 1.20~1.22 기능(프론트엔드/SPA 도메인 탐지·근거 사용성·enrichment 체크리스트·한국어 메시지 `--lang ko`)과 실제 LLM N=3 실측 결과를 덱에 반영했다.
+  - 실측은 정직 규율대로 스코프 명시(외부 Vue/Quasar 앱 1개·Opus 4.8·태스크 6개·N=3·total-token 프록시)·볼드 헤드라인 금지, '정확도 동률 + 신선도-종속 정확도'를 앞세워 서술했다.
+- evidence:
+  - docs/llm-wiki/BENCHMARK.md
+  - README.md
+  - package.json
+- caveats:
+  - 온라인 Artifact를 같은 링크(claude.ai/code/artifact/13dfc476…)로 재게시해 v1.22.0으로 갱신함(사내 자료, 기본 비공개). outputs/는 npm files allowlist 밖.
+
+## 2026-07-22 - bench/docs: SDK-path 실측 하네스 scaffolded + 전체 문서 doc-sync
+
+- status: needs_review
+- actor: Claude Code (유저 지시)
+- scope: bench, docs
+- changed:
+  - bench/real/agent.js (신규, git-ignore: Anthropic SDK 드라이버 — input/output 토큰 분리; 읽기 전용; env로 target-agnostic)
+  - bench/tasks-external-vue-app.json (신규: external-vue-app 6 태스크 재현 — 질문+ground-truth+rubric)
+  - bench/real/package.json (신규: @anthropic-ai/sdk를 bench-local dep로 격리 → 배포 패키지 zero-dep 불변)
+  - bench/real/runner.js (BENCH_TASKS 오버라이드 + --dry rubric 카운트)
+  - bench/real/DRIVER_RUNBOOK.md (§ SDK path 실행법·전제조건 + 교차 에이전트 트랙 계획)
+  - bench/results/real-driver-external-vue-app-pilot-2026-07-22.md ("Further-rigor harness — SCAFFOLDED" 섹션)
+  - docs/llm-wiki/BENCHMARK.md (SDK-path 하네스 scaffolded 리뷰노트), ROADMAP.md/.ko.md (후보→scaffolded)
+- summary:
+  - (b) 추가 벤치 엄밀성의 SDK 경로(input/output 토큰 분리) 하네스를 scaffolded. `--dry`로 배선 검증(모델 호출·비용 0), external-vue-app 저장소 무변경(드라이버 읽기 전용).
+  - 유료 SDK 런과 교차 에이전트(GPT) 드라이버는 유저 지시로 **보류**.
+  - 전체 문서(결과 아티팩트·BENCHMARK·ROADMAP)를 현 상태로 doc-sync.
+- verification:
+  - BENCH_TASKS=bench/tasks-external-vue-app.json node bench/real/runner.js --dry → 6 태스크·양쪽 arm 프롬프트 OK; agent.js node --check OK; validate --strict 0
+
+## 2026-07-22 - docs: real-LLM N=3 벤치(external-vue-app 외부 프로젝트) 결과 반영 + README/포지셔닝 정직 문구
+
+- status: needs_review
+- actor: Claude Code (유지보수자 지시)
+- scope: bench, docs
+- changed:
+  - bench/results/real-driver-external-vue-app-pilot-2026-07-22.md (신규: pilot stale N=1 + fresh N=1 + fresh N=3 실측)
+  - docs/llm-wiki/BENCHMARK.md ("실측" 섹션 + 규율 갱신; verified→needs_review)
+  - README.md/.ko.md ("Does it actually help?"/"실제로 도움이 되나?" — 스코프 명시 정직 수치)
+  - ROADMAP.md/.ko.md (real-LLM 벤치: 미구현 후보 → 실측 완료)
+- summary:
+  - 외부 프로젝트 `external-vue-quasar-app`@`benchmark-baseline` 대상 실제-LLM 벤치(Claude Opus 4.8, N=3). 최신(de-drifted) 위키에서 B2(위키 retrieval) = 0.90× 토큰(−10%)·0.95× wall·정확도 18/18 동률·소스 fallback 0; stale 위키는 로그인 보안 오답(평문 주장 vs 실제 client-side public-key encryption) → 신선도-종속 정확도가 핵심 가치. external-vue-app 저장소는 무변경(위키 수정본은 job tmp 스크래치 복사본).
+  - README 토큰/속도 규율 갱신: 실측 존재로 **스코프 명시 정직 수치는 허용**, 단 볼드 헤드라인·`chars/4` 프록시 수치는 계속 금지.
+- verification:
+  - external-vue-app working tree unchanged (no commit/push/edit); validate --strict 0
+
+## 2026-07-22 - docs: 1.22.0 배포 후 findings i18n 반영분 재검증(verified 승격)
+
+- status: verified
+- actor: Claude Code (유지보수자 Dowon-Kim 검토)
+- scope: docs
+- changed:
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md (needs_review→verified)
+  - docs/llm-wiki/DOMAIN_FEATURES.md (needs_review→verified)
+  - docs/llm-wiki/PUBLIC_API.md (needs_review→verified)
+- summary:
+  - 1.22.0(Gate 27 findings i18n)이 강등한 3개 코어 문서를 재검증. `src/i18n.js`의 export(localizeFinding/localizeExplanation/normalizeLang/localizeMessage) 실재와 applyRuleConfig seam 지역화·`--lang`/config lang 서술이 현재 소스와 일치함을 확인.
+  - npm dist-tags.latest=1.22.0 배포 확인 후 verified 승격.
+- verification:
+  - 275 tests pass, validate --strict 0 findings (exit 0)
+
+## 2026-07-22 - feat: findings 메시지 한국어화(Gate 27, P4), release 1.22.0
+
+- status: needs_review
+- actor: Claude Code
+- scope: src, tests, docs, release
+- changed:
+  - src/i18n.js (신규: zero-dep KO 카탈로그 + localizeFinding/localizeExplanation/localizeMessage/normalizeLang)
+  - src/cli.js (--lang 파싱·검증 + GLOBAL_OPTIONS + defaultOptions.lang)
+  - src/config-file.js (mergeConfigIntoOptions: config lang, CLI 우선)
+  - src/commands/findings.js (applyRuleConfig가 lang으로 finding message 지역화)
+  - src/commands.js (explainCommand가 localizeExplanation 사용)
+  - src/commands/scans.js, src/frontmatter.js (finding 사이트에 messageId/params 부착)
+  - tests/verification.test.js (i18n 6 신규 + 버전 assertion 1.22.0)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API}.md (기능·Module Layout·Evidence; needs_review)
+  - package.json (1.21.0→1.22.0), CHANGELOG.md/.ko.md, ROADMAP.md/.ko.md, README.md/.ko.md, GATE_REVIEW.md (Gate 27)
+- summary:
+  - 사람이 읽는 findings 프로즈만 지역화: finding message(applyRuleConfig seam → text·JSON)와 explain 프로즈. 전역 --lang ko|en(기본 en) + config lang, applyProjectConfig/resolveOptions로 CLI/API/MCP 일관.
+  - rule ID·JSON 키/shape·category·CLI 명령·경로는 영어 고정. 기본 en은 카탈로그 미경유라 byte-identical. KO 누락 시 영어 fallback.
+  - v1: 47개 explanation 전부 + scans/frontmatter/structure finding message. 운영성 message는 EN fallback.
+- verification:
+  - 275 tests pass (신규 6), validate --strict 0 findings (exit 0)
+
+## 2026-07-22 - docs: 재검증 정리 — DOMAIN_FEATURES verified 승격 + ARCHITECTURE Module Layout 완결성 보강
+
+- status: verified
+- actor: Claude Code (유지보수자 Dowon-Kim 지시·검토)
+- scope: docs
+- changed:
+  - docs/llm-wiki/DOMAIN_FEATURES.md (needs_review→verified; 1.20→1.21 누적 재검증 리뷰노트 추가)
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md (Module Layout에 src/config-file.js·src/git.js 추가 + source_files에 src/git.js 등재 + 리뷰노트; verified 유지)
+- summary:
+  - DOMAIN_FEATURES: 1.20.0/1.21.0 신규 기능(P1 frontend/SPA 탐지·P2 evidence 경로 매칭·P3 `--domains`·P5 enrichment 체크리스트·P6 도메인 사전 배선·P7 휴리스트 투명성) 서술을 현재 소스와 대조 확인 후 verified 승격.
+  - ARCHITECTURE: 재검증 정리 중, 실제 코드를 구동하나 Module Layout에서 누락돼 있던 `src/config-file.js`(config 로딩 엔진)·`src/git.js`(git 프리미티브)를 보강. 기존 서술에 틀린 항목 없음(`defaultOptions`·index.js MCP export·모듈 11개 일치 확인), 서술 추가만이라 계약·동작 불변.
+- verification:
+  - 269 tests pass, validate --strict 0 findings (exit 0)
+
+## 2026-07-22 - feat: enrichment 체크리스트(P5) + 탐지/미완 휴리스틱 테스트·투명성(P7), release 1.21.0
+
+- status: needs_review
+- actor: Claude Code
+- scope: src, tests, docs, release
+- changed:
+  - src/commands/scans.js (enrichmentChecklist + finding checklist 필드)
+  - src/commands/findings.js (formatEnrichmentChecklist + explain content.not_enriched 보강)
+  - src/commands.js (nextCommand enrich 액션·체크리스트 섹션·payload)
+  - tests/verification.test.js (P5 2 + P7 2 신규 + 버전 assertion 1.21.0)
+  - docs/llm-wiki/DOMAIN_FEATURES.md (P5 문장 + Detection & Enrichment Heuristics 섹션 + 리뷰노트)
+  - package.json (1.20.0→1.21.0), CHANGELOG.md/.ko.md (1.21.0), ROADMAP.md/.ko.md (1.21 항목)
+- summary:
+  - P5: `next`가 미완(`content.not_enriched`) 문서별 Enrichment Checklist(placeholder가 남은 `##` 섹션+힌트)와 `enrich-placeholder-docs` 액션을 노출. 순수 `enrichmentChecklist` 헬퍼 + finding의 additive `checklist` 필드 + `next` payload additive `enrichmentChecklist`.
+  - P7: `planDomainDocs` 결정적 스냅샷 테스트 + `FILE_DOMAIN_EXCLUDE` 폭넓은 제외 테스트로 휴리스틱 회귀 잠금. DOMAIN_FEATURES에 "Detection & Enrichment Heuristics" 투명성 섹션 추가, `explain content.not_enriched`에 `next` 체크리스트 포인터.
+  - 1.21.0으로 P6(사전 배선)+P5+P7 묶어 릴리스.
+- evidence:
+  - src/commands/scans.js#symbol:enrichmentChecklist
+  - src/commands.js#symbol:nextCommand
+- caveats:
+  - 269 tests·validate --strict 0·additive·read-only·zero-dep·1.0.0 계약 불변. DOMAIN_FEATURES는 에이전트 편집이라 `needs_review` — 사람 재검토 후 재승인 예정.
+
+## 2026-07-22 - feat: 도메인 문서 orphan/링크 사전 배선 (외부 피드백 P6)
+
+- status: needs_review
+- actor: Claude Code
+- scope: src, tests, docs
+- changed:
+  - src/commands/doc-templates.js
+  - tests/verification.test.js
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+  - CHANGELOG.md, CHANGELOG.ko.md
+- summary:
+  - `docMetadata`가 도메인이 계획될 때만 `index.md`(읽기 순서에 `domains/00_overview.md` 실제 링크 + `related` 추가)와 `DOMAIN_FEATURES.md`(`## Domains` 섹션으로 각 per-domain 문서 링크)를 사전 배선하도록 했다(공유 헬퍼 `domainLinkList`). overview↔per-domain 배선의 보완 — 진입점에서 도메인 지도로 가는 경로 제공, 테스터 수동 배선 자동화.
+  - 도메인이 없으면 두 문서 byte-identical(플래그 게이팅). 스코프는 스캐폴드(init/quickstart)만.
+- evidence:
+  - src/commands/doc-templates.js#symbol:domainLinkList
+  - src/commands/doc-templates.js#symbol:docMetadata
+- caveats:
+  - 265 tests·zero-dep·additive·1.0.0 계약 불변. 그래프 검증: index→overview·DOMAIN_FEATURES→per-domain inbound 확인, broken-link 0. `fix`-타임 재배선은 후속. 에이전트 편집이라 `needs_review` — 사람 검토 후 재승인 예정.
+
+## 2026-07-22 - review: 1.20 누적분 코어 문서 verified 재승인 (human)
+
+- status: verified
+- actor: Dowon-Kim (사람 검토·승인) / 편집 적용 Claude Code
+- scope: docs (frontmatter status/tags/reviewed_at)
+- changed:
+  - 내용 편집분 needs_review → verified: PUBLIC_API.md, ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md (1.16→1.20 누적 + P1·P2·P3 + get-doc --section·check-run·evidence tiers).
+  - P1 드리프트 강등분 needs_review → verified(내용 불변, cli.js/mcp additive 변경): index.md, project-profile.md, EXAMPLES.md, domains/00_overview.md, profiles/library.md.
+  - 버전-bump/소스 드리프트 verified 유지 + reviewed_at 갱신(내용 불변): README.md, releases/v0.1.7.md, releases/v0.1.8.md, RELEASE_FLOW.md, templates/DECISION_LOG.template.md, templates/TASK_PROMPT.template.md, VERSIONING.md, GLOSSARY.md.
+- summary:
+  - 유지관리자 검토 결정에 따라 1.20 누적 작업으로 needs_review/드리프트된 코어 문서 16개를 verified로 재승인(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22). package.json 버전 bump·소스 변경發 evidence.stale 전부 해소 → validate --strict 0.
+- evidence:
+  - package.json
+- caveats:
+  - 재승인 = 같은 날 검토라 evidence.stale 미발생. 다음 소스/버전 변경 시 다시 드리프트될 수 있음(정상). BENCHMARK.md는 이미 verified 유지.
+
+## 2026-07-22 - feat(init): --domains 옵션 + no-domains 명시 안내 (외부 피드백 P3)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code(src/cli.js·commands.js·commands/domains.js) + tests + docs(PUBLIC_API·DOMAIN_FEATURES·CHANGELOG×2·log)
+- changed:
+  - src/cli.js: `--domains <a,b,c>` 옵션(defaultOptions·parseArgs 쉼표분해·COMMAND_OPTION_RULES init/quickstart·help 4곳).
+  - src/commands/domains.js: `buildDomainContext(cwd, type, minimal, candidateSet, manualDomains=[])`로 확장 — 수동 도메인을 `{kind:"manual", sourceFile:null}`로 병합하고 `domainCapable` 플래그 반환. `planDomainDocs`는 빈 sourceFile을 건너뜀(수동 도메인은 source_files 빈 스캐폴드).
+  - src/commands.js: `initCommand`이 `options.domains`를 전달하고, domainCapable인데 plans가 0이면 `domainNotice`(KO/EN)를 계산해 `initDryRun`/`initWrite`가 출력(silent no-op 제거).
+  - tests/verification.test.js: no-domains 안내 + --domains per-domain 계획 테스트.
+- summary:
+  - `--type` 강제(또는 프론트) 프로젝트에서 도메인 부모를 못 찾으면 침묵하던 문제(P3) 해소 + `--domains`로 수동 지정. 실측: 프론트 fixture에서 안내 출력, `--domains items,jobs`로 01/02 계획·`--write` 생성 확인.
+- evidence:
+  - src/commands/domains.js#symbol:buildDomainContext
+  - src/commands.js#symbol:initCommand
+- caveats:
+  - additive·zero-dep, 기존 backend/fullstack 동작 불변. 수동 도메인 문서는 source_files 빈 needs_review 스캐폴드(에이전트가 근거 채움). 미릴리스(1.20 후보).
+
+## 2026-07-22 - fix(evidence): section 정렬 검사를 경로 기준으로 완화 (외부 피드백 P2)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code(src/commands/scans.js) + tests + docs(DOMAIN_FEATURES·log)
+- changed:
+  - src/commands/scans.js: `scanEvidenceSections`의 `evidence.section_unlisted` 매칭을 verbatim `section.text.includes(reference)`에서 경로 기준(`evidenceMentionedInSection`/`sectionMentionsPath`)으로 완화. frontmatter evidence를 `parseEvidenceReference`로 파싱해 로컬 참조는 본문이 같은 소스 경로를 언급하면 통과(경계 검사로 `.map` 등 오매칭 방지); 외부 `http(s)`/`repo:` 참조는 verbatim 유지.
+  - tests/verification.test.js: section-alignment 두 테스트를 새 의미(경로 미언급만 unlisted)로 갱신 + `파일:60-70` 본문이 `파일#L60-L70` frontmatter를 만족하는 완화 케이스 추가.
+- summary:
+  - 외부 프로젝트 구축에서 46개 `evidence.section_unlisted` 경고를 유발한 형식 이중성(`#L` vs `:line`) 페이퍼컷 해소. 스키마 pattern은 이미 콜론-라인을 통과(hash 없는 경로로 매칭)해 스키마 변경(옵션 A)은 불필요했다.
+- evidence:
+  - src/commands/scans.js#symbol:scanEvidenceSections
+  - src/commands/references.js#symbol:parseEvidenceReference
+- caveats:
+  - additive·zero-dep, 기존 `#L`/`#route:`/`#symbol:`/`#section:` 및 external 동작 유지. 미릴리스(main 한정).
+
+## 2026-07-22 - feat(domains): frontend/mobile(SPA) 도메인 자동 탐지 (외부 피드백 P1)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code(src/commands/domains.js·commands.js) + tests + docs(DOMAIN_FEATURES·ARCHITECTURE·log)
+- changed:
+  - src/commands/domains.js: 신규 `detectFrontendDomains`(+`scanForFrontendDomains`·`parseRouteFile`·`firstRouteSegment`·`isFrontendSourceFile`·`isExcludedFrontendDomain`). `pages`/`views`/`features`/`modules`/`screens` 하위 1-depth 폴더와 vue-router/react-router 라우트 파일(`router.*`/`routes.*` 또는 `router/`·`routes/` 하위)의 최상위 라우트 그룹을 정규식으로 파싱(파서 의존성 없음). `FRONTEND_EXCLUDE_NAMES`로 SPA UI 배관(components/layouts/composables/assets 등) 제외.
+  - `buildDomainContext`를 유형별 게이팅으로 리팩터: backend/fullstack→`detectDomainDirectories`(불변), frontend/mobile→`detectFrontendDomains`, 나머지→empty.
+  - tests/verification.test.js: 프론트 폴더 탐지·라우트 파싱(vue+react)·백엔드 불변 가드 3개(`detectFrontendDomains`를 `src/commands/domains.js`에서 직접 import — commands.js 배럴은 미변경, 다수 verified 문서가 참조하는 commands.js의 불필요한 드리프트 회피).
+  - drift: get-doc `--section`(0204176)이 cli.js/mcp/tools.js를 바꿔 드리프트된 verified 문서 5개(00_overview·EXAMPLES·index·profiles/library·project-profile)를 `drift --downgrade`로 needs_review 강등(내용 보존; validate --strict 0 회복).
+- summary:
+  - `external-vue-quasar-app`(Vue3/Quasar) 실사용 피드백 최우선 항목(P1) 대응. 프론트/모바일 SPA에서 out-of-box 도메인 경험이 0이던 문제 해소. init --dry-run --type frontend에서 per-domain 문서(01_items 등) 계획 확인.
+- evidence:
+  - src/commands/domains.js#symbol:detectFrontendDomains
+  - src/commands/domains.js#symbol:buildDomainContext
+- caveats:
+  - 백엔드/풀스택 탐지는 byte-identical(전용 스캐너·별도 제외 집합). additive·zero-dep·정규식만.
+  - **미릴리스**(main 한정, npm 미반영). 다음 minor에서 버전 bump+태그로 배포 예정.
+  - 외부 피드백 문서의 나머지 항목(P2 evidence DX ~ P7)은 후속.
+
+## 2026-07-22 - feat(retrieval): get-doc --section 집중 읽기 + 벤치 재측정
+
+- status: needs_review
+- actor: Claude Code
+- scope: code(src/commands/retrieval.js·cli.js·mcp/tools.js) + tests + docs(PUBLIC_API·log) + bench
+- changed:
+  - src/commands/retrieval.js: `getDocCommand`에 `--section <terms>` 집중 읽기 추가. 순수 `selectSections`가 본문을 `##` 레벨 섹션으로 나눠 terms 매치 상위 N(기본 3)개 섹션+프리앰블만 반환; `##` 섹션이 없거나 매치 없으면 full body로 fallback. 필터 시에만 additive `document.section` `{query,returned,total}` 부가(기본 출력 byte-identical).
+  - src/cli.js: `--section` 옵션(defaultOptions·parseArgs·COMMAND_OPTION_RULES get-doc·help 2곳) 배선.
+  - src/mcp/tools.js: `get_doc`에 `section` inputSchema + `buildToolOptions` 매핑. (API는 `normalizeOptions`가 defaultOptions 전파로 자동.)
+  - tests/verification.test.js: get-doc --section 회귀 테스트(매치 섹션만 반환, 무매치 fallback, 기본 출력에 section 필드 없음).
+  - docs/llm-wiki/PUBLIC_API.md: get-doc 행에 `--section` 등재(needs_review 강등).
+  - bench/results/real-driver-pilot-claude-2026-07-22.md: B2-section 재측정 기록.
+- summary:
+  - 벤치가 지목한 "retrieval이 큰 문서 전문을 읽어 토큰이 비쌈" 문제 대응. `--section`으로 관련 부분만 읽게 함. 실측: 잘 구조화된 문서 −53%(PUBLIC_API), 거대 단일 섹션 문서 1~8%(DOMAIN_FEATURES·ARCHITECTURE).
+  - **재측정(B2-section, N=1) 결론: 토큰 이득 불확정.** 에이전트가 실제 여는 문서가 거대-섹션이라 축소가 작고 N=1 변동(~±40%)이 효과를 삼킴. retrieval은 여전히 소스-only(B)보다 총 토큰이 많다. **README 토큰-절감 주장 계속 금지.**
+- evidence:
+  - src/commands/retrieval.js#symbol:getDocCommand
+  - src/commands/retrieval.js#symbol:selectSections
+- caveats:
+  - additive·read-only·zero-dep·1.0.0 계약 불변; 기본(무 --section) 출력 불변. **미릴리스**(main 한정, npm 1.19.0엔 없음) — 다음 minor에서 버전 bump+태그로 배포 예정.
+  - 거대-섹션 문서에 대한 후속: 문서 재구조화(작은 `##` 섹션) 또는 sub-section/bullet 단위 chunking, 또는 retrieval 가치를 "토큰 절감"이 아닌 "오리엔테이션+정확성"으로 규정.
+
+## 2026-07-22 - fix(retrieval): search-docs가 append-only change log를 후순위로 강등
+
+- status: needs_review
+- actor: Claude Code
+- scope: code(src/commands/retrieval.js) + tests
+- changed:
+  - src/commands/retrieval.js: `searchDocsCommand`이 append-only change log(`isAppendOnlyLog`=`docs/llm-wiki/log.md`, 또는 `doc_type: change_log`)를 다른 모든 매치보다 **후순위로 강등**하는 1차 정렬 키를 추가했다(제외 아님 — 여전히 반환). 순진한 출현-횟수 스코어러가 모든 키워드를 누적한 `log.md`를 대부분 질의에서 1위로 올리던 문제를 교정. 출력 형태 불변(내부 `deprioritized` 정렬 키는 반환 전 제거).
+  - tests/verification.test.js: 회귀 테스트 추가(change log가 raw score는 더 높아도 참조 문서 아래로 랭크됨).
+- summary:
+  - option-B 드라이버 파일럿에서 드러난 retrieval 품질 결함 수정: `log.md`가 search-docs를 독식해 retrieval arm이 1위 결과를 건너뛰게 만들었다. 이제 참조 문서가 change log 위에 온다. 실측: `search-docs "mobile android detect"`에서 log.md 1위→4위, DOMAIN_FEATURES가 1위.
+- evidence:
+  - src/commands/retrieval.js#symbol:searchDocsCommand
+  - src/commands/wiki-files.js#symbol:isAppendOnlyLog
+- caveats:
+  - 계약 불변(명령/인자/옵션/출력 형태 동일) — PUBLIC_API의 "점수순 랭크" 서술은 여전히 정확하므로 이 랭킹 정제만으로 verified 문서를 재강등하지 않았다.
+
+## 2026-07-22 - review: 4개 코어 문서 verified 재승인 (human)
+
+- status: verified
+- actor: Dowon-Kim (사람 검토·승인) / 편집 적용 Claude Code
+- scope: docs (frontmatter status/tags/reviewed_at + Review Notes)
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md: needs_review → verified (1.16.0→1.19 명령 표면 누적분).
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md: needs_review → verified (1.16.0→1.19; dogfood 재생성 방법 정정 노트 포함).
+  - docs/llm-wiki/DOMAIN_FEATURES.md: needs_review → verified (1.16.0→1.19).
+  - docs/llm-wiki/BENCHMARK.md: needs_review → verified (최초 승격; Gate 22 베이스라인 + Gate 24 재측정 + B2 델타).
+- summary:
+  - 유지관리자 검토 결정에 따라 4개 코어 문서를 verified로 승격했다. 각 frontmatter를 status: verified·reviewed_by: Dowon-Kim·reviewed_at: 2026-07-22로 갱신하고 Review Notes에 재승인 근거를 남겼다.
+- evidence:
+  - src/commands.js
+  - src/cli.js
+  - bench/run.js
+- caveats:
+  - BENCHMARK.md의 모든 수치는 chars/4 프록시다 — README/런치 토큰·속도 수치 주장은 실측(`bench/real/`) 전까지 계속 금지.
+
+## 2026-07-22 - release: 1.19.0 배포 + dogfood/PUBLIC_API 후속
+
+- status: needs_review
+- actor: Claude Code
+- scope: release + code(dogfood skills) + repo hygiene + docs(PUBLIC_API·log)
+- changed:
+  - 배포: 야간 자율 10개 커밋 push + `v1.19.0` 태그 → CI Trusted Publishing로 npm 배포(latest=1.19.0) + GitHub Release. Gate 25(evidence 의미 단계화)+Gate 26(check-run) 번들.
+  - .claude/skills·.cursor/rules·.llm-wiki/prompts: 커밋된 dogfood 스킬 9개를 `init --write --skills`로 재생성 — Gate 26 완성 계약(run manifest→check-run)을 본문에 포함(과거 아티팩트는 Gate 21 시점이라 누락). writeSkillArtifacts가 미덮어씀이라 삭제 후 재생성; docs/llm-wiki 미변경.
+  - .gitignore(신규): node_modules·`.llm-wiki/runs/`(에이전트 작성 run manifest)·`bench/real/agent.js`(실-LLM 벤치 드라이버).
+  - docs/llm-wiki/PUBLIC_API.md: 야간 Gate 25/26 커밋이 놓친 명령 표면 갭 보강 — `check-run [--run <path>] [--strict]` 행, `--run` 옵션, `stats` JSON `evidenceTiers`, Evidence·frontmatter `checkRunCommand`.
+- summary:
+  - 1.19.0을 npm에 배포하고, 커밋된 dogfood 스킬이 Gate 26 계약을 담도록 재생성했으며, 저장소 위생(.gitignore)과 PUBLIC_API 문서 동기화 갭을 메웠다.
+- evidence:
+  - package.json
+  - src/commands.js#symbol:checkRunCommand
+  - src/commands/skills.js#symbol:artifactBody
+- caveats:
+  - PUBLIC_API.md는 에이전트 편집이라 needs_review 유지 — ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·BENCHMARK와 함께 사람 재검토(verified 승격)가 필요하다.
+  - README token/speed 수치 주장은 여전히 금지(−80% B2 델타는 chars/4 프록시이지 실제 LLM 실행이 아님).
+
+## 2026-07-21 - feat: Gate 26 agent update runner + 완성 계약 (accepted[위임, 야간 자율]+built)
+
+- status: needs_review
+- actor: Claude Code (야간 자율 루프; 게이트 수용은 Dowon-Kim 위임)
+- scope: code(src/commands.js·findings.js·cli.js·index.js·commands/skills.js) + tests + docs(GATE_REVIEW·ARCHITECTURE·DOMAIN_FEATURES·log)
+- changed:
+  - src/commands.js: read-only `checkRunCommand`(+ docSourceAnchors/checkRunValidated/finishCheckRun) — `.llm-wiki/runs/`의 최신/`--run` manifest로 스킬 실행 파이프라인 검증.
+  - src/commands/findings.js: `run.*` 5개 rule 등록(doc_gap/log_missing/unvalidated warning, manifest_missing warning, manifest_invalid error).
+  - src/cli.js·src/index.js: `check-run` 명령·`--run` 옵션·help·동결 API 맵 배선(command-set 단언 갱신).
+  - src/commands/skills.js: `artifactBody`에 Gate 26 완성 계약 섹션(run manifest 작성→check-run) 내장(backtick-free).
+  - GATE_REVIEW.md: Gate 26 accepted + Resolved/Built 절. ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES: Evidence/기능/Review Notes.
+- summary:
+  - Gate 21 스킬 워크플로를 감사 가능하게: 실행이 run manifest를 남기고 `check-run`이 changedSource↔touchedDocs 참조·로그 append·validate를 검증 → CI가 "코드 바꾸고 위키 안 고친" 실행을 잡는다. Gate 23 `impact`(diff-앵커)의 intent-앵커 보완.
+  - 수용 결정(위임): 독립 `check-run`, 에이전트가 매니페스트 작성(도구는 read-only), `.llm-wiki/runs/` git-ignore, file-level 매칭, `impact`와 분리, `--strict` CI 실패.
+  - 254 tests pass, `validate --strict` 0 findings.
+- evidence:
+  - src/commands.js#symbol:checkRunCommand
+  - src/commands/skills.js#symbol:artifactBody
+- caveats:
+  - **커밋된 dogfood 스킬 아티팩트(.claude/.cursor/.llm-wiki)는 미덮어씀 규율상 자동 갱신 안 됨** — 아침에 `init --write --skills --existing overwrite`(또는 삭제 후 재생성)로 완성 계약을 반영할 것. v1은 스킬 주도 실행만; 매니페스트는 에이전트가 작성. 릴리스(버전 bump·태그)는 별도 승인. 에이전트 편집이라 needs_review.
+
+## 2026-07-21 - feat: Gate 25 evidence 의미 단계화 (accepted[위임]+built)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "수용 + 지금 빌드"; 게이트 수용은 위임)
+- scope: code(src/commands/scans.js·findings.js·commands.js) + tests + docs(GATE_REVIEW·ARCHITECTURE·DOMAIN_FEATURES·ROADMAP·log)
+- changed:
+  - src/commands/scans.js: `scanEvidenceReferences`에 `#symbol:`/`#section:` 타깃 실재 보수적 검사 추가(`evidence.symbol_unverified`/`evidence.section_unverified`; `·`-결합 심볼 목록·`.md` 섹션만·`readTextAuto` BOM 인식) + 신규 `scanUngroundedVerified`(`evidence.ungrounded`) + 순수 `evidenceTier`·`EVIDENCE_REFERENCE_RULES`.
+  - src/commands/findings.js: 3개 rule 등록(FINDING_EXPLANATIONS; 모두 evidence 카테고리·warning).
+  - src/commands.js: audit·validate에 `scanUngroundedVerified` 배선, `statsCommand`에 `evidenceTiers` 계산·노출, 배럴 re-export(`evidenceTier`/`scanUngroundedVerified`).
+  - tests/verification.test.js: symbol/section flag-vs-not+`--strict`, `evidence.ungrounded`(warning·미승격·config off/escalate), `evidenceTier` 축, `stats` tier 표면(4개 신규 테스트).
+  - GATE_REVIEW.md: Gate 25 accepted + Resolved/Built 절. ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES: Module Layout/기능/Evidence/Review Notes. ROADMAP(.ko): Gate 25 accepted+built.
+- summary:
+  - product-identity 감사가 지목한 "evidence가 FORMAT만 검사(심볼/섹션 실재 미확인)·grounding 없는 verified 허용" 갭을 닫는다. 모두 additive·read-only·zero-dep·기본 error 아님, `1.0.0` 계약·frontmatter/status 불변.
+  - 수용 결정(위임): `evidence.ungrounded` 기본 warning, section `.md`만, tier 계산전용, `--strict`는 `*_unverified`만 승격.
+  - 251 tests pass, `validate --strict` 0 findings(청결 dogfood: 50/50 reference_checked, 14/50 human_verified).
+- evidence:
+  - src/commands/scans.js#symbol:scanEvidenceReferences
+  - src/commands/scans.js#symbol:scanUngroundedVerified
+  - src/commands/scans.js#symbol:evidenceTier
+- caveats:
+  - symbol/section 검사는 텍스트 존재 floor이지 AST 해석이 아니다(오탐 회피 위한 보수성). 진짜 심볼 해석·`route` 실재는 v1 제외. 릴리스(버전 bump·태그)는 별도 승인 단계. 에이전트 편집이라 needs_review.
+
+## 2026-07-21 - bench: B2_retrieval arm 추가 — retrieval 델타 측정(드리프트 상쇄)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업 진행")
+- scope: bench (코드+메타) + docs (BENCHMARK·ROADMAP·log) — src/·shipped 계약 미변경(bench는 npm files 밖)
+- changed:
+  - bench/lib/strategies.js: 다섯 번째 arm `strategyWikiRetrieval`(B2) 추가 — `search-docs`(retrieval.js와 동일 스코어링) + 상위 매칭 문서 본문 `get-doc`; append-only log는 검색은 되나 get-doc 제외; frontmatter 파서·occurrences·snippet 헬퍼.
+  - bench/run.js: B2를 세션 집계·per-task 표·세션 뷰·정직 verdict·markdown·`--against` 비교에 배선. 기본 write 대상을 `current.{json,md}`로 변경(`baseline.{json,md}`는 before-retrieval 기준으로 frozen).
+  - bench/tasks.json: 공개 파라미터 `retrievalGetDocs`(기본 2) 추가.
+  - bench/README.md · bench/METHODOLOGY.md: B2 arm·B2-vs-B(드리프트 상쇄)·log 제외·top-K·success=grounding 프록시·§9 재현(출력 파일명) 문서화.
+  - docs/llm-wiki/BENCHMARK.md: "B2 retrieval 델타" 절 추가(측정 완료); frontmatter source_files/evidence·Evidence 절 갱신.
+  - ROADMAP.md · ROADMAP.ko.md: Gate 22 status에 "Retrieval 델타 측정 완료" 문단.
+- summary:
+  - raw `--against` 재측정이 코퍼스 드리프트만 보여준 문제를 풀기 위해 Gate 24 메커니즘을 직접 모델링한 `B2_retrieval`을 추가했다: 소스 재독 대신 위키를 질의(search-docs)하고 상위 매칭 **문서 본문**을 get-doc.
+  - **B2와 B는 같은 코퍼스에서 돌아 `B2 vs B`가 드리프트를 상쇄하고 메커니즘만 분리**한다: **B2 = B의 0.19×(−81.5%)**, **A2(보수적 하한)의 0.19×(−80.5%)** — pre-retrieval B가 A2 대비 갖지 못했던 이점 — , **grounding success 100%**(민감도: K=1에서도 100%, 토큰 이점은 더 큼).
+  - 247 tests pass, validate --strict 0 findings, validate-frontmatter 0.
+- evidence:
+  - bench/lib/strategies.js#symbol:strategyWikiRetrieval
+  - bench/run.js
+  - bench/results/current.md
+- caveats:
+  - B2의 success는 **grounding 프록시**(위키가 올바른 코드를 가리킴)이지 소스를 안 열고 편집 완료한다는 뜻이 아니다. 결정적 `chars/4` 프록시·단일 자기참조 레포·top-K 순진 랭킹 한계는 METHODOLOGY §8 그대로.
+  - **README/런치 token·속도 주장은 여전히 금지** — 실제 LLM 실측 전까지. 에이전트 편집이라 needs_review.
+
+## 2026-07-21 - bench: Gate 24 후 재측정 기록 (정직하게 불리 — 드리프트, 메커니즘 아님)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "벤치 재측정")
+- scope: docs (BENCHMARK·ROADMAP·log) — **코드 미변경**, 벤치 결과 파일 미변경(--against는 write 안 함)
+- changed:
+  - docs/llm-wiki/BENCHMARK.md: "Gate 24 재측정" 섹션 추가(baseline 대비 이동표 + 정직 해석).
+  - ROADMAP.md · ROADMAP.ko.md: Gate 22 status에 재측정 결과 + 후속(`B2_retrieval`) 문단.
+- summary:
+  - 1.18.0(Gate 24 retrieval) 배포 후 `node bench/run.js --against bench/results/baseline.json` 재측정. baseline.json(=Gate 22 "before")은 덮어쓰지 않음.
+  - **결과(정직·불리):** `B vs A2`가 0.89×(−11%)→**1.05×(+5.3%)**로 역전(보수적 snippet-grep 하한 대비 위키가 이제 더 비쌈). `B vs A1`은 0.59×→0.69×. 위키 코퍼스 성장(47→50문서)으로 전략 B의 대상 소스 통독이 늘어난 결과.
+  - **핵심:** 이 재측정은 retrieval **메커니즘이 아니라 코퍼스 드리프트**를 잰 것. harness의 전략 B는 대상 소스를 통독할 뿐 Gate 24의 `get_doc`/`search_docs`를 호출하지 않는다 → 로드맵이 원한 "retrieval 전/후 델타"를 아직 못 만든다. 진짜 델타는 retrieval-aware 전략(`B2_retrieval` — 소스 재독 대신 매칭 위키 문서 본문 읽기)을 모델링해야 하며, 그게 다음 bench 작업.
+- caveats:
+  - README/런치 token·속도 주장은 **여전히 금지**(보수적 하한 대비 현재 불리). 벤치 결과 파일(baseline.{json,md})은 불변 — "before" 기준 보존. 에이전트 편집이라 needs_review.
+
+## 2026-07-21 - release: prepare 1.18.0 (Gate 24 read-only retrieval)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업 진행")
+- scope: release, docs
+- changed:
+  - package.json (1.17.0→1.18.0), tests/verification.test.js(버전 assertion 1.17.0→1.18.0)
+  - CHANGELOG.md / CHANGELOG.ko.md (1.18.0 항목: retrieval 4개 명령 Added + Safety)
+  - docs/llm-wiki/releases/v1.18.0.md (신규 이중언어 릴리스 노트)
+  - ROADMAP.md / ROADMAP.ko.md (Gate 24 `accepted`→"**Status: shipped in 1.18.0**")
+- summary:
+  - 직전 feat 커밋(5ef75a7)이 버전 미범프 순수 기능 커밋이라, feat→release-prep→배포 리듬의 release-prep 단계를 채웠다. Gate 24 read-only retrieval(`list-docs`/`search-docs`/`get-doc`/`get-related`)를 1.18.0으로 준비. 코드 동작 불변 — feat 커밋에서 이미 구현/테스트됨.
+  - **247 tests pass, validate result:pass 0 findings, validate-frontmatter --strict pass.**
+- caveats:
+  - 실제 배포(태그 `v1.18.0` push → CI Trusted Publishing)는 사용자의 명시적 "배포" 지시 대기. main 커밋/푸시는 준비 단계.
+  - 배포 후: (1) Gate 22 벤치 재측정(`node bench/run.js --against`)으로 헤드라인 before/after-retrieval delta 산출, (2) doc-sync로 needs_review인 PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES 사람 재검토→verified.
+
+## 2026-07-21 - feat: Gate 24 read-only retrieval (list/search/get-doc/get-related, 1.18.0) 구현
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업 진행")
+- scope: src + tests + docs
+- changed:
+  - src/commands/retrieval.js(신규): read-only 4개 핸들러 `listDocsCommand`/`searchDocsCommand`/`getDocCommand`/`getRelatedCommand` + 헬퍼(loadContentDocs·isRestrictedOrSensitive·redactSensitive·필터·스니펫/스코어·경로 해석). `listWikiContentDocs`·`parseFrontmatter`·`collectWikiGraph`·`scanSensitiveInfo` 재사용.
+  - src/commands.js: 4개 배럴 re-export. src/index.js: 동결 commands 맵 4개 kebab 키 + 개별 export + Options typedef(query/docPath/status/visibility/docType/includeSensitive/limit).
+  - src/cli.js: COMMANDS 4개, defaultOptions 7개 필드, parseArgs 플래그(`--status`/`--visibility`/`--doc-type`/`--include-sensitive`/`--limit`)·positional(search `<query>`/get `<path>`)·필수 인자 검증·COMMAND_OPTION_RULES·helpText usage·COMMAND_HELP·Safety.
+  - src/mcp/tools.js: TOOL_DEFS 4개(snake_case `list_docs`/`search_docs`/`get_doc`/`get_related`) + buildToolOptions 매핑. src/mcp/dispatch.js: initialize instructions 갱신.
+  - tests: verification.test.js(+6: list 제외/포함·필터·search 랭크/제외/redact/AND·get-doc redact/not_found·get-related·parseArgs; 동결 맵 기대값 4개 추가), mcp.test.js(+2: buildToolOptions retrieval 매핑·tools/call get_doc 본문).
+  - docs: PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES 동기화(→needs_review), GATE_REVIEW Gate 24 Evidence를 "planned"→"shipped".
+- summary:
+  - 거버넌스 리포트가 아니라 문서 **본문**을 반환하는 첫 표면(런치에서 철회한 "에이전트가 위키를 query" 스토리의 실체). `search-docs`는 zero-dep 키워드/부분문자열(AND, 점수 랭크; semantic 아님). 안전 불변식: 읽기 전용, restricted/민감 문서는 list/search 기본 제외(opt-in `--include-sensitive`), 반환 본문/스니펫은 sensitive-info 스캔으로 민감 라인 redact(raw 미반환).
+  - **239→247 tests(+8) pass, validate result:pass 0 findings, validate-frontmatter --strict pass.** 4개 명령 CLI 스모크 + 픽스처로 민감 제외/redaction end-to-end 확인. MCP tools/list 14개(10+4).
+- caveats:
+  - v1은 키워드 검색(semantic/vector·인덱스·전체본문 검색 opt-in 플래그는 범위 밖). 버전 미범프(1.17.0 유지) — 릴리스 준비(1.18.0)는 별도 단계. 에이전트 편집이라 needs_review — 사람 검토 후 verified.
+
+## 2026-07-21 - gate: Gate 24 (읽기 전용 retrieval search/get) 수락 (accepted_for_1.18.0)
+
+- status: needs_review
+- actor: Dowon-Kim (게이트 수락) · 기록 Claude Code
+- scope: docs (gate-review, roadmap) — **코드 미변경**
+- changed:
+  - GATE_REVIEW.md: Gate 24 표 행 `proposed_for_next`→`accepted_for_1.18.0` + Scope Decision 헤더/오프닝을 accepted로, "Open questions"→"Resolved at acceptance"(4개 결정).
+  - ROADMAP.md · ROADMAP.ko.md: Gate 24 상태 문단을 "accepted for 1.18.0"로 갱신.
+- summary:
+  - Dowon-Kim이 Gate 24(읽기 전용 retrieval)를 `accepted_for_1.18.0`으로 수락했다. 수락 시 오픈 질문을 제안 기본값으로 확정: (1) `list_docs`/`search_docs`/`get_doc`/`get_related`를 그 이름 그대로 API+MCP+CLI 3표면에 제공, (2) restricted/민감 문서는 list/search 기본 제외(opt-in 포함), `get_doc`은 민감값 redact, (3) `search_docs`는 기본 스니펫(전체 본문은 opt-in/`get_doc`), (4) 키워드/부분문자열만 — semantic/vector 없음(zero-dep).
+  - 다음 단계: 코드 구현(1.18.0). 단, 준비된 1.17.0을 먼저 배포한 뒤 착수.
+- caveats:
+  - 수락 단계까지만 — 아직 코드/테스트 변경 없음. 1.0.0 계약·zero-dep 불변. 구현은 1.17.0 배포 후.
+
+## 2026-07-21 - gate: Gate 24 (읽기 전용 retrieval search/get) 초안 — proposed, 미수락
+
+- status: needs_review
+- actor: Claude Code (초안 작성; 수락은 사람 Dowon-Kim)
+- scope: docs (gate-review, roadmap) — **코드 미변경**
+- changed:
+  - GATE_REVIEW.md: Gate 24 표 행(`proposed_for_next` DRAFT) + "Read-Only Retrieval (Search/Get) Scope Decision" 섹션(proposed — 미수락) 추가.
+  - ROADMAP.md · ROADMAP.ko.md: Gate 24 섹션에 "drafted — proposed, not yet accepted" 상태 문단 추가.
+- summary:
+  - post-1.16 measure-first 라인의 다음 게이트(측정→reverse-impact→**retrieval**). 제품 정체성 감사가 철회하게 한 런치 주장("에이전트가 위키를 query / 프로젝트 메모리")을 참으로 만드는 조각. 현재 모든 명령·MCP 툴은 거버넌스 **리포트**만 반환하고 문서 본문은 반환하지 않는다(`src/mcp/tools.js`) — 이 갭을 채운다.
+  - 읽기 전용 4개 연산: `list_docs`(status/visibility/type 필터 열거), `search_docs`(**zero-dep 키워드/부분문자열 — 정직하게 semantic/vector 아님**), `get_doc`(frontmatter+본문), `get_related`(그래프 이웃). `listWikiContentDocs`·frontmatter 파서·`collectWikiGraph` 재사용. MCP+프로그래매틱 API(+CLI) 표면. **여기서 Gate 22 하니스를 재측정** — 헤드라인 before/after-retrieval delta가 나오는 지점.
+  - 불변식: 읽기 전용·zero-dep(임베딩/인덱스/네트워크 없음)·additive·`visibility` 존중 + sensitive-info 스캔 재사용(raw 민감값 미반환)·쓰기 표면 없음. MINOR(`1.18.0`) 예상.
+- caveats:
+  - **코드 전 초안**: 저장소 규율상 사람 수락 후 빌드. Evidence 심볼(`listWikiContentDocs`·`collectWikiGraph`·`parseFrontmatter`·`scanSensitiveInfo`·`TOOL_DEFS`·`commands`) 실존 확인. Open questions(툴 이름·CLI 패리티 v1 필수 여부·restricted 문서 기본 처리·본문 반환 여부)는 수락 시 결정.
+
+## 2026-07-21 - release: prepare 1.17.0 (Gate 23 reverse-impact)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 추천작업 진행")
+- scope: release, docs
+- changed:
+  - package.json (1.16.1→1.17.0), tests/verification.test.js(버전 assertion 1.16.1→1.17.0)
+  - CHANGELOG.md / CHANGELOG.ko.md (1.17.0 항목: `impact` 명령 Added + Internal `verifiedSourceAnchors`)
+  - docs/llm-wiki/releases/v1.17.0.md (신규 이중언어 릴리스 노트)
+  - ROADMAP.md / ROADMAP.ko.md (Gate 23 `drafted`→`accepted for 1.17.0` + "**Status: shipped in 1.17.0**" 문단)
+- summary:
+  - 직전 feat 커밋(07d4383)이 버전 미범프 순수 기능 커밋이라, 저장소 리듬(feat → release-prep → 배포)의 release-prep 단계를 채웠다. Gate 23 reverse-impact(`impact` 명령)를 1.17.0으로 준비. 코드 동작 불변 — feat 커밋에서 이미 구현/테스트됨.
+  - **239 tests pass, validate result:pass 0 findings, validate-frontmatter --strict pass.** `impact`(clean tree=no-op) / `impact --since HEAD~1`(변경 소스 참조 verified 문서 flag, result:warning) CLI 스모크 확인.
+- evidence:
+  - package.json
+  - CHANGELOG.md
+- caveats:
+  - 실제 배포(태그 `v1.17.0` push → CI Trusted Publishing)는 사용자의 명시적 "배포" 지시 대기. main 커밋/푸시는 준비 단계.
+  - feat 커밋에서 doc-sync로 needs_review로 강등된 PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES는 배포 후 사람 재검토로 verified 재승인 필요.
+
+## 2026-07-21 - feat: Gate 23 reverse-impact (`impact` 명령, 1.17.0) 구현
+
+- status: needs_review
+- actor: Claude Code (사용자 승인·수락 위임; 게이트 수락자 Dowon-Kim)
+- scope: src + tests + docs
+- changed:
+  - GATE_REVIEW.md: Gate 23 `proposed_for_next`→`accepted_for_1.17.0`(open questions 해소: 독립 `impact` 명령·`impact.source_changed`·`--strict`는 impact만·빈 집합 no-op).
+  - src/commands/scans.js: 순수 `verifiedSourceAnchors` 추출(driftTargets가 델리게이트 — 동작 보존) + diff-앵커 `scanReverseImpact`.
+  - src/commands.js: read-only `impactCommand`(`changedFiles` 변경집합 + `scanReverseImpact`).
+  - src/commands/findings.js: `impact.source_changed`(warning, toggleable)·`impact.unavailable`(error) 레지스트리 등록.
+  - src/cli.js: `impact` COMMANDS/옵션 규칙(`--since`/`--strict`)/usage/COMMAND_HELP. src/index.js: 동결 commands 맵 + 개별 export.
+  - tests/verification.test.js: impact 7종(working-tree flag/미변경 제외/같은 diff 미flag/`--since`/no-op/config escalation/no-git unavailable/parseArgs) + 명령셋 기대값 갱신.
+  - docs/llm-wiki: PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES 동기화(→needs_review).
+- summary:
+  - date-앵커 `evidence.stale`(drift)이 놓치는 "코드·문서 별도 PR" 케이스를 잡는 **diff-앵커 pre-merge** 체크. 변경집합(working tree 또는 `--since <ref>`)에 든 소스를 참조하나 문서 자신은 안 바뀐 `verified` 문서를 flag. 기존 `changedFiles`(`validate --changed` 재사용)·`verifiedSourceAnchors`(drift와 공유) 재사용이라 대부분 배선.
+  - **229→239 tests(+10) pass, validate 0 findings.** 이 커밋 자체에 `impact`를 돌려 변경 소스를 참조하는 verified 문서 9개가 flag됐고, 그중 실질 3개(PUBLIC_API/ARCHITECTURE/DOMAIN_FEATURES)를 동기화했다(나머지는 broad `src/cli.js` 앵커의 file-level 오버플래그로 판단, 내용 불변).
+- caveats:
+  - v1은 file-level(line-level·per-doc `reviewed_sha`·write/downgrade·MCP 노출은 out of scope). read-only·additive·zero-dep·1.0.0 계약 불변. 에이전트 편집이라 needs_review — 사람 검토 후 verified. 배포는 별도 승인 후.
+
+## 2026-07-21 - gate: Gate 23 (변경소스 → 위키 reverse-impact) 초안
+
+- status: needs_review
+- actor: Claude Code (초안 작성; 수락은 사람 Dowon-Kim)
+- scope: docs (gate-review) — **코드 미변경**
+- changed:
+  - GATE_REVIEW.md: Gate 23 표 행 + "Reverse-Impact (Changed-Source → Wiki) Scope Decision" 섹션을 `proposed_for_next`(DRAFT — 미수락)로 추가.
+  - ROADMAP.md · ROADMAP.ko.md: Gate 23 섹션에 "drafted — proposed, not yet accepted" + 재사용 프리미티브 명시.
+- summary:
+  - 감사가 지목한 최대 비전-현실 간극(날짜 기반 drift가 코드·문서 별도 PR 케이스를 놓침)에 대응하는 **diff-앵커 reverse-impact** 초안. 기존 date-앵커 `evidence.stale`의 **pre-merge 보완**: 변경집합(working-tree 또는 `--since <ref>`)에 든 코드를 참조하는 `verified` 문서가 같은 diff에서 변경되지 않았으면 flag. 신규 read-only `impact` 명령(또는 `drift --since` 모드), 신규 toggleable `impact` 카테고리(기본 warning), opt-in `--strict`로 CI 실패. 기존 `changedFiles`(src/git.js)·`driftTargets`·참조 파서 재사용이라 대부분 배선.
+- caveats:
+  - **코드 전 초안**: 저장소 규율상 사람 수락 후 빌드. v1은 file-level(line-level·per-doc `reviewed_sha`·write/downgrade·MCP 노출은 out of scope). 부가적·opt-in·zero-dep·1.0.0 계약 불변. 수용 시 open questions(명령 형태·rule 이름·`evidence.stale`도 strict 승격할지) 결정.
+
+## 2026-07-21 - feat: Gate 22 벤치마크 하니스 + 베이스라인 구축
+
+- status: needs_review
+- actor: Claude Code (사용자 승인 작업)
+- scope: bench (repo-내부 검증 트랙) + docs
+- changed:
+  - bench/: zero-dep·repo-내부 harness 신설(npm `files` allowlist 밖이라 미배포). `run.js`(오케스트레이터·4 arm·세션 집계·자동 verdict·베이스라인 기록), `lib/{tokens,fs-walk,strategies}.js`, `tasks.json`(대표 태스크 6개, cold 키워드), `README.md`·`METHODOLOGY.md`, `results/baseline.{json,md}`.
+  - docs/llm-wiki/BENCHMARK.md: 신규 거버넌스 기록(needs_review) — 베이스라인 헤드라인·한계·규율.
+  - ROADMAP.md · ROADMAP.ko.md: Gate 22 `proposed`→`accepted` + 베이스라인 링크·헤드라인 반영.
+- summary:
+  - 대표 질문 6개에 답하는 데 필요한 입력 컨텍스트를 4방식(A0 whole-repo·A1 grep-full·A2 grep-snippet 보수적 하한·B wiki-grounded)으로 측정. B의 대상 파일은 위키 본문에서 파생(비순환). 세션 단위 B는 A1의 0.59×(−41%)·A2의 0.89×(−11%)·A0의 0.46×.
+  - **정직한 불리 결과 보고:** 보수적 A2 대비 단일 태스크 3/6에서 위키가 더 비싸고(오리엔테이션 오버헤드), 탐색 성공률은 100%/100% 동률 — 즉 입증된 이점은 findability가 아니라 컨텍스트 크기이며 멀티-태스크 분할상환에 의존.
+- evidence:
+  - bench/run.js
+  - bench/results/baseline.md
+- caveats:
+  - chars/4 프록시(절대값 근사·비율 견고), 벽시계·답변 품질·위키 유지비용 미모델링. 단일 자기참조 레포. 헤드라인은 retrieval(Gate 24) 전후 delta. 에이전트 작성이라 needs_review — 사람 검토 후 verified. README token/속도 주장은 측정 뒷받침 전까지 금지.
+
+## 2026-07-21 - gate: Gate 22 (Impact Measurement) 수락
+
+- status: needs_review
+- actor: Dowon-Kim (게이트 수락) · 기록 Claude Code
+- scope: docs (gate-review)
+- changed:
+  - GATE_REVIEW.md: Gate 22 표 행 + Scope Decision을 `proposed`→`accepted`(Accepted by Dowon-Kim 2026-07-21)로 갱신.
+- summary:
+  - 제품 정체성 감사(Conditional Go)의 measurement-first 판단에 따라, 벤치마크 하니스 + baseline 구축을 다음 작업으로 수락. 검증 트랙(shipped 계약 변경 없음·zero-dep). 실제 빌드는 사용자 요청대로 context /clear 후 착수 예정.
+- caveats:
+  - 불리한 결과도 정직 보고. 헤드라인 숫자는 retrieval(Gate 24) 전후 delta. README token/속도 주장은 측정 뒷받침 전까지 금지.
+
+## 2026-07-21 - roadmap: post-1.16 계획(측정 우선) + Gate 22 초안 + 제목 정리
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "문서 현행화 확인 후 로드맵 작성; a안 = 측정을 Gate 22로 앞당김")
+- scope: docs (roadmap, gate-review, 제목)
+- changed:
+  - GATE_REVIEW.md: Gate 22(Impact Measurement) 표 행 + 상세 Scope Decision(proposed — NOT accepted) 추가; 제목 "…Standard Package Gate Review"→"…Governance…"
+  - ROADMAP.md + ROADMAP.ko.md: "Release Plan (post-1.16)" 추가 — 측정 우선 순서(Gate 22 측정 → 23 reverse-impact → 24 retrieval → 25 evidence tiers → 26 agent runner) + 1.15–1.16 shipped 요약; 제목→Governance (EN/KO 쌍 동기화)
+  - RELEASE_CHECKLIST.md, VERIFICATION.md: 제목 "…Standard Package …"→"…Governance…"
+- summary:
+  - 문서 현행화 확인(validate/strict/drift 0, repo pkg==npm latest 1.16.1) 후, 제품 정체성 감사(`outputs/audits/product-identity-audit.md`, Conditional Go)의 Top-5를 게이트로 배열. 사용자 선택(a): 측정(감사 #5)을 "주장의 전제"로 보고 Gate 22로 앞당김 — 단발 게이트가 아니라 계측 트랙(baseline now, retrieval[Gate 24] 후 delta가 헤드라인).
+  - 개명 완결: "LLM-WIKI Standard" 제목 잔여 4건(ROADMAP/GATE_REVIEW/RELEASE_CHECKLIST/VERIFICATION)을 Governance로 교정. fixtures·역사 기록(CHANGELOG/log 본문)은 의도적으로 유지.
+- caveats:
+  - Gate 22~26은 proposed/draft — 사람 수락 전. Gate 22만 상세 Scope Decision 작성, 23~26은 ROADMAP에 계획으로만(코드 전 게이트 규율).
+
+## 2026-07-21 - release: prepare 1.16.1 (1.16.0 개명 후속 정리 + 첫 TP 자동배포)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "1.16.1 릴리스 준비 진행")
+- scope: docs, config, tests
+- changed:
+  - package.json (1.16.0→1.16.1), tests/verification.test.js(버전 assertion), CHANGELOG.md/CHANGELOG.ko.md(1.16.1 항목), docs/llm-wiki/releases/v1.16.1.md(신규)
+  - (앞선 커밋 55b283f의 README H1·CONTRIBUTING·schema `$id`·keywords 정리를 스토어프론트에 반영하기 위한 릴리스)
+- summary:
+  - 1.16.0을 새 이름 첫 배포로 수동 publish한 뒤, npm 페이지(README)가 여전히 옛 "LLM-WIKI Standard" 제목을 보여줘 이를 교정하고 정체성/포지셔닝 잔여 정리를 스토어프론트에 반영하기 위해 1.16.1로 릴리스. 코드 동작 불변.
+  - 태그 `v1.16.1` push 시 CI가 Trusted Publishing으로 자동 배포(+provenance)하는 **첫 정상 자동배포** — 1.16.0의 수동 publish 절차 불필요.
+- evidence:
+  - package.json
+  - README.md
+- caveats:
+  - 실제 배포(태그 `v1.16.1` push)는 사용자 "배포" 시 진행. main 커밋/푸시는 준비 단계.
+
+## 2026-07-21 - review: 1.16.0 rename+flip 문서 13개 사람 검토 → verified 재승인
+
+- status: verified
+- actor: Dowon-Kim (사람 검토·승인) · 편집 Claude Code
+- scope: docs (frontmatter status)
+- changed:
+  - needs_review→verified 재승인(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-21): index, project-profile, PUBLIC_API, GLOSSARY, domains/00_overview, docs/llm-wiki/README, ARCHITECTURE_CONVENTIONS, DOMAIN_FEATURES, EXAMPLES, VERSIONING, VISIBILITY, RELEASE_FLOW, profiles/library (13개). EXAMPLES·VISIBILITY는 reviewed_at도 오늘로 refresh.
+- summary:
+  - 1.16.0 개명 + English-first flip + docs-sync로 needs_review로 강등됐던 13개 문서를 사람이 diff 요약 검토 후 전부 승인 → verified 재승인. 개명 이후 위키 전체가 `llm-wiki-governance`로 정합·verified 상태가 됐다.
+- caveats:
+  - `log.md`·`releases/v1.16.0.md`는 관례상 `needs_review` 유지(승격 대상 아님).
+
+## 2026-07-21 - docs-sync: /llm-wiki-docs-sync (rename 완결 — 잔여 verified 4문서 project: 라벨)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim이 `/llm-wiki-docs-sync` 스킬로 실행 — 1.16.0 dogfood)
+- scope: docs (frontmatter only)
+- changed:
+  - docs/llm-wiki/VERSIONING.md · VISIBILITY.md · RELEASE_FLOW.md · profiles/library.md: `project: llm-wiki-standard`→`llm-wiki-governance` + `status: verified`→`needs_review`(LLM 편집 규율). 본문 불변(메타데이터 라벨만; VISIBILITY는 last_updated도 07-16→07-21, library는 last_edited_by Codex→Claude Code).
+- summary:
+  - 1.16.0 개명 후 잔여 정합성 점검. 도구 자신의 `drift`(0 drifted) + `validate`(0 findings)로 의미적·구조적 staleness 없음 확인. 남은 불일치는 위 4개 verified 문서의 `project:` frontmatter 라벨뿐(내부 메타·validate 비검사)이라 새 이름으로 통일 → 위키 전체가 `llm-wiki-governance`로 코히런트해짐.
+  - 의도적 유지(역사/비대상): releases/v0.1.7·v0.1.8(과거 릴리스 기록, verified), templates/*(`project: project` 플레이스홀더), releases/** 및 log 본문(옛 이름은 당시 사실이므로 보존).
+- evidence:
+  - package.json (name: llm-wiki-governance)
+  - src/commands.js#symbol:initWrite (project frontmatter = 스코프 뗀 packageJson.name → 신규 문서는 자동으로 llm-wiki-governance)
+- caveats:
+  - 4개 문서는 내용 변화 없는 라벨 갱신이라 사람 재검토는 빠르다. 전체 재검토 대상: 1.16.0 강등 9 + 이번 4 = 13문서(+ 상시 needs_review인 release notes).
+
+## 2026-07-21 - release: prepare 1.16.0 (rename @dowonk-7949/llm-wiki-standard → llm-wiki-governance + governance reposition + English-first output)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업[English-first flip] 진행 + 패키지 개명·repo 제자리 rename·옛 패키지 deprecate; 이름 llm-wiki-governance, 버전 1.16.0")
+- scope: src, tests, docs, config, CI
+- changed:
+  - src/cli.js (helpText EN-first 재정렬 + npx/mcp 예시를 `llm-wiki-governance`로), src/commands.js (`buildHandoff` 프롬프트 완전 영어 + message/`handoffNextStep`/quickstart `About`/brownfield·gitignore/`SKILL_RELOAD_NOTE` EN-first + `handoffLabel` "또는"→"or" + `handoffEntrypoints` "와/를"→"and"), src/index.js (주석 패키지명)
+  - package.json (name `@dowonk-7949/llm-wiki-standard`→`llm-wiki-governance`, version 1.15.1→1.16.0, repository.url, description 거버넌스로 갱신)
+  - CI: `.github/workflows/publish.yml`·`ci.yml`(identity 체크 + ci.yml tarball glob `llm-wiki-governance-*.tgz`), `.github/actions/validate/action.yml`, `.github/ISSUE_TEMPLATE/config.yml`
+  - 문서(개명·repo URL): README.md/README.ko.md, CONTRIBUTING(.ko), SECURITY(.ko), RELEASE_CHECKLIST.md, VERIFICATION.md, ROADMAP(.ko)·GATE_REVIEW·adapters/README·rules/README·templates/git-hooks/README frontmatter, CHANGELOG.md/CHANGELOG.ko.md(헤더+1.16.0)
+  - wiki(정체성/doc-sync, verified→needs_review): index.md, project-profile.md, PUBLIC_API.md, GLOSSARY.md, domains/00_overview.md, docs/llm-wiki/README.md, ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md, EXAMPLES.md; docs/llm-wiki/releases/v1.16.0.md(신규)
+  - tests/verification.test.js (package name/repo url assertion + helpText 헤딩 + handoff 프롬프트 영어 + entrypoint " and " assertion)
+- summary:
+  - global-reach P1 마무리(English-first 출력) + 전략 정합 개명. "standard"가 거버넌스/OKF-compatible 포지션과 충돌해 이름을 `llm-wiki-governance`로 바꾸고, repo는 제자리 rename(GitHub 리다이렉트 유지), 옛 스코프드 패키지는 deprecate(unpublish 불가 — 생성>72h·주 3,445 다운로드로 npm 정책 미충족).
+  - 프레젠테이션·additive: `llm-wiki` 명령·`--format json`·동결 프로그래매틱 API·frontmatter 계약·zero-dep 불변.
+- evidence:
+  - package.json
+  - src/cli.js
+  - src/commands.js
+- caveats:
+  - 개명·doc-sync로 verified 문서 다수를 `needs_review`로 강등 — 사람 검토 후 재승인 필요(릴리스 게이트).
+  - 계정 작업(사용자): GitHub repo rename, npm Trusted Publisher 재설정(새 이름 + rename된 repo), 필요 시 새 이름 첫 수동 publish, `npm deprecate` 옛 패키지. "배포" 시 태그 push.
+
+## 2026-07-21 - release: prepare 1.15.1 (스킬 생성 재시작 안내, dogfood) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "스킬 아티팩트 유지한 채 릴리스, 문서 검토 완료")
+- scope: src, tests, docs, dogfood-artifacts
+- changed:
+  - (직전 feat 항목의 `src/commands.js`·tests·DOMAIN_FEATURES 변경 포함)
+  - package.json (1.15.0→1.15.1), tests/verification.test.js(버전 assertion), CHANGELOG.md/CHANGELOG.ko.md(1.15.1), docs/llm-wiki/releases/v1.15.1.md(신규)
+  - docs/llm-wiki/DOMAIN_FEATURES.md: 사람 검토 완료 → `needs_review`에서 `verified`로 재승인(reviewed_at 2026-07-21)
+  - dogfood: `.claude/skills/`·`.cursor/rules/`·`.llm-wiki/prompts/`(llm-wiki-feature/fix/docs-sync 9개)를 저장소에 커밋해 추적 — 이 패키지가 자기 스킬을 dogfood. npm `files` allowlist 밖이라 패키지엔 미포함.
+- summary:
+  - 1.15.0 스킬 생성의 온보딩 마찰(생성 직후 `/llm-wiki-*`가 "unknown" — Claude Code는 세션 시작 시 스킬 로드)을 도구 자신의 `/llm-wiki-feature` 스킬로 고쳐 1.15.1로 릴리스. `init`/`quickstart --write`가 스킬 생성 시에만 이중언어 재시작 안내를 출력.
+  - 사용자 결정: 스킬 아티팩트는 "패키지 성능·개편"을 위해 유지(dogfood 커밋).
+- evidence:
+  - src/commands.js
+  - package.json
+- caveats:
+  - 배포 후 package.json/commands.js를 인용하는 verified 문서의 per-release evidence.stale는 baseline-refresh로 해소(관례).
+
+## 2026-07-21 - feat: 스킬 생성 후 "에이전트 재시작 필요" 안내 (/llm-wiki-feature 스킬로 실행)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim이 `/llm-wiki-feature` 스킬로 실행 — 1.15.0 스킬 dogfood)
+- scope: src, tests, docs
+- changed:
+  - src/commands.js (`SKILL_RELOAD_NOTE` 상수 + `initWrite`의 Summary에 조건부 안내[스킬 실제 생성 시만] + payload `skillsCreated` + `quickstartInitSummary` 동일 반영)
+  - tests/verification.test.js (재시작 안내 표시/미표시 테스트 추가)
+  - docs/llm-wiki/DOMAIN_FEATURES.md ("스킬 생성" 기능에 재시작 요건 반영 + 에이전트 편집이라 `verified`→`needs_review` 강등)
+- summary:
+  - Claude Code는 스킬을 세션 시작 시점에만 로드(hot-reload 아님)하므로, `--skills`로 갓 생성한 스킬은 에이전트 재시작 전까지 `/llm-wiki-*`가 "unknown"으로 보인다. 이를 도구가 스스로 안내하도록, `init`/`quickstart --write`가 스킬을 실제로 생성했을 때만 이중언어(KO+EN) 재시작 안내 한 줄을 출력에 추가했다.
+  - 실사용 마찰(사용자가 직접 겪음) 기반 개선. 스킬을 요청하지 않은 실행은 출력 불변.
+- evidence:
+  - src/commands.js
+- caveats:
+  - `/llm-wiki-feature` 스킬(에이전트)로 수행한 작업 — DOMAIN_FEATURES는 `needs_review`로 남으며 사람 재검토 대기. verified 승격은 하지 않았다.
+  - 아직 릴리스 아님(버전 미변경). 유지관리자가 검토 후 패치(예: 1.15.1)로 낼지 결정.
+  - node --test / validate 결과는 아래 워크플로 마지막 단계에서 기록.
+
+## 2026-07-20 - release: prepare 1.15.0 (스킬 생성, Gate 21) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "스킬 활용 자동화-프롬프트 기능 추가", Gate 21 스코프 조정 후 수락)
+- scope: src, tests, docs
+- changed:
+  - src/commands/skills.js(신규 — `SKILL_TASKS`/`selectedSkillFormats`/`planSkillArtifacts`/`writeSkillArtifacts`; Claude 스킬·Cursor 룰·중립 프롬프트 생성 + 도메인 맵 주입), src/commands.js(initDryRun/initWrite에 skill plan/write 배선), src/cli.js(`--skills` 플래그 + init/quickstart 허용 옵션 + help usage)
+  - tests/verification.test.js (+2 스킬 테스트; 버전 assertion 1.14.4→1.15.0)
+  - package.json (1.14.4→1.15.0), CHANGELOG.md/CHANGELOG.ko.md, docs/llm-wiki/releases/v1.15.0.md(신규)
+  - doc-sync + re-verify: ARCHITECTURE_CONVENTIONS(skills.js Module Layout·Evidence)·DOMAIN_FEATURES(스킬 생성 기능·Evidence)·PUBLIC_API(`--skills` 옵션) (reviewed_at 2026-07-20 유지)
+  - GATE_REVIEW.md: Gate 21 accepted_for_1.15.0(도메인 맵 주입 + 다중 에이전트 포맷 2가지 추가)
+- summary:
+  - Gate 21(스킬 생성). `init`/`quickstart`이 feature/fix/docs-sync 위키-그라운디드 워크플로를 각 에이전트 네이티브 아티팩트로 생성: Claude 스킬(`.claude/skills/llm-wiki-<task>/SKILL.md`)·Cursor 룰(`.cursor/rules/llm-wiki-<task>.mdc`)·중립 프롬프트(`.llm-wiki/prompts/llm-wiki-<task>.md`).
+  - 본문은 `task-prompts.js` 재사용 + 프로젝트 도메인 맵(`docs/llm-wiki/domains/` 스냅샷) 주입. `--skills` 또는 `--agent claude|cursor` opt-in, preview-first, 미덮어씀, recognize-don't-run(도구는 생성만). 생성 머신 절대경로(사용자명) 미유출(workspace=`.`). 중립 프롬프트는 검증 트리 밖(`.llm-wiki/prompts/`)에 둠.
+  - 생성한 위키가 실제 기능 작업에 쓰이도록 하는 진입점 → 가치 루프(#8) 해소.
+  - 검증: node --test 231 통과(신규 2), validate result:pass 0 findings, strict pass. `init --write --agent claude --skills`로 9개 아티팩트 + 도메인 맵 주입 + 절대경로 미유출 CLI 확인.
+- evidence:
+  - src/commands/skills.js
+  - src/cli.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기.
+  - 게이트 초안의 중립 프롬프트 경로(`docs/llm-wiki/prompts/`)를 `.llm-wiki/prompts/`로 조정(검증 트리 밖, 어댑터와 동일 취급) — 릴리스 노트에 명시.
+
+## 2026-07-20 - release: prepare 1.14.4 (도메인 감지 venv 스캔 버그 수정) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — 테스터 산출물 검토 중 발견, "지금 고쳐서 1.14.4로 함께 배포")
+- scope: src, tests, docs
+- changed:
+  - src/commands/domains.js (`scanForDomainParents`에 `pyvenv.cfg` venv 통째 스킵 + `DOMAIN_TRAVERSAL_SKIP`에 site-packages/dist-packages/virtualenv + `isSkippedTraversalDir`에 버전형 `venv*`/`env<N>` 패턴)
+  - tests/verification.test.js (+1 테스트: venv3.10/site-packages 제외 & 실제 app/handlers 감지; 버전 assertion 1.14.3→1.14.4)
+  - package.json (1.14.3→1.14.4), CHANGELOG.md/CHANGELOG.ko.md, docs/llm-wiki/releases/v1.14.4.md(신규)
+  - doc-sync + re-verify: ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES (reviewed_at 2026-07-20 유지)
+- summary:
+  - 유지관리자가 테스터 산출물을 검토하다 발견: 도메인 문서 40여 개가 전부 빈 스캐폴드였고 `source_files`가 `venv3.10/Lib/site-packages/{passlib,boto3}/...` — 즉 도메인 감지가 **가상환경을 스캔**해 설치된 의존성을 도메인으로 오탐하고 있었다.
+  - 근본 원인: 버전형 venv 이름(`venv3.10`)이 스킵 목록에 없고 `site-packages`도 제외 안 됨, venv 마커 체크 없음.
+  - 수정: (1) `pyvenv.cfg`를 가진 디렉터리는 venv로 간주해 통째 스킵(이름 무관), (2) `site-packages`/`dist-packages` 제외, (3) 버전형 `venv*`/`env<N>` 이름 스킵. venv 없는 레포는 byte-identical, 프로젝트 자기 `handlers`/`routers`/… 도메인은 그대로 감지.
+  - 검증: node --test 229 통과(신규 1), validate result:pass 0 findings, strict pass. venv3.10 시뮬레이션에서 passlib 미유출·실제 endpoint만 감지 CLI 확인.
+- evidence:
+  - src/commands/domains.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 1.14.2·1.14.3·1.14.4 함께 배포 예정.
+
+## 2026-07-20 - release: prepare 1.14.3 (온보딩 오리엔테이션 + 이중언어) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — 두 번째 노출 보고서 반영, 한글 출력 범위 "사용자-대면 이중언어" 선택)
+- scope: src, tests, docs
+- changed:
+  - src/cli.js (`helpText()`+`packageVersion()` 추가, `printHelp` 리팩터 — 이중언어 KO+EN 오리엔테이션[무엇/왜/3단계] + 버전 + `@latest` 팁), src/commands.js (`quickstartCommand`에 `About · 소개` 이중언어 섹션)
+  - tests/verification.test.js (+2 테스트; 버전 assertion 1.14.2→1.14.3)
+  - package.json (1.14.2→1.14.3), CHANGELOG.md/CHANGELOG.ko.md, docs/llm-wiki/releases/v1.14.3.md(신규)
+  - doc-sync + re-verify: ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES (reviewed_at 2026-07-20 유지)
+- summary:
+  - 두 번째 노출 보고서(백엔드 개발자): (a) `npx …@1.14.0`(npx 캐시)로 실행 → 1.14.1 `Ready` 리네임 못 받고 옛 `Blocked`를 봄, (b) bare 명령/`--help`에 "무슨 도구인지" 설명이 없어 의도 파악 실패(#2·#9·#10), (c) 한글 출력 희망(#7), (d) 아직 실제로 써보질 않아 가치 판단 불가(#8).
+  - 진단: (a)는 캐시 문제(1.14.1/1.14.2 이미 fix, 전달만 안 됨) → `@latest` 재실행 relay. (b)(c)가 코드로 해결 대상.
+  - 1.14.3: `--help`/bare 명령이 Usage 나열 전에 이중언어(KO+EN) 오리엔테이션(무엇/왜/3단계 흐름) + 버전 + `@latest` 팁을 보여줌. `quickstart` 출력에 이중언어 `About · 소개` 라인(help 안 보고 quickstart 직행한 사용자용). finding ID·정밀 리포트는 영문 유지. 전면 i18n(`--lang`)은 별도 결정.
+  - 검증: node --test 228 통과(신규 2), validate result:pass 0 findings, strict pass. bare 명령 오리엔테이션 실제 CLI 확인.
+- evidence:
+  - src/cli.js
+  - src/commands.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기.
+  - 캐시 이슈: 두 번째 테스터에게 `npx @dowonk-7949/llm-wiki-standard@latest`로 재실행 요청 필요(relay).
+  - 도메인 감지(app/api/*.py, endpoints/ 없는 경우)·가치 실현(#8, 실제 사용/ROI 실험)은 여전히 대기.
+
+## 2026-07-20 - release: prepare 1.14.2 (usability 다듬기) + Gate 20 draft
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — 첫 외부 end-to-end 성공 후 "사용성 극대화")
+- scope: src, tests, docs
+- changed:
+  - src/commands/references.js (`parseEvidenceReference` 콜론-라인 `파일:10` 수용), src/commands/wiki-graph.js (orphan에서 `/templates/` 제외), src/git.js (`isPathIgnored`), src/commands/findings.js (`structure.output_gitignored` 룰 등록), src/commands.js (`initWrite` gitignore 경고+안심 요약, `doctor` wiki_output 체크, `quickstartInitSummary` gitignore 라인)
+  - tests/verification.test.js (+5 테스트; 버전 assertion 1.14.1→1.14.2)
+  - package.json (1.14.1→1.14.2), CHANGELOG.md/CHANGELOG.ko.md, docs/llm-wiki/releases/v1.14.2.md(신규)
+  - doc-sync + re-verify: ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES (reviewed_at 2026-07-20 유지)
+  - GATE_REVIEW.md: Gate 20(review 워크플로) DRAFTED proposed_* (수락 전, 코드 없음)
+- summary:
+  - 첫 외부 end-to-end 성공(BE 개발자가 handoff 프롬프트로 위키 전체 추출) 이후의 사용성 다듬기 4건. 검토자가 보는 헛경고를 줄이고 사일런트 실패를 표면화. 계약·zero-dep 불변.
+  - (1) `evidence` 콜론-라인 표기(`파일:10`) 수용 — 에디터/grep 스타일 근거가 헛 `evidence.missing`을 내지 않음. (2) 생성 `templates/*`를 orphan 보고에서 제외. (3) `docs/llm-wiki`가 gitignore되면 `init --write`/`quickstart`·`doctor`가 `structure.output_gitignored` 경고(차단 아님). (4) `init --write` 안심 요약 라인.
+  - 별도: 사람 검토→verified 승인을 돕는 `review` 워크플로를 GATE_REVIEW Gate 20으로 초안만 작성(수락 대기, 코드 없음).
+  - 검증: node --test 226 통과(신규 5), validate result:pass 0 findings, strict pass. gitignore 경고·evidence 표기 실제 CLI 확인.
+- evidence:
+  - src/commands/references.js
+  - src/git.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기.
+  - Gate 20은 아직 수락 전 — review 워크플로는 코드 미구현(초안만).
+
+## 2026-07-20 - feat: handoff Next Step 명료화 + skipped/브라운필드 안내 (1.14.1에 fold-in)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — BE 개발자 추가 보고서 반영, "1.14.1에 접어넣기")
+- scope: src, tests, docs
+- changed:
+  - src/commands.js (`handoffNextStep` 헬퍼 + quickstart/handoff `Next Step`에 적용; `quickstartInitSummary` skip 사유 주석·브라운필드 안내)
+  - tests/verification.test.js (+1 UX 테스트)
+  - CHANGELOG.md/CHANGELOG.ko.md·releases/v1.14.1.md(1.14.1 항목에 UX 2건 추가), doc-sync: ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES(1.14.1 review note + handoff 기능 서술 확장, reviewed_at 2026-07-20 유지)
+- summary:
+  - BE 개발자 노출 보고서: 도구가 원하는 도메인 문서(item/customer/road_scan)를 이미 스캐폴드하고 handoff 프롬프트가 이미 그 보강을 지시하는데도, 출력이 그 가치를 전달하지 못해 "프롬프트를 실행하는 게 목적인가?"라는 워크플로 혼란이 발생. 기능이 아니라 **출력 명료화** 문제로 진단.
+  - (가) handoff `Next Step`이 "Handoff Prompt는 CLI가 실행하는 게 아니라 코딩 에이전트에 붙여넣는 지시문"임을 3단계(붙여넣기→코드 근거 보강[도메인별 domains/*.md 포함]→사람 검토·verified)로 설명. `handoff.message`(프로그래매틱 필드)는 불변으로 첫 줄 보존(계약 안정).
+  - (나) `quickstart` 출력이 브라운필드 인식: skip 개수에 `(N already exist, kept)` 주석, 새로 만들 문서가 없으면 기존 문서를 handoff로 보강하라는 안내(“도구가 아무것도 안 한 것”처럼 보이지 않게).
+  - 검증: node --test 221 통과(신규 1), validate result:pass 0 findings, strict pass. 실제 CLI로 fresh/브라운필드 출력 확인.
+- evidence:
+  - src/commands.js
+- caveats:
+  - 도메인 감지 (다)[버전 디렉터리 `app/api/*.py`가 `endpoints/` 없이 직접 놓인 경우]는 BE 개발자에게 실제 레이아웃 확인 후 결정하기로 보류.
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 이 UX 2건은 미배포 1.14.1에 fold-in.
+
+## 2026-07-20 - release: prepare 1.14.1 (exposure-test fix batch) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 작업 진행" + 배포 방향 선택)
+- scope: src, tests, docs
+- changed:
+  - src/encoding.js (`decodeWithBom`/`readTextAuto` BOM 인식 리더 추가; UTF-16LE/BE·UTF-8 BOM)
+  - src/detector.js (매니페스트/소스 읽기를 `readTextAuto`로 전환), src/commands.js (`buildHandoff` 진입점 명시적-에이전트 한정 + `needsWriteFlag` 사용), src/commands/fix-migrate.js (`needsWriteFlag` 헬퍼)
+  - tests/verification.test.js (+3 테스트; 버전 assertion 1.14.0→1.14.1)
+  - package.json (1.14.0→1.14.1), CHANGELOG.md/CHANGELOG.ko.md(1.14.1 항목), docs/llm-wiki/releases/v1.14.1.md(신규)
+  - doc-sync + re-verify: ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md
+- summary:
+  - 1.14 이후 노출 테스트 P0/P1 버그 수정 배치. (A) 비-UTF-8 매니페스트(UTF-16/UTF-8-BOM)가 mojibake로 읽혀 FastAPI 백엔드가 `library`로 오분류되던 문제를 BOM 인식 리더로 교정. detector의 모든 매니페스트/소스 읽기를 `readTextAuto`로 전환(BOM 없는 파일 byte-identical, 위키 문서 `readUtf8` 불변).
+  - (B) `--agent` 미지정 시 handoff 프롬프트가 생성되지 않은 `AGENTS.md`/`CLAUDE.md`를 먼저 읽으라고 하던 문제를, 진입점을 명시적 선택 에이전트의 어댑터 파일로만 한정해 교정(미선택 시 `docs/llm-wiki/index.md`).
+  - (C) 모드 플래그 없는 `init`/`quickstart`이 `Blocked`(exit 2)로 실패처럼 보이던 것을 `Ready (needs --write)`(result `ready`, exit 0)로 리네임. 충돌 플래그는 여전히 hard error.
+  - 검증: node --test 220 통과(신규 3), validate result:pass 0 findings, validate-frontmatter --strict pass. 세 수정 모두 실제 CLI로 end-to-end 확인.
+- evidence:
+  - src/encoding.js
+  - src/detector.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기.
+  - (C)는 no-flag 종료코드를 2→0으로 바꾸는 동작 변경 — 사용자가 명시적으로 승인함("Ready + exit 0").
+
+## 2026-07-16 - release: prepare 1.14.0 (stdlib-server detection, Gate 19) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "승인")
+- scope: src, tests, docs
+- changed:
+  - src/detector.js (`detectGoStdlibServer`/`detectPythonStdlibServer` + `anySourceMatches` bounded 소스 스캐너; Go/Python 브랜치 one-directional library→backend)
+  - tests/verification.test.js (+2 stdlib 테스트; 버전 assertion 1.13.0→1.14.0)
+  - package.json (1.13.0→1.14.0), CHANGELOG.md/CHANGELOG.ko.md, ROADMAP.md/ROADMAP.ko.md(1.14 shipped·라인 완성), GATE_REVIEW.md(Gate 19 accepted+shipped), docs/llm-wiki/releases/v1.14.0.md(신규)
+  - doc-sync: ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md → needs_review
+- summary:
+  - 1.14.0 = stdlib-server 감지(Gate 19). Go `net/http`(비-test .go가 net/http import + ListenAndServe/http.Serve 호출)·Python stdlib HTTP(.py가 http.server/socketserver import + serve_forever/HTTPServer) 서버를 bounded 소스 스캔으로 감지해 role을 `library`→`backend`로 **단방향** 승격한다.
+  - 보수적: 강한 import+시작-호출 쌍에만 반응, `http.client`만 쓰는 라이브러리는 library 유지, 기존 backend 미강등. 인식만 함(읽기 전용 스캔, 프레임워크 의존성 불요, zero-dep). README는 새 생태계/유형 추가가 아니라 변경 없음.
+  - 검증: node --test 217 통과(신규 2), validate result:pass 0 findings, strict pass. Go server→backend / Go client→library CLI e2e 스모크 확인. **이로써 1.12–1.14 detect & adapt 확장 라인 완성.**
+- evidence:
+  - src/detector.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 배포 후 doc-sync 2개 문서(ARCHITECTURE·DOMAIN_FEATURES) 사람 재검토 필요.
+
+## 2026-07-16 - release: prepare 1.13.0 (infra/DevOps profile, Gate 18) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "진행")
+- scope: src, tests, docs
+- changed:
+  - src/detector.js (`detectInfra` + `findKubernetesManifest` + `decideType` infra fallback), src/config.js (`PROFILE_DOCS.infra`)
+  - tests/verification.test.js (+3 infra 테스트; 버전 assertion 1.12.0→1.13.0)
+  - package.json (1.12.0→1.13.0), CHANGELOG.md/CHANGELOG.ko.md, ROADMAP.md/ROADMAP.ko.md(1.13 shipped), README.md/README.ko.md(감지 대상 행에 infra), GATE_REVIEW.md(Gate 18 accepted+shipped), docs/llm-wiki/releases/v1.13.0.md(신규)
+  - doc-sync: ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md → needs_review
+- summary:
+  - 1.13.0 = infra/DevOps 프로젝트 프로필(Gate 18). `detectInfra`가 Docker/Compose/Kubernetes/Helm/Terraform 신호로 부가적 `infra` 유형을 감지하고, `init`이 infra 문서셋(profiles/infra.md·DEPLOYMENT·RUNBOOK·SERVICE_TOPOLOGY)을 생성한다.
+  - `infra`는 **fallback** — `decideType`에서 앱 신호(frontend/backend/library/mobile)가 없을 때만 선택. `Dockerfile`을 가진 백엔드 레포는 backend 유지, 기존 출력 byte-identical(infra 신호는 infra로 확정될 때만 표면화). 인식만 함(클러스터/레지스트리 접근·배포 없음, zero-dep).
+  - 검증: node --test 215 통과(신규 3), validate result:pass 0 findings, strict pass. Terraform→infra / backend+Dockerfile→backend CLI end-to-end 스모크 확인.
+- evidence:
+  - src/detector.js
+  - src/config.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 배포 후 doc-sync 2개 문서(ARCHITECTURE·DOMAIN_FEATURES) 사람 재검토 필요.
+
+## 2026-07-16 - release: prepare 1.12.0 (mobile profile, Gate 17) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "작업을 진행하자. push 하도록 해")
+- scope: src, tests, docs
+- changed:
+  - src/detector.js (`detectMobile` + `decideType` mobile 최우선 분기), src/config.js (`PROFILE_DOCS.mobile`)
+  - tests/verification.test.js (+6 mobile 테스트; 버전 assertion 1.11.1→1.12.0)
+  - package.json (1.11.1→1.12.0), CHANGELOG.md/CHANGELOG.ko.md, ROADMAP.md/ROADMAP.ko.md(1.12 shipped), README.md/README.ko.md(감지 대상 행), GATE_REVIEW.md(Gate 17 shipped), docs/llm-wiki/releases/v1.12.0.md(신규)
+  - doc-sync: ARCHITECTURE_CONVENTIONS.md·DOMAIN_FEATURES.md → needs_review, VISIBILITY.md → needs_review(config.js 드리프트, 내용 불변)
+- summary:
+  - 1.12.0 = 모바일 프로젝트 프로필(Gate 17). `detectMobile`이 Android/Flutter/iOS/React Native 신호로 부가적 `mobile` 유형을 감지하고, `decideType` 최우선 순위로 Android `build.gradle`의 JVM `library` 오분류를 교정한다. `init`이 mobile 문서셋(profiles/mobile.md·PLATFORM_MATRIX·SCREENS·BUILD_RELEASE)을 생성한다.
+  - 인식만 함(빌드 도구 미호출·의존성 그래프 미파싱, zero-dep). additive: `--type`에 `mobile` 추가, 신호 없는 레포 byte-identical(plain JVM/Dart 미재분류).
+  - 검증: node --test 212 통과(신규 6), validate result:pass 0 findings, validate-frontmatter --strict pass. Android 감지 CLI end-to-end 스모크 확인.
+- evidence:
+  - src/detector.js
+  - src/config.js
+  - package.json
+- caveats:
+  - 배포(태그 push→npm)는 사용자의 명시적 "배포" 지시 대기. 배포 후 doc-sync 3개 문서(ARCHITECTURE·DOMAIN_FEATURES·VISIBILITY) 사람 재검토 필요.
+
+## 2026-07-16 - decision: Gate 17 (모바일 프로필, 1.12.0) 승인
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 승인 기록)
+- scope: docs (게이트 결정; 코드 없음)
+- changed:
+  - GATE_REVIEW.md (Gate 17 상태 `proposed_for_1.12.0` → `accepted_for_1.12.0`; scope 서술 "Accepted by Dowon-Kim on 2026-07-16"로 갱신)
+  - ROADMAP.md / ROADMAP.ko.md ("Release Plan (1.12–1.14)" 상태를 Gate 17 승인/활성 다음 마이너로 갱신; Gate 18·19는 proposed 유지)
+- summary:
+  - Dowon-Kim이 Gate 17(모바일 프로필)을 `accepted_for_1.12.0`으로 승인했다. 이로써 `1.12`가 다음 활성 마이너가 된다: 부가적 `mobile` 프로젝트 유형(Android/Flutter/iOS/React Native 감지 + 모바일 문서셋)이며, 지금 Android `build.gradle`이 `jvm`+`library`로 오분류되는 문제(`src/detector.js`)도 함께 고친다.
+  - Gate 18(1.13 infra)·Gate 19(1.14 stdlib-server)는 여전히 `proposed_*`로 승인 대기 — 로드맵 규율(한 번에 한 마이너)에 따라 1.12 완료 후 순서대로 당긴다.
+- caveats:
+  - 승인 단계까지만 진행 — 아직 코드/테스트 변경 없음. 1.0.0 계약·zero-dep 불변. 구현은 다음 단계.
+
+## 2026-07-16 - chore: 유지보수자 표기명 정정 (WoongHwan-Kim → Dowon-Kim, 동일 인물)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — 옛 이름 표기를 현재 이름으로 교정)
+- scope: docs, git-config
+- changed:
+  - git config user.name (local + global): WoongHwan-Kim → Dowon-Kim (email <maintainer-work-email> 유지)
+  - 문서 21개 파일 149곳의 "WoongHwan-Kim" → "Dowon-Kim" 일괄 치환(reviewed_by·"Accepted by …"·리뷰 노트 등)
+- summary:
+  - 유지보수자의 옛 이름(WoongHwan-Kim)을 현재 이름(Dowon-Kim)으로 통일했다. 동일 인물의 표기명 정정이므로 리뷰의 유효성은 불변 — verified 문서의 status는 유지했다(재검토 부채 없음). GitHub 계정·npm 스코프는 이미 Dowon-Kim7949/@dowonk-7949라 신원과도 정렬된다.
+  - 과거 커밋 히스토리(132개 커밋의 author/committer)는 의도적으로 건드리지 않았다: SHA 재작성·강제 push·태그 재작성·npm provenance 훼손을 피하기 위함. 즉 git log 상 옛 이름은 역사적 기록으로 보존된다.
+  - 이 log.md의 과거 항목 66곳도 이름 일관성을 위해 정정했다(엄밀한 append-only에서 벗어난 예외 — 무엇이 일어났는지는 불변, 사람 이름 철자만 정정).
+- caveats:
+  - 코드/CLI/JSON/frontmatter 계약과 zero-dep 불변(내용 변경 없음, 표기명만 정정).
+  - 바이너리 프레젠테이션(outputs/*.pptx)에 옛 이름이 남아 있을 수 있으며, 필요 시 별도로 갱신해야 한다.
+
+## 2026-07-16 - plan: 다음 라인(1.12–1.14 detect & adapt 브레드스) 게이트/로드맵 초안 (제안, 승인 대기)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "다음 버전 작업" + "모든 것에 대해 진행")
+- scope: docs (계획만; 코드 변경 없음)
+- changed:
+  - GATE_REVIEW.md (Gate 17–19 테이블 행 + scope 서술 3개; source_files에 src/detector.js·src/config.js 추가 → needs_review)
+  - ROADMAP.md / ROADMAP.ko.md ("Release Plan (1.12–1.14)" 신규 섹션; stdlib-server 백로그→1.14 승격 → needs_review)
+- summary:
+  - `1.7–1.11` "팀 & 조직 확장" 라인이 `1.11.1`로 완성·npm 배포된 상태에서, 사용자가 다음 세 후보(모바일 프로필·infra/DevOps 프로필·stdlib-server 감지)를 모두 진행하기로 결정했다. 로드맵 규율(한 번에 한 마이너, 코드보다 먼저 게이트)에 맞춰 한 릴리스로 묶지 않고 순서 있는 마이너 3개로 계획했다: 1.12 모바일(Gate 17, Android build.gradle→library 오분류도 수정) → 1.13 infra(Gate 18) → 1.14 stdlib-server(Gate 19).
+  - 세 게이트 모두 `proposed_for_*` 상태로 기록하고 Dowon-Kim 승인 대기임을 명시했다. 승인 후에야 코드 착수한다.
+- evidence:
+  - src/detector.js
+  - src/config.js
+  - package.json
+- caveats:
+  - 아직 계획 단계다 — 코드/테스트 변경 없음, `1.0.0` 계약·zero-dep 불변. 게이트는 사람 승인 전까지 proposed로 유지한다.
+  - 계획 문서(GATE_REVIEW·ROADMAP·ROADMAP.ko)는 LLM 편집이라 needs_review로 강등했다.
+
+## 2026-07-16 - refactor: commands.js 모듈 분리 완료 (안정화 2단계, 동작 보존) + doc-sync
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "분리 마저 진행")
+- scope: src, docs
+- changed:
+  - src/commands.js (3,434→1,612줄)
+  - src/commands/{references,findings,wiki-graph,wiki-files,adapters,scans,fix-migrate}.js (신규 7개)
+  - docs/llm-wiki/{ARCHITECTURE_CONVENTIONS,DOMAIN_FEATURES,PUBLIC_API,domains/00_overview}.md (Module Layout·이동 심볼 evidence 포인터 갱신 → needs_review)
+- summary:
+  - 안정화 2단계: commands.js에서 재사용 로직을 동작 보존 방식으로 7개 sibling 모듈로 추출했다(누적 ~4,119→1,612줄; 앞선 domains/doc-templates 포함 총 9개 서브모듈). 단방향 의존(leaf references/findings/wiki-files/doc-templates/domains → wiki-graph/adapters → scans → fix-migrate → commands.js). `migrateCommand`는 `audit` 파이프라인을 호출하므로 commands.js<->fix-migrate.js 순환을 피하려 commands.js에 잔류(graphCommand/statsCommand과 동일 패턴; 헬퍼만 분리). 배럴 re-export로 동결 CLI/프로그래매틱 API(18-명령 맵·`driftTargets`·`fixCommand`·`driftCommand`)와 `from "./commands.js"` import 표면은 byte-identical. 각 추출 커밋마다 206 테스트 통과 + validate는 날짜-롤오버 evidence.stale만.
+- evidence:
+  - src/commands/scans.js#symbol:scanEvidenceDrift
+  - src/commands/findings.js#symbol:applyRuleConfig
+  - src/commands/fix-migrate.js#symbol:runMechanicalRemediation
+- caveats:
+  - 동작 보존 내부 리팩터라 CLI/JSON/frontmatter 계약과 zero-dep 불변. 릴리스는 1.11.1로 예정.
+  - doc-sync한 4개 문서는 needs_review로 강등(사람 재검토 대기; 재검토 시 각 문서의 evidence.stale 해소). GLOSSARY는 광의의 src/commands.js 참조만 있어 내용 불변 — 사람 재검토로 reviewed_at만 갱신하면 evidence.stale 해소.
+
+## 2026-07-15 - test: 안정화 1단계 — 교차기능 통합 테스트 3개 (invariant 재감사)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시 — "안정화 우선" 방향 선택)
+- scope: tests
+- changed:
+  - tests/verification.test.js (+3 통합 테스트)
+- summary:
+  - 8릴리스(1.7.1–1.11.0)를 additive로 얹은 뒤 안정화 패스 1단계. 기능별로만 검증됐던 교차 상호작용을 잠갔다: (1) `rules`+`requiredDocs`+`visibility`+`content.thin_body`가 한 audit에서 함께 적용되고 `sensitive.redacted`-off 시도에도 sensitive 탐지가 유지됨(안전 불변식), (2) `monorepo`가 패키지별 config를 독립 적용, (3) cross-repo 참조 무시와 visibility 규칙 공존. 206 pass. 이 3개가 곧 종합 불변식 재감사 역할(zero-dep/additive/single-repo byte-identical/sensitive 비토글/never-verified는 각 릴리스에서 개별 확인됨).
+- caveats:
+  - 안정화 2단계(commands.js 4,119줄 분리)는 대량 코드 이동 위험 관리를 위해 별도 focused pass로 진행 예정(barrel re-export·클러스터별 추출·추출마다 전체 테스트 게이트). 테스트 전용 변경이라 릴리스는 분리 완료 후 함께.
+
+## 2026-07-15 - docs: 1.11.0 cross-repo 문서 2개 verified 재승인 (1.7–1.11 라인 완주)
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+- summary:
+  - 1.11.0 doc-sync(cross-repo knowledge links)로 needs_review로 내려갔던 지식 문서 2개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.11.0 재검토 부채가 없고, 배포된 1.7–1.11 로드맵 라인 전체가 재검토까지 완료됐다(PUBLIC_API는 1.11에서 표면 변경 없어 verified 유지).
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, strict clean. 계획된 다음 마이너 없음(Unscheduled 1.x Backlog / Beyond-1.x-Horizon만 잔여).
+
+## 2026-07-15 - release: 1.11.0 준비 (cross-repo links) — 1.7–1.11 라인 완성
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: release, docs
+- changed:
+  - package.json (1.10.0 → 1.11.0), tests/verification.test.js (버전 assertion → 1.11.0)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.11.0 항목)
+  - docs/llm-wiki/releases/v1.11.0.md (신규 릴리스 노트)
+  - docs/llm-wiki/DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (cross-repo doc-sync; verified → needs_review)
+  - ROADMAP.md, ROADMAP.ko.md (1.11 섹션에 1.11.0 출시 + 1.7–1.11 라인 완성 표기)
+- summary:
+  - Gate 16 1.11.0(cross-repository knowledge links): 예약 cross-repo 참조 스킴(`repo:<name>/<path>`+http(s)) 인식(recognize-don't-verify)을 릴리스 준비했다. MINOR bump. 지식 문서 2개 doc-sync → needs_review(PUBLIC_API는 명령/JSON/옵션 표면 변경 없어 verified 유지). **이로써 분할된 1.7–1.11 로드맵 라인이 완성된다.**
+- caveats:
+  - 배포 전 검증: node --test 203 pass, validate 0, validate-frontmatter --strict 0, npm pack v1.11.0 확인 예정.
+  - RE-VERIFY 부채: DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS (배포 후 사람 검토로 verified 재승인 필요).
+  - 태그·push는 사용자 "배포" 승인 후.
+
+## 2026-07-15 - feat: cross-repo knowledge links (recognize-don't-verify) — 1.11.0, Gate 16
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/commands.js (`isCrossRepoReference`[`repo:<name>/<path>`] 헬퍼; `isExternalSourceReference`에 반영; wiki-link 해석기에 external 스킵 추가)
+  - tests/verification.test.js (+2: cross-repo/URL 참조 미flag, 로컬 미해결 링크는 여전히 flag)
+- summary:
+  - Gate 16 1.11.0(로드맵 마지막 마이너). 예약 cross-repo 참조 스킴 `repo:<name>/<path>`(+ 기존 http(s))를 인식한다. `isExternalSourceReference`를 확장해 source_files/evidence/related/markdown가 이를 external로 처리(missing 미flag)하고, wiki-link 해석기에도 external 스킵을 추가해 cross-repo/URL wiki 링크가 false wiki_link.missing을 안 낸다. **절대 fetch/verify하지 않음**(network/git 없음, zero-dep). additive: 로컬 해석 불변(진짜 미해결 로컬 링크는 여전히 flag). 203 pass, 레포 validate 0.
+- evidence:
+  - src/commands.js#symbol:isCrossRepoReference
+  - src/commands.js#symbol:isExternalSourceReference
+- caveats:
+  - 지식 문서 doc-sync는 1.11.0 release-prep에서 일괄. 실제 fetch/resolve는 out of scope(future major).
+
+## 2026-07-15 - docs: Gate 16 accepted_for_1.11.0 (cross-repo links)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 검토·수락)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 16 `proposed_for_1.11.0` → `accepted_for_1.11.0`)
+- summary:
+  - 마지막 마이너 1.11 cross-repo links의 Gate 16을 사람 검토로 `accepted_for_1.11.0`으로 승격했다. 스코프: 예약 cross-repo 참조 스킴(`repo:<name>/<path>`+http(s))을 wiki 링크·source_files/evidence/related에서 인식, missing-target 규칙 제외, 절대 fetch/verify 안 함(zero-dep), `isExternalSourceReference` 확장. 이로써 1.11 피처 코드 착수 가능.
+- caveats:
+  - validate 0, validate-frontmatter --strict clean.
+
+## 2026-07-15 - docs: 1.11 준비 — Gate 16 (cross-repo links) proposed 초안
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 16 표 행 + "Cross-Repository Links Scope Decision (proposed for 1.11.0)" 섹션)
+- summary:
+  - 마지막 마이너 1.11 cross-repo knowledge links의 스코프를 코드 전에 Gate 16으로 초안화했다(`proposed_for_1.11.0`, 아직 accepted 아님). 스코프: 예약 cross-repo 참조 스킴(`repo:<name>/<path>` + 기존 http(s))을 wiki 링크(이중 대괄호 표기)와 source_files/evidence/related에서 인식. 인식된 참조는 external로 처리해 missing-target 규칙(wiki_link.missing/related.missing/source_files.missing/evidence.missing/markdown_link.missing)에서 제외하되 **절대 fetch/verify하지 않음**(network/git 없음, zero-dep). ready-now slice: 분류기를 강화해 cross-repo wiki 링크가 false wiki_link.missing을 안 내게. additive(로컬 해석 불변).
+- caveats:
+  - Gate 16은 proposed 단계다. 사람 검토·수락(accepted_for_1.11.0) 전까지 1.11 코드 착수하지 않는다.
+  - validate 0, validate-frontmatter --strict clean.
+
+## 2026-07-15 - docs: 1.10.0 monorepo 문서 3개 verified 재승인
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+- summary:
+  - 1.10.0 doc-sync(monorepo profile)로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.10.0 재검토 부채가 없다.
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, strict clean.
+
+## 2026-07-15 - release: 1.10.0 준비 (monorepo profile)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: release, docs
+- changed:
+  - package.json (1.9.0 → 1.10.0), tests/verification.test.js (버전 assertion → 1.10.0)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.10.0 항목)
+  - docs/llm-wiki/releases/v1.10.0.md (신규 릴리스 노트)
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (monorepo doc-sync; verified → needs_review)
+  - ROADMAP.md, ROADMAP.ko.md (1.10 섹션에 1.10.0 출시 표기)
+- summary:
+  - Gate 15 1.10.0(monorepo profile): opt-in `monorepo` 명령(npm/yarn workspaces 감지 후 패키지별 validate 집계, additive `packages[]`, 단일 레포 byte-identical, 패키지별 config, pnpm/YAML unsupported)을 릴리스 준비했다. MINOR bump(새 명령). PUBLIC_API도 명령 표면 변경이라 doc-sync(3개 문서 needs_review). 다음 예정 1.11 cross-repo links(마지막).
+- caveats:
+  - 배포 전 검증: node --test 201 pass, validate 0, validate-frontmatter --strict 0, npm pack v1.10.0 확인 예정.
+  - RE-VERIFY 부채: PUBLIC_API/DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS (배포 후 사람 검토로 verified 재승인 필요).
+  - 태그·push는 사용자 "배포" 승인 후.
+
+## 2026-07-15 - feat: monorepo profile (per-package 검증) — 1.10.0, Gate 15
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/detector.js (`detectWorkspaces`: npm/yarn `workspaces` 감지 + `/*` glob·literal 확장; pnpm/YAML은 unsupported 보고)
+  - src/commands.js (`monorepoCommand`: 패키지별 validate + additive `packages[]`·패키지 prefix된 flattened findings 집계; 패키지별 loadProjectConfig/mergeConfigIntoOptions)
+  - src/cli.js (`monorepo` 명령 등록 + help), src/index.js (commands 맵 + 개별 export)
+  - tests/verification.test.js (파리티 목록에 monorepo 추가 + 3: workspaces 감지·집계·skip, single/pnpm unsupported, 패키지별 config 적용)
+- summary:
+  - Gate 15 1.10.0. `llm-wiki monorepo`가 npm/yarn `workspaces`를 감지해 각 패키지의 `docs/llm-wiki`를 validate하고 집계한다. additive `packages[]`(패키지별 roll-up)과 패키지 경로 prefix된 flattened `findings`는 이 명령에만 나타나 단일 레포 출력은 byte-identical 유지. 각 패키지는 자기 `llm-wiki.config.json`을 반영(패키지별 config 로드). pnpm/`pnpm-workspace.yaml`은 zero-dep 위해 미파싱(unsupported로 보고). read-only 집계. 201 pass, 레포 validate 0.
+- evidence:
+  - src/detector.js#symbol:detectWorkspaces
+  - src/commands.js#symbol:monorepoCommand
+- caveats:
+  - 지식 문서 doc-sync는 1.10.0 release-prep에서 일괄. deeper glob(`dir/**`)·pnpm/YAML은 후속(Gate 15 out of scope 명시).
+
+## 2026-07-15 - docs: Gate 15 accepted_for_1.10.0 (monorepo profile)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 검토·수락)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 15 `proposed_for_1.10.0` → `accepted_for_1.10.0`)
+- summary:
+  - 1.10 monorepo profile의 Gate 15를 사람 검토로 `accepted_for_1.10.0`으로 승격했다. 스코프: npm/yarn workspaces 감지(pnpm/YAML defer) + opt-in 패키지별 파이프라인 실행 + additive packages[] JSON(단일 레포 byte-identical) + tests/fixtures monorepo 픽스처 + 패키지별 config. read-only·zero-dep 유지. 이로써 1.10 피처 코드 착수 가능.
+- caveats:
+  - validate 0, validate-frontmatter --strict clean.
+
+## 2026-07-15 - docs: 1.10 준비 — Gate 15 (monorepo profile) proposed 초안
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 15 표 행 + "Monorepo Profile Scope Decision (proposed for 1.10.0)" 섹션)
+- summary:
+  - 1.10 monorepo profile의 스코프를 코드 전에 Gate 15로 초안화했다(`proposed_for_1.10.0`, 아직 accepted 아님). 스코프: (1) `detector.js`에 npm/yarn `workspaces` 감지(pnpm/YAML은 zero-dep 위해 defer, unsupported로 보고), (2) 기존 cwd-파라미터라이즈드 read 파이프라인(audit/collectWikiGraph/findMissingDocs)을 패키지별 실행·집계, (3) strictly additive `packages[]` JSON(단일 레포 출력 byte-identical 유지), (4) tests/fixtures/에 monorepo 픽스처. 각 패키지는 자기 `llm-wiki.config.json`을 resolveOptions로 반영. read-only, zero-dep 불변(YAML 파서 미도입).
+- caveats:
+  - Gate 15는 proposed 단계다. 사람 검토·수락(accepted_for_1.10.0) 전까지 1.10 코드 착수하지 않는다.
+  - validate 0, validate-frontmatter --strict clean.
+
+## 2026-07-15 - docs: 1.9.0 visibility 문서 2개 verified 재승인
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+- summary:
+  - 1.9.0 doc-sync(visibility governance)로 needs_review로 내려갔던 지식 문서 2개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`). 이로써 1.9.0 재검토 부채가 없다.
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, strict clean.
+
+## 2026-07-15 - release: 1.9.0 준비 (visibility governance)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: release, docs
+- changed:
+  - package.json (1.8.1 → 1.9.0), tests/verification.test.js (버전 assertion → 1.9.0)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.9.0 항목)
+  - docs/llm-wiki/releases/v1.9.0.md (신규 릴리스 노트)
+  - docs/llm-wiki/DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (visibility governance doc-sync; verified → needs_review)
+  - ROADMAP.md, ROADMAP.ko.md (1.9 섹션에 1.9.0 출시 표기)
+- summary:
+  - Gate 14 1.9.0(visibility governance): opt-in 일관성 린트 2개(`visibility.public_sensitive`·`visibility.declared_mismatch`, sensitive-info 스캔 재사용, 기본 off·warning·read-only, 값 미노출) + 정책 문서 VISIBILITY.md(이미 verified). MINOR bump. 지식 문서 2개 doc-sync → needs_review(PUBLIC_API는 rules 메커니즘만 문서화해 계약 변경 없음 → verified 유지). 다음 예정 1.10 monorepo.
+- caveats:
+  - 배포 전 검증: node --test 198 pass, validate 0, validate-frontmatter --strict 0, npm pack v1.9.0 확인 예정.
+  - RE-VERIFY 부채: DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS (배포 후 사람 검토로 verified 재승인 필요).
+  - 태그·push는 사용자 "배포" 승인 후.
+
+## 2026-07-15 - feat: visibility governance opt-in 일관성 rule 2개 (1.9.0, Gate 14)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/commands.js (`FINDING_EXPLANATIONS`에 `visibility.public_sensitive`·`visibility.declared_mismatch`[warning] 등록; `scanVisibilityConsistency`; audit/status 배선)
+  - tests/verification.test.js (+2: public_sensitive opt-in·no-leak, declared_mismatch)
+- summary:
+  - Gate 14 1.9.0. sensitive-info 스캔을 재사용하는 opt-in 일관성 rule 2개. `visibility.public_sensitive`: `visibility: public` 문서에 민감값. `visibility.declared_mismatch`: `contains_sensitive_info: false`인데 민감값. 둘 다 기본 off(config `rules`로 활성화, `content.thin_body` 패턴), warning, read-only. **민감값은 finding에 절대 노출하지 않는다**(redacted count만; 실측 leak 0). `sensitive.*`는 여전히 비토글. 접근 통제 아님(값-내용 일관성만). 기본 off라 레포 자신의 validate 0 유지.
+- evidence:
+  - src/commands.js#symbol:scanVisibilityConsistency
+- caveats:
+  - 지식 문서 doc-sync는 1.9.0 release-prep에서 일괄. 198 pass, 레포 validate 0.
+
+## 2026-07-15 - docs: Gate 14 accepted_for_1.9.0 + VISIBILITY.md verified
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·수락)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 14 `proposed_for_1.9.0` → `accepted_for_1.9.0`)
+  - docs/llm-wiki/VISIBILITY.md (needs_review → verified)
+- summary:
+  - 1.9 visibility governance의 Gate 14를 사람 검토로 `accepted_for_1.9.0`으로 승격하고, 정책 문서 `VISIBILITY.md`를 `verified`로 승인했다(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-15). 스코프: opt-in 일관성 rule 2개(`visibility.public_sensitive`, `visibility.declared_mismatch`) — 기본 off·warning·read-only, 1.8 config `rules`로 활성화, 절대 default error/blocked 금지, sensitive-info 스캔 재사용, `sensitive.*` 비토글, 접근 통제 아님.
+- caveats:
+  - 이로써 1.9 피처 코드 착수 가능. validate 0, validate-frontmatter --strict clean.
+
+## 2026-07-15 - docs: 1.9 준비 — visibility 정책 문서 + Gate 14 proposed 초안
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: docs
+- changed:
+  - docs/llm-wiki/VISIBILITY.md (신규 정책 문서, needs_review) — project-profile Open Question 해소용 설계 입력
+  - GATE_REVIEW.md (Gate 14 표 행 + "Visibility Governance Scope Decision (proposed for 1.9.0)" 섹션)
+- summary:
+  - 1.9 visibility governance의 blocker(정책 문서 + 게이트)를 코드 전에 준비했다. `docs/llm-wiki/VISIBILITY.md`가 internal/restricted/public 의미와 public-vs-content 일관성 정책을 정의한다. Gate 14(`proposed_for_1.9.0`, 아직 accepted 아님)는 opt-in 일관성 rule 2개(`visibility.public_sensitive`, `visibility.declared_mismatch`)를 스코프한다: 기본 off·warning·read-only, 1.8 config `rules` 토글로 활성화, 절대 default error/blocked 금지(additive 불변식). sensitive-info 스캔 재사용, 접근 통제 아님. `sensitive.*`는 여전히 비토글.
+- caveats:
+  - Gate 14는 proposed 단계다. 사람 검토·수락(accepted_for_1.9.0) 전까지 1.9 코드 착수하지 않는다. VISIBILITY.md는 사람 검토 전까지 needs_review.
+  - validate 0, validate-frontmatter --strict clean.
+
+## 2026-07-15 - docs: 1.8.1 config 피처 문서 3개 verified 재승인
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+- summary:
+  - 1.8.1 doc-sync(커스텀 문서셋·템플릿 오버라이드)로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.8.1 재검토 부채가 없다.
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, validate-frontmatter --strict clean. Gate 13 config schema growth 완성.
+
+## 2026-07-15 - release: 1.8.1 준비 (config schema growth 2부 — 커스텀 문서셋 + 템플릿 오버라이드)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: release, docs
+- changed:
+  - package.json (1.8.0 → 1.8.1), tests/verification.test.js (버전 assertion → 1.8.1)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.8.1 항목)
+  - docs/llm-wiki/releases/v1.8.1.md (신규 릴리스 노트)
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (requiredDocs·templates doc-sync; verified → needs_review)
+  - ROADMAP.md, ROADMAP.ko.md (1.8 섹션을 "Gate 13 완성"으로 갱신)
+- summary:
+  - Gate 13 config 3피처의 나머지 둘(커스텀 문서셋 `requiredDocs` + 템플릿 오버라이드 `templates`)을 1.8.1로 릴리스 준비했다. 커밋 e325e27(커스텀 문서셋)·6e1cfef(템플릿 오버라이드, body-only never-verified 가드레일). 이로써 Gate 13 config schema growth가 완성된다(다음 예정 1.9 visibility governance). 지식 문서 3개 doc-sync → needs_review.
+- caveats:
+  - 배포 전 검증: node --test 196 pass, validate 0, validate-frontmatter --strict 0, npm pack v1.8.1 확인 예정.
+  - RE-VERIFY 부채: PUBLIC_API/DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS (배포 후 사람 검토로 verified 재승인 필요).
+  - 태그·push는 사용자 "배포" 승인 후.
+
+## 2026-07-15 - feat: 템플릿 오버라이드 (config templates, never-verified 가드레일) — Gate 13, 1.8.x
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/config-file.js (config `templates`[obj str→str] 검증 + 병합)
+  - src/cli.js (`defaultOptions`에 `templates: {}`)
+  - src/commands.js (`renderOverriddenDoc`[body-only 가드레일]; initWrite/initDryRun 오버라이드 인식; doctor echo `templates=N`; `renderTemplate` import)
+  - tests/verification.test.js (+3: templates 검증 / verified 가드레일 / 누락 fallback)
+- summary:
+  - Gate 13 마지막 피처(템플릿 오버라이드). config `templates`로 생성 문서를 프로젝트-로컬 템플릿에서 만든다. **핵심 안전 설계: 오버라이드는 body만 사용** — frontmatter는 항상 CLI 생성(`status: needs_review`)이라 오버라이드가 절대 `verified`를 만들 수 없다(오버라이드 파일의 frontmatter는 파싱 후 폐기). 오버라이드 파일 부재 시 built-in 폴백 + skipped 노트. `doctor`가 개수 echo. 실측: 오버라이드가 `status:verified`를 담아도 생성 문서는 `needs_review`.
+- evidence:
+  - src/commands.js#symbol:renderOverriddenDoc
+- caveats:
+  - 지식 문서 doc-sync는 1.8.1 release-prep에서 일괄. 196 pass, 레포 validate 0. 이로써 Gate 13의 3개 피처(rule 토글·커스텀 문서셋·템플릿 오버라이드) 모두 구현 완료.
+
+## 2026-07-15 - feat: 커스텀 문서셋 (config requiredDocs) — Gate 13, 1.8.x
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/config-file.js (config `requiredDocs`[string[]] 검증 + 병합)
+  - src/cli.js (`defaultOptions`에 `requiredDocs: []`)
+  - src/commands.js (`findMissingDocs`가 customDocs를 required 목록에 병합[dedupe]; audit/status 호출부 갱신; doctor echo에 `requiredDocs=N`)
+  - tests/verification.test.js (+2: requiredDocs 검증 / 누락→structure.required_doc·존재→해소)
+- summary:
+  - Gate 13의 두 번째 피처(커스텀 문서셋). config `requiredDocs`로 프로젝트가 core/profile 필수 문서 목록에 자체 문서를 추가하면 같은 `structure.required_doc` 검사가 audit/status/validate에 적용된다. **검증 전용**(init 자동생성 아님 — 임의 이름엔 템플릿이 없음). `doctor`가 개수를 echo. additive·opt-in, 1.0.0 계약·zero-dep 불변.
+- evidence:
+  - src/commands.js#symbol:findMissingDocs
+- caveats:
+  - 지식 문서 doc-sync는 1.8.x release-prep에서 일괄. 193 pass, 레포 validate 0.
+
+## 2026-07-15 - docs: 1.8.0 rule-toggle 문서 3개 verified 재승인
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+- summary:
+  - 1.8.0 rule-토글 doc-sync로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.8.0 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, validate-frontmatter --strict clean.
+
+## 2026-07-15 - release: 1.8.0 준비 (config schema growth — rule 토글)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: release, docs
+- changed:
+  - package.json (1.7.2 → 1.8.0), tests/verification.test.js (버전 assertion → 1.8.0)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.8.0 항목)
+  - docs/llm-wiki/releases/v1.8.0.md (신규 릴리스 노트)
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (rule 토글 doc-sync; verified → needs_review)
+  - ROADMAP.md, ROADMAP.ko.md (1.8 섹션에 1.8.0 출시 표기)
+- summary:
+  - Gate 13 1.8.0(config schema growth 첫 피처): per-project rule 토글(`rules` 맵; 중앙 `applyRuleConfig`, `sensitive.*` 안전 비토글) + opt-in lint `content.thin_body`(기본 off)를 릴리스 준비했다. MINOR bump(피처 추가). severity 수렴 pre-work는 감사로 동작 보존 확인. 커스텀 문서셋·템플릿 오버라이드는 `1.8.x` 잔여. 지식 문서 3개 doc-sync → needs_review.
+- caveats:
+  - 배포 전 검증: node --test 191 pass, validate 0, validate-frontmatter --strict 0, npm pack v1.8.0 확인 예정.
+  - RE-VERIFY 부채: PUBLIC_API/DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS (배포 후 사람 검토로 verified 재승인 필요).
+  - 태그·push는 사용자 "배포" 승인 후. log.md·releases/*.md는 관례상 needs_review 유지.
+
+## 2026-07-15 - feat: content.thin_body opt-in lint (1.8.0 dogfood)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/commands.js (`FINDING_EXPLANATIONS`에 `content.thin_body`[warning] 등록; `scanThinBody`+`bodyProseWordCount`; audit/status 배선)
+  - tests/verification.test.js (+1: 기본 off / opt-in 생성)
+- summary:
+  - rule-토글 기계를 dogfood하는 첫 opt-in lint. `content.thin_body`는 레지스트리에 등록되지만 기본 INERT — config `rules`에서 명시 활성화(예: `"content.thin_body":"warning"`)해야 wiki 콘텐츠 문서의 얇은 본문(prose 단어 < 25)을 표시한다. placeholder 문서는 `content.not_enriched` 담당이라 제외, append-only log 제외. severity는 config로 override 가능(warning→error 확인). 기본 off라 레포 자신의 validate 0은 유지된다.
+- evidence:
+  - src/commands.js#symbol:scanThinBody
+- caveats:
+  - 지식 문서 doc-sync는 1.8.0 release-prep에서 일괄. 191 pass, 레포 validate 0.
+
+## 2026-07-15 - feat: per-project rule toggles (1.8.0 config schema growth)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/config-file.js (config `rules` 맵 검증 + 병합; `RULE_TOGGLE_ACTIONS`)
+  - src/cli.js (`defaultOptions`에 `rules: {}`)
+  - src/commands.js (중앙 `applyRuleConfig` 적용: audit/status/validate-frontmatter; `NON_TOGGLEABLE_CATEGORIES` 안전 가드; doctor echo에 `rules=N`)
+  - tests/verification.test.js (+3: rules 검증 / off·override 재등급 / sensitive 비토글 안전)
+- summary:
+  - Gate 13 1.8.0 첫 피처. `llm-wiki.config.json`에 `rules: { "rule.id": "off"|"blocked"|"error"|"warning"|"info" }`를 추가해 프로젝트가 개별 finding rule을 끄거나 severity를 재정의한다. EP1의 통합 옵션 해석(`resolveOptions`)을 타고 CLI/API/MCP 모두에서 동일 적용. 중앙 `applyRuleConfig`가 audit/status/validate-frontmatter의 findings에 idempotent하게 적용된다. 레지스트리(`FINDING_EXPLANATIONS`) rule만 토글 대상이며, **안전 불변식으로 `sensitive.*` 카테고리는 절대 토글 불가**(민감정보 탐지를 config로 끌 수 없음). `doctor`가 활성 토글 수를 echo. additive·opt-in, 1.0.0 계약·zero-dep 불변.
+- evidence:
+  - src/commands.js#symbol:applyRuleConfig
+  - src/config-file.js#symbol:loadProjectConfig
+- caveats:
+  - severity 수렴 pre-work는 감사로 이미 동작 보존 확인(불일치 0); 토글은 rule 단위 중앙 override라 push 지점 재작성 불필요.
+  - 지식 문서 doc-sync는 1.8.0 release-prep에서 일괄. 테스트 190 pass, validate 0.
+
+## 2026-07-15 - docs: Gate 13 accepted_for_1.8.0 (config schema growth)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 검토·수락)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 13 `proposed_for_1.8.0` → `accepted_for_1.8.0`; 점진 딜리버리·severity 감사 결과 반영)
+- summary:
+  - Gate 13(1.8 config schema growth)을 사람 검토로 `accepted_for_1.8.0`으로 승격했다. 딜리버리는 점진: enabling-prep는 1.7.2로 출시됨, `1.8.0` = pre-work(인라인 severity를 `FINDING_EXPLANATIONS` 단일 레지스트리로 수렴[2026-07-15 감사: push 지점 severity 불일치 0 → 동작 보존] + 템플릿 오버라이드가 `status: verified`를 절대 못 만드는 가드레일) + per-project **rule 토글**; **커스텀 문서셋**·**템플릿 오버라이드**는 `1.8.x`로 후속. `blocked` 제어 findings 3개(`explain.unknown_rule`/`init.write_blocked`/`sensitive.release_body`)는 레지스트리 밖·토글 비대상.
+- caveats:
+  - 이로써 1.8 피처 코드 착수 가능. 실제 착수는 사용자 지시 후.
+
+## 2026-07-15 - docs: 1.7.2 doc-synced 문서 3개 verified 재승인
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+- summary:
+  - 1.7.2 EP1/EP2 doc-sync로 needs_review로 내려갔던 지식 문서 3개를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 이로써 1.7.2 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날 src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0, validate-frontmatter --strict clean.
+
+## 2026-07-15 - release: 1.7.2 준비 (EP1+EP2 enabling-prep, config 일관화)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: release, docs
+- changed:
+  - package.json (1.7.1 → 1.7.2), tests/verification.test.js (버전 assertion → 1.7.2)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.7.2 항목: Added resolveOptions·config scaffold·doctor echo / Changed MCP config 병합)
+  - docs/llm-wiki/releases/v1.7.2.md (신규 릴리스 노트)
+  - docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, ARCHITECTURE_CONVENTIONS.md (EP1/EP2 doc-sync; verified → needs_review)
+  - ROADMAP.md, ROADMAP.ko.md (enabling-prep EP1/EP2를 1.7.2 출시로 표기)
+- summary:
+  - EP1(config 로딩 CLI/API/MCP 일원화 + `resolveOptions`)과 EP2(init/quickstart starter config scaffold + doctor effective-config echo)를 묶어 1.7.2로 릴리스 준비했다. Gate 13(1.8 config schema growth)의 enabling-prep으로, config 실사용을 축적하기 위한 additive 패치다. CLI·JSON·프로그래매틱 API·frontmatter 계약과 zero-dep 불변. 지식 문서 3개는 doc-sync로 needs_review로 내렸다.
+- caveats:
+  - 배포 전 검증: node --test 187 pass, validate 0, validate-frontmatter --strict 0, npm pack 확인 예정.
+  - RE-VERIFY 부채: PUBLIC_API/DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS (배포 후 사람 검토로 verified 재승인 필요).
+  - 태그·push는 사용자 "배포" 승인 후. log.md·releases/*.md는 관례상 needs_review 유지.
+
+## 2026-07-15 - feat: EP2 starter config scaffold + doctor echo — 1.7.2 enabling-prep
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/commands.js (init/quickstart가 최소 llm-wiki.config.json을 scaffold: `scaffoldProjectConfig` 헬퍼 — additive·preview-first·기존 파일 절대 미덮어씀[--existing overwrite에서도]; `doctor`가 `describeEffectiveConfig`로 config 선언 키[type/profiles/agents/strict]를 echo; config-file.js import 추가)
+  - tests/verification.test.js (doctor echo 테스트 갱신 + EP2 4개: doctor invalid echo, init scaffold, init never-overwrite, init dry-run preview)
+- summary:
+  - Gate 13 enabling-prep #2. `init`/`quickstart --write`가 감지된 type과 선택된 agents를 담은 최소 starter config를 생성하고(quickstart는 initCommand 위임으로 자동 상속), dry-run은 미리보기만 한다. 기존 config는 append-only log처럼 사용자 소유로 보고 절대 덮어쓰지 않는다. `doctor`는 이제 `llm_wiki_config: present (type=..., agents=...)`처럼 effective config를 echo해 Gate 13의 "실사용" 전제를 관측 가능하게 만든다. EP1과 함께 1.7.2 patch로 배포 예정. additive·preview-first, 1.0.0 계약·zero-dep 불변.
+- evidence:
+  - src/commands.js#symbol:scaffoldProjectConfig
+  - src/commands.js#symbol:describeEffectiveConfig
+- caveats:
+  - 지식 문서 doc-sync(DOMAIN_FEATURES/PUBLIC_API 등)는 1.7.2 release-prep에서 EP1과 함께 일괄 반영한다.
+  - 테스트 187 pass. validate/validate-frontmatter 0. 실제 init/doctor 구동으로 scaffold·skip·echo 확인.
+
+## 2026-07-15 - feat: EP1 config 로딩 일원화 (CLI/API/MCP 동일 effective options) — 1.7.2 enabling-prep
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, tests
+- changed:
+  - src/cli.js (인라인 config 로드+병합+agent 재정규화를 공유 export `applyProjectConfig`로 추출; main()은 이를 호출 — 동작 보존)
+  - src/index.js (async `resolveOptions` 추가·export: normalizeOptions + applyProjectConfig; 동기 normalizeOptions 계약 불변)
+  - src/mcp/dispatch.js (handleToolCall이 normalizeOptions 대신 resolveOptions 사용 → MCP가 프로젝트 llm-wiki.config.json 반영; malformed config는 isError로 표면화)
+  - tests/verification.test.js (+4 resolveOptions), tests/mcp.test.js (+2 MCP config)
+- summary:
+  - Gate 13 enabling-prep #1. 지금까지 config 병합은 CLI(main)에만 있었고 1.5 프로그래매틱 API·1.6 MCP는 llm-wiki.config.json을 무시했다(Gate 11 honest limit). 공유 `applyProjectConfig`로 로직을 한 곳에 모으고, index.js가 config-aware async `resolveOptions`를 추가 export하며, MCP dispatcher가 이를 호출하도록 해 세 표면이 동일한 effective options를 얻는다. additive: 동기 normalizeOptions·프로즌 commands 맵·1.0.0 계약 불변, zero-dep 유지. 실사용 축적을 위해 EP2(starter config scaffold + doctor echo)와 함께 1.7.2 patch로 배포 예정.
+- evidence:
+  - src/cli.js#symbol:applyProjectConfig
+  - src/index.js#symbol:resolveOptions
+  - src/mcp/dispatch.js#symbol:handleToolCall
+- caveats:
+  - 지식 문서 doc-sync(PUBLIC_API/DOMAIN_FEATURES/ARCHITECTURE_CONVENTIONS)는 1.7.2 release-prep에서 EP2와 함께 일괄 반영한다.
+  - 테스트 183 pass. validate/validate-frontmatter 0 findings.
+
+## 2026-07-15 - docs: Gate 13 (1.8 config schema growth) proposed 초안
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시·결정)
+- scope: docs
+- changed:
+  - GATE_REVIEW.md (Gate 13 표 행 + "Config Schema Growth Scope Decision (proposed for 1.8.0)" 섹션; source_files에 src/config-file.js 추가)
+- summary:
+  - 1.8(config schema growth)의 스코프를 코드 전에 Gate 13으로 초안화했다(`proposed_for_1.8.0`, 아직 accepted 아님). 스코프: per-project rule 토글(FINDING_EXPLANATIONS를 severity 단일 진실원으로 수렴) + 커스텀 문서셋 + 템플릿 오버라이드(verified 금지 하드 가드레일). enabling-prep(config 로딩을 CLI/프로그래매틱 API/MCP에 일원화 + starter config scaffold + doctor echo)를 1.7.x patch로 먼저 배포해 config 실사용을 축적한 뒤 1.8을 pull하는 순서를 명시했다. additive·opt-in·1.0.0 계약 불변·zero-dep·preview-first 유지. 1.7 Gate 12 draft→accepted 선례를 따른다.
+- caveats:
+  - proposed 단계다. 사람 검토·수락(accepted_for_1.8.0) 전까지 1.8 코드에 착수하지 않는다.
+  - GATE_REVIEW.md는 docs/llm-wiki/ 밖이라 validate/validate-frontmatter 스캔 대상이 아니다.
+
+## 2026-07-15 - release: 1.7.1 준비 (commands.js NUL 바이트 제거 + LF 재정규화)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시)
+- scope: code, docs
+- changed:
+  - src/commands.js (wikiGraph 엣지 키의 날것 U+0000 → `\\u0000` 이스케이프; 파일 CRLF→LF 재정규화)
+  - package.json (1.7.0 → 1.7.1)
+  - tests/verification.test.js (버전 assertion 1.7.0 → 1.7.1)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.7.1 항목)
+  - docs/llm-wiki/releases/v1.7.1.md (신규 릴리스 노트)
+- summary:
+  - `src/commands.js`가 `wikiGraph` 엣지 중복제거 키(`collectWikiGraph` → `addEdge`)의 구분자로 날것의 NUL(U+0000) 제어 바이트를 소스에 담고 있어, git `text=auto`가 파일을 바이너리로 분류했다. 그 결과 `.gitattributes`의 `eol=lf` 정규화에서 이 파일 하나만 제외되어 CRLF로 저장돼 있었다. 날것 바이트를 `\\u0000` 이스케이프로 교체(런타임 문자열 불변)하고 `git add --renormalize`로 LF로 정규화해, 다른 모든 소스 파일과 동일한 줄바꿈 정책에 편입시켰다. 순수 저장소 위생 패치로 CLI·JSON·프로그래매틱 API·frontmatter·런타임 동작 변경은 없다.
+- evidence:
+  - src/commands.js#symbol:collectWikiGraph
+  - .gitattributes
+- caveats:
+  - 커밋 diff 대부분은 commands.js의 일회성 CRLF→LF 재정규화다(실제 내용 변경은 1줄).
+  - 릴리스 노트/로그는 관례상 needs_review로 유지한다. 태그·push는 별도 승인 후 진행한다.
+
+## 2026-07-15 - docs: 1.7 doc-sync 문서 6개 verified 재승인
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/RELEASE_FLOW.md, PUBLIC_API.md, DOMAIN_FEATURES.md, domains/00_overview.md, project-profile.md, ARCHITECTURE_CONVENTIONS.md (needs_review → verified)
+  - docs/llm-wiki/VERSIONING.md (verified 유지, reviewed_at/last_updated → 2026-07-15)
+- summary:
+  - 1.7.0 doc-sync로 needs_review로 내려갔던 지식 문서 6개를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트를 재승인 문구로 갱신). 추가로 VERSIONING.md가 인용 소스(`package.json` 버전 bump·`RELEASE_CHECKLIST.md` 갱신) 변경으로 `evidence.stale`이 떠서, version-agnostic 내용이 여전히 정확함을 확인하고 검토 기준일을 2026-07-15로 갱신해 해소했다(내용 변경 없음). 이로써 1.7.0 배포 전 재검토 부채가 없다(log.md·releases/*.md만 관례상 needs_review).
+- caveats:
+  - `reviewed_at: 2026-07-15`가 같은날(2026-07-15) src 변경을 end-of-day 기준으로 커버하므로 `evidence.stale` 없음. validate 0 findings, validate-frontmatter --strict clean. 배포 직전 상태.
+
+## 2026-07-15 - release: 1.7.0 준비 (CI/CD 도입) + 전 문서 1.7.0 정합화
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 지시: "모든 문서가 1.7.0에 맞는지 분석 후 릴리스")
+- scope: release, docs
+- changed:
+  - package.json (1.6.0 → 1.7.0), tests/verification.test.js (버전 어서션 → 1.7.0)
+  - CHANGELOG.md / CHANGELOG.ko.md (1.7.0 항목)
+  - ROADMAP.md / ROADMAP.ko.md (1.7을 Shipped Through 1.7.0로 이동, Release Plan → 1.8–1.11, "next is Gate 12" 정정, 승격 노트 갱신)
+  - docs/llm-wiki/releases/v1.7.0.md (신규)
+  - doc-sync (verified → needs_review): docs/llm-wiki/RELEASE_FLOW.md, PUBLIC_API.md, DOMAIN_FEATURES.md, domains/00_overview.md, project-profile.md, ARCHITECTURE_CONVENTIONS.md
+  - RELEASE_CHECKLIST.md / VERIFICATION.md (하드코딩 1.0.0 → version-agnostic, 사실오류 "migrate --apply 차단" 정정[1.2에서 해금], 1.7 표면 반영)
+  - README.md / README.ko.md (CI 불릿에 composite Action 참조), GATE_REVIEW.md (source_files += action.yml)
+- summary:
+  - 다중 에이전트 전 문서 감사(5개 그룹, blocking 13 + recommended 다수)에 따라 1.7.0(CI/CD 도입)에 맞게 모든 문서를 정합화했다. 1.7.0은 분할된 "팀 & 조직 확장" 라인의 리드 슬라이스만 낸다.
+  - BLOCKING: 버전 단일 소스(package.json)와 커플링된 버전 어서션 테스트를 1.7.0으로; CHANGELOG(EN/KO) 1.7.0 항목(2026-07-15); ROADMAP(EN/KO)에서 1.7을 Shipped로 이동하고 계획을 1.8–1.11로 축소(enabling prep·1.8–1.11은 계획에 유지); releases/v1.7.0.md 생성; 내용이 바뀌는 wiki 지식 문서 6개 doc-sync(release-notes --body-only·composite Action·태그 트리거 Release 잡 반영, `verified` → `needs_review`, reviewed_by/at 제거, 1.7 Review Note).
+  - RECOMMENDED: 배포물에 포함되는 RELEASE_CHECKLIST/VERIFICATION의 하드코딩 1.0.0을 version-agnostic으로 바꾸고, 세 릴리스째 stale였던 "migrate --apply 차단"(1.2 Gate 8에서 해금됨) 사실오류를 정정했으며, README(EN/KO) CI 불릿에 `uses: .../.github/actions/validate@v1.7.0`(정확한 태그 고정, floating @v1 아님)을 추가하고 GATE_REVIEW source_files에 action.yml을 넣었다.
+  - 버전 무관하게 정확한 문서(VERSIONING·SECURITY·CONTRIBUTING·CODE_OF_CONDUCT·index/README/GLOSSARY/profiles·이력 릴리스노트)는 감사에서 변경 불필요로 확인해 손대지 않았다.
+- caveats:
+  - node --test 177 pass, validate 0 findings, validate-frontmatter --strict 0 findings, npm pack --dry-run(v1.7.0, 58 files) 정상. 무의존성·계약 불변 유지.
+  - **재검토 부채**: doc-sync로 needs_review로 내려간 wiki 지식 문서 6개(RELEASE_FLOW·PUBLIC_API·DOMAIN_FEATURES·00_overview·project-profile·ARCHITECTURE)는 사람 검토 후 `verified` 재승인이 필요하다. 내용 미변경으로 verified로 남긴 문서(index·README·GLOSSARY·profiles/library·EXAMPLES)는 `src/cli.js`/`src/commands.js`를 인용하므로 이후 리뷰일에 evidence.stale이 뜰 수 있어 같은 재검토 사이클에서 함께 처리한다.
+  - **배포 미실행**: push/tag(v1.7.0)/npm은 사용자의 명시적 지시 후에만. 태그 push가 publish.yml(npm Trusted Publishing + 신규 GitHub Release 잡)을 트리거한다. README/action 참조의 `@v1.7.0`은 태그 배포 시 유효해진다.
+
+## 2026-07-15 - feat: 1.7 CI/CD 도입 구현 (composite Action + GitHub Release + release-notes --body-only + JSON help)
+
+- status: needs_review
+- actor: Claude Code (Gate 12 accepted_for_1.7.0 범위)
+- scope: code, ci, test
+- changed:
+  - src/release-notes.js (buildReleaseNotesBody 추출), src/commands.js (releaseNotesCommand --body-only + 민감정보 차단), src/cli.js (--body-only 배선 + 리포트 명령 10종 JSON help 예시), tests/verification.test.js (+4)
+  - .github/actions/validate/action.yml (신규 composite action), .github/workflows/publish.yml (격리된 Release 잡)
+- summary:
+  - Gate 12(accepted_for_1.7.0) 범위대로 1.7 CI/CD 도입을 세 커밋으로 구현했다.
+  - (A, 071e524) `release-notes --body-only` 부가 모드: `buildReleaseNotesBody`를 추출해 섹션 본문만(frontmatter·H1·"게시 전 검토" 스캐폴드 라인 제거) 낸다. 본문은 커밋 제목이 그대로 들어가므로 `scanSensitiveInfo`로 스캔하고, 매치 시 result "blocked"(exit 2)로 본문을 withhold한다(누출 차단). 기본 출력은 byte 동일. 테스트 4개 추가.
+  - (B, 8a5d2a8) composite `.github/actions/validate/action.yml`: 읽기전용 `validate`를 `npx`로 래핑, 다른 액션을 전혀 끌어오지 않아 무의존성 유지. `publish.yml`에 격리된 `release` 잡 추가: `needs: publish`(publish 성공 후에만), 잡 레벨 `permissions: contents: write`가 워크플로 레벨 `id-token: write`를 대체(격리), 이전 v* 태그 계산 후 `release-notes --body-only --since <prev>`로 본문 생성, 러너 내장 `gh` CLI로 릴리스 생성(서드파티 액션 없음).
+  - (C, 이 커밋) 리포트 명령 10종(doctor/validate/validate-frontmatter/audit/status/next/stats/graph/explain/release-notes) help에 실제 최상위 JSON 키를 근거로 한 `JSON (--format json)` 예시 블록 추가(Action/래퍼/MCP 작성자용). 키는 각 명령을 실제 실행해 추출·검증했다(stats 내부 키는 orphanDocuments 등 실제 값으로 정정).
+- caveats:
+  - node --test 177 pass(신규 4). 순수 additive — 기존 `release-notes` 출력·CLI/JSON/frontmatter 계약 불변. YAML 2개 파싱 확인, 잡 그래프(publish→release·권한 격리) 검증.
+  - validate: warning 1건 — `project-profile.md`(verified)가 `src/cli.js`를 evidence로 인용하는데 오늘 그 파일을 수정해 `evidence.stale`이 떴다(심볼 locator라 file-level 판정). `main()`의 역할(인자 파싱·디스패치) 서술은 여전히 정확하며, 이 드리프트와 신규 기능 doc-sync(ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·PUBLIC_API)는 저장소 관례대로 **1.7.0 릴리스 준비 시점의 사람 재검토·verified 재승인**에서 함께 해소한다(CLI/에이전트는 verified 자가 승격 불가).
+  - **README/CHANGELOG/버전 bump은 저장소 관례대로 1.7.0 릴리스 준비 시점에 반영**(이번 커밋들엔 미포함). Marketplace·floating `@v1` 태그는 Gate 12에서 후속 게이트로 보류.
+  - publish.yml(배포 CI) 수정 포함 → push/tag/배포는 사용자의 명시적 지시 후에만. 현재 로컬 main 커밋(미푸시).
+
+## 2026-07-15 - docs(gate): Gate 12 수락 (accepted_for_1.7.0)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 승인)
+- scope: docs, gate
+- changed:
+  - GATE_REVIEW.md
+- summary:
+  - 사용자가 "Gate 12 수락 → 1.7 구현 착수"로 승인함에 따라 Gate 12를 `proposed_for_1.7.0` → `accepted_for_1.7.0`으로 확정했다(표 행 + 범위 섹션 제목/서두). 이로써 1.7(CI/CD 도입) 구현 착수가 해금된다: composite action.yml, publish.yml의 격리된 Release 잡, `release-notes --body-only` 부가 모드 + 본문 민감정보 스캔, 명령별 JSON help 예시.
+- caveats:
+  - 결정 문서만 변경. 코드 변경은 후속 커밋. publish.yml(배포 CI) 수정이 포함되므로 push/tag/배포는 사용자의 명시적 지시 후에만.
+
+## 2026-07-15 - docs(gate): Gate 12 초안 — 1.7 CI/CD 도입(GitHub Action + Release) 범위 (proposed_for_1.7.0)
+
+- status: needs_review
+- actor: Claude Code (사용자 명시적 수락 대기 — proposed; Gate 8 선례대로 초안→수락 분리)
+- scope: docs, gate
+- changed:
+  - GATE_REVIEW.md
+- summary:
+  - 분할된 1.7(CI/CD 도입, 리드)의 범위를 과거 게이트 서식(표 행 + Decisions / May change / Must not change / Guarantees / Honest limits / Unchanged guarantees)으로 사전 결정한 Gate 12를 작성했다. 실코드 확인으로 근거를 잡았다: `publish.yml`은 워크플로 레벨 `id-token: write` + `tag===version` 가드(line 34)라 floating `v1` 태그가 실제로 실패함(deconfliction 필요 확정); `release-notes.js#buildReleaseNotes`는 frontmatter + H1 + "게시 전 검토" 스캐폴드 라인을 붙이고 커밋 제목을 본문에 넣는데 민감정보 스캔을 거치지 않음(누출 갭 확정).
+  - 결정: (1) composite action은 `.github/actions/validate/action.yml`에서 읽기전용 `validate`를 `npx`로 래핑(쓰기 명령 미노출, `package.json` files 미포함). (2) 태그 push 시 GitHub Release는 `publish.yml`에 **격리된 `contents: write` 잡**을 추가해 러너 내장 `gh` CLI로 생성(서드파티 액션 금지 — 무의존성 보호). (3) 릴리스 본문은 새 부가 모드 `release-notes --body-only`(frontmatter·H1·스캐폴드 라인 제거, 섹션만)로 결정적 생성; 큐레이트된 `releases/vX.Y.Z.md`는 사람용 산출물로 남기고 자동 본문 소스로 쓰지 않음. (4) 본문은 publish 전 `scanSensitiveInfo`를 거쳐 매치 시 릴리스 차단. (5) v1에서는 action을 정확한 `vX.Y.Z` 태그/SHA로만 참조(floating `@v1` 미생성).
+  - 보류(후속 전용 게이트): Marketplace 게시 + floating major 태그 버저닝(먼저 `v*` 네임스페이스·버전 가드 deconfliction 필요). 불변: 기존 npm-publish 잡·Trusted Publishing·권한, 코어 스캐너·`validate` 시맨틱·JSON 형태·frontmatter 계약. `--body-only` 미사용 시 `release-notes` 출력 byte 동일.
+  - frontmatter: last_updated 2026-07-15, source_files에 src/release-notes.js·.github/workflows/publish.yml 추가(존재 확인). status needs_review 유지.
+- caveats:
+  - **proposed 상태다** — 사용자의 명시적 "Gate 12 수락"이 있어야 `accepted_for_1.7.0`으로 확정하고 구현(태스크 3)에 착수한다(구현은 이 게이트에 blocked). GATE_REVIEW.md는 docs/llm-wiki 밖 루트 문서라 validate 스캔 대상이 아님(frontmatter 수동 검증: 중복 키 없음).
+
+## 2026-07-15 - docs: ROADMAP 1.7 단일 라인 → 1.7~1.11 순차 분할 재작성 (1.7 계획 1단계)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 방향 결정: "1.7 분할안에 전적으로 동의, 단계별로 진행")
+- scope: docs
+- changed:
+  - ROADMAP.md, ROADMAP.ko.md
+- summary:
+  - 1.7 착수 전 다중 에이전트 분석(기능 5개 + 교차 2개, 전부 소스 근거)에 따라, monolithic `1.7 — 팀 & 조직 확장`(게이트 크기 상호의존 기능 5개 번들)을 leverage·risk·dependency 순서의 순차 마이너로 분할해 로드맵을 재작성했다. 이 번들은 로드맵 자신의 규칙("한 번에 하나씩", "절반 검증이면 릴리스를 미룬다")과 충돌한다.
+  - 새 구조: (enabling prep, 새 헤드라인 릴리스 아님) config 로딩을 CLI/programmatic/MCP 세 표면에 통일(현재 CLI 경로만 병합 — Gate 11 한계) · init/quickstart 스타터 `llm-wiki.config.json` 스캐폴딩(preview-first) + doctor 유효 config echo(로드맵의 "실사용 게이트" 전제를 관측 가능하게) · visibility 정책 문서·모노레포 픽스처·cross-repo 포맷 스펙을 코드 이전에 게이트로 작성. (1.7 CI/CD 도입, 리드) composite GitHub Action + 태그 push GitHub Release(gh CLI·격리 contents:write·본문 민감정보 스캔) + 명령별 JSON help 예시. (1.8) config 스키마 확장(하드 의존성 게이트). (1.9) visibility 거버넌스(opt-in·warning·read-only). (1.10) monorepo 프로필(cwd 파라미터화 파이프라인 위 opt-in map, 부가적 `packages[]`). (1.11) cross-repo 지식 링크(비-fetch 예약 스킴).
+  - Unscheduled 백로그에서 두 항목을 릴리스 계획으로 승격 표기: 명령별 JSON help 예시(→1.7), 더 풍부한 enrichment 린팅(→1.8 토글 규칙 `content.thin_body`). 각 마이너 범위는 착수 시 새 GATE_REVIEW 게이트(다음 Gate 12)로 사전 결정한다는 규율을 명문화.
+  - frontmatter: last_updated 2026-07-15, source_files에 src/config-file.js 추가(존재 확인). status는 규칙대로 needs_review 유지.
+- caveats:
+  - 코드/명령 표면·JSON 출력·frontmatter 계약 불변(계획 문서만 변경). ROADMAP.md/.ko.md는 docs/llm-wiki 밖 루트 문서라 validate/validate-frontmatter 스캔 대상이 아니며(frontmatter 수동 검증: 중복 키 없음), KO는 EN 정본을 미러링한다.
+  - 다음 단계(단계별 진행): Gate 12(1.7 GitHub Action + Release 범위) 작성 → 1.7 구현 → 후속 마이너 enabling prep. push/tag/배포는 사용자의 명시적 지시 후에만.
+
+## 2026-07-15 - docs: 1.6 doc-sync 문서 verified 재승인 + MCP 로컬 등록 정리
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md, ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md, domains/00_overview.md (needs_review → verified)
+  - docs/llm-wiki/README.md (verified 유지, reviewed_at/last_updated → 2026-07-15)
+- summary:
+  - 1.6.0 배포 후, 1.6 doc-sync로 needs_review로 내려가 있던 4개 문서(PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES·domains/00_overview)를 사람 검토·승인에 따라 `verified`로 재승인했다(`verified` 태그·`reviewed_by: Dowon-Kim`·`reviewed_at: 2026-07-15`, 리뷰 노트 재승인 문구). 추가로 위키 README(`docs/llm-wiki/README.md`)가 루트 README 재작성(front-door 슬림, c21c504)을 source로 인용해 `evidence.stale`로 떠서, 내용이 여전히 정확함을 확인하고 검토일을 2026-07-15로 갱신해 해소했다.
+  - 사전 검증용으로 등록해 둔 로컬 MCP 서버(`claude mcp add llm-wiki -s local`)를 정리했다. 이 등록은 사용자 홈 `~/.claude.json`에만 있던 로컬 전용 항목으로, git·npm 배포물에 흔적이 없어 배포된 1.6.0에는 아무 영향이 없었다(제거는 정돈 목적). 다시 쓰려면 배포판 기준으로 `claude mcp add llm-wiki -s local -- npx -y @dowonk-7949/llm-wiki-standard mcp`.
+- caveats:
+  - validate 0 findings, validate-frontmatter --strict clean(26 docs), node --test 173 통과. 이로써 재검토 부채 없음(log.md·releases/*.md만 관례상 needs_review).
+
+## 2026-07-15 - docs: README(EN/KO) 프론트도어형으로 슬림 재구성
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 방향 결정)
+- scope: docs
+- changed:
+  - README.md, README.ko.md (약 510/500줄 → 각 101줄)
+- summary:
+  - 사용자 피드백("README가 너무 방대하다")에 따라 두 README를 매뉴얼형에서 프론트도어형으로 재구성했다. 남긴 섹션: 한 줄 소개+Why, 지원 환경(표, 신규), 빠른 시작, 권장 에이전트/모델(신규 — 보강은 상위 추론 모델·CLI는 모델 불필요·MCP 서버는 결정적), 핵심 명령(compact 표), 잘 쓰는 법(신규), MCP(등록 스니펫), 코드에서 사용(짧게), 안전 요약, 더 알아보기(링크). 상세(전 옵션·evidence 계약·안전정책 전문·autofix/migrate/drift 심화·OKF·프로그래매틱 API 심화·publishing·릴리스 자동화·GitHub Actions 예시)는 삭제가 아니라 `llm-wiki help <cmd>`(오프라인)와 PUBLIC_API.md·GATE_REVIEW.md·EXAMPLES.md·템플릿으로 링크 이관(콘텐츠 손실 없음). docs/ 링크는 npm에서도 닿도록 GitHub 절대 URL 사용, 루트 배포 문서는 상대 링크.
+- caveats:
+  - README는 docs/llm-wiki 밖이라 validate 대상이 아니며, 링크 대상 12개 파일 존재 확인. node --test 173 통과, validate 0 findings 유지. 1.6.0 배포에 함께 포함 예정.
+
+## 2026-07-15 - docs: 1.6.0 배포 전 validate 경고 전부 해소
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/EXAMPLES.md, GLOSSARY.md, index.md, profiles/library.md (reviewed_at/last_updated → 2026-07-15)
+  - docs/llm-wiki/releases/v0.1.7.md, v0.1.8.md (동일 재검증)
+  - docs/llm-wiki/templates/DECISION_LOG.template.md, TASK_PROMPT.template.md (동일 재검증)
+  - docs/llm-wiki/log.md (아래 wiki-link 오탐 표현 정정)
+- summary:
+  - 1.6.0 배포 전 `validate`의 경고 15건을 전부 해소했다. (1) `evidence.stale` 13건: 위 8개 `verified` 문서의 검토 기준일이 2026-07-13이었고 1.6 작업으로 소스(cli.js·commands.js·config.js·package.json·README.md)가 2026-07-14에 바뀌어 드리프트로 떴다. 사람 검토(Dowon-Kim)로 내용이 현행과 일치함을 확인하고 `reviewed_at`/`last_updated`를 2026-07-15로 갱신해 기준선을 이동, 드리프트를 해소했다(도구가 안내하는 "re-review and update" 경로; 내용 변경 없음). (2) `wiki_link.missing` 2건: 과거 로그 항목의 이중 대괄호 리터럴 토큰이 "위키 링크 문법"을 지칭하는 서술이었으나 스캐너가 실제 문서 링크로 오탐한 것 — 사실은 그대로 두고 "위키 링크"로 표현만 정정했다.
+  - 결과: `validate` findings 0.
+- caveats:
+  - 역사적 릴리스 노트(v0.1.7·v0.1.8)가 `package.json`을 source_files로 인용해 릴리스마다 반복 드리프트하는 구조적 스멜은 향후 별도 정리 후보다(현재는 재검증으로 유지).
+  - 배포 전이다(태그/npm 미실행).
+
+## 2026-07-14 - feat: 에이전트 네이티브 MCP 서버 + 1.6.0 준비
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, docs, release
+- changed:
+  - src/mcp/tools.js, src/mcp/dispatch.js, src/mcp/server.js (신규)
+  - src/cli.js (`llm-wiki mcp` 명령 배선 + help), src/index.js (MCP 표면 export)
+  - tests/mcp.test.js (신규: 단위 + spawn 라운드트립)
+  - package.json (version 1.5.2 → 1.6.0), tests/verification.test.js (버전 어서션)
+  - CHANGELOG.md/.ko.md, ROADMAP.md/.ko.md (Shipped Through 1.6.0, Release Plan → 1.7)
+  - docs/llm-wiki/PUBLIC_API.md, ARCHITECTURE_CONVENTIONS.md, DOMAIN_FEATURES.md, GATE_REVIEW.md(Gate 11), domains/00_overview.md
+  - README.md/.ko.md (MCP 서버 섹션), docs/llm-wiki/releases/v1.6.0.md (신규)
+- summary:
+  - ROADMAP 1.6(에이전트 네이티브)을 구현했다. `llm-wiki mcp`가 stdio 위 MCP 서버를 실행하고, 읽기 전용 명령 10개(validate/audit/next/status/doctor/stats/graph/explain/handoff/prompt)를 MCP 툴로 노출한다. 서드파티 SDK 없이 Node 내장만으로 개행 구분 JSON-RPC 2.0을 직접 구현(무의존성 불변식 유지). 툴 결과는 1.5 result(`schemaVersion`)를 `structuredContent`로, 사람용 요약을 텍스트로 반환. 쓰기 명령은 노출하지 않음. GATE_REVIEW Gate 11로 범위 승인.
+  - 구현 후 적대적 다차원 리뷰(프로토콜/정확성/무의존성·안전/통합/테스트, 워크플로)로 확정 결함 4종을 수정했다: 프로토콜 버전 협상을 지원 버전 allowlist로(임의 버전 echo 금지), known-method 알림(id 없음) 무응답, 배열(배치)을 `-32600`으로 거부(2025-06-18 배칭 제거·빈 배열 무응답 해소), graph 툴 설명 정확화. 테스트 커버리지도 보강(isError 분기·파싱오류 -32700·배열·graph format·알림 무응답).
+  - 최종 완결성 검증(워크플로)에서 `domains/00_overview.md` 도메인 지도가 stale함을 확인해 현행화했다: 누락됐던 Knowledge(graph/stats)·Release(release-notes)·Agent-native(mcp) 추가, `drift` 반영, stale했던 "migrate --apply 차단" 서술을 Gate 8 기준으로 정정.
+- evidence:
+  - src/mcp/dispatch.js#symbol:handleMessage
+  - src/mcp/tools.js#symbol:TOOL_DEFS
+  - src/mcp/server.js#symbol:startMcpServer
+- caveats:
+  - node --test 통과(신규 MCP 테스트 포함), validate-frontmatter --strict 확인 예정, 실제 stdio 라운드트립 검증. 무의존성 유지(런타임 서드파티 의존성 추가 없음).
+  - 배포 전이다(태그/npm 미실행). doc-sync로 PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES가 verified→needs_review로 강등 → 사람 재검토 필요.
+
+## 2026-07-14 - release: 1.5.2 준비 (커뮤니티 표준)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - CODE_OF_CONDUCT.md / .ko.md, CONTRIBUTING.md / .ko.md, SECURITY.md / .ko.md (신규, 루트)
+  - .github/ISSUE_TEMPLATE/(bug_report·feature_request·config), .github/pull_request_template.md (신규)
+  - package.json (version 1.5.1 → 1.5.2 + files에 커뮤니티 문서 6개)
+  - tests/verification.test.js (버전 어서션 → 1.5.2)
+  - CHANGELOG.md / CHANGELOG.ko.md (1.5.2 항목)
+  - README.md / README.ko.md (커뮤니티 섹션)
+  - docs/llm-wiki/releases/v1.5.2.md (신규)
+- summary:
+  - GitHub Community Standards(기본 브랜치=main 기준)를 충족하도록, 병렬 워크트리(`check-llm-model`) 브랜치에 보존해 둔 커뮤니티 헬스 문서(CODE_OF_CONDUCT·CONTRIBUTING·SECURITY EN/KO)와 GitHub 이슈/PR 템플릿을 main으로 가져와 1.5.2로 정식화했다. package.json `files`에 문서 6개를 등록하고 버전·어서션·CHANGELOG·README를 갱신했다.
+  - 저장소/GitHub 대상 변경이라 CLI 명령 표면·JSON 출력·프로그래매틱 API 계약은 불변. `.github/` 템플릿은 npm 미포함.
+- caveats:
+  - node --test·validate-frontmatter --strict 통과 확인 예정. GitHub Community Standards는 이 커밋이 main에 push되면 Code of conduct/Contributing/Security/Issue templates/PR template가 충족으로 바뀐다.
+
+## 2026-07-14 - docs: 팀 발표자료에 실제 화면 예시 슬라이드 2장 추가
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - outputs/llm-wiki-team-introduction-v1.5.1.pptx (12→14 슬라이드)
+- summary:
+  - 발표자료에 "실제 화면" 예시 슬라이드 2장을 추가했다(슬라이드 10 뒤). 슬라이드 11: `audit --format html` 대시보드 히어로를 헤드리스 Chrome으로 실제 스크린샷(결과·발견·문서·고아·링크 + 프로젝트 감지). 슬라이드 12: `graph --format json`의 실제 데이터(문서 24·링크 57)를 networkx로 렌더한 지식 그래프(index 진입 허브·코어 클러스터·log 허브의 릴리스 노트 부채꼴). 기존 슬라이드 번호는 재정렬(팀은 네 단계 →13, 닫는 슬라이드 →14).
+  - 두 이미지 모두 AI 생성 삽화가 아니라 도구의 실제 출력(대시보드는 실 스크린샷, 그래프는 실 데이터의 시각화)이라 발표 신뢰도에 부합한다. 그래프 팔레트는 dataviz 검증 스크립트로 색맹 안전성 확인. 사람이 PowerPoint로 두 슬라이드 레이아웃을 육안 확인했다.
+- caveats:
+  - LibreOffice 부재로 pptx 자동 렌더 검증은 불가 → 사람이 직접 확인함. python-pptx 왕복 로드로 파일 유효성 확인.
+
+## 2026-07-14 - docs: wiki README verified 재승인 (1.5.1)
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/README.md
+- summary:
+  - 1.5.1 발표자료 링크 갱신으로 needs_review로 내려갔던 wiki README를 사람 검토·승인(레이아웃 직접 확인 포함)에 따라 `verified`로 재승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다.
+- caveats:
+  - validate-frontmatter --strict pass. 재검토 부채 없음.
+
+## 2026-07-14 - docs: 팀 공유 프레젠테이션 1.5.1로 갱신
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - outputs/llm-wiki-team-introduction-v1.5.1.pptx (신규; v0.1.8 대체)
+  - outputs/llm-wiki-team-introduction-v0.1.8.pptx (제거; git 히스토리에 보존)
+  - docs/llm-wiki/README.md (프레젠테이션 링크 → v1.5.1)
+- summary:
+  - 팀 공유 프레젠테이션(12슬라이드)을 1.5.1에 맞게 갱신했다. python-pptx로 편집: 전 슬라이드 버전 칩 `LLM-WIKI 0.1.8` → `1.5.1`(12곳), 슬라이드5 "현재" 스냅샷에 지식 그래프·헬스 스코어·마이그레이션·프로그래매틱 API 반영, 슬라이드8 어댑터 목록에 Windsurf·Gemini 추가, 슬라이드10 "현재 가능한 것" 5불릿을 그래프/stats·마이그레이션·프로그래매틱 API로 현행화. 개념 서사(레고 비유·워크플로·안전장치)는 버전 무관하게 유효해 유지.
+  - 모든 텍스트박스가 auto_size=TEXT_TO_FIT_SHAPE라 편집 박스의 stale 폰트 스케일을 리셋해 PowerPoint가 재계산하도록 했다. python-pptx 왕복 로드로 파일 유효성 확인, 잔여 "0.1.8" 0개.
+- caveats:
+  - LibreOffice 부재로 시각적 렌더 검증은 못 했다 → 발표 전 PowerPoint로 레이아웃 한 번 확인 권장.
+  - README.md는 링크 갱신으로 verified → needs_review로 강등(사람 재검토 필요). v0.1.8 pptx는 워킹트리에서 제거했으나 git 히스토리에 남아 있고, 과거 릴리스 로그 기록은 그대로 보존.
+
+## 2026-07-14 - docs: PUBLIC_API verified 재승인 (1.5.1)
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md
+- summary:
+  - 1.5.1 결함 수정 doc-sync로 needs_review로 내려갔던 PUBLIC_API.md를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
+- caveats:
+  - validate-frontmatter --strict pass. 1.5.1 배포 전 재검토 부채 없음(log.md·release notes만 관례상 needs_review).
+
+## 2026-07-14 - fix: 1.5 API/출력 결함 4건 수정 + 1.5.1 준비
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, docs, release
+- changed:
+  - src/commands.js (withText·release-notes에 schemaVersion 부여)
+  - src/index.js (normalizeOptions가 parseArgs 결과 수용)
+  - src/cli.js (main/run이 exit code 반환)
+  - src/report.js (HTML 대시보드 링크를 --out 기준 상대경로로)
+  - tests/verification.test.js (회귀 테스트 +4, 버전 어서션 → 1.5.1)
+  - package.json (1.5.0 → 1.5.1)
+  - docs/llm-wiki/PUBLIC_API.md
+  - README.md, README.ko.md, CHANGELOG.md, CHANGELOG.ko.md
+  - docs/llm-wiki/releases/v1.5.1.md (신규)
+- summary:
+  - 소비 프로젝트(road-monitor) in-process 스모크 테스트에서 발견된 1.5 API/출력 결함 4건을 재현·확정 후 수정했다. (FIX-1) 결과 객체가 `schemaVersion`을 항상 담도록 `withText`에서 부여하고 `.text`는 항상 텍스트임을 문서화. (FIX-2) `normalizeOptions`가 `parseArgs` 결과(`.options`)를 수용해 조용한 기본값 폴백 제거. (FIX-3) `run(argv)`가 숫자 exit code 반환. (FIX-4) HTML 대시보드 Document Index 링크를 `--out` 위치 기준 상대경로로 계산.
+  - 모두 additive/refinement라 안정 계약(CLI/JSON/frontmatter)을 깨지 않아 patch(1.5.1)로 처리. graph DOT 등 보고서에서 "정상"으로 표시된 항목은 손대지 않았다.
+- evidence:
+  - src/commands.js#symbol:withText
+  - src/index.js#symbol:normalizeOptions
+  - src/cli.js#symbol:main
+  - src/report.js#symbol:dashboardDocHref
+- caveats:
+  - node --test 159 pass(신규 4개), validate-frontmatter --strict pass, JSON에 schemaVersion 정확히 1회.
+  - 아직 배포 전이다(태그/npm 미실행). PUBLIC_API.md는 LLM 편집으로 needs_review로 강등 → 사람 재검토 필요.
+
+## 2026-07-14 - release: 1.5.0 준비 (프로그래매틱 API)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json (version 1.4.0 → 1.5.0)
+  - tests/verification.test.js (버전 어서션 → 1.5.0)
+  - CHANGELOG.md, CHANGELOG.ko.md (1.5.0 항목)
+  - README.md, README.ko.md (Programmatic API 섹션)
+  - ROADMAP.md, ROADMAP.ko.md (Shipped Through 1.5.0, Release Plan에서 1.5 제거)
+  - docs/llm-wiki/releases/v1.5.0.md (신규)
+- summary:
+  - 1.5.0 릴리스를 준비했다. 버전 bump + 버전 어서션 갱신, CHANGELOG/README/ROADMAP EN·KO 갱신(프로그래매틱 API + `--format json`의 `schemaVersion` 부가), v1.5.0 릴리스 노트 생성.
+- caveats:
+  - node --test 155 pass, validate-frontmatter --strict pass(재검토 부채 없음), npm pack --dry-run 확인.
+  - 배포는 v1.5.0 태그 push 시 publish.yml(Trusted Publishing)로 진행된다.
+
+## 2026-07-14 - docs: PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES verified 재승인 (1.5)
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+- summary:
+  - 1.5 프로그래매틱 API doc-sync로 needs_review로 내려갔던 세 문서를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
+- caveats:
+  - validate-frontmatter --strict pass(22 files, findings 0). 이로써 1.5 배포 전 재검토 부채가 없다(log.md·release notes만 관례상 needs_review).
+
+## 2026-07-14 - feat: 프로그래매틱 API (exports 맵 + schemaVersion) — 1.5 step 1
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, docs
+- changed:
+  - src/index.js (신규: 공개 API 진입점)
+  - src/config.js (JSON_SCHEMA_VERSION 상수)
+  - src/report.js (--format json에 schemaVersion 부가)
+  - src/cli.js (기본 옵션 단일 소스 defaultOptions 추출)
+  - package.json (main + exports 필드)
+  - tests/verification.test.js (회귀 테스트 +7)
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+- summary:
+  - ROADMAP 1.5의 프로그래매틱 API를 구현했다. `package.json` `exports`(`.` → `src/index.js`)로 in-process import를 공식 지원한다. `src/index.js`는 CLI `COMMANDS`와 1:1인 동결된 `commands` 맵, 개별 함수 export, `normalizeOptions`(부분 옵션 → 완전 옵션, `cli.js`의 `defaultOptions`와 단일 소스 공유), `parseArgs`/`run`, `SCHEMA_VERSION`을 공개하고 JSDoc typedef로 반환 형태를 문서화한다.
+  - `--format json` 출력(콘솔 + `--out *.json` 파일) 최상단에 부가적 `schemaVersion` 정수 필드를 넣었다. 단일 소스는 `src/config.js`의 `JSON_SCHEMA_VERSION`(현재 1). 기존 필드는 불변이라 기존 JSON 소비자를 깨지 않는다(회귀 테스트로 `command` 보존·파일 출력의 `text` 제거 유지·비-JSON graph 미부착 확인).
+- evidence:
+  - src/index.js
+  - src/config.js
+  - src/report.js
+- caveats:
+  - node --test 155개(신규 7개) pass, validate-frontmatter --strict pass.
+  - 계약 동결 성격이라 각 명령의 실제 반환 JSON 형태를 편집 전 재확인했다.
+  - 아직 배포 전이다(버전 bump/tag/npm 미실행). 관련 verified 문서 3개(PUBLIC_API·ARCHITECTURE_CONVENTIONS·DOMAIN_FEATURES)는 LLM 편집으로 needs_review로 강등됐으며 사람 재검토가 필요하다.
+
+## 2026-07-14 - docs: DOMAIN_FEATURES·PUBLIC_API verified 재승인 (1.4.0)
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+  - docs/llm-wiki/PUBLIC_API.md
+- summary:
+  - 1.4.0 doc-sync로 needs_review로 내려갔던 두 문서를 사람 검토·승인에 따라 `verified`로 재승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 리뷰 노트도 재승인 문구로 갱신했다.
+- caveats:
+  - validate-frontmatter --strict pass. 이로써 1.4.0 배포 전 재검토 부채가 없다(log.md·release notes만 관례상 needs_review).
+
+## 2026-07-14 - release: 1.4.0 준비 (보이는 지식 + Gate 10 번들)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - ROADMAP.md
+  - ROADMAP.ko.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/releases/v1.4.0.md
+- summary:
+  - 1.4(보이는 지식) 라인을 1.4.0으로 릴리스 준비했다. package.json·버전 assertion을 1.3.0 → 1.4.0으로 올렸다. 이 릴리스는 `graph`·`stats`·publishing(step 1–3)과 **이전에 보류했던 Gate 10 파일/디렉터리 도메인 탐지**(`16825e9`)를 함께 번들한다. → 앞서 미룬 버전 결정을 1.4.0으로 확정.
+  - CHANGELOG(EN·KO)에 1.4.0 항목 작성. ROADMAP(EN·KO)의 1.4를 shipped로 옮기고 Release Plan을 1.5→1.7로 조정. doc-sync: DOMAIN_FEATURES(파일 기반 감지 + graph/stats)와 PUBLIC_API(graph/stats 명령·graph format 토큰·stale "migrate --apply 차단" 정정)를 갱신 → 두 문서 `verified` → `needs_review` 강등. v1.4.0 릴리스 노트 작성.
+- caveats:
+  - push/tag(v1.4.0)·npm 배포는 사용자의 명시적 "배포" 지시 후에만.
+  - needs_review 재검토 대기: DOMAIN_FEATURES, PUBLIC_API(이번 doc-sync로 강등). 사람 검토 후 verified 재승인 필요.
+
+## 2026-07-14 - feat: bounded reader-friendly publishing (1.4 step 3)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, docs, test
+- changed:
+  - src/report.js
+  - README.md
+  - README.ko.md
+  - tests/verification.test.js
+- summary:
+  - 1.4 세 번째(마지막) 항목: 사람 독자용 공개를 SSG 없이 지원한다. `renderHtmlDashboard`에 탐색용 **Document Index** 섹션 추가(wikiGraph.documents를 정렬해 제목·경로 링크·인바운드 수·orphan 배지로 나열).
+  - README(EN·KO)에 "Publishing for Human Readers" 절 추가: GitHub/GitLab 네이티브 렌더, Obsidian(위키 링크+aliases), MkDocs 안내 + `graph --format mermaid|dot`·`stats`·`audit --format html`(Document Index) 활용법. "SSG 아님" 명시. Commands 표에 graph·stats 행 추가.
+  - 테스트 추가(대시보드 Document Index에 문서 경로·제목 포함). 전체 148 pass.
+- caveats:
+  - 로드맵 1.4 3개 항목(graph·stats·publishing)이 모두 구현됐다. 다음: release: prepare 1.4.0 — 이 셋 + 보류 중인 Gate 10 파일/디렉터리 도메인 탐지를 함께 번들.
+  - Document Index의 문서 링크는 대시보드 html이 저장소 루트 기준으로 서빙될 때 해석된다(상대경로). push/배포는 지시 시.
+
+## 2026-07-14 - feat: llm-wiki stats 명령 (1.4 step 2)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - src/cli.js
+  - tests/verification.test.js
+- summary:
+  - 1.4 두 번째 항목: 읽기전용 `llm-wiki stats`(wiki 헬스 스냅샷)를 추가했다. 문서 1회 순회로 status 분포·evidence coverage(source_files/evidence 인용 문서 수)를 집계하고, `audit`를 재사용해 not_enriched(→ enriched%)·evidence.stale(stale_verified)·orphan(wikiGraph)을 얻는다.
+  - 헬스 스코어 = verified%·enriched%·evidence_coverage%의 평균(0–100). text/json/markdown/html 지원. cli.js에 명령·옵션 규칙(cwd/type/profile/agent/strict/format/out)·usage·help 추가.
+  - 테스트 추가(status 집계·verified% 50·evidence 집계·headScore 범위·미초기화 0). 전체 147 pass. 이 저장소 stats: 21 docs, health 92/100(verified 76%, enriched 100%, evidence 100%, stale 8, orphan 9).
+- caveats:
+  - 읽기전용(findings 없음 → exit 0). listTargetMarkdown 기준이라 templates 포함(validate-frontmatter와 동일 범위). stale 8은 2026-07-13 검토 문서가 2026-07-14 소스 변경을 참조하는 기존 드리프트(비회귀).
+  - 로드맵 1.4 두 번째 항목. 다음: step 3 bounded publishing → release: prepare 1.4.0. push/배포는 지시 시. 로컬 커밋(미푸시).
+
+## 2026-07-14 - feat: llm-wiki graph 명령 (1.4 step 1)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - src/cli.js
+  - src/report.js
+  - tests/verification.test.js
+- summary:
+  - 1.4(knowledge you can see) 첫 항목: 읽기전용 `llm-wiki graph` 명령을 추가했다. `collectWikiGraph` 데이터를 graph 전용 `--format`으로 출력한다 — `text`(기본 요약), `json`(구조화 그래프), `mermaid`(GitHub/Obsidian용 fenced `graph TD`), `dot`(Graphviz digraph).
+  - `collectWikiGraph`에 `edges`를 추가했다(additive): wiki 링크·`related` frontmatter·로컬 markdown 링크가 문서→문서로 해소되는 엣지를 dedup·정렬해 수집(각 `{source,target,kind}`). summary에 `edges` 카운트, `emptyWikiGraph`에도 반영. 기존 필드 불변이라 status/audit 대시보드 영향 없음.
+  - cli.js: `graph` 명령 등록, format 검증을 명령 인지(graph만 mermaid/dot 허용, 전역은 text/json/markdown/html), 옵션 규칙(cwd/format/out)·usage·per-command help 추가. report.js: `graph --out`(mermaid/dot)은 raw 텍스트로 기록.
+  - 테스트 추가(text/json/mermaid/dot 출력·related 엣지 반영·미초기화 0 문서·parseArgs mermaid/dot 수용). 전체 145 pass. 이 저장소에서 graph text(21 docs/54 edges/9 orphans)·mermaid·dot·json 확인, html은 graph에서 거부(exit 3).
+- caveats:
+  - graph는 읽기전용(쓰기 없음, findings 없음 → exit 0). 로드맵 1.4의 첫 항목. 다음: stats → publishing → release: prepare 1.4.0(보류 중인 Gate 10 도메인 탐지 번들).
+  - push/tag/배포는 사용자 지시 시에만. 현재 로컬 main 커밋(미푸시).
+
+## 2026-07-14 - feat: 파일+디렉터리 통합 도메인 탐지 (Gate 10, 1.4 이전 선행)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 설계·범위 승인)
+- scope: code, test, docs, gate
+- changed:
+  - GATE_REVIEW.md
+  - src/commands.js
+  - tests/verification.test.js
+- summary:
+  - 실사용 갭 대응: 1.3 도메인 분리는 "폴더=도메인" 레이아웃만 잡아, FastAPI처럼 도메인이 **모듈 파일**(`app/api/api_v2/endpoints/item.py`)인 백엔드에서는 `00_overview`만 나왔다. 사용자 승인(Gate 10)에 따라 파일·디렉터리 **양쪽**을 잡도록 탐지를 확장했다.
+  - `detectDomainDirectories`를 bounded DFS(최대 깊이 8)로 재작성했다. 디렉터리-도메인 부모(`domains/domain/modules/features`)의 하위 폴더 + 파일-도메인 부모(`endpoints/routers/routes/resources/controllers/handlers`)의 소스 파일을 도메인으로 수집한다. 부모를 만나면 수집 후 prune(하위 재탐색 안 함). 파일+폴더는 slug로 병합.
+  - 오탐 0에 가깝게: node_modules/dist/build/target/bin/obj/venv/vendor/coverage/migrations/spec/docs/examples/scripts·기술명 세트·숨김/dunder 디렉터리는 traverse 제외. 파일은 소스 확장자(.py/.js/.ts/.rb/.go/... )만, 집계자/인프라 파일명(index/main/app/base/router/routes/urls/deps/schemas/models/... )·`__init__`·dunder·`*.d.ts`·`*.test/spec.*` 제외.
+  - 범위는 GATE_REVIEW "Domain Detection Scope Decision"(Gate 10)에 명문화했다(정직한 한계 포함: Django 앱/자바 패키지/단일 라우터 파일/더 깊은 중첩은 미탐지 → `00_overview` 폴백).
+  - 테스트 6개 추가(파일 도메인·집계자/`__init__` 제외·node_modules/.venv/tests skip·파일↔폴더 병합·중첩 prune·단일파일 미탐지·FastAPI e2e). 전체 142 pass. temp FastAPI 레이아웃(endpoints/*.py 11개)에서 01_customers~10_user 10개 문서 + overview 링크 확인.
+- caveats:
+  - DOMAIN_FEATURES.md 본문(파일 기반 탐지 반영)과 버전 bump·CHANGELOG/README·PUBLIC_API 반영은 **이 기능의 릴리스 준비 시점**에 함께 한다(선례대로). 버전은 릴리스 시 결정(도메인 분리 완성 관점의 1.3.1 vs 부가 minor 1.4.0 — 사용자 확인).
+  - push/tag/배포는 사용자 지시 시에만. 현재 로컬 main 커밋(미푸시).
+
+## 2026-07-14 - docs: 1.3 wiki 문서 verified 재승인 + stale 0.1.8 리뷰 baseline 정리
+
+- status: verified
+- actor: Claude Code (사용자 Dowon-Kim 검토·승인)
+- scope: docs
+- changed:
+  - docs/llm-wiki/VERSIONING.md
+  - docs/llm-wiki/project-profile.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+  - docs/llm-wiki/domains/00_overview.md
+  - docs/llm-wiki/RELEASE_FLOW.md
+  - docs/llm-wiki/README.md
+- summary:
+  - 사용자 검토·승인에 따라 콘텐츠/레퍼런스 문서 8개를 `verified`로 (재)승인하고 `reviewed_by: Dowon-Kim`/`reviewed_at: 2026-07-14`를 기록했다. 1.2/1.3에서 needs_review로 내려갔던 4개(VERSIONING·project-profile·DOMAIN_FEATURES·PUBLIC_API)와 docs/llm-wiki/README.md를 승격하고, 이미 verified였던 3개(ARCHITECTURE_CONVENTIONS·domains/00_overview·RELEASE_FLOW)를 리프레시했다.
+  - stale한 "2026-07-13에 0.1.8 …기준으로 검토했다" 리뷰 baseline을 1.3.0 기준 재검토 문구로 갱신했다(위 5개 문서). PUBLIC_API의 stale evidence 서술(`migrateCommand — --apply 차단`)을 `wiki_block_version 업그레이드 + --apply(Gate 8)`로 정정했다.
+  - 역사적 0.1.8 기록은 보존했다: 이 log.md의 과거 항목(append-only), `releases/v0.1.8.md`, `releases/v1.0.0.md`의 "0.1.8→1.0.0" 서술, README의 팀 소개 pptx 파일명 링크(`...v0.1.8.pptx`, 실제 자산).
+- caveats:
+  - needs_review로 남는 문서: `log.md`(append-only 러닝 로그, 본질상 verified 안 함), `releases/v1.0.0–v1.3.0.md`(생성된 릴리스 노트, 역사적 산출물). v1.3.0 노트는 배포 완료 후에도 생성물이라 needs_review 유지.
+  - validate-frontmatter --strict pass, 전체 136 tests pass. 이 커밋은 docs만 변경(코드·npm 패키지 내용 불변; docs/는 package files 미포함).
+
+## 2026-07-14 - release: 1.3.0 준비 (디텍터 & 어댑터 확장)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - README.md
+  - README.ko.md
+  - ROADMAP.md
+  - ROADMAP.ko.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/releases/v1.3.0.md
+- summary:
+  - 1.3(디텍터 & 어댑터 확장) 라인을 1.3.0으로 릴리스 준비했다. package.json·버전 assertion 테스트를 1.2.0 → 1.3.0으로 올렸다. 이 릴리스는 앞서 main에 올라간 A2(PHP/Ruby/.NET 감지)·B(Windsurf/Gemini/JetBrains 어댑터)·C(OKF type alias)와 domain 분리 생성(`611b82b`)을 함께 포함한다.
+  - CHANGELOG(EN·KO)에 1.3.0 항목 작성. README(EN·KO)에 domain 분리 생성과 Windsurf/Gemini 어댑터를 반영. ROADMAP(EN·KO)의 1.3을 shipped로 옮기고 Release Plan을 1.4→1.7로 조정, 보류한 stdlib-server 감지를 Unscheduled 백로그에 기록했다.
+  - doc-sync: DOMAIN_FEATURES(감지 생태계 확장 + 도메인 분리 + OKF alias)와 PUBLIC_API(migrate --apply·drift 명령·신규 --agent·--apply/--downgrade 옵션 — 1.2부터 뒤처져 있던 부분까지 정합)를 갱신했다. 두 문서는 내용 변경으로 `verified` → `needs_review`로 강등됐다. v1.3.0 릴리스 노트 작성.
+- caveats:
+  - push/tag(v1.3.0)·npm 배포는 사용자의 명시적 "배포" 지시 후에만 진행한다.
+  - needs_review 재검토 대기 문서: DOMAIN_FEATURES, PUBLIC_API(이번), 그리고 이전 사이클의 VERSIONING·project-profile. 사람 검토 후 verified 재승인 필요.
+  - stdlib-server 감지(로드맵 A1)는 이번 1.3에서 제외(백로그).
+
+## 2026-07-14 - feat: OKF type를 doc_type 병행 alias로 허용 (1.3 C)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/frontmatter.js
+  - src/commands.js
+  - tests/frontmatter.test.js
+- summary:
+  - OKF 정렬(additive): 문서가 `doc_type` 대신/과 함께 OKF `type`를 가질 수 있게 했다. 비어 있지 않은 스칼라 `type`가 코어의 `doc_type` 필수 요구를 충족한다. 공용 헬퍼 `hasRequiredField(frontmatter, field)`를 `src/frontmatter.js`에 추가해 `validateFrontmatter`와 fix/migrate 엔진의 누락 필드 판정(verified skip 이유 + Tier A/B 계산)이 동일 규칙을 쓰도록 통일했다.
+  - 순수 additive다: 기존 `doc_type` 문서는 불변이고, 이전에 실패하던 `type`-only 문서만 이제 통과한다. 제거·rename·통합은 없다(계약 파괴는 1.x 밖 유지). okf-v0.1 프로필의 `type` 필수 검사(okf.type_required)와는 독립적이라 상호 보완된다.
+  - 테스트 추가(frontmatter.test.js): `type`만 있어도 doc_type 요구 충족, 둘 다 있어도 OK, 둘 다 없으면 여전히 실패. 전체 136 pass.
+- caveats:
+  - 로드맵 1.3의 세 번째(마지막) 기능 항목. 이로써 1.3 계획 3항목(A2 생태계 감지 · B 어댑터 확장 · C OKF type alias)이 모두 구현됐다. 다음은 release: prepare 1.3.0(이미 main에 있는 domain 분리 포함).
+
+## 2026-07-14 - feat: 어댑터 확장 Windsurf/Gemini/JetBrains (1.3 B)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - src/cli.js
+  - templates/adapters/windsurf/llm-wiki.md (신규)
+  - templates/adapters/gemini/GEMINI.md (신규)
+  - templates/adapters/jetbrains/guidelines.md (신규)
+  - tests/verification.test.js
+- summary:
+  - `ADAPTER_TARGETS`에 어댑터 3종을 추가했다. 사용자 정책(미확인 계약은 candidate)에 따라 **확인된 계약만 writable**로: Windsurf(`.windsurf/rules/llm-wiki.md`)·Gemini(`GEMINI.md`)는 writable(+handoffLabel → handoff 지원), JetBrains AI(`.junie/guidelines.md`)는 계약 미확인이라 info-level candidate(파일 미생성, antigravity와 동일 취급).
+  - `planAdapterSuggestions`의 antigravity 하드코딩을 `!target.writable`로 일반화해 모든 candidate가 동일한 미리보기 문구를 받도록 했다. `writeAdapterFiles`는 이미 `writable` 플래그를 존중하므로 그대로 동작.
+  - 각 어댑터 템플릿은 `docs/llm-wiki/index.md` 엔트리포인트와 운영 규칙을 담아 `adapter.entrypoint` 검증을 통과한다. templates/는 package `files`에 포함돼 함께 배포된다.
+  - cli.js `SUPPORTED_AGENTS`에 windsurf/gemini/jetbrains 추가, help/usage의 에이전트 목록 갱신. **`--agent all`은 하위호환으로 codex/claude/antigravity 3개 유지**(cursor/copilot처럼 신규 어댑터도 명시 선택).
+  - 테스트 추가: windsurf/gemini 생성 + jetbrains candidate 미생성 + 엔트리포인트 포함, parseArgs 신규 에이전트 수용·`--agent all` 3개 유지. 전체 135 pass.
+- caveats:
+  - JetBrains 경로(`.junie/guidelines.md`)는 미확인 후보다. 계약이 확인되면 `writable: true`로 승격(1줄 변경)한다. Windsurf/Gemini 경로가 실제와 다르면 사용자가 지적 시 조정한다.
+  - 로드맵 1.3의 두 번째 항목. 버전 bump·README/CHANGELOG 반영은 릴리스 준비 시점.
+
+## 2026-07-14 - feat: PHP/Ruby/.NET 생태계 감지 (1.3 A2)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/detector.js
+  - tests/verification.test.js
+- summary:
+  - `detectNonNodeEcosystems`에 PHP(`composer.json`)·Ruby(`Gemfile`/`gems.rb`)·.NET(`*.csproj`/`*.fsproj`)를 추가했다. 매니페스트의 웹 프레임워크 신호로 backend/library role을 판정한다: PHP=laravel/symfony/slim/laminas/cakephp/yii/codeigniter, Ruby=rails/sinatra/rack/hanami/roda/grape/padrino, .NET=`Microsoft.NET.Sdk.Web`/`Microsoft.AspNetCore`.
+  - .NET 프로젝트 파일은 이름이 임의라 `findProjectByExtension`(깊이 3 제한, files-before-dirs·정렬 결정적 DFS, node_modules/bin/obj/.git 등 스킵)로 탐색한다. `src/<Name>/<Name>.csproj` 같은 일반 배치를 찾는다.
+  - 감지된 role은 기존 배선(backend→backendSignals, library→librarySignals)을 그대로 타서 projectType/ecosystems/primaryManifest에 반영된다. 순수 additive.
+  - 테스트 추가: PHP/Ruby/.NET 웹 프레임워크→backend(ecosystems·primaryManifest 포함), 프레임워크 없는 PHP/Ruby→library. 전체 133 pass.
+- caveats:
+  - stdlib-only 서버(Go net/http, Python http.server 등) 감지(로드맵 A1)는 매니페스트만으론 불가·오탐 위험이 커 이번 1.3에서 제외(백로그).
+  - 로드맵 1.3(detect & adapt breadth)의 첫 항목. 버전 bump·CHANGELOG/README 반영은 1.3 릴리스 준비 시점.
+
+## 2026-07-14 - feat: backend/fullstack 개별 domain 문서 분리 생성
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - tests/verification.test.js
+- summary:
+  - Backend/Fullstack `init`이 `00_overview.md`만 만들던 문제를 고쳤다. 원인은 쓰기 단계가 아니라 계획 단계였다: `plannedDocs()`가 소스 스캔 없이 정적 문서 목록(CORE + PROFILE)만 반환해 개별 domain 문서가 애초에 후보에 없었다.
+  - 디렉터리 경계 기반 domain 탐지를 추가했다. `src|app/{domains,domain,modules,features}`·`internal/{domain,domains,modules}`의 직속 하위 디렉터리를 domain 후보로 보고, `common/shared/core/config(s)/util(s)/middleware(s)/infrastructure/test(s)/fixture(s)`와 숨김 디렉터리는 제외한다. 클래스/파일명 추론이나 LLM 호출은 하지 않는다.
+  - 순수 함수로 분리해 export했다: `normalizeDomainSlug`(camel/Pascal/kebab/snake/공백/한글 정규화), `domainDisplayName`, `detectDomainDirectories`(best-effort I/O, 후보별 try/catch), `planDomainDocs`(slug 기준 결정적 정렬 + 중복 병합 + `NN_slug` 순번). init 파이프라인에는 선택지 A(문자열 배열 유지 + `domainContext` 스레딩)로 최소 변경 적용.
+  - 개별 domain 문서는 `doc_type: domain`, `source_files`=탐지된 디렉터리(중복 시 모든 경로 병합, 존재하는 경로만), `related`=[00_overview, DOMAIN_FEATURES, (+API_CONTRACTS/DATA_MODEL은 이번 생성 후보에 있을 때만)]. `00_overview.md`는 탐지된 domain을 상대링크로 나열(미탐지 시 검토 안내). `docTypeFromPath`가 `/domains/`에서 00_overview만 domain_overview, 나머지는 domain으로 구분.
+  - 기존 계약 보존: `--minimal`은 개별 domain 미생성, `--dry-run`은 미기록, `--existing skip`은 기존 domain 문서 보존, 생성 문서는 needs_review, verified 승격 없음. frontend/library/unknown/mixed는 빈 컨텍스트로 기존 결과 불변.
+  - 테스트 9개 추가(유닛 3 + 통합 6). node --test 131 pass, validate-frontmatter --strict clean. temp backend 프로젝트 e2e(dry-run/write/validate)로 확인.
+- caveats:
+  - 버전 bump·CHANGELOG/README·DOMAIN_FEATURES(verified) 반영은 다음 릴리스 준비 시점에 한다(현재 서술이 틀리진 않고 미포함일 뿐이라 이번엔 미변경).
+  - 지정 부모 디렉터리 목록 밖 구조나 파일명 규약 기반 도메인은 의도적으로 미탐지. 기존 overview가 skip될 경우 새 domain 문서는 인바운드 링크가 없어 wiki graph 고아 경고(warning) 가능.
+  - 로드맵 배치(예: 1.3 detect breadth 편입)와 사용자용 문서 반영 여부는 사용자 확인 후 결정한다.
+
+## 2026-07-14 - release: 1.2.0 준비 (안전 업그레이드 & 마이그레이션)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - README.md
+  - README.ko.md
+  - ROADMAP.md
+  - ROADMAP.ko.md
+  - docs/llm-wiki/releases/v1.2.0.md
+- summary:
+  - 1.2(안전 업그레이드 & 마이그레이션) 헤드라인을 1.2.0으로 릴리스 준비했다. package.json 버전과 버전 assertion 테스트를 1.1.0 → 1.2.0으로 올렸다.
+  - CHANGELOG(EN·KO)에 1.2.0 항목 작성(Added: 업그레이드 리포트·migrate --apply·drift 명령 / Changed: evidence.stale 라인 granularity·version-agnostic 문서). README(EN·KO)에 migrate 해금·drift 명령·evidence.stale granularity를 반영하고 "Upgrades & Drift" 절을 추가했다. ROADMAP(EN·KO)의 1.2를 shipped로 옮기고 Release Plan을 1.3→1.7로 조정했다.
+  - v1.2.0 릴리스 노트를 작성했다. 전체를 한 "release: prepare 1.2.0" 커밋으로 묶는다.
+- caveats:
+  - push/tag(v1.2.0)·npm 배포는 사용자의 명시적 "배포" 지시 후에만 진행한다(태그가 publish.yml로 npm Trusted Publishing을 트리거).
+  - 이 릴리스에 포함된 게이트 결정: Gate 8(migrate --apply 범위), Gate 9(drift 강등 범위). 둘 다 accepted_for_1.2.0.
+  - VERSIONING·project-profile은 version-agnostic 전환으로 needs_review로 내려가 있어, 사람 재검토 후 verified 재승인이 필요하다.
+
+## 2026-07-14 - docs: VERSIONING·project-profile version-agnostic 전환
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - docs/llm-wiki/VERSIONING.md
+  - docs/llm-wiki/project-profile.md
+- summary:
+  - 두 문서에서 고정 버전 숫자("현재 버전 1.0.0") 표기를 걷어내고 `package.json`의 `version`을 단일 진실 소스로 참조하도록 바꿨다. 이로써 매 릴리스마다 이 문서들을 버전 숫자 때문에 갱신·재검토하던 부채를 없앴다(2버전 뒤처짐 문제 해소).
+  - VERSIONING: Policy를 재작성(package.json 단일 소스 명시, "1.0.0에서 안정 계약 확정"은 역사적 사실로 유지), bump 예시를 version-agnostic(x.y.Z / x.Y.0 / X.0.0)으로 일반화. project-profile: Detected Project·Evidence의 버전 숫자 제거, 1.2에서 해금된 `migrate --apply`를 반영해 보수적 쓰기 정책 서술 갱신.
+  - 규칙에 따라 두 문서를 `verified` → `needs_review`로 강등하고 `reviewed_by`/`reviewed_at`를 제거했다(내용이 바뀌어 더 이상 사람 검증 상태가 아님). tags의 `verified` → `needs-review`. validate-frontmatter는 normal·strict 모두 pass.
+- caveats:
+  - 두 문서는 사람 재검토 후 verified 재승인이 필요하다(reviewed_by/reviewed_at 재기록).
+  - 부수 효과: needs_review가 되면서 두 문서는 더 이상 evidence.stale(verified 전용) 대상이 아니다.
+
+## 2026-07-14 - feat: drift 명령 + opt-in 강등 (1.2 step 3b, Gate 9)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 표면 승인)
+- scope: code, test, docs, gate
+- changed:
+  - GATE_REVIEW.md
+  - src/commands.js
+  - src/cli.js
+  - tests/verification.test.js
+- summary:
+  - Gate 9(Drift Downgrade Scope)를 `accepted_for_1.2.0`으로 작성하고, 새 `llm-wiki drift` 명령을 구현했다. 사용자가 "새 drift 명령" 표면을 선택했다(fix·migrate가 status를 못 만지므로 강등은 격리된 전용 표면이 필요).
+  - `drift`(기본/`--dry-run`)는 verified 문서의 `evidence.stale` 드리프트를 리포트만 한다(라인/심볼 인지, 3a 재사용). `drift --downgrade`는 드리프트된 verified 문서만 `status: verified → needs_review`로 바꾸고 `last_updated`를 갱신한다 — 그 외 필드/본문/reviewed_at은 불변, verified 승격은 절대 안 함. preview-first(`--dry-run`↔`--downgrade` 배타), 멱등, mojibake/민감정보 스킵.
+  - CLI에 `drift` 명령·`--downgrade` 옵션·옵션 규칙·배타쌍·usage/help/per-command help를 추가했다. `fix` 엔진의 splitFrontmatter/replaceFrontmatterScalar 헬퍼를 재사용한다.
+  - 테스트 추가: 리포트 미기록·downgrade 강등·멱등·미초기화 pass·parseArgs(--downgrade, dry-run+downgrade 거부). 전체 122 pass. CLI 스모크(help·배타 exit 3·레포 read-only 리포트 13건)와 temp end-to-end로 확인.
+- caveats:
+  - drift는 advisory다: `findings`에는 sensitive 블록만 담고 evidence.stale은 `driftFindings`로 분리해 exit code에 영향 주지 않는다. CI 게이트가 필요하면 기존대로 `validate --strict`(evidence.stale를 warning으로)를 쓴다.
+  - 로드맵 1.2 item 3의 강등 절반이다(granularity는 3a). 이로써 1.2의 3개 헤드라인 항목이 모두 구현됐다: 업그레이드 리포트 · migrate --apply · (드리프트 granularity + opt-in 강등).
+  - 버전 bump·CHANGELOG·README·ROADMAP 반영은 1.2 릴리스 준비 시점에 한다.
+
+## 2026-07-14 - feat: evidence.stale 라인 단위 granularity (1.2 step 3a, 읽기전용)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/git.js
+  - src/commands.js
+  - tests/verification.test.js
+- summary:
+  - `evidence.stale` 드리프트 감지에 라인 단위 정밀도를 추가했다. `src/git.js`에 `lineRangeChangedSince`(git `log -L<start>,<end>:<file> -s`)를 추가하고, `driftTargets`가 source_files(broad)와 evidence 참조(locator 포함)를 구분해 반환하도록 확장했다(기존 `.files` 계약 유지, `.sources`/`.evidenceRefs` 추가).
+  - `scanEvidenceDrift`는 이제 어떤 파일이 **오직 라인 범위 evidence(`#Lx-Ly`)로만** 인용된 경우(source_files·심볼/섹션/라우트·bare-file 같은 broad 참조가 없을 때) 그 라인 범위만 검사한다 → 파일 내 무관한 편집은 드리프트로 잡지 않는다. broad 참조가 하나라도 있으면 기존 file-level 검사를 유지한다(보수적). 라인 쿼리 실패(범위 초과 등) 시 file-level로 폴백한다.
+  - 테스트 추가: `lineRangeChangedSince` 유닛(인용 라인만 감지, 무관 라인 미감지, 같은날 미감지)과 audit 통합(line-only evidence의 인용 라인 변경 → 드리프트, 무관 라인 인용 → 미드리프트). 전체 119 pass.
+- caveats:
+  - 심볼/섹션/라우트 locator는 소스 파싱 없이 라인 매핑이 불가하므로 file-level로 남겨 정직성을 유지한다(향후 심볼→라인 해석은 별도 후보).
+  - 레포 문서는 대부분 source_files(broad)를 함께 쓰므로 file-level이 유지된다 — 이번 변경은 line-only 인용의 오탐만 줄인다. 읽기전용이며 status/frontmatter를 쓰지 않는다.
+  - 로드맵 1.2 item 3의 granularity 절반이다. opt-in verified→needs_review 자동 강등(쓰기)은 3b로 별도 게이트/표면 결정 후 구현한다.
+
+## 2026-07-14 - feat: migrate --apply 해금 (1.2 step 2, fix 엔진 재사용)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/commands.js
+  - src/cli.js
+  - tests/verification.test.js
+- summary:
+  - 0.1.0부터 차단돼 있던 `migrate --apply`를 GATE_REVIEW Gate 8 범위로 해금했다. fix 엔진의 문서별 처리 루프+스텁 생성을 공용 함수 `runMechanicalRemediation(cwd, { write, upgradeBlockVersion })`로 추출하고, `fixCommand`는 이를 `upgradeBlockVersion:false`로 호출하도록 리팩터했다(동작 바이트 동일, 113 pass 확인).
+  - migrate는 fix의 "버전 인식 형제"로 동작한다: `upgradeBlockVersion:true`일 때 기존 "behind" `wiki_block_version`을 현재로 업그레이드하되, 문서가 그 외 계약에 부합할 때만(미충족 Tier B 필드가 없을 때만) stamp한다. 누락 필드는 fix와 동일하게 Tier A 삽입으로 backfill된다. verified 문서는 내용/stamp 모두 건드리지 않고 갭만 skipped로 보고하며, ahead(현재보다 최신) 문서는 절대 다운스탬프하지 않는다.
+  - `migrate`는 preview-first다: 기본/`--dry-run`은 업그레이드 리포트+계획을 보여주고 쓰지 않으며, `--apply`만 적용한다(`--dry-run`↔`--apply`는 파서에서 이미 배타). doctor의 `migration_apply` 라인과 CLI usage/help(migrate --apply 사용법·Gate 8 범위)를 갱신했다.
+  - 테스트 추가: behind→current 업그레이드(쓰기), dry-run 미기록, verified 미변경/미stamp, Tier B 미충족 시 behind 유지, 멱등. 전체 117 pass. temp 프로젝트 end-to-end(dry-run→apply→재apply 0건)와 레포 dry-run(gap 0/17)·validate-frontmatter(0 findings)로 확인했다.
+- caveats:
+  - apply 모드의 "Upgrade Report" 섹션 카운트는 엔진 실행 전(pre-migration) 상태를 보여준다(감지된 갭). 실제 적용 결과는 Summary의 `applied:`와 "Applied Changes"에 나온다.
+  - `BLOCK_VERSION_FIELD_RENAMES`는 여전히 비어 있어 renamed-field 경로는 no-op이다(v1 단일 계약). v2 도입 시 채운다.
+  - 로드맵 1.2의 두 번째(헤드라인) 항목이다. 버전 bump·CHANGELOG·README·ROADMAP 반영은 1.2 릴리스 시점에 한다.
+
+## 2026-07-14 - feat: wiki_block_version 인식 업그레이드 리포트 (1.2 step 1, 읽기전용)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/config.js
+  - src/template-renderer.js
+  - src/commands.js
+  - tests/verification.test.js
+- summary:
+  - `wiki_block_version`을 단일 소스 상수로 승격했다: `src/config.js`에 `CURRENT_WIKI_BLOCK_VERSION = "v1"`과 (현재 비어 있는) `BLOCK_VERSION_FIELD_RENAMES`를 추가하고, 문서 생성 템플릿(`template-renderer.js`)과 fix의 Tier A 기본값이 이 상수에서 값을 받도록 했다(출력은 v1로 동일).
+  - 읽기전용 업그레이드 리포트를 추가했다: `analyzeBlockVersions`가 각 wiki 콘텐츠 문서(templates 제외)의 기록된 블록버전을 현재 계약과 비교해 current/behind/unrecorded/unknown/ahead로 분류한다. `migrate --dry-run`에 "Upgrade Report (wiki_block_version)" + "Documents to Upgrade" 섹션과 `upgradeReport` JSON 페이로드를 노출하고, `doctor`에 `wiki_block_version: current=… gap=n/N docs` 요약 라인을 추가했다.
+  - fix가 새 공용 헬퍼 `listWikiContentDocs`(templates 제외 파일셋)를 재사용하도록 리팩터해 migrate와 파일셋 정의를 통일했다. 테스트 추가(버전 갭 분류·ahead는 갭 아님). 전체 113 pass.
+- caveats:
+  - 이 커밋은 읽기전용이다. `migrate --apply`는 이 빌드에서 아직 blocked이며(메시지를 Gate 8 수락 상태에 맞게 갱신), 실제 해금은 step 2에서 fix 엔진 재사용으로 구현한다.
+  - `ahead`(현재 CLI보다 최신 블록버전) 문서는 리포트만 하고 절대 강등/다운스탬프하지 않는다.
+
+## 2026-07-14 - docs(gate): Gate 8 수락 (accepted_for_1.2.0)
+
+- status: needs_review
+- actor: Claude Code (사용자 Dowon-Kim 승인)
+- scope: docs, gate
+- changed:
+  - GATE_REVIEW.md
+- summary:
+  - 사용자가 "Gate 8 수락, 진행"으로 승인함에 따라 Gate 8을 `proposed_for_1.2.0` → `accepted_for_1.2.0`로 확정했다. rename map은 비운 채 출시(현재 v1이 유일한 블록버전). 이로써 migrate --apply 구현(step 2) 착수가 해금된다.
+- caveats:
+  - 결정 문서만 변경. 코드 변경은 후속 커밋(step 1 업그레이드 리포트 → step 2 migrate --apply).
+
+## 2026-07-14 - docs(gate): Gate 8 초안 — migrate --apply 범위 (1.2 착수)
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs, gate
+- changed:
+  - GATE_REVIEW.md
+- summary:
+  - 1.2(안전 업그레이드 & 마이그레이션) 헤드라인의 전제조건인 Gate 8(Migration Apply Scope Approval)을 `proposed_for_1.2.0`으로 초안 작성했다. Review Status 표에 Gate 8 행을 추가하고, fix 엔진(Gate 6)의 승인 범위를 그대로 재사용하는 "Migration Apply Scope Decision (proposed for 1.2.0)" 섹션을 넣었다.
+  - 핵심 결정: migrate는 fix의 "버전 인식 형제"다 — 문서의 `wiki_block_version`과 CLI 현재 블록버전의 계약 갭을 보고하고, fix가 신뢰받는 동일한 기계적 수정을 적용하며, 문서가 현재 계약에 부합해진 뒤에만 `wiki_block_version`을 stamp한다. preview-first(`--dry-run`↔`--apply` 배타), verified 문서 내용·status·source_files/evidence 값·Tier B 필드는 보고만. renamed-field 기계는 만들되 rename map은 현재 비어 있음(v1 단일 계약).
+  - Gate 8 수락 시 Gate 4의 migrate --apply 차단을 1.x 라인에서 대체함을 명시했고, Release Caveats도 갱신했다.
+- caveats:
+  - **사람 승인 대기 상태다.** Gate 8이 수락되기 전까지 migrate --apply 구현(코드)은 착수하지 않는다. GATE_REVIEW.md는 docs/llm-wiki/ 밖이라 validate 스캔 대상이 아니며, frontmatter status는 이미 needs_review다.
+  - 이 커밋은 결정 문서만 바꾼다. 코드·CLI 표면 변경 없음.
+
+## 2026-07-14 - fix(ci): CRLF-안전 okf 테스트 + .gitattributes(eol=lf)
+
+- status: needs_review
+- actor: Claude Code
+- scope: test, ci
+- changed:
+  - tests/verification.test.js
+  - .gitattributes
+- summary:
+  - 1.0.0에서 추가한 Windows CI 매트릭스가 드러낸 실패를 수정했다. 원인은 제품이 아니라 테스트다: okf 픽스처 테스트가 `corpus.includes("evidence:\n  - ...")`로 `\n`을 하드코딩해 Windows 체크아웃(CRLF)에서 매칭에 실패했다. corpus를 LF로 정규화했다(validate 자체는 CRLF를 정상 처리하며 findings 단언은 통과했었다).
+  - 재발 방지로 `.gitattributes`(`* text=auto eol=lf`, png/pptx는 binary)를 추가해 전 플랫폼 LF 체크아웃을 강제했다.
+- caveats:
+  - 로컬(LF)에선 정규화가 no-op이라 112 pass 유지. Windows CI 그린 여부는 push 후 확인한다. 1.1.0 태그 이후의 저장소 위생 커밋이며 배포된 패키지 내용에는 영향이 없다(tests/·.gitattributes는 npm files 미포함).
+
+## 2026-07-14 - release: 1.1.0 준비 (1.0.1 흡수)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - README.md
+  - README.ko.md
+  - ROADMAP.md
+  - ROADMAP.ko.md
+  - docs/llm-wiki/releases/v1.1.0.md
+  - docs/llm-wiki/releases/v1.0.1.md (삭제)
+- summary:
+  - 1.1(inner-loop) 항목을 1.1.0으로 릴리스 준비했다. package.json·버전 assertion 테스트를 1.0.1 → 1.1.0으로 올리고, 배포된 적 없는 1.0.1을 1.1.0에 흡수했다(CHANGELOG의 1.0.1 항목을 1.1.0으로 병합, releases/v1.0.1.md 삭제).
+  - CHANGELOG(EN·KO)에 1.1.0 항목 작성(Added: validate --changed·pre-commit 훅·CI Quick Start / Fixed: evidence.stale 경계 / Changed: 로드맵 재작성·EN-KO 쌍). README(EN·KO) validate 행에 --changed 반영. ROADMAP(EN·KO)의 1.1을 shipped로 이동하고 Release Plan을 1.2→1.7로 조정.
+  - v1.1.0 릴리스 노트를 작성했다. 전체를 한 커밋으로 묶어 배포한다.
+- caveats:
+  - VERSIONING.md·project-profile.md는 여전히 "현재 버전 1.0.0" 표기라 2 버전 뒤처진다. 다만 npm 패키지 미포함이라 배포 영향은 없다. 버전 숫자를 빼고 package.json을 단일 소스로 참조하는 version-agnostic 전환을 다음 작업으로 권장한다(사람 재검토 필요).
+
+## 2026-07-14 - feat: pre-commit 훅 템플릿 + CI Quick Start 점검 (1.1)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, ci, docs
+- changed:
+  - templates/git-hooks/pre-commit
+  - templates/git-hooks/README.md
+  - .github/workflows/ci.yml
+- summary:
+  - 소비 프로젝트용 pre-commit 훅 템플릿을 추가했다: `npx --no-install llm-wiki validate --changed`로 변경된 wiki 문서만 커밋 전에 검증한다(설치법은 templates/git-hooks/README.md). templates/는 package files에 이미 포함돼 함께 배포된다.
+  - CI consumer-install 잡을 확장해 packed tarball에 대해 Quick Start 명령(doctor, init --dry-run, validate-frontmatter)을 실행하게 했다(Phase 7 "Quick Start against packed artifacts" 항목 충족).
+  - 로컬(Windows)에서 pack→install→Quick Start 3종 exit 0 확인, 훅 템플릿·README가 tarball에 포함됨을 확인.
+- caveats:
+  - 로드맵 1.1의 세 번째(마지막) 항목이다. 이로써 1.1 계획 항목(evidence.stale 경계 수정 · validate --changed · pre-commit 훅/Quick Start 점검)이 모두 구현됐다. 버전 1.1.0 bump·CHANGELOG·README 반영·릴리스는 사용자 결정 후 진행한다.
+
+## 2026-07-14 - feat: validate --changed (변경 문서 한정 검증, 1.1)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/cli.js
+  - src/commands.js
+  - src/git.js
+  - tests/verification.test.js
+- summary:
+  - `validate --changed`를 추가했다: git diff 기준(기본은 작업트리 vs HEAD, `--since <ref>` 지정 시 해당 ref 이후)으로 변경된 문서의 findings만 리포트한다. 그래프/related 같은 교차 문서 검사는 전역 실행하되 결과만 변경 문서로 한정한다. pre-commit·CI 가속용이다.
+  - `src/git.js`에 `changedFiles` 헬퍼 추가, `src/cli.js`에 `--changed` 플래그와 validate의 `--since` 허용, `changed.unavailable` 설명 등록, help/usage 갱신.
+  - 테스트 추가: 변경 문서만 리포트(git 기반 시나리오)와 `--since` 파싱 계약 갱신. 전체 112 pass.
+- caveats:
+  - 저장소 루트에서 실행을 가정한다(git 경로 정렬). git을 못 쓰면 `changed.unavailable`(error)로 보고한다.
+  - 로드맵 1.1의 두 번째 항목이다. 버전 bump·CHANGELOG·README 반영은 1.1 릴리스 시점에 한다.
+
+## 2026-07-14 - fix: evidence.stale 같은날 경계 수정 (1.1 착수)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code, test
+- changed:
+  - src/git.js
+  - tests/verification.test.js
+- summary:
+  - `fileChangedSince`가 `git log --since=<date>`로 리뷰 당일 커밋까지 포함해 발생하던 evidence.stale 오탐(같은 날 리뷰+커밋)을 수정했다. 기준일을 그날의 끝(`<date> 23:59:59`)으로 앵커링해, 같은 날 커밋은 리뷰가 커버한 것으로 처리하고 다음 날 이후 커밋만 드리프트로 본다.
+  - dated-commit 기반 테스트를 추가했다(같은 날 → 미탐, 전날 기준 → 탐지). 저장소 evidence.stale 경고가 21 → 11로 줄었다(남은 11건은 2026-07-14에 실제로 바뀐 package.json/README.md/RELEASE_CHECKLIST.md를 참조하는 진짜 드리프트).
+- caveats:
+  - 로드맵 1.1(inner-loop cleanup)의 첫 항목이다. 버전 bump와 CHANGELOG/ROADMAP 반영은 1.1 릴리스 시점에 한다.
+
+## 2026-07-14 - 1.0.1 패치 릴리스 준비 (문서 전용)
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - docs/llm-wiki/releases/v1.0.1.md
+- summary:
+  - 아래 두 문서 변경(ROADMAP 1.x 재작성, 핵심 외부 문서 EN-KO 쌍 도입)을 patch로 묶어 package.json 버전과 버전 assertion 테스트를 1.0.1로 올렸다. 기능·API·명령 표면 변경은 없다.
+  - CHANGELOG(EN·KO 동기화)에 1.0.1 항목을 추가하고 v1.0.1 릴리스 노트를 작성했다. 전체를 한 커밋으로 묶는다.
+- caveats:
+  - VERSIONING.md·project-profile.md는 "현재 버전 1.0.0" 표기가 남아 patch만큼 뒤처진다. 매 릴리스 재검토를 피하려면 버전 숫자를 빼고 package.json을 단일 소스로 참조하도록 바꾸는 것을 별도로 검토한다(사람 재검토 필요).
+  - v1.0.1 태그 push와 npm 배포는 별도 승인 후 진행한다.
+
+## 2026-07-14 - 핵심 외부 문서 EN-KO 쌍 도입 (CHANGELOG, ROADMAP)
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - CHANGELOG.md
+  - CHANGELOG.ko.md
+  - ROADMAP.md
+  - ROADMAP.ko.md
+  - package.json
+  - docs/llm-wiki/README.md
+  - RELEASE_CHECKLIST.md
+- summary:
+  - 외부 공개 루트 문서를 README처럼 영문 .md(정본)+국문 .ko.md 쌍으로 관리하기로 하고, 사용자가 지정한 핵심 외부 문서(CHANGELOG, ROADMAP)의 국문본을 추가했다.
+  - 각 쌍 상단에 `> Language:` 상호링크를 넣고, CHANGELOG.ko.md·ROADMAP.ko.md를 package.json files에 등록했다. ROADMAP.ko.md는 정본 frontmatter를 미러링한다.
+  - 규약을 docs/llm-wiki/README.md에 문서화하고, RELEASE_CHECKLIST에 ".ko.md 쌍 동기화" 점검 항목을 추가했다.
+- caveats:
+  - 루트 문서는 docs/llm-wiki/ 밖이라 validate 스캔 대상이 아니다(frontmatter는 규약일 뿐 강제되지 않음).
+  - 국문본은 정본과 수동 동기화가 필요하다(RELEASE_CHECKLIST 점검으로 보완). 짝 없는 .md/.ko.md 자동 감지 검사는 향후 1.x 후보로 검토 가능.
+
+## 2026-07-14 - ROADMAP를 1.x 1년 계획으로 재작성
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - ROADMAP.md
+- summary:
+  - 1.0.0까지 구현 완료된 Phase 1–8 이력 나열을 걷어내고(이력은 CHANGELOG.md·log.md·releases/로 위임) 미래 지향 로드맵으로 재작성했다.
+  - 2.0(파괴 변경) 프레이밍을 제거하고, 1.0.0 이후 작업을 1.1~1.7 마이너 릴리스로 (목표 날짜 없이) 순서만 배치했다: 1.1 inner-loop 정리, 1.2 마이그레이션/안전 업그레이드(헤드라인), 1.3 디텍터·어댑터 확장, 1.4 지식 뷰·헬스, 1.5 프로그래매틱 API, 1.6 MCP 서버, 1.7 팀/조직 확장.
+  - 모든 1.x 항목은 하위호환(부가)이며, 계약 파괴 변경은 "Beyond the 1.x Horizon"으로 보류했다. 전면 SSG 렌더러·자동 OKF 추출·owner 필수화·자동 verified 승격·Notion 네이티브 모드는 declined로 유지했다.
+- caveats:
+  - 방향성 문서로 needs_review이다. 목표 날짜는 두지 않으며 각 릴리스는 필요에 의해 순서대로 당겨진다. migrate --apply 해금(1.2)은 착수 전 GATE_REVIEW 게이트가 필요하다.
+
+## 2026-07-14 - VERSIONING·project-profile verified 승격
+
+- status: verified
+- actor: Claude Code
+- scope: docs
+- changed:
+  - docs/llm-wiki/VERSIONING.md
+  - docs/llm-wiki/project-profile.md
+- summary:
+  - 1.0.0 갱신 후 needs_review로 내려갔던 VERSIONING.md·project-profile.md를 사람 검토(reviewed_by: Dowon-Kim, 2026-07-14) 완료에 따라 verified로 승격하고 reviewed_by/reviewed_at를 기록했다.
+- caveats:
+  - 두 문서가 참조하는 package.json이 같은 날(2026-07-14) 커밋되어 validate의 evidence.stale이 same-day 특성(src/git.js의 --since)으로 경고를 낼 수 있으나 warning이며 비차단이다.
+
+## 2026-07-14 - 1.0.0 안정성 릴리스 준비
+
+- status: needs_review
+- actor: Claude Code
+- scope: release, docs, ci
+- changed:
+  - package.json
+  - tests/verification.test.js
+  - RELEASE_CHECKLIST.md
+  - VERIFICATION.md
+  - ROADMAP.md
+  - GATE_REVIEW.md
+  - CHANGELOG.md
+  - .github/workflows/ci.yml
+  - docs/llm-wiki/VERSIONING.md
+  - docs/llm-wiki/project-profile.md
+  - docs/llm-wiki/releases/v1.0.0.md
+- summary:
+  - 0.1.8 계약을 기능 변경 없이 1.0.0 안정 릴리스로 승격했다. package.json 버전과 버전 assertion 테스트(tests/verification.test.js)를 1.0.0으로 올렸다.
+  - 0.1.5로 방치돼 있던 RELEASE_CHECKLIST.md·VERIFICATION.md를 1.0.0으로 정합하고, ROADMAP 스냅샷과 Phase 7·후보 상태를 갱신했다.
+  - GATE_REVIEW.md에 Gate 7과 "1.0.0 Stability Milestone" 섹션을 추가해 명령·옵션 표면, --format json 출력 형태, 필수 frontmatter 계약을 안정 계약으로 확정했다.
+  - Phase 7 릴리스 품질 CI를 추가했다: .github/workflows/ci.yml에 Node 18.18.0/20/22/24 × Windows/macOS/Linux verify 매트릭스와 packed-tarball consumer install 스모크 잡을 넣었다.
+  - 루트 CHANGELOG.md를 신설(package.json files에 포함)하고 v1.0.0 릴리스 노트(docs/llm-wiki/releases/v1.0.0.md)를 작성했다.
+  - 살아있는 버전 주장을 담은 VERSIONING.md·project-profile.md를 1.0.0으로 갱신하고 규칙에 따라 verified → needs_review로 강등했다.
+- evidence:
+  - package.json
+  - .github/workflows/ci.yml
+  - GATE_REVIEW.md
+  - docs/llm-wiki/VERSIONING.md
+- caveats:
+  - CI 매트릭스의 macOS/Linux 실행은 로컬에서 검증할 수 없고 GitHub Actions에서만 확인된다. consumer install 스모크는 로컬 Windows에서 pack→install→doctor(exit 0)로 검증했다.
+  - validate의 evidence.stale 경고 21개는 리뷰와 같은 날 커밋된 소스 때문에 발생하는 기존 warning이며 이번 작업의 회귀가 아니다(src/git.js의 --since 경계 특성).
+  - VERSIONING.md·project-profile.md는 사람 재검토 후 verified 재승인이 필요하다.
+  - v1.0.0 태그 push와 npm 배포는 별도 승인 후 진행한다.
+
+## 2026-07-13 - 팀 공유용 LLM-WIKI 소개 프레젠테이션 추가
+
+- status: needs_review
+- actor: Codex
+- scope: docs
+- changed:
+  - outputs/llm-wiki-team-introduction-v0.1.8.pptx
+  - docs/assets/presentations/llm-wiki-lego-city.png
+  - docs/llm-wiki/README.md
+- summary:
+  - 초급 개발자도 LLM-WIKI의 목적, 동작 방식, 이점, 안전 원칙과 자동화 범위를 이해할 수 있도록 12장 분량의 팀 공유용 PowerPoint를 작성했다.
+  - 프로젝트를 레고 도시에 비유한 전용 일러스트와 도입 전후 비교, 작업 흐름, 팀 적용 단계 등을 포함했다.
+- evidence:
+  - README.md
+  - README.ko.md
+  - docs/llm-wiki/index.md
+  - docs/llm-wiki/PUBLIC_API.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+- caveats:
+  - 발표 전 팀의 용어와 실제 도입 사례에 맞는 발표자 설명을 보완할 수 있다.
+
+## 2026-07-13 - 사용자용 README frontmatter 제거
+
+- status: needs_review
+- actor: Codex
+- scope: docs
+- changed:
+  - README.md
+  - README.ko.md
+  - docs/llm-wiki/README.md
+- summary:
+  - npm/GitHub에서 바로 노출되는 영어·한국어 README 상단의 내부 LLM-WIKI frontmatter를 제거했다.
+  - 공식 위키 문서는 `docs/llm-wiki/` 아래에서 관리하며, 루트 README는 사용자용 문서로 유지한다는 경계를 위키 README에 명시했다.
+- evidence:
+  - src/commands.js#symbol:listTargetMarkdown
+  - package.json
+- caveats:
+  - 이번 작업에서 수정한 위키 README와 변경 로그는 사람 재검토 전까지 `needs_review`로 유지한다.
+
+## 2026-07-13 - LLM-WIKI 문서 검토 및 verified 승격
+
+- status: verified
+- actor: Codex
+- reviewed_by: Dowon-Kim
+- scope: docs
+- changed:
+  - docs/llm-wiki/**/*.md
+  - docs/llm-wiki/VERSIONING.md
+  - docs/llm-wiki/project-profile.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
+- summary:
+  - 프로젝트 관리자의 검토 지시에 따라 위키 문서 17개의 frontmatter를 `verified`로 승격하고 `reviewed_by`/`reviewed_at` 메타데이터를 추가했다.
+  - 현재 패키지 버전과 맞지 않던 `VERSIONING.md` 및 `project-profile.md`의 0.1.5 표기를 0.1.8로 수정했다.
+  - 0.1.8의 실제 쓰기 경로에 맞춰 아키텍처 설명에 `quickstart --write`와 `fix --write`를 반영하고, 공개 옵션에 `release-notes --since`를 보완했다.
+- evidence:
+  - package.json
+  - src/cli.js
+  - src/commands.js
+  - git tag v0.1.8
+- caveats:
+  - 이 승격은 현재 저장소 상태를 기준으로 하며, 이후 CLI 또는 에이전트가 문서를 수정하면 해당 문서는 다시 `needs_review`로 전환해야 한다.
+
+## 2026-07-13 - obsolete v0.2.0 로드맵 구현 프롬프트 삭제
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - templates/prompts/v0.2.0-roadmap-task.md (삭제)
+  - ROADMAP.md (related 항목 정리)
+- summary:
+  - `templates/prompts/v0.2.0-roadmap-task.md`를 삭제했다. 이 1회성 구현 지시 프롬프트의 항목(`prompt --task`, feature/fix/refactor·docs-sync·okf-extract 프롬프트, API 인벤토리 등)은 이미 전부 구현·출시되어 obsolete이며, 로컬 절대경로가 하드코딩된 채 `templates/`로 npm 배포물에 포함되던 내부 산출물이었다.
+  - ROADMAP.md `related`에서 해당 파일 참조를 제거했다(다른 참조처 없음).
+- evidence:
+  - ROADMAP.md
+- caveats:
+  - 반복 작업 프롬프트는 이제 `llm-wiki prompt --task <name>`로 동적으로 생성하므로 정적 템플릿은 불필요하다.
+
+## 2026-07-13 - ROADMAP 후보 섹션 0.1.8 기준 재정비
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - ROADMAP.md
+- summary:
+  - "Post-0.1.7 Candidates" → "Post-0.1.8 Candidates"로 재프레이밍하고, 0.1.8에서 출시된 scoped `fix`를 후보 목록에서 제거(후속 정제 항목은 drift/downgrade 항목에 병합)했다.
+  - 실사용 인사이트를 신규 1순위 후보로 추가: 구버전(~0.1.0)에 생성된 기존 `docs/llm-wiki`를 폴더 삭제·재생성 없이 현재 계약으로 올릴 수 있는 업그레이드/마이그레이션 경로(`wiki_block_version` 인지 + `fix` 엔진 재사용, 미리보기 우선).
+- evidence:
+  - ROADMAP.md
+- caveats:
+  - 방향성 문서이며 구현 착수 전이다. 사람 검토 전까지 needs_review로 유지한다.
+
+## 2026-07-13 - 범위 한정 자동수정 `fix` 명령 추가
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/commands.js (fixCommand 및 헬퍼 신설), src/cli.js (COMMANDS/옵션/도움말)
+  - tests/verification.test.js
+  - GATE_REVIEW.md (Gate 6 + "Autofix (--fix) Scope Decision")
+  - ROADMAP.md, docs/llm-wiki/PUBLIC_API.md, DOMAIN_FEATURES.md, domains/00_overview.md
+- summary:
+  - `llm-wiki fix`(기본 미리보기, `--write` 시 적용)를 추가했다. 승인된 좁은 범위만 수정한다: 누락 Tier A frontmatter 필드 삽입, frontmatter `evidence` 기준 본문 `## Evidence` 섹션 보완, 깨진 related/markdown 링크에 대한 `needs_review` 스텁 생성, 수정 문서의 `last_updated` 갱신.
+  - `verified` 문서 내용, `docs/llm-wiki/` 밖 파일, `source_files`/`evidence` 값, Tier B 필드(title/doc_type/project/author), 미보강 내용은 보고만 하고 자동수정하지 않는다. mojibake·민감정보 위험 결과는 건너뛴다. 멱등이며 편집은 최소 타깃 삽입으로 처리한다(frontmatter 재직렬화 없음).
+  - 허용 범위는 GATE_REVIEW.md에 사전 확정한 뒤 구현했다(blocked `migrate --apply`와 동일한 보수 모델).
+- evidence:
+  - src/commands.js#symbol:fixCommand
+  - GATE_REVIEW.md
+- caveats:
+  - 버전 bump·릴리스는 별도 절차이며 이 변경에는 포함하지 않았다(미배포 누적분에 합류).
+  - Tier B 필드 유도, 경로 자동 복구, `verified`→`needs_review` 자동 강등은 후속 게이트로 남겼다.
+  - 모든 생성/수정 문서는 사람 검토 전까지 needs_review로 유지한다.
+
+## 2026-07-10 - evidence drift 감지 추가 (evidence.stale)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/git.js (신규), src/release-notes.js, src/commands.js, tests/verification.test.js
+  - ROADMAP.md
+- summary:
+  - `verified` 문서가 참조하는 `source_files`/`evidence` 로컬 파일이 `reviewed_at`(없으면 `last_updated`) 이후 git에서 변경되면 `evidence.stale` 경고를 낸다. best-effort(git 없으면 스킵), 파일 단위 휴리스틱, warning 레벨. 공용 `src/git.js`(runGit/fileChangedSince)를 신설하고 release-notes가 재사용한다.
+  - ROADMAP에 Post-0.1.7 Candidates 섹션을 추가하고 drift 후보를 구현 상태로 갱신.
+- evidence:
+  - src/git.js
+  - src/commands.js
+- caveats:
+  - 파일 단위라 무관한 변경도 flag될 수 있어 warning으로 유지. 라인/심볼 정밀도·자동 강등은 후속.
+
+## 2026-07-10 - release-notes --since 옵션 추가
+
+- status: needs_review
+- actor: Claude Code
+- scope: code
+- changed:
+  - src/release-notes.js, src/commands.js, src/cli.js, tests/verification.test.js
+- summary:
+  - `release-notes --since <git-ref>` 추가. 범위를 `<ref>..HEAD`로 강제해, 태그 생성 후에도 특정 기준점부터 노트를 재생성할 수 있다. `collectCommitsSinceLastTag`를 `collectCommits(cwd, { since })`로 일반화.
+- evidence:
+  - src/release-notes.js
+- caveats:
+  - `--since`는 `<ref>..HEAD` 범위이므로, 과거 버전을 정확히 재현하려면 태그 이후 커밋이 섞이지 않도록 주의한다.
+
+## 2026-07-10 - 릴리스 노트 한국어·영어 이중 언어화
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/release-notes.js, src/cli.js, tests/verification.test.js
+  - docs/llm-wiki/releases/v0.1.7.md
+- summary:
+  - `release-notes` 생성 골격(제목·안내문·섹션 헤더·폴백)을 한국어 우선 이중 언어(예: `## 추가 · Added`)로 변경. 커밋에서 온 항목은 소스 그대로 유지한다.
+- evidence:
+  - src/release-notes.js
+- caveats:
+  - 릴리스 노트는 태그 생성 "전"에 만들어야 한다(태그 생성 후에는 "마지막 v* 태그 이후"가 비어 v0.1.7 노트는 수동 복원함).
+
+## 2026-07-10 - release-notes 명령 추가 (docs-sync)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/release-notes.js (신규), src/commands.js, src/cli.js, src/report.js, tests/verification.test.js
+  - docs/llm-wiki/PUBLIC_API.md
+- summary:
+  - `llm-wiki release-notes [--version x.y.z] [--out]` 명령 추가. 마지막 `v*` 태그 이후 conventional commit을 Added/Changed/Fixed/Documentation/Other로 분류해 needs_review 릴리스 노트 문서를 생성. git 없으면 채워 넣기용 스캐폴드로 폴백.
+- evidence:
+  - src/release-notes.js
+- caveats:
+  - chore/release 타입 커밋은 노트에서 제외한다. README 반영은 다음 릴리스 시점.
+
+## 2026-07-10 - llm-wiki.config.json 지원 추가 (docs-sync)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs + config
+- changed:
+  - src/config-file.js (신규), src/cli.js, src/commands.js, tests/verification.test.js
+  - llm-wiki.config.json (저장소 dogfooding: type=library)
+  - docs/llm-wiki/GLOSSARY.md, docs/llm-wiki/PUBLIC_API.md
+- summary:
+  - 프로젝트 루트 `llm-wiki.config.json`으로 `type`/`profiles`/`agents`/`strict` 기본값을 선언하도록 지원. CLI 플래그 > config > 자동감지 우선순위. 잘못된 config는 exit 3.
+  - doctor가 config 존재 여부를 보고. 스키마는 보수적으로 최소 4개 필드만.
+- evidence:
+  - src/config-file.js
+- caveats:
+  - 스키마 확장(커스텀 문서세트/규칙/템플릿 override)은 실사용 피드백 이후 결정한다.
+  - README.md/README.ko.md 반영은 다음 릴리스 시점.
+
+## 2026-07-10 - Cursor/Copilot adapter 추가 (docs-sync)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/commands.js, src/cli.js, tests/verification.test.js
+  - templates/adapters/cursor/llm-wiki.mdc, templates/adapters/copilot/copilot-instructions.md
+  - docs/llm-wiki/GLOSSARY.md, docs/llm-wiki/PUBLIC_API.md
+- summary:
+  - Cursor(`.cursor/rules/llm-wiki.mdc`)·GitHub Copilot(`.github/copilot-instructions.md`) adapter를 추가하고 handoff를 adapter 기반으로 일반화했다.
+  - `--agent all`은 backward-compat을 위해 codex/claude/antigravity 세 개만 유지하고, cursor·copilot은 명시 선택하도록 했다.
+- evidence:
+  - src/commands.js
+- caveats:
+  - README.md/README.ko.md의 adapter·옵션 표기 갱신은 다음 릴리스 시점에 함께 반영한다.
+
+## 2026-07-10 - detector 다중 생태계 지원 반영 (docs-sync)
+
+- status: needs_review
+- actor: Claude Code
+- scope: code + docs
+- changed:
+  - src/detector.js, src/commands.js, tests/verification.test.js
+  - docs/llm-wiki/DOMAIN_FEATURES.md
+- summary:
+  - detector가 Python/Go/Rust/JVM 매니페스트를 인식하도록 확장하고, 생성 문서의 기본 source_files를 감지된 primaryManifest로 앵커링했다.
+- evidence:
+  - src/detector.js
+- caveats:
+  - Go/Python의 stdlib 기반 서버는 프레임워크 신호가 없으면 library로 분류될 수 있다(향후 개선 후보).
+
+## 2026-07-10 - core/library 문서 소스 근거로 보강 (dogfooding)
+
+- status: needs_review
+- actor: Claude Code
+- scope: docs
+- changed:
+  - docs/llm-wiki/index.md, README.md, project-profile.md
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md, GLOSSARY.md
+  - docs/llm-wiki/DOMAIN_FEATURES.md, domains/00_overview.md
+  - docs/llm-wiki/PUBLIC_API.md, VERSIONING.md, EXAMPLES.md, RELEASE_FLOW.md
+  - docs/llm-wiki/profiles/library.md
+- summary:
+  - 생성 스캐폴드의 placeholder를 실제 소스 근거(src/*, package.json)로 교체했다.
+  - frontmatter `project`를 `llm-wiki-standard`로 교정하고 source_files/evidence/`## Evidence` 섹션을 채웠다.
+- evidence:
+  - src/cli.js
+  - src/commands.js
+  - package.json
+- caveats:
+  - templates/ 하위 문서는 의도적 템플릿이라 보강하지 않았다.
+  - 모든 문서는 사람 검토 전까지 needs_review로 유지한다.
+
+## 2026-07-10 - LLM-WIKI 초기 문서 생성
+
+- status: needs_review
+- actor: llm-wiki-cli
+- scope: docs
+- changed:
+  - docs/llm-wiki/
+- summary:
+  - `llm-wiki init --write` 명령으로 초기 LLM-WIKI 문서 구조를 생성했다.
+- evidence:
+  - package.json
+- caveats:
+  - CLI 생성 초안이므로 사람 검토가 필요하다.

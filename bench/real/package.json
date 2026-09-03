@@ -1,0 +1,9 @@
+{
+  "name": "llm-wiki-bench-real",
+  "private": true,
+  "type": "module",
+  "description": "Bench-local SDK driver deps for bench/real/agent.js. NOT part of the published llm-wiki-governance package (bench/ is outside the npm files allowlist), so this dependency never reaches consumers — the core CLI stays zero-runtime-dependency.",
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest"
+  }
+}

@@ -1,0 +1,61 @@
+name: LLM-WIKI Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  llm-wiki:
+    name: Validate LLM-WIKI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Required by the omission gate below: `impact --since <ref>` compares
+          # against the PR base, and the default shallow checkout does not have
+          # that ref. Without this the gate degrades silently rather than failing
+          # loudly, which is the worst way for a gate to break.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run project tests
+        run: npm test
+
+      - name: Validate LLM-WIKI frontmatter
+        run: npx llm-wiki validate-frontmatter
+
+      - name: Validate LLM-WIKI strictly
+        run: npx llm-wiki validate --strict --agent codex
+
+      # The omission gate: fails when a source file a `verified` document is
+      # grounded in changed in this diff and the document did not. validate and
+      # validate-frontmatter above cannot see this — they check the documents
+      # that exist, not the documents that should have been touched. Until
+      # 2026-07-31 no shipped channel ran this, so nothing this project handed an
+      # adopter could block an undocumented change.
+      #
+      # Since 1.28.0 impact.source_changed defaults to error, so this step blocks
+      # with or without --strict; --strict is kept so the step's other findings
+      # escalate too. Soften it in llm-wiki.config.json rules
+      # ("impact.source_changed": "warning"|"info"|"off") or rulesPreset:
+      # "relaxed" — not by deleting the step. A package.json whose diff moves
+      # nothing but the version value does not count as a source change.
+      - name: Gate on undocumented source changes
+        run: npx llm-wiki impact --since "origin/${{ github.base_ref || 'main' }}" --strict

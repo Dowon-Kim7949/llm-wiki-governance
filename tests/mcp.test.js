@@ -1,0 +1,471 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { handleMessage, MCP_PROTOCOL_VERSION } from "../src/mcp/dispatch.js";
+import { TOOL_DEFS, buildToolOptions } from "../src/mcp/tools.js";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+test("initialize echoes the client protocol version and reports server info", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {} } },
+    { serverVersion: "9.9.9" }
+  );
+  assert.equal(res.jsonrpc, "2.0");
+  assert.equal(res.id, 1);
+  assert.equal(res.result.protocolVersion, "2025-06-18");
+  assert.deepEqual(res.result.capabilities, { tools: {} });
+  assert.equal(res.result.serverInfo.name, "llm-wiki");
+  assert.equal(res.result.serverInfo.version, "9.9.9");
+});
+
+test("initialize without a client version advertises the pinned protocol version", async () => {
+  const res = await handleMessage({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }, {});
+  assert.equal(res.result.protocolVersion, MCP_PROTOCOL_VERSION);
+});
+
+test("initialize falls back to the pinned version for an unsupported client version", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "1999-01-01" } },
+    {}
+  );
+  // Must NOT echo a version the server does not implement.
+  assert.equal(res.result.protocolVersion, MCP_PROTOCOL_VERSION);
+});
+
+test("tools/list exposes only read-only tools with object input schemas", async () => {
+  const res = await handleMessage({ jsonrpc: "2.0", id: 2, method: "tools/list" }, {});
+  const names = res.result.tools.map((t) => t.name);
+  assert.deepEqual(names, TOOL_DEFS.map((t) => t.name));
+  for (const tool of res.result.tools) {
+    assert.equal(tool.annotations.readOnlyHint, true);
+    assert.equal(tool.annotations.destructiveHint, false);
+    assert.equal(tool.inputSchema.type, "object");
+  }
+  // No write/mutating command is ever exposed over MCP.
+  for (const forbidden of ["init", "fix", "migrate", "drift", "quickstart"]) {
+    assert.ok(!names.includes(forbidden), `${forbidden} must not be an MCP tool`);
+  }
+});
+
+test("tools/call runs a read-only command and returns structuredContent with schemaVersion", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "mcp-call-"));
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "audit", arguments: { cwd } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  assert.equal(res.result.structuredContent.command, "audit");
+  assert.equal(res.result.structuredContent.schemaVersion, 1);
+  // The rendered text report lives in content; structuredContent stays pure data.
+  assert.equal(res.result.structuredContent.text, undefined);
+  assert.equal(typeof res.result.content[0].text, "string");
+  assert.ok(res.result.content[0].text.startsWith("# LLM-WIKI"));
+});
+
+test("tools/call merges llm-wiki.config.json from cwd (MCP honors project config)", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "mcp-config-"));
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), JSON.stringify({ type: "backend" }), { encoding: "utf8" });
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 30, method: "tools/call", params: { name: "audit", arguments: { cwd } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  // Without config merging this empty dir would detect as "unknown"; config forces backend.
+  assert.equal(res.result.structuredContent.detection.projectType, "backend");
+});
+
+test("tools/call surfaces a malformed llm-wiki.config.json as isError", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "mcp-config-bad-"));
+  await writeFile(path.join(cwd, "llm-wiki.config.json"), "{ not json", { encoding: "utf8" });
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 31, method: "tools/call", params: { name: "audit", arguments: { cwd } } },
+    {}
+  );
+  assert.equal(res.error, undefined); // a JSON-RPC result, not a protocol error
+  assert.equal(res.result.isError, true);
+  assert.match(res.result.content[0].text, /config\.json/);
+});
+
+test("ping returns an empty result", async () => {
+  const res = await handleMessage({ jsonrpc: "2.0", id: 4, method: "ping" }, {});
+  assert.deepEqual(res.result, {});
+});
+
+test("notifications get no reply; unknown method and unknown tool error with JSON-RPC codes", async () => {
+  assert.equal(await handleMessage({ jsonrpc: "2.0", method: "notifications/initialized" }, {}), null);
+  const unknownMethod = await handleMessage({ jsonrpc: "2.0", id: 5, method: "foo/bar" }, {});
+  assert.equal(unknownMethod.error.code, -32601);
+  const unknownTool = await handleMessage({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "nope" } }, {});
+  assert.equal(unknownTool.error.code, -32602);
+});
+
+test("a request-method sent as a notification (no id) gets no reply", async () => {
+  // JSON-RPC 2.0: the server MUST NOT reply to a notification, even for a
+  // known request-method like ping / tools/call.
+  assert.equal(await handleMessage({ jsonrpc: "2.0", method: "ping" }, {}), null);
+  assert.equal(await handleMessage({ jsonrpc: "2.0", method: "initialize", params: {} }, {}), null);
+  assert.equal(await handleMessage({ jsonrpc: "2.0", method: "tools/call", params: { name: "audit" } }, {}), null);
+});
+
+test("an array (batch) message is rejected with a single -32600 Invalid Request", async () => {
+  const res = await handleMessage([{ jsonrpc: "2.0", id: 1, method: "ping" }], {});
+  assert.equal(res.error.code, -32600);
+  assert.equal(res.id, null);
+  const empty = await handleMessage([], {});
+  assert.equal(empty.error.code, -32600);
+});
+
+test("tools/call surfaces a thrown command as isError:true, not a protocol error", async () => {
+  // Inject a throwing command via the internal ctx.commands test seam.
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "audit", arguments: {} } },
+    { defaultCwd: process.cwd(), commands: { audit: async () => { throw new Error("boom-xyz"); } } }
+  );
+  assert.equal(res.error, undefined); // a JSON-RPC result, not a protocol error
+  assert.equal(res.result.isError, true);
+  assert.match(res.result.content[0].text, /boom-xyz/);
+});
+
+test("graph tool: structuredContent always carries the graph; text follows the format", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "graph", arguments: { cwd: repoRoot, format: "mermaid" } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  assert.equal(res.result.structuredContent.command, "graph");
+  assert.ok(res.result.structuredContent.graph, "structuredContent carries the structured graph");
+  assert.equal(res.result.structuredContent.text, undefined);
+  assert.ok(res.result.content[0].text.startsWith("```mermaid"), "mermaid text rendering");
+});
+
+test("buildToolOptions maps args and defaults handoff/prompt to a claude agent", () => {
+  const explain = TOOL_DEFS.find((t) => t.name === "explain");
+  // explain maps `rule` -> findingRule and is not an agent-consuming tool.
+  assert.deepEqual(buildToolOptions(explain, { rule: "wiki_link.missing" }), { findingRule: "wiki_link.missing" });
+  const handoff = TOOL_DEFS.find((t) => t.name === "handoff");
+  assert.deepEqual(buildToolOptions(handoff, {}).agents, ["claude"]);
+  const prompt = TOOL_DEFS.find((t) => t.name === "prompt");
+  assert.deepEqual(buildToolOptions(prompt, { task: "feature", agents: ["codex"] }).agents, ["codex"]);
+});
+
+test("onboard and prepare are exposed as read-only MCP tools and run", async () => {
+  const onboard = TOOL_DEFS.find((t) => t.name === "onboard");
+  const prepare = TOOL_DEFS.find((t) => t.name === "prepare");
+  assert.ok(onboard && prepare, "both tools registered");
+  assert.deepEqual(prepare.inputSchema.required, ["task"], "prepare requires task");
+  // buildToolOptions maps the guided args.
+  assert.deepEqual(buildToolOptions(onboard, { domain: "auth", goal: "learn login", lang: "ko" }), { domain: "auth", goal: "learn login", lang: "ko" });
+
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 61, method: "tools/call", params: { name: "prepare", arguments: { cwd: repoRoot, task: "add a read-only command" } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  assert.equal(res.result.structuredContent.command, "prepare");
+  assert.ok(Array.isArray(res.result.structuredContent.relevantDocs));
+});
+
+test("prompt tool exposes the bootstrap task over MCP and runs it", async () => {
+  const prompt = TOOL_DEFS.find((t) => t.name === "prompt");
+  assert.ok(prompt.inputSchema.properties.task.enum.includes("bootstrap"), "bootstrap is in the MCP prompt task enum");
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 60, method: "tools/call", params: { name: "prompt", arguments: { cwd: repoRoot, task: "bootstrap", agents: ["codex"] } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  assert.equal(res.result.structuredContent.taskPrompt.task, "bootstrap");
+  assert.ok(res.result.structuredContent.taskPrompt.prompt.includes("bootstrapping an LLM-WIKI"));
+});
+
+test("buildToolOptions maps retrieval args (query/path/filters/includeSensitive/limit)", () => {
+  const search = TOOL_DEFS.find((t) => t.name === "search_docs");
+  assert.deepEqual(
+    buildToolOptions(search, { query: "widget", status: "verified", includeSensitive: true, limit: 5 }),
+    { query: "widget", status: "verified", includeSensitive: true, limit: 5 }
+  );
+  const getDoc = TOOL_DEFS.find((t) => t.name === "get_doc");
+  assert.deepEqual(buildToolOptions(getDoc, { path: "GLOSSARY.md" }), { docPath: "GLOSSARY.md" });
+});
+
+test("tools/call get_doc returns document content (read-only retrieval over MCP)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 41, method: "tools/call", params: { name: "get_doc", arguments: { cwd: repoRoot, path: "GLOSSARY.md" } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  assert.equal(res.result.structuredContent.command, "get-doc");
+  assert.equal(res.result.structuredContent.result, "pass");
+  assert.equal(typeof res.result.structuredContent.document.body, "string");
+  assert.ok(res.result.structuredContent.document.body.length > 0);
+});
+
+test("tools/call review exposes only the read-only list surface (no approve over MCP)", async () => {
+  const review = TOOL_DEFS.find((t) => t.name === "review");
+  assert.ok(review, "review tool is registered");
+  // The MCP schema advertises ONLY cwd + includeSensitive — never approve/approve-all/reviewer.
+  assert.deepEqual(Object.keys(review.inputSchema.properties).sort(), ["cwd", "includeSensitive"]);
+  // buildToolOptions never copies approve fields, so the tool can only ever run list mode.
+  const opts = buildToolOptions(review, { cwd: repoRoot, includeSensitive: true, approve: ["x"], approveAll: true, reviewer: "X" });
+  assert.equal(opts.approve, undefined);
+  assert.equal(opts.approveAll, undefined);
+  assert.equal(opts.reviewer, undefined);
+
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 55, method: "tools/call", params: { name: "review", arguments: { cwd: repoRoot } } },
+    {}
+  );
+  assert.equal(res.result.isError, false);
+  assert.equal(res.result.structuredContent.command, "review");
+  assert.equal(res.result.structuredContent.mode, "list");
+});
+
+test("buildToolOptions maps get_doc token controls and prepare --compact", () => {
+  const getDoc = TOOL_DEFS.find((t) => t.name === "get_doc");
+  assert.deepEqual(
+    buildToolOptions(getDoc, { path: "GLOSSARY.md", section: "graph", strictSection: true, compact: true, maxChars: 500 }),
+    { docPath: "GLOSSARY.md", section: "graph", strictSection: true, compact: true, maxChars: 500 }
+  );
+  const prepare = TOOL_DEFS.find((t) => t.name === "prepare");
+  assert.deepEqual(buildToolOptions(prepare, { task: "x", compact: true, maxChars: 300 }), { task: "x", compact: true, maxChars: 300 });
+  assert.ok(getDoc.inputSchema.properties.strictSection && getDoc.inputSchema.properties.compact && getDoc.inputSchema.properties.maxChars, "get_doc advertises the token controls");
+  assert.ok(prepare.inputSchema.properties.compact && prepare.inputSchema.properties.maxChars, "prepare advertises --compact/--max-chars");
+});
+
+test("get_doc --compact keeps the body only in structuredContent (avoids content/structuredContent duplication)", async () => {
+  // Controlled fixture: a distinctive token that lives ONLY in the body (not in
+  // the title/frontmatter), so we can prove where it does and does not appear.
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "mcp-compact-"));
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(
+    path.join(cwd, "docs", "llm-wiki", "big.md"),
+    "---\ntitle: Big Doc\nstatus: needs_review\ndoc_type: reference\nvisibility: internal\ncontains_sensitive_info: false\nlast_updated: 2026-07-23\n---\n# Big Doc\n\n## Detail\nZZBODYONLYTOKEN lives only in the body here.\n",
+    { encoding: "utf8" }
+  );
+
+  // Default: the body token appears in BOTH the text content and structuredContent
+  // (MCP mirroring) — the duplication a compact-aware client can avoid.
+  const full = await handleMessage(
+    { jsonrpc: "2.0", id: 44, method: "tools/call", params: { name: "get_doc", arguments: { cwd, path: "big.md" } } },
+    {}
+  );
+  assert.ok(full.result.structuredContent.document.body.includes("ZZBODYONLYTOKEN"), "default: body in structuredContent");
+  assert.ok(full.result.content[0].text.includes("ZZBODYONLYTOKEN"), "default: body inline in text content (duplication)");
+  assert.ok("frontmatter" in full.result.structuredContent.document, "default: frontmatter echoed");
+
+  // Compact: body stays in structuredContent, but the text content shows a pointer
+  // instead of the body — so a client feeding both does not receive it twice.
+  const compact = await handleMessage(
+    { jsonrpc: "2.0", id: 45, method: "tools/call", params: { name: "get_doc", arguments: { cwd, path: "big.md", compact: true } } },
+    {}
+  );
+  assert.ok(compact.result.structuredContent.document.body.includes("ZZBODYONLYTOKEN"), "compact: body still in structuredContent");
+  assert.equal(compact.result.content[0].text.includes("ZZBODYONLYTOKEN"), false, "compact: body NOT duplicated in the text content");
+  assert.match(compact.result.content[0].text, /structuredContent|compact/i, "compact: text points to the structured body");
+  assert.equal("frontmatter" in compact.result.structuredContent.document, false, "compact omits the frontmatter echo");
+  assert.ok("estimatedTokens" in compact.result.structuredContent.document, "compact carries the diagnostic estimatedTokens");
+});
+
+// Spawn the MCP server, stream newline-delimited JSON-RPC, and collect messages.
+// `until(byId, nullIdReplies)` resolves the wait; the caller ends stdin after.
+async function driveMcpServer(lines, until) {
+  const child = spawn(process.execPath, ["bin/llm-wiki.js", "mcp", "--cwd", repoRoot], { cwd: repoRoot });
+  const byId = new Map();
+  const nullIdReplies = [];
+  let buf = "";
+  const done = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("mcp round-trip timed out")), 20000);
+    child.on("error", reject);
+    child.stdout.on("data", (chunk) => {
+      buf += chunk.toString();
+      let nl;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line) continue;
+        const msg = JSON.parse(line);
+        if (msg.id !== undefined && msg.id !== null) byId.set(msg.id, msg);
+        else nullIdReplies.push(msg);
+        if (until(byId, nullIdReplies)) {
+          clearTimeout(timer);
+          resolve();
+        }
+      }
+    });
+  });
+  for (const obj of lines) child.stdin.write(`${JSON.stringify(obj)}\n`);
+  try {
+    await done;
+    return { byId, nullIdReplies };
+  } finally {
+    child.stdin.end();
+    await new Promise((resolve) => {
+      const t = setTimeout(() => { try { child.kill(); } catch {} resolve(); }, 5000);
+      child.on("close", () => { clearTimeout(t); resolve(); });
+    });
+  }
+}
+
+test("mcp stdio server: real JSON-RPC round-trip, and no reply to the notification", async () => {
+  const { byId, nullIdReplies } = await driveMcpServer(
+    [
+      { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {} } },
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      { jsonrpc: "2.0", id: 2, method: "tools/list" },
+      { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "stats", arguments: {} } }
+    ],
+    (byId) => byId.has(1) && byId.has(2) && byId.has(3)
+  );
+  assert.equal(byId.get(1).result.serverInfo.name, "llm-wiki");
+  assert.ok(byId.get(2).result.tools.length >= 10);
+  assert.equal(byId.get(3).result.structuredContent.command, "stats");
+  assert.equal(byId.get(3).result.structuredContent.schemaVersion, 1);
+  // Responses are emitted in request order, so any spurious reply to the
+  // notification would have arrived before id 3 — none must exist.
+  assert.deepEqual(nullIdReplies, []);
+});
+
+test("mcp stdio server: recovers from a malformed line and keeps serving", async () => {
+  const child = spawn(process.execPath, ["bin/llm-wiki.js", "mcp", "--cwd", repoRoot], { cwd: repoRoot });
+  const messages = [];
+  let buf = "";
+  const done = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("parse-error round-trip timed out")), 20000);
+    child.on("error", reject);
+    child.stdout.on("data", (chunk) => {
+      buf += chunk.toString();
+      let nl;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line) continue;
+        messages.push(JSON.parse(line));
+        if (messages.length >= 2) { clearTimeout(timer); resolve(); }
+      }
+    });
+  });
+  child.stdin.write("{ this is not valid json\n"); // malformed line -> -32700
+  child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 42, method: "ping" })}\n`); // must still be served
+  try {
+    await done;
+    const parseErr = messages.find((m) => m.error && m.error.code === -32700);
+    const pong = messages.find((m) => m.id === 42);
+    assert.ok(parseErr, "malformed line yields a -32700 Parse error response");
+    assert.equal(parseErr.id, null);
+    assert.ok(pong && pong.result, "a valid request after a parse error is still served");
+  } finally {
+    child.stdin.end();
+    await new Promise((resolve) => {
+      const t = setTimeout(() => { try { child.kill(); } catch {} resolve(); }, 5000);
+      child.on("close", () => { clearTimeout(t); resolve(); });
+    });
+  }
+});
+
+// ---- inputSchema enforcement (2026-07-27 audit, item C) --------------------
+//
+// The published inputSchema (additionalProperties:false, required, enum, type,
+// minimum) is now enforced BEFORE the command runs: a violation is a JSON-RPC
+// -32602 protocol error carrying { tool, errors }, never a silent coercion.
+// One test per reproduced violation class from the audit.
+
+test("tools/call rejects a wrong-typed argument with -32602 (strict:'true' used to run non-strict)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 70, method: "tools/call", params: { name: "validate", arguments: { cwd: repoRoot, strict: "true" } } },
+    {}
+  );
+  assert.equal(res.result, undefined, "a schema violation is a protocol error, not a tool result");
+  assert.equal(res.error.code, -32602);
+  assert.match(res.error.message, /strict/);
+  assert.equal(res.error.data.tool, "validate");
+  assert.deepEqual(res.error.data.errors, ['argument "strict" must be of type boolean, got string.']);
+});
+
+test("tools/call rejects a missing required argument with -32602 (get_doc {} used to run)", async () => {
+  const getDoc = await handleMessage(
+    { jsonrpc: "2.0", id: 71, method: "tools/call", params: { name: "get_doc", arguments: {} } },
+    {}
+  );
+  assert.equal(getDoc.error.code, -32602);
+  assert.deepEqual(getDoc.error.data.errors, ["missing required argument: path."]);
+
+  // The same holds when `arguments` is omitted entirely.
+  const prepare = await handleMessage(
+    { jsonrpc: "2.0", id: 72, method: "tools/call", params: { name: "prepare" } },
+    {}
+  );
+  assert.equal(prepare.error.code, -32602);
+  assert.deepEqual(prepare.error.data.errors, ["missing required argument: task."]);
+});
+
+test("tools/call rejects an enum violation with -32602 (type:'banana' used to become a profile)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 73, method: "tools/call", params: { name: "status", arguments: { cwd: repoRoot, type: "banana" } } },
+    {}
+  );
+  assert.equal(res.error.code, -32602);
+  assert.match(res.error.data.errors[0], /argument "type" must be one of: /);
+
+  // Array-item enums are enforced too.
+  const agents = await handleMessage(
+    { jsonrpc: "2.0", id: 74, method: "tools/call", params: { name: "handoff", arguments: { cwd: repoRoot, agents: ["banana"] } } },
+    {}
+  );
+  assert.equal(agents.error.code, -32602);
+  assert.match(agents.error.data.errors[0], /argument "agents" items must be one of: /);
+});
+
+test("tools/call rejects a minimum violation with -32602 (maxChars:-5 used to be ignored)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 75, method: "tools/call", params: { name: "get_doc", arguments: { cwd: repoRoot, path: "GLOSSARY.md", maxChars: -5 } } },
+    {}
+  );
+  assert.equal(res.error.code, -32602);
+  assert.deepEqual(res.error.data.errors, ['argument "maxChars" must be >= 1.']);
+});
+
+test("tools/call rejects unknown arguments with -32602 (additionalProperties:false is real now)", async () => {
+  const res = await handleMessage(
+    { jsonrpc: "2.0", id: 76, method: "tools/call", params: { name: "status", arguments: { cwd: repoRoot, bogusArgument: 1 } } },
+    {}
+  );
+  assert.equal(res.error.code, -32602);
+  assert.deepEqual(res.error.data.errors, ["unknown argument: bogusArgument."]);
+
+  // Non-object arguments are rejected rather than silently replaced with {}.
+  const nonObject = await handleMessage(
+    { jsonrpc: "2.0", id: 77, method: "tools/call", params: { name: "audit", arguments: "strict" } },
+    {}
+  );
+  assert.equal(nonObject.error.code, -32602);
+  assert.deepEqual(nonObject.error.data.errors, ["arguments must be an object."]);
+});
+
+test("the type enum is no longer stale: mobile and infra are valid, and valid calls still run", async () => {
+  // Regression guard for the audited staleness: the hand-kept MCP enum was
+  // missing mobile (1.12) and infra (1.13). It now derives from KNOWN_TYPES.
+  const status = TOOL_DEFS.find((t) => t.name === "status");
+  for (const knownType of ["frontend", "backend", "fullstack", "library", "mobile", "infra", "mixed", "unknown"]) {
+    assert.ok(status.inputSchema.properties.type.enum.includes(knownType), `type enum includes ${knownType}`);
+  }
+
+  const mobile = await handleMessage(
+    { jsonrpc: "2.0", id: 78, method: "tools/call", params: { name: "status", arguments: { cwd: repoRoot, type: "mobile" } } },
+    {}
+  );
+  assert.equal(mobile.error, undefined);
+  assert.equal(mobile.result.isError, false);
+  assert.equal(mobile.result.structuredContent.detection.projectType, "mobile");
+
+  // A fully valid strict call runs strict (the coerced call above never ran at all).
+  const strict = await handleMessage(
+    { jsonrpc: "2.0", id: 79, method: "tools/call", params: { name: "validate", arguments: { cwd: repoRoot, strict: true } } },
+    {}
+  );
+  assert.equal(strict.error, undefined);
+  assert.equal(strict.result.structuredContent.command, "validate");
+});

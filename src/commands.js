@@ -1,0 +1,2819 @@
+import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
+import { detectProject, detectWorkspaces } from "./detector.js";
+import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
+import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
+import { CONFIG_FILENAME, loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
+import { hasRequiredField, parseFrontmatter, validateFrontmatter } from "./frontmatter.js";
+import { schemaRequiredFields } from "./frontmatter-schema.js";
+import { renderTextReport } from "./report.js";
+import { scanSensitiveInfo } from "./sensitive-info.js";
+import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
+import { buildTaskPrompt, evidenceFocus, initialEnrichmentWorkflow } from "./task-prompts.js";
+import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
+import { fileChangedSince, fileAtRef, lineRangeChangedSince, changedFiles, gitUserName, isPathIgnored, trackedPaths, modifiedTrackedFiles } from "./git.js";
+import { localizeExplanation, normalizeLang } from "./i18n.js";
+import { buildDomainContext, emptyDomainContext } from "./commands/domains.js";
+import { docMetadata } from "./commands/doc-templates.js";
+import {
+  addWikiLinkTarget,
+  escapeRegex,
+  extractMarkdownLinkTargets,
+  extractMarkdownSection,
+  extractWikiLinkTargets,
+  getLineCount,
+  isExternalSourceReference,
+  isSkippedMarkdownLink,
+  normalizeMarkdownLinkTarget,
+  normalizeWikiLinkKey,
+  normalizeWikiLinkTarget,
+  parseEvidenceReference,
+  resolveMarkdownLinkTarget
+} from "./commands/references.js";
+import {
+  applyRuleConfig,
+  FINDING_EXPLANATIONS,
+  findingCategory,
+  formatCountMap,
+  formatEnrichmentChecklist,
+  formatFinding,
+  formatFindingSummary,
+  formatNextActions,
+  formatStatusCounts,
+  formatWikiGraphSummary,
+  normalizeExplainRule,
+  summarizeFindings,
+  withText
+} from "./commands/findings.js";
+import {
+  collectWikiGraph,
+  emptyWikiGraph,
+  renderGraphDot,
+  renderGraphMermaid
+} from "./commands/wiki-graph.js";
+import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown } from "./commands/wiki-files.js";
+import {
+  ADAPTER_TARGETS,
+  planAdapterSuggestions,
+  scanAdapters,
+  selectedAgents,
+  summarizeAdapterStatus,
+  writeAdapterFiles
+} from "./commands/adapters.js";
+import {
+  EVIDENCE_REFERENCE_RULES,
+  evidenceTier,
+  scanEncoding,
+  scanEnrichment,
+  scanEvidenceDrift,
+  scanEvidenceReferences,
+  scanEvidenceSections,
+  scanMarkdownLinks,
+  scanOkfProfile,
+  scanRelatedReferences,
+  scanReverseImpact,
+  scanSensitive,
+  scanSourceFiles,
+  scanThinBody,
+  scanUngroundedVerified,
+  scanVisibilityConsistency
+} from "./commands/scans.js";
+import {
+  analyzeBlockVersions,
+  blockVersionGapDocs,
+  blockedApply,
+  buildUpgradeReport,
+  needsWriteFlag,
+  replaceFrontmatterScalar,
+  runMechanicalRemediation,
+  splitFrontmatter,
+  syncStatusTag,
+  upsertFrontmatterScalar
+} from "./commands/fix-migrate.js";
+import { applyFilters, loadContentDocs } from "./commands/retrieval.js";
+import { planSkillArtifacts, writeSkillArtifacts } from "./commands/skills.js";
+export { detectDomainDirectories, domainDisplayName, normalizeDomainSlug, planDomainDocs } from "./commands/domains.js";
+export { driftTargets, evidenceTier, scanUngroundedVerified } from "./commands/scans.js";
+export { driftCommand, fixCommand } from "./commands/fix-migrate.js";
+export { getDocCommand, getRelatedCommand, listDocsCommand, searchDocsCommand } from "./commands/retrieval.js";
+export { onboardCommand, prepareCommand } from "./commands/guided.js";
+export { importMemoryCommand } from "./commands/import-memory.js";
+export { harnessHealthCommand } from "./commands/harness-health.js";
+
+export async function doctor(options) {
+  const cwd = options.cwd;
+  const detection = await detectProject(cwd, options.type, options.profiles);
+  const wikiExists = await pathExists(path.join(cwd, "docs", "llm-wiki", "index.md"));
+  const configState = await describeEffectiveConfig(cwd);
+  const packageManager = await detectPackageManager(cwd);
+  const packageReadiness = await inspectPackageReadiness(cwd);
+  const blockVersions = wikiExists ? await analyzeBlockVersions(cwd) : null;
+  const outputIgnored = isPathIgnored(cwd, "docs/llm-wiki");
+  const ciGovernance = await describeCiGovernance(cwd);
+
+  const checks = [
+    `node: ${process.version}`,
+    `platform: ${os.platform()} ${os.release()}`,
+    `cwd: ${cwd}`,
+    `package_manager: ${packageManager ?? "not detected"}`,
+    `wiki_entry: ${wikiExists ? "present" : "missing"}`,
+    `wiki_output: ${outputIgnored ? "WARNING: docs/llm-wiki is gitignored — generated docs will not be tracked (git add -f docs/llm-wiki or edit .gitignore)" : "tracked (not gitignored)"}`,
+    blockVersions
+      ? `wiki_block_version: current=${blockVersions.current}, gap=${blockVersionGapDocs(blockVersions).length}/${blockVersions.docs.length} docs${blockVersionGapDocs(blockVersions).length ? " (run migrate --dry-run)" : ""}`
+      : `wiki_block_version: current=${CURRENT_WIKI_BLOCK_VERSION}`,
+    `llm_wiki_config: ${configState}`,
+    `ci_governance: ${ciGovernance}`,
+    `project_type: ${detection.projectType} (${detection.confidence})`,
+    "utf8_policy: explicit read/write helpers enabled",
+    "migration_apply: enabled (GATE_REVIEW Gate 8; preview-first, verified-preserving)"
+  ];
+
+  const sections = [{ title: "Checks", body: checks }];
+  if (packageReadiness.length > 0) {
+    sections.push({ title: "Package Release Readiness", body: packageReadiness });
+  }
+
+  return withText({
+    command: "doctor",
+    checks,
+    detection,
+    packageReadiness
+  }, "LLM-WIKI Doctor", sections);
+}
+
+// doctor reported everything about the wiki and nothing about whether anything
+// ENFORCES it, so a repo could be fully set up with no gate wired and still look
+// healthy — the most common adoption gap. Read-only: it looks for an llm-wiki
+// invocation in a workflow or the pre-commit hook and names what it found. It
+// never writes and never changes the command's exit code.
+//
+// Matches an actual invocation, not a mention: the package/action name followed
+// by a pin, path, or space, or the `llm-wiki` binary followed by a command that
+// belongs in CI. A bare "llm-wiki" substring is NOT enough — a real pilot repo
+// had an unrelated `llm-wiki-review:` job name, and reporting that as governance
+// tells a team it is covered when nothing runs. Over-reporting is the dangerous
+// direction here, so this errs toward missing an exotic invocation.
+// `llm-wiki(.js)?` covers both the installed binary and a repo running the CLI
+// from source as `node bin/llm-wiki.js <command>` — which is how this project
+// dogfoods its own gate, and which the first version of this check could not see.
+const CI_GOVERNANCE_INVOCATION =
+  /llm-wiki-governance[@/\s]|(?:^|[\s"'`(/])llm-wiki(?:\.js)?\s+(?:validate|validate-frontmatter|audit|impact|check-run|drift|stats|review|doctor|status|next|monorepo)\b/m;
+
+// Extracts the llm-wiki COMMAND from one line, in the three shapes a workflow or
+// hook actually uses: a composite-action reference, an npx package invocation,
+// and a bare binary call.
+const CI_COMMAND_ON_LINE =
+  /llm-wiki-governance\/\.github\/actions\/([a-z-]+)@|llm-wiki-governance@\S*\s+([a-z-]+)|(?:^|[\s"'`(/])llm-wiki(?:\.js)?\s+([a-z-]+)/;
+
+// Commands that detect an OMISSION — source moved and its documentation did not.
+// Their findings are warnings by default, so each one only becomes a gate with
+// --strict; without it the step reports the omission and lets the build pass.
+const CI_OMISSION_COMMANDS = new Set(["impact", "check-run", "drift"]);
+
+// Commands that exit non-zero on an error/blocked finding without needing
+// --strict. They gate STRUCTURE (a malformed or missing document), which is real
+// governance but cannot see a source change that skipped its doc.
+const CI_STRUCTURE_COMMANDS = new Set(["validate", "validate-frontmatter", "audit", "monorepo"]);
+
+// Classifies every llm-wiki invocation in one file by whether it can fail a
+// build. Counting invocations was the original defect: `doctor` and `status` are
+// reports that always exit 0, so a repo whose only "governance" was a doctor step
+// read as covered while nothing could block anything.
+//
+// Deliberately line-based rather than a YAML parse (zero-dep). The one lookahead
+// is for a composite-action reference, whose deciding inputs (`command`,
+// `strict`) live in the `with:` block on following lines rather than on the
+// `uses:` line itself.
+//
+// Known limitation, stated because over-reporting is the dangerous direction: it
+// sees the invocation, not the directory it runs in. A step that validates a
+// scratch directory (a packaging smoke test, say) still counts. The reported
+// paths let a human check that; the counts should be read as an upper bound.
+function classifyCiInvocations(text) {
+  const lines = text.split(/\r?\n/);
+  const result = { blocking: 0, advisory: 0, omissionGate: false };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = CI_COMMAND_ON_LINE.exec(lines[index]);
+    if (!match) continue;
+    const isActionReference = Boolean(match[1]);
+    const command = match[1] ?? match[2] ?? match[3];
+
+    // Flags come from the rest of the line, plus — for an action reference — the
+    // indented `with:` block beneath it, where `command:`/`strict:` really live.
+    let flags = lines[index].slice(match.index + match[0].length);
+    let effectiveCommand = command;
+    if (isActionReference) {
+      for (let ahead = index + 1; ahead < Math.min(index + 12, lines.length); ahead += 1) {
+        const line = lines[ahead];
+        // Stop at the next step in the list; the `with:` block is done.
+        if (/^\s*-\s/.test(line)) break;
+        const named = line.match(/^\s*command:\s*["']?([a-z-]+)/);
+        if (named) effectiveCommand = named[1];
+        if (/^\s*strict:\s*["']?true/.test(line)) flags += " --strict";
+      }
+    }
+
+    const strict = /(?:^|\s)--strict\b/.test(flags);
+    if (CI_OMISSION_COMMANDS.has(effectiveCommand)) {
+      // `impact` gates on its own since decision 21 (2026-08-03) defaulted
+      // impact.source_changed to error; `drift` and `check-run` still emit
+      // warnings, so they still need --strict to fail a build. Treating all
+      // three alike would tell a maintainer whose pipeline already gates that
+      // it does not, and send them to add a flag that changes nothing.
+      if (strict || effectiveCommand === "impact") {
+        result.blocking += 1;
+        result.omissionGate = true;
+      } else {
+        result.advisory += 1;
+      }
+    } else if (CI_STRUCTURE_COMMANDS.has(effectiveCommand)) {
+      result.blocking += 1;
+    } else {
+      result.advisory += 1;
+    }
+  }
+
+  return result;
+}
+
+// Deliberately not a YAML parse (zero-dep; a matched invocation is the signal we
+// want). It only reads .git/hooks/pre-commit, so a repo that relocates hooks via
+// core.hooksPath reads as "none detected" — a false negative, the safe direction.
+async function describeCiGovernance(cwd) {
+  const found = [];
+  const totals = { blocking: 0, advisory: 0, omissionGate: false };
+  const record = (rel, text) => {
+    found.push(rel);
+    const counts = classifyCiInvocations(text);
+    totals.blocking += counts.blocking;
+    totals.advisory += counts.advisory;
+    totals.omissionGate = totals.omissionGate || counts.omissionGate;
+  };
+
+  const workflowDir = path.join(cwd, ".github", "workflows");
+  if (await pathExists(workflowDir)) {
+    let entries = [];
+    try {
+      entries = await readdir(workflowDir, { withFileTypes: true });
+    } catch {
+      entries = [];
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() || !/\.ya?ml$/i.test(entry.name)) continue;
+      try {
+        const text = await readUtf8(path.join(workflowDir, entry.name));
+        if (CI_GOVERNANCE_INVOCATION.test(text)) record(`.github/workflows/${entry.name}`, text);
+      } catch {
+        // An unreadable workflow is not a governance signal; skip it.
+      }
+    }
+  }
+
+  const hook = path.join(cwd, ".git", "hooks", "pre-commit");
+  if (await pathExists(hook)) {
+    try {
+      const text = await readUtf8(hook);
+      if (CI_GOVERNANCE_INVOCATION.test(text)) record(".git/hooks/pre-commit", text);
+    } catch {
+      // Same: unreadable hook, no signal.
+    }
+  }
+
+  if (found.length === 0) {
+    return "none detected — nothing runs llm-wiki in CI or on commit (see docs/OPERATIONS.md; `impact --since <base>` is the check that fails when source changes without its wiki doc — it needs no --strict since 2026-08-03)";
+  }
+
+  // Report blocking power, not invocation count. A repo whose only llm-wiki step
+  // is `doctor` reads as 0 blocking — which is the truth, and used to read as
+  // "1 found". Naming the missing omission gate matters more than the totals:
+  // that is the state where a team believes an undocumented source change cannot
+  // land, and it can.
+  const counts = `${totals.blocking} blocking, ${totals.advisory} advisory`;
+  const where = `(${found.join(", ")})`;
+  if (totals.omissionGate) {
+    return `${counts} — omission gate present ${where}`;
+  }
+  return `${counts} — NO omission gate: nothing fails when source changes without its wiki doc; add \`impact --since <base>\` (see docs/OPERATIONS.md) ${where}`;
+}
+
+// Echoes the effective project config (llm-wiki.config.json) for doctor so the
+// config the CLI/programmatic-API/MCP surfaces merge is observable: "absent",
+// "present (type=..., profiles=..., agents=..., strict=on)", or a "present
+// (invalid: N error(s))" note when the file is malformed.
+async function describeEffectiveConfig(cwd) {
+  const { found, config, errors } = await loadProjectConfig(cwd);
+  if (!found) return "absent";
+  if (errors.length > 0) return `present (invalid: ${errors.length} error${errors.length === 1 ? "" : "s"})`;
+  const parts = [];
+  if (config.type != null) parts.push(`type=${config.type}`);
+  if (Array.isArray(config.profiles) && config.profiles.length > 0) parts.push(`profiles=${config.profiles.join("+")}`);
+  if (Array.isArray(config.agents) && config.agents.length > 0) parts.push(`agents=${config.agents.join("+")}`);
+  if (config.strict) parts.push("strict=on");
+  // Additive: the applied preset is echoed by name; `rules=N` keeps counting
+  // only the explicit entries (the preset expands at merge time, not here).
+  if (config.rulesPreset) parts.push(`rulesPreset=${config.rulesPreset}`);
+  if (config.rules && typeof config.rules === "object" && Object.keys(config.rules).length > 0) {
+    parts.push(`rules=${Object.keys(config.rules).length}`);
+  }
+  if (Array.isArray(config.requiredDocs) && config.requiredDocs.length > 0) {
+    parts.push(`requiredDocs=${config.requiredDocs.length}`);
+  }
+  if (config.templates && typeof config.templates === "object" && Object.keys(config.templates).length > 0) {
+    parts.push(`templates=${Object.keys(config.templates).length}`);
+  }
+  return parts.length > 0 ? `present (${parts.join(", ")})` : "present (no keys set)";
+}
+
+// One duplicated frontmatter key -> one warning finding (2026-07-27 audit). The
+// parser keeps last-wins semantics (additive — no existing document breaks); this
+// finding makes the silent overwrite visible. The message names only the KEY,
+// never either value, so a duplicated sensitive field cannot leak through a report.
+function duplicateKeyFinding(rel, key) {
+  return {
+    severity: "warning",
+    rule: "frontmatter.duplicate_key",
+    path: rel,
+    message: `Duplicate frontmatter key: ${key} (the last occurrence silently wins).`,
+    params: { key }
+  };
+}
+
+export async function validateFrontmatterCommand(options) {
+  const markdownFiles = await listTargetMarkdown(options.cwd);
+  const raw = [];
+
+  for (const file of markdownFiles) {
+    const rel = toPosix(path.relative(options.cwd, file));
+    const content = await readUtf8(file);
+    const parsed = parseFrontmatter(content);
+
+    for (const message of parsed.errors) {
+      raw.push({ severity: "error", rule: "frontmatter.parse", path: rel, message });
+    }
+    for (const key of parsed.duplicateKeys ?? []) {
+      raw.push(duplicateKeyFinding(rel, key));
+    }
+    for (const finding of validateFrontmatter(parsed.frontmatter, { strict: options.strict })) {
+      raw.push({ ...finding, path: rel });
+    }
+  }
+
+  const findings = applyRuleConfig(raw, options);
+  // Every other command reports the four-state ladder; this one reported only
+  // fail/pass, so a warning-level finding printed `result: pass` while --strict
+  // exited 1 and the CI log read as "passed but failed" (2026-07-31 measurement,
+  // frontmatter.duplicate_key in an adopting repo). The report states what was
+  // found; --strict decides whether a warning gates the build.
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const summary = [
+    `files_checked: ${markdownFiles.length}`,
+    `findings: ${findings.length}`,
+    `result: ${result}`
+  ];
+  const findingSummary = summarizeFindings(findings);
+
+  return withText({
+    command: "validate-frontmatter",
+    result,
+    summary,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Frontmatter Validation", [
+    { title: "Summary", body: summary },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.map(formatFinding) }
+  ]);
+}
+
+export async function statusCommand(options) {
+  const detection = await detectProject(options.cwd, options.type, options.profiles);
+  const agents = selectedAgents(options);
+  const wikiEntry = path.join(options.cwd, "docs", "llm-wiki", "index.md");
+  const initialized = await pathExists(wikiEntry);
+  const markdownFiles = initialized
+    ? await listMarkdownFiles(path.join(options.cwd, "docs", "llm-wiki"))
+    : [];
+  const documentStatus = await summarizeDocumentStatuses(options.cwd, markdownFiles);
+  const detectionFindings = detection.reviewItems.map((message) => ({
+    severity: "warning",
+    rule: "project.review_item",
+    path: ".",
+    message
+  }));
+  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles, options.requiredDocs);
+  const sourceFileFindings = await scanSourceFiles(options.cwd);
+  const relatedFindings = await scanRelatedReferences(options.cwd);
+  const enrichmentFindings = await scanEnrichment(options.cwd);
+  const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
+  const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
+  const ungroundedFindings = await scanUngroundedVerified(options.cwd);
+  const driftFindings = await scanEvidenceDrift(options.cwd, options);
+  const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
+  const wikiGraph = await collectWikiGraph(options.cwd);
+  const linkFindings = [
+    ...(await scanMarkdownLinks(options.cwd)),
+    ...wikiGraph.findings
+  ];
+  const adapterFindings = await scanAdapters(options.cwd, agents);
+  const thinBodyFindings = await scanThinBody(options.cwd, options);
+  const visibilityFindings = await scanVisibilityConsistency(options.cwd, options);
+  const findings = applyRuleConfig([
+    ...detectionFindings,
+    ...documentStatus.findings,
+    ...thinBodyFindings,
+    ...visibilityFindings,
+    ...structureFindings,
+    ...sourceFileFindings,
+    ...relatedFindings,
+    ...enrichmentFindings,
+    ...evidenceFindings,
+    ...evidenceSectionFindings,
+    ...ungroundedFindings,
+    ...driftFindings,
+    ...okfFindings,
+    ...linkFindings,
+    ...adapterFindings
+  ], options);
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const adapterStatus = await summarizeAdapterStatus(options.cwd, agents);
+  const summary = [
+    `result: ${result}`,
+    `initialized: ${initialized ? "yes" : "no"}`,
+    `project_type: ${detection.projectType}`,
+    `confidence: ${detection.confidence}`,
+    `active_profiles: ${detection.activeProfiles.join(", ")}`,
+    `selected_agents: ${agents.length ? agents.join(", ") : "none"}`,
+    `wiki_docs: ${markdownFiles.length}`,
+    `missing_required_docs: ${structureFindings.filter((finding) => finding.rule === "structure.required_doc").length}`,
+    `findings: ${findings.length}`
+  ];
+  const findingSummary = summarizeFindings(findings);
+
+  return withText({
+    command: "status",
+    result,
+    initialized,
+    detection,
+    documentStatus,
+    adapterStatus,
+    wikiGraph,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Status", [
+    { title: "Summary", body: summary },
+    { title: "Document Statuses", body: formatStatusCounts(documentStatus.counts) },
+    { title: "Adapters", body: adapterStatus.length ? adapterStatus : ["none selected"] },
+    { title: "Wiki Graph", body: formatWikiGraphSummary(wikiGraph) },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.map(formatFinding) },
+    { title: "Next Steps", body: statusNextSteps(initialized, documentStatus.counts, findings, agents) }
+  ]);
+}
+
+export async function nextCommand(options) {
+  const auditResult = await audit(options);
+  const actions = buildNextActions(auditResult, options);
+  const result = actions.some((action) => action.priority === "blocked")
+    ? "blocked"
+    : actions.some((action) => action.priority === "high")
+      ? "action_required"
+      : actions.length > 0
+        ? "ready"
+        : "pass";
+  // P5: per-document enrichment checklist — which placeholder sections each
+  // not-enriched doc still needs filled. Derived from the audit findings'
+  // additive `checklist` field (no file re-read); additive payload + section.
+  const enrichmentChecklist = (auditResult.findings ?? [])
+    .filter((finding) => finding.rule === "content.not_enriched")
+    .map((finding) => ({ path: finding.path, items: finding.checklist ?? [] }))
+    .sort((left, right) => left.path.localeCompare(right.path));
+  const summary = [
+    `result: ${result}`,
+    `project_type: ${auditResult.detection.projectType}`,
+    `confidence: ${auditResult.detection.confidence}`,
+    `active_profiles: ${auditResult.detection.activeProfiles.join(", ")}`,
+    `selected_agents: ${selectedAgents(options).join(", ") || "none"}`,
+    `audit_findings: ${auditResult.findings.length}`,
+    `recommended_actions: ${actions.length}`,
+    `documents_to_enrich: ${enrichmentChecklist.length}`
+  ];
+
+  return withText({
+    command: "next",
+    result,
+    detection: auditResult.detection,
+    wikiGraph: auditResult.wikiGraph,
+    auditFindingSummary: auditResult.findingSummary,
+    auditFindings: auditResult.findings,
+    actions,
+    enrichmentChecklist,
+    findings: []
+  }, "LLM-WIKI Next Actions", [
+    { title: "Summary", body: summary },
+    { title: "Recommended Actions", body: formatNextActions(actions) },
+    { title: "Enrichment Checklist", body: formatEnrichmentChecklist(enrichmentChecklist) },
+    { title: "Wiki Graph", body: formatWikiGraphSummary(auditResult.wikiGraph) },
+    { title: "Caveats", body: ["This command is advisory and does not write files. Run validate or audit when you need pass/fail validation."] }
+  ]);
+}
+
+export async function explainCommand(options) {
+  const rule = normalizeExplainRule(options.findingRule);
+  const explanation = localizeExplanation(rule, FINDING_EXPLANATIONS[rule], options.lang);
+
+  if (!explanation) {
+    const knownRules = Object.keys(FINDING_EXPLANATIONS).sort();
+    return withText({
+      command: "explain",
+      result: "blocked",
+      findingRule: rule,
+      knownRules,
+      findings: [{
+        severity: "blocked",
+        rule: "explain.unknown_rule",
+        path: ".",
+        message: `No explanation is registered for finding rule: ${rule}.`
+      }]
+    }, "LLM-WIKI Finding Explanation", [
+      { title: "Blocked", body: [`No explanation is registered for finding rule: ${rule}.`] },
+      { title: "Known Rules", body: knownRules }
+    ]);
+  }
+
+  const sections = [
+    { title: "Finding", body: [`rule: ${rule}`, `category: ${explanation.category}`, `default_severity: ${explanation.defaultSeverity}`] },
+    { title: "Meaning", body: [explanation.meaning] },
+    { title: "Why It Matters", body: [explanation.whyItMatters] },
+    { title: "Remediation", body: explanation.remediation },
+    { title: "Useful Commands", body: explanation.commands },
+    { title: "Related Rules", body: explanation.relatedRules.length ? explanation.relatedRules : ["none"] }
+  ];
+
+  return withText({
+    command: "explain",
+    result: "pass",
+    findingRule: rule,
+    explanation,
+    findings: []
+  }, "LLM-WIKI Finding Explanation", sections);
+}
+
+export async function audit(options) {
+  const detection = await detectProject(options.cwd, options.type, options.profiles);
+  const agents = selectedAgents(options);
+  const frontmatter = await validateFrontmatterCommand(options);
+  const detectionFindings = detection.reviewItems.map((message) => ({
+    severity: "warning",
+    rule: "project.review_item",
+    path: ".",
+    message
+  }));
+  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles, options.requiredDocs);
+  const encodingFindings = await scanEncoding(options.cwd);
+  const sensitiveFindings = await scanSensitive(options.cwd);
+  const sourceFileFindings = await scanSourceFiles(options.cwd);
+  const relatedFindings = await scanRelatedReferences(options.cwd);
+  const enrichmentFindings = await scanEnrichment(options.cwd);
+  const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
+  const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
+  const ungroundedFindings = await scanUngroundedVerified(options.cwd);
+  const driftFindings = await scanEvidenceDrift(options.cwd, options);
+  const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
+  const wikiGraph = await collectWikiGraph(options.cwd);
+  const linkFindings = [
+    ...(await scanMarkdownLinks(options.cwd)),
+    ...wikiGraph.findings
+  ];
+  const adapterFindings = await scanAdapters(options.cwd, agents);
+  const thinBodyFindings = await scanThinBody(options.cwd, options);
+  const visibilityFindings = await scanVisibilityConsistency(options.cwd, options);
+
+  const findings = applyRuleConfig([
+    ...detectionFindings,
+    ...structureFindings,
+    ...frontmatter.findings,
+    ...thinBodyFindings,
+    ...visibilityFindings,
+    ...encodingFindings,
+    ...sensitiveFindings,
+    ...sourceFileFindings,
+    ...relatedFindings,
+    ...enrichmentFindings,
+    ...evidenceFindings,
+    ...evidenceSectionFindings,
+    ...ungroundedFindings,
+    ...driftFindings,
+    ...okfFindings,
+    ...linkFindings,
+    ...adapterFindings
+  ], options);
+
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+
+  const summary = [
+    `result: ${result}`,
+    `project_type: ${detection.projectType}`,
+    `confidence: ${detection.confidence}`,
+    `active_profiles: ${detection.activeProfiles.join(", ")}`,
+    `selected_agents: ${agents.length ? agents.join(", ") : "none"}`,
+    `findings: ${findings.length}`
+  ];
+  const findingSummary = summarizeFindings(findings);
+
+  return withText({
+    command: "audit",
+    result,
+    detection,
+    wikiGraph,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Audit", [
+    { title: "Summary", body: summary },
+    { title: "Wiki Graph", body: formatWikiGraphSummary(wikiGraph) },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.map(formatFinding) },
+    { title: "Caveats", body: ["Stable validation is warning-friendly by default; use --strict when warnings should fail CI."] }
+  ]);
+}
+
+// migrateCommand stays in commands.js (not fix-migrate.js) because it calls the
+// audit() pipeline; keeping it beside audit avoids a commands.js<->fix-migrate.js
+// import cycle. Its block-version and remediation helpers live in fix-migrate.js.
+export async function migrateCommand(options) {
+  // --apply writes; the default (and --dry-run) previews. Unblocked for the 1.2
+  // line under GATE_REVIEW Gate 8: reuses the fix engine plus wiki_block_version
+  // stamping, preview-first and verified-preserving.
+  const write = options.apply === true;
+  const cwd = options.cwd;
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  const emptyReport = {
+    current: CURRENT_WIKI_BLOCK_VERSION,
+    counts: { current: 0, behind: 0, ahead: 0, unrecorded: 0, unknown: 0 },
+    gapDocuments: [],
+    aheadDocuments: []
+  };
+
+  if (!(await pathExists(wikiRoot))) {
+    return withText({
+      command: "migrate",
+      apply: write,
+      dryRun: !write,
+      result: "pass",
+      upgradeReport: emptyReport,
+      safeAdds: [],
+      reviewItems: [],
+      blockedItems: [],
+      applied: [],
+      planned: [],
+      skipped: [],
+      findings: []
+    }, write ? "LLM-WIKI Migration Apply" : "LLM-WIKI Migration Dry Run", [
+      { title: "Summary", body: [`mode: ${write ? "apply" : "dry-run"}`, "wiki: not initialized"] },
+      { title: "Caveats", body: ["docs/llm-wiki is not initialized; run init --write first. Nothing to migrate."] }
+    ]);
+  }
+
+  const analysis = await analyzeBlockVersions(cwd);
+  const upgrade = buildUpgradeReport(analysis);
+  const engine = await runMechanicalRemediation(cwd, { write, upgradeBlockVersion: true });
+
+  const auditResult = await audit({ ...options, dryRun: true });
+  const safeAdds = auditResult.findings
+    .filter((finding) => finding.rule === "structure.required_doc")
+    .map((finding) => `${finding.path} could be added as needs_review template.`);
+  const blockedItems = auditResult.findings
+    .filter((finding) => finding.severity === "blocked")
+    .map(formatFinding);
+  const reviewItems = auditResult.findings
+    .filter((finding) => finding.severity === "warning" || finding.severity === "error")
+    .map(formatFinding);
+
+  const result = engine.blockedFindings.some((finding) => finding.severity === "blocked") ? "blocked" : "pass";
+  const summary = [
+    `mode: ${write ? "apply" : "dry-run"}`,
+    `cli_block_version: ${analysis.current}`,
+    `${write ? "applied" : "planned"}: ${engine.changeList.length}`,
+    `skipped: ${engine.skipped.length}`,
+    `blocked: ${engine.blockedFindings.length}`
+  ];
+
+  return withText({
+    command: "migrate",
+    apply: write,
+    dryRun: !write,
+    result,
+    upgradeReport: {
+      current: analysis.current,
+      counts: upgrade.counts,
+      gapDocuments: upgrade.gapDocs.map((doc) => ({
+        path: doc.rel,
+        state: doc.state,
+        recorded: doc.recorded,
+        status: doc.status
+      })),
+      aheadDocuments: upgrade.aheadDocs.map((doc) => ({ path: doc.rel, recorded: doc.recorded }))
+    },
+    safeAdds,
+    reviewItems,
+    blockedItems,
+    applied: engine.applied,
+    planned: engine.planned,
+    skipped: engine.skipped,
+    findings: engine.blockedFindings
+  }, write ? "LLM-WIKI Migration Apply" : "LLM-WIKI Migration Dry Run", [
+    { title: "Summary", body: summary },
+    { title: "Upgrade Report (wiki_block_version)", body: upgrade.lines },
+    { title: "Documents to Upgrade", body: upgrade.detail },
+    { title: write ? "Applied Changes" : "Planned Changes", body: engine.changeList },
+    { title: "Skipped", body: engine.skipped },
+    { title: "Blocked", body: [...engine.blockedFindings.map(formatFinding), ...blockedItems] },
+    { title: "Missing Documents (scaffold with init --write)", body: safeAdds },
+    { title: "Human Review Required", body: reviewItems },
+    { title: "Caveats", body: [
+      write
+        ? "Applied under GATE_REVIEW Gate 8 scope: only docs/llm-wiki content, never verified documents, source_files/evidence values, Tier B fields, or document status. All writes remain needs_review."
+        : "No files were written. Verified documents are not modified. Raw sensitive values are omitted. Run migrate --apply to apply the planned changes."
+    ] }
+  ]);
+}
+
+// Monorepo profile (1.10, GATE_REVIEW Gate 15): opt-in per-package validation.
+// Detects npm/yarn workspace packages, runs the cwd-parameterized validate over
+// each package that has docs/llm-wiki/, and aggregates. Each package honors its
+// own llm-wiki.config.json (loaded per package). Read-only. The additive
+// `packages[]` (per-package roll-up) and flattened, package-prefixed `findings`
+// appear only in this command, so single-repo command output is unchanged.
+export async function monorepoCommand(options) {
+  const { packages, unsupported } = await detectWorkspaces(options.cwd);
+  const packageResults = [];
+  const skipped = [];
+  const findings = [];
+  for (const pkgRel of packages) {
+    const pkgPosix = toPosix(pkgRel);
+    const pkgCwd = path.join(options.cwd, pkgRel);
+    if (!(await pathExists(path.join(pkgCwd, "docs", "llm-wiki")))) {
+      skipped.push(`${pkgPosix}: no docs/llm-wiki`);
+      continue;
+    }
+    const pkgOptions = { ...options, cwd: pkgCwd, type: null, profiles: [], rules: {}, requiredDocs: [], templates: {} };
+    const { config, errors: configErrors } = await loadProjectConfig(pkgCwd);
+    if (configErrors.length === 0) mergeConfigIntoOptions(pkgOptions, config);
+    const validateResult = await validateCommand(pkgOptions);
+    const pkgFindings = (validateResult.findings ?? []).map((finding) => ({ ...finding, path: `${pkgPosix}::${finding.path}` }));
+    findings.push(...pkgFindings);
+    packageResults.push({
+      path: pkgPosix,
+      result: validateResult.result ?? "pass",
+      findings: pkgFindings.length,
+      configError: configErrors.length > 0
+    });
+  }
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const summary = [
+    `result: ${result}`,
+    `workspaces_detected: ${packages.length}`,
+    `wiki_packages: ${packageResults.length}`,
+    `skipped: ${skipped.length}`,
+    `findings: ${findings.length}`
+  ];
+  if (unsupported) summary.push(`unsupported: ${unsupported}`);
+
+  return withText({
+    command: "monorepo",
+    result,
+    packages: packageResults,
+    skipped,
+    unsupported: unsupported ?? null,
+    findings
+  }, "LLM-WIKI Monorepo", [
+    { title: "Summary", body: summary },
+    { title: "Packages", body: packageResults.length ? packageResults.map((pkg) => `${pkg.path}: ${pkg.result} (${pkg.findings} findings${pkg.configError ? "; config error" : ""})`) : ["no workspace packages with docs/llm-wiki"] },
+    { title: "Skipped", body: skipped.length ? skipped : ["none"] },
+    { title: "Caveats", body: ["Per-package validate; each package honors its own llm-wiki.config.json. npm/yarn workspaces only (pnpm/YAML deferred — see unsupported). Read-only aggregation."] }
+  ]);
+}
+
+export async function validateCommand(options) {
+  const auditResult = await audit(options);
+  let findings = auditResult.findings ?? [];
+  let changedScope = null;
+
+  if (options.changed) {
+    let changed = null;
+    try {
+      changed = changedFiles(options.cwd, options.since);
+    } catch {
+      changed = null;
+    }
+    if (!changed) {
+      findings = [{
+        severity: "error",
+        rule: "changed.unavailable",
+        path: ".",
+        message: "--changed requires a git repository; could not determine changed files."
+      }];
+      changedScope = "unavailable";
+    } else {
+      const changedSet = new Set(changed);
+      findings = findings.filter((finding) => changedSet.has(finding.path));
+      changedScope = `${changed.length} changed file(s)`;
+    }
+  }
+
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const summary = [
+    `result: ${result}`,
+    `mode: ${options.strict ? "strict" : "standard"}`,
+    ...(options.changed ? [`scope: changed${options.since ? ` since ${options.since}` : ""} (${changedScope})`] : []),
+    `project_type: ${auditResult.detection.projectType}`,
+    `confidence: ${auditResult.detection.confidence}`,
+    `active_profiles: ${auditResult.detection.activeProfiles.join(", ")}`,
+    `selected_agents: ${selectedAgents(options).join(", ") || "none"}`,
+    `findings: ${findings.length}`
+  ];
+  const findingSummary = summarizeFindings(findings);
+
+  return withText({
+    command: "validate",
+    result,
+    scopedToChanged: options.changed ? true : undefined,
+    detection: auditResult.detection,
+    wikiGraph: auditResult.wikiGraph,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Validation", [
+    { title: "Summary", body: summary },
+    { title: "Wiki Graph", body: formatWikiGraphSummary(auditResult.wikiGraph) },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.map(formatFinding) },
+    { title: "Caveats", body: [
+      "Validation reuses audit coverage for core, profile, selected-agent adapter, encoding, and sensitive-information checks.",
+      ...(options.changed ? ["--changed reports only findings on files changed vs the baseline; cross-document checks still run over the whole wiki. Run it from the repo root."] : [])
+    ] }
+  ]);
+}
+
+// ---- impact command (Gate 23 reverse-impact, read-only) ----------------
+const MANIFEST_BASENAME = "package.json";
+
+function parseJsonObject(text) {
+  if (typeof text !== "string") return null;
+  try {
+    // A BOM-prefixed manifest is valid on disk but not to JSON.parse; treating it
+    // as unparseable would only mean "not excluded", but it would do so for the
+    // wrong reason. Arrays and scalars are not manifests.
+    const value = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+// Directory prefixes a nested manifest must sit under to count as a package
+// manifest of record: the literal head of each `workspaces` glob in the ROOT
+// manifest. Without a declaration, a nested package.json is a fixture, a vendored
+// copy, or a sample — and its `version` may be test input rather than a release
+// number, which is exactly the case the exclusion below must not swallow.
+function workspacePrefixes(rootManifest) {
+  const declared = Array.isArray(rootManifest?.workspaces)
+    ? rootManifest.workspaces
+    : Array.isArray(rootManifest?.workspaces?.packages)
+      ? rootManifest.workspaces.packages
+      : [];
+  return declared
+    .filter((entry) => typeof entry === "string" && entry.trim())
+    .map((entry) => {
+      const head = entry.includes("*") ? entry.slice(0, entry.indexOf("*")) : `${entry}/`;
+      return head.endsWith("/") ? head : `${head.slice(0, head.lastIndexOf("/") + 1)}`;
+    })
+    .filter(Boolean);
+}
+
+// Paths in <changed> that are a package manifest whose only difference from the
+// baseline is the `version` value. N-13, decision (c) (maintainer, 2026-08-04):
+// a release commit changes the manifest by definition, so every release fired the
+// error-by-default impact gate at every verified document citing it — findings
+// nobody could act on, because no document's claims depend on the version number
+// (this repository's own profile says so in its body: "version is the single
+// source"). Turning the rule down instead would have dropped the block for ALL
+// source changes, and re-reviewing the fanout every release turns the gate into a
+// rubber stamp. `package.json` only: pyproject.toml and Cargo.toml would need a
+// parser and the zero-dependency invariant is worth more than the symmetry.
+//
+// Conservative in every direction — anything it cannot PROVE is a version bump
+// stays in the change set: an unparseable side, a manifest with no baseline blob
+// (new/untracked, or git unable to read the ref), a deleted working-tree file, a
+// `version` field added or removed rather than changed, a version that did not
+// actually move (a reformat or a line-ending conversion is not a version bump and
+// must not be reported as one), or a nested manifest in a repository that declares
+// no workspaces.
+//
+// The comparison is ORDER-SENSITIVE, and that is not pedantry: Node matches
+// conditional `exports`/`imports` in key order, so `{node, default}` and
+// `{default, node}` resolve to different files. A deep-equality compare ignores
+// order and would call a reorder version-only, withholding the one change that
+// decides what every consumer of the package imports. Serializing the rest with
+// JSON.stringify keeps order significant while still ignoring indentation, a BOM,
+// and line endings, which genuinely carry no meaning here.
+export async function versionOnlyManifestChanges(cwd, sinceRef, changed) {
+  const excluded = [];
+  const candidates = changed.filter(
+    (relPath) => relPath === MANIFEST_BASENAME || relPath.endsWith(`/${MANIFEST_BASENAME}`)
+  );
+  if (candidates.length === 0) return excluded;
+
+  const readWorkingTree = async (relPath) => {
+    try {
+      return parseJsonObject(await readUtf8(path.join(cwd, ...relPath.split("/"))));
+    } catch {
+      return null;
+    }
+  };
+  const prefixes = candidates.every((relPath) => relPath === MANIFEST_BASENAME)
+    ? []
+    : workspacePrefixes(await readWorkingTree(MANIFEST_BASENAME));
+
+  for (const relPath of candidates) {
+    if (relPath !== MANIFEST_BASENAME && !prefixes.some((prefix) => relPath.startsWith(prefix))) continue;
+    const before = parseJsonObject(fileAtRef(cwd, sinceRef || "HEAD", relPath));
+    if (!before) continue;
+    const after = await readWorkingTree(relPath);
+    if (!after) continue;
+    if (typeof before.version !== "string" || typeof after.version !== "string") continue;
+    if (before.version === after.version) continue;
+    const { version: _beforeVersion, ...beforeRest } = before;
+    const { version: _afterVersion, ...afterRest } = after;
+    if (JSON.stringify(beforeRest) === JSON.stringify(afterRest)) excluded.push(relPath);
+  }
+  return excluded;
+}
+
+// Diff-anchored complement to the date-anchored drift: flags verified documents
+// whose referenced source changed in the current diff (working tree, or a
+// `--since <ref>` PR/CI baseline) while the document itself did not. Read-only;
+// remediation stays with the reviewer or `drift --downgrade`. The rule is an
+// ERROR by default since decision 21 (2026-08-03), so this command fails CI on
+// its own and `--strict` is a no-op for it; a project dials it down through
+// config `rules` or `rulesPreset: "relaxed"`. Empty change set = no-op.
+// Scope: GATE_REVIEW.md ("Reverse-Impact (Changed-Source → Wiki) Scope Decision").
+export async function impactCommand(options) {
+  const cwd = options.cwd;
+
+  let changed = null;
+  try {
+    changed = changedFiles(cwd, options.since);
+  } catch {
+    changed = null;
+  }
+
+  if (!changed) {
+    const findings = applyRuleConfig([{
+      severity: "error",
+      rule: "impact.unavailable",
+      path: ".",
+      message: `impact requires a git repository; could not determine the changed-file set${options.since ? ` since ${options.since}` : ""}.`
+    }], options);
+    const findingSummary = summarizeFindings(findings);
+    return withText({
+      command: "impact",
+      result: findings.some((finding) => finding.severity === "error") ? "fail" : "pass",
+      since: options.since,
+      changedFiles: 0,
+      versionOnlyExcluded: [],
+      findingSummary,
+      findings
+    }, "LLM-WIKI Reverse-Impact", [
+      { title: "Summary", body: ["result: fail", "changed: unavailable (not a git repository, or a bad --since ref)"] },
+      { title: "Findings", body: findings.map(formatFinding) },
+      { title: "Caveats", body: ["Run inside a git repository from the repo root. Use --since <ref> to compare against a PR base ref."] }
+    ]);
+  }
+
+  // Reported as changed, but not used for anchoring: see versionOnlyManifestChanges.
+  // `changed` itself is left alone so changed_files keeps meaning "what moved".
+  const versionOnlyExcluded = await versionOnlyManifestChanges(cwd, options.since, changed);
+  const changedSet = new Set(changed.filter((relPath) => !versionOnlyExcluded.includes(relPath)));
+  const findings = applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
+
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const findingSummary = summarizeFindings(findings);
+  const summary = [
+    `result: ${result}`,
+    `mode: ${options.strict ? "strict" : "standard"}`,
+    `baseline: ${options.since ? `since ${options.since}` : "working tree"}`,
+    `changed_files: ${changed.length}`,
+    `anchoring_files: ${changedSet.size}${versionOnlyExcluded.length ? ` (version-only manifest excluded: ${versionOnlyExcluded.join(", ")})` : ""}`,
+    `impacted_verified_docs: ${findings.filter((finding) => finding.rule === "impact.source_changed").length}`,
+    `findings: ${findings.length}`
+  ];
+
+  return withText({
+    command: "impact",
+    result,
+    since: options.since,
+    changedFiles: changed.length,
+    versionOnlyExcluded,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Reverse-Impact", [
+    { title: "Summary", body: summary },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.map(formatFinding) },
+    { title: "Caveats", body: [
+      "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (file-level, git-diff based). Run it from the repo root.",
+      "impact.source_changed is an error by default, so this command fails a build on its own; --strict does not change that. Dial it down per project with \"impact.source_changed\": \"warning\" (or \"info\"/\"off\") in llm-wiki.config.json rules, or rulesPreset: \"relaxed\". This complements the date-anchored evidence.stale (drift), it does not replace it.",
+      "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release.",
+      "A package.json whose diff moves nothing but the version value is reported as changed but not used for anchoring (N-13, 2026-08-04): every release bumps it and no document's claims depend on the number. Any other key, an unparseable manifest, a version field added or removed, or a manifest with no baseline to compare against all still count. Version-only exclusion is package.json only, and never applies to pyproject.toml or Cargo.toml.",
+      "Documents under docs/llm-wiki/templates/ are out of scope (N-14, 2026-08-06): they are skeletons adopters copy, and review cannot promote or re-stamp them, so flagging them produced findings with no way to clear them."
+    ] }
+  ]);
+}
+
+// Gate 26 (agent update runner + completion contract): read-only check of a
+// wiki-grounded skill run's manifest. A run manifest (.llm-wiki/runs/*.json)
+// records what a run claims it did — changed source, touched docs, log appended,
+// validation — and this verifies the claimed pipeline actually happened, so CI
+// can catch a code change whose wiki update was skipped. Read-only: the only
+// write is the manifest the agent authors during its own run (never here).
+// Default warning; --strict (via the shared exit-code rule) fails CI.
+// Picks the genuinely newest run manifest under .llm-wiki/runs/.
+//
+// This used to be a filename sort taking the last entry, but manifests are named
+// run-<task>-<timestamp>.json, so the TASK NAME dominates the timestamp: "fix"
+// sorts after "feature" sorts after "docs-sync", and check-run happily inspected
+// a days-old manifest while calling it the latest. Measured in this repo: the
+// newest manifest was a 2026-07-30 feature run, and check-run selected a
+// 2026-07-27 fix run. That silently verifies the wrong run — the worst failure
+// mode for a completion gate, because it still reports pass.
+//
+// The manifest's own `timestamp` field is the authority: it survives a fresh
+// clone (unlike mtime) and does not depend on the filename convention, which is
+// not uniform in practice (some real manifests carry no parseable timestamp at
+// all). mtime is the fallback for manifests that omit the field, and the
+// filename breaks any remaining tie so selection stays deterministic.
+//
+// N-6 (decision 22, 2026-08-03): selection now prefers TRACKED manifests. A repo
+// that commits its manifests used to go green locally on a freshly written,
+// still-uncommitted file while CI's clean checkout picked the newest committed
+// one and disagreed — local stopped predicting CI, which is the actual damage the
+// manifest-commit policy debate was causing. When git tracks at least one
+// manifest we rank only those, so both sides see the same file.
+//
+// A repo that gitignores its manifests (this one does, and so does one of the four
+// adopters) tracks none, and a tracked-only rule would leave it permanently
+// reporting run.manifest_missing — red under --strict, and it would break this
+// repository's own documented workflow in AGENTS.md. So the fallback is the full
+// on-disk set, and the caller reports that CI will not see the selected file.
+async function selectLatestManifest(cwd, runsDir) {
+  let names = [];
+  try {
+    names = (await readdir(runsDir)).filter((name) => name.endsWith(".json"));
+  } catch {
+    return null;
+  }
+  if (names.length === 0) return null;
+
+  const relDir = toPosix(path.relative(cwd, runsDir));
+  const tracked = trackedPaths(cwd, relDir);
+  const trackedNames = tracked === null
+    ? null
+    : names.filter((name) => tracked.has(`${relDir}/${name}`));
+  const usingTracked = Array.isArray(trackedNames) && trackedNames.length > 0;
+  const candidates = usingTracked ? trackedNames : names;
+
+  const ranked = [];
+  for (const name of candidates) {
+    const abs = path.join(runsDir, name);
+    let stamp = null;
+    try {
+      const parsed = JSON.parse(await readUtf8(abs));
+      const value = Date.parse(parsed?.timestamp);
+      if (Number.isFinite(value)) stamp = value;
+    } catch {
+      // Unreadable or malformed JSON still competes on mtime; check-run reports
+      // run.manifest_invalid for it once selected, which is the honest outcome.
+    }
+    if (stamp === null) {
+      try {
+        stamp = (await stat(abs)).mtimeMs;
+      } catch {
+        stamp = 0;
+      }
+    }
+    ranked.push({ name, abs, stamp });
+  }
+
+  ranked.sort((a, b) => (a.stamp - b.stamp) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return { path: ranked[ranked.length - 1].abs, tracked: usingTracked, onDisk: names.length, trackedCount: trackedNames === null ? null : trackedNames.length };
+}
+
+export async function checkRunCommand(options) {
+  const cwd = options.cwd;
+  const runsDir = path.join(cwd, ".llm-wiki", "runs");
+
+  let manifestPath = null;
+  let selection = null;
+  if (typeof options.run === "string" && options.run.trim()) {
+    manifestPath = path.isAbsolute(options.run) ? options.run : path.join(cwd, options.run);
+  } else {
+    selection = await selectLatestManifest(cwd, runsDir);
+    manifestPath = selection ? selection.path : null;
+  }
+
+  // N-6: say it out loud when the file CI would read is not the file we read.
+  // Info, not warning: a repo that gitignores its manifests is making a policy
+  // choice, and turning that choice into a --strict failure would be this tool
+  // picking a side in a decision it was asked to make predictable, not to settle.
+  const selectionFindings = selection && !selection.tracked && selection.trackedCount !== null
+    ? [{
+        severity: "info",
+        rule: "run.manifest_untracked",
+        path: toPosix(path.relative(cwd, runsDir)),
+        message: `Selected manifest is not tracked by git, so a clean checkout (CI) would not see it; CI would report no manifest. ${selection.onDisk} manifest(s) on disk, 0 tracked.`,
+        params: { onDisk: String(selection.onDisk) }
+      }]
+    : [];
+
+  if (!manifestPath) {
+    const findings = applyRuleConfig([{
+      severity: "warning",
+      rule: "run.manifest_missing",
+      path: toPosix(path.relative(cwd, runsDir)),
+      message: "No run manifest found under .llm-wiki/runs/ (nothing to check)."
+    }], options);
+    return finishCheckRun(options, null, applyRuleConfig(selectionFindings, options).concat(findings));
+  }
+
+  const relManifest = toPosix(path.relative(cwd, manifestPath));
+  let manifest = null;
+  try {
+    manifest = JSON.parse(await readUtf8(manifestPath));
+  } catch {
+    return finishCheckRun(options, relManifest, applyRuleConfig([...selectionFindings, {
+      severity: "error",
+      rule: "run.manifest_invalid",
+      path: relManifest,
+      message: "Run manifest is not valid JSON."
+    }], options));
+  }
+
+  const changedSource = Array.isArray(manifest.changedSource)
+    ? manifest.changedSource.filter((item) => typeof item === "string" && item.trim())
+    : null;
+  if (!changedSource) {
+    return finishCheckRun(options, relManifest, applyRuleConfig([...selectionFindings, {
+      severity: "error",
+      rule: "run.manifest_invalid",
+      path: relManifest,
+      message: "Run manifest is missing a changedSource array."
+    }], options));
+  }
+  const touchedDocs = Array.isArray(manifest.touchedDocs)
+    ? manifest.touchedDocs.filter((item) => typeof item === "string" && item.trim())
+    : [];
+
+  const findings = [...selectionFindings];
+  const covered = new Set();
+  for (const docRel of touchedDocs) {
+    for (const base of await docSourceAnchors(cwd, docRel)) covered.add(base);
+  }
+  for (const src of changedSource) {
+    const norm = toPosix(src.split("#")[0].trim());
+    if (!norm || isExternalSourceReference(norm)) continue;
+    if (!covered.has(norm)) {
+      findings.push({
+        severity: "warning",
+        rule: "run.doc_gap",
+        path: relManifest,
+        message: `Changed source is not referenced by any touched wiki document: ${norm}.`
+      });
+    }
+  }
+  // Decision 23 (2026-08-03): cross-check the manifest's SELF-REPORT against git.
+  // Gap 4 of the roadmap is that the proposer and the verifier are the same
+  // party — an agent that declares `changedSource: []` makes run.doc_gap
+  // impossible to fire, and nothing noticed. Comparing the declaration to the
+  // working-tree diff is the cheapest independent check available.
+  //
+  // Conservative on purpose: it only speaks when git reports a NON-EMPTY change
+  // set, because an empty one cannot be told apart from "the run was already
+  // committed", and check-run is often invoked after a commit. Wiki documents and
+  // the manifest directory are excluded — those are touchedDocs and the run's own
+  // bookkeeping, not changed source. Warning, never error: this is a heuristic
+  // about a working tree that may legitimately carry unrelated edits.
+  const undeclared = [];
+  const declared = new Set(changedSource.map((entry) => toPosix(entry.trim())));
+  const actual = modifiedTrackedFiles(cwd);
+  if (actual && actual.length > 0) {
+    for (const file of actual.map((entry) => toPosix(entry))) {
+      if (file.startsWith("docs/llm-wiki/") || file.startsWith(".llm-wiki/")) continue;
+      if (declared.has(file)) continue;
+      undeclared.push(file);
+    }
+  }
+  for (const file of undeclared.sort()) {
+    findings.push({
+      severity: "warning",
+      rule: "run.change_set_undeclared",
+      path: file,
+      message: "File changed in the working tree but the run manifest does not list it in changedSource, so the doc-gap check could not consider it.",
+      params: { manifest: relManifest }
+    });
+  }
+  if (manifest.logAppended !== true) {
+    findings.push({
+      severity: "warning",
+      rule: "run.log_missing",
+      path: relManifest,
+      message: "Run manifest reports the change log was not appended (logAppended !== true)."
+    });
+  }
+  if (!checkRunValidated(manifest.validated)) {
+    findings.push({
+      severity: "warning",
+      rule: "run.unvalidated",
+      path: relManifest,
+      message: "Run manifest reports validation did not run or did not pass."
+    });
+  }
+  // Test-evidence trail (2026-07-28, additive): a code-changing feature/fix run
+  // should record that the relevant test failed before the change and passed
+  // after it (testEvidence: { red, green } — free-form test name/log summaries,
+  // never raw secrets). The field is optional in the manifest shape: legacy
+  // manifests stay valid (run.manifest_invalid semantics untouched) and only
+  // gain this toggleable warning; documentation-only tasks are exempt.
+  const manifestTask = typeof manifest.task === "string" ? manifest.task.trim() : "";
+  if (TEST_EVIDENCE_TASKS.has(manifestTask) && changedSource.length > 0) {
+    const missingParts = missingTestEvidenceParts(manifest.testEvidence);
+    if (missingParts.length > 0) {
+      const missingLabel = missingParts.map((part) => `testEvidence.${part}`).join(", ");
+      findings.push({
+        severity: "warning",
+        rule: "run.test_evidence_missing",
+        path: relManifest,
+        message: `Run manifest for a code-changing ${manifestTask} run has incomplete test evidence (missing: ${missingLabel}); record the failing test before the change (red) and the passing run after (green).`,
+        params: { task: manifestTask, missing: missingLabel }
+      });
+    }
+  }
+
+  return finishCheckRun(options, relManifest, applyRuleConfig(findings, options), {
+    task: typeof manifest.task === "string" ? manifest.task : null,
+    changedSource: changedSource.length,
+    touchedDocs: touchedDocs.length
+  });
+}
+
+function checkRunValidated(validated) {
+  if (validated === true) return true;
+  if (validated && typeof validated === "object") {
+    return validated.ran === true && (validated.result === "pass" || validated.result === undefined);
+  }
+  return false;
+}
+
+// Tasks whose completion contract includes a test-evidence trail: feature and
+// fix runs change code, so their manifest should show the relevant test failed
+// before the change (red) and passed after it (green). docs-sync and bootstrap
+// are documentation-only and stay exempt (as does any unclassifiable task).
+const TEST_EVIDENCE_TASKS = new Set(["feature", "fix"]);
+
+// Which testEvidence parts are missing or blank. Complete evidence is an object
+// with non-empty string `red` and `green`; anything else (absent field, wrong
+// shape, blank strings) reports the offending part names — names only, never
+// manifest values.
+function missingTestEvidenceParts(testEvidence) {
+  if (!testEvidence || typeof testEvidence !== "object" || Array.isArray(testEvidence)) return ["red", "green"];
+  const missing = [];
+  if (typeof testEvidence.red !== "string" || !testEvidence.red.trim()) missing.push("red");
+  if (typeof testEvidence.green !== "string" || !testEvidence.green.trim()) missing.push("green");
+  return missing;
+}
+
+// Local source-file anchors (source_files + non-external evidence bases) a touched
+// wiki document cites, regardless of its status. Missing/unreadable docs yield an
+// empty set (best-effort). Used to match a manifest's changedSource.
+async function docSourceAnchors(cwd, docRel) {
+  const anchors = new Set();
+  let content;
+  try {
+    content = await readUtf8(path.join(cwd, docRel));
+  } catch {
+    return anchors;
+  }
+  const frontmatter = parseFrontmatter(content).frontmatter ?? {};
+  for (const entry of Array.isArray(frontmatter.source_files) ? frontmatter.source_files : []) {
+    if (typeof entry !== "string") continue;
+    const base = entry.split("#")[0].trim();
+    if (base && !isExternalSourceReference(base)) anchors.add(toPosix(base));
+  }
+  for (const entry of Array.isArray(frontmatter.evidence) ? frontmatter.evidence : []) {
+    if (typeof entry !== "string") continue;
+    const ref = parseEvidenceReference(entry.trim());
+    if (ref && !ref.external && ref.source) anchors.add(toPosix(ref.source));
+  }
+  return anchors;
+}
+
+function finishCheckRun(options, relManifest, findings, extra = {}) {
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const findingSummary = summarizeFindings(findings);
+  const summary = [
+    `result: ${result}`,
+    `mode: ${options.strict ? "strict" : "standard"}`,
+    `manifest: ${relManifest ?? "(none)"}`
+  ];
+  if (extra.task) summary.push(`task: ${extra.task}`);
+  if (extra.changedSource !== undefined) {
+    summary.push(`changed_source: ${extra.changedSource}`, `touched_docs: ${extra.touchedDocs}`);
+  }
+  summary.push(`findings: ${findings.length}`);
+
+  return withText({
+    command: "check-run",
+    result,
+    manifest: relManifest,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Check-Run", [
+    { title: "Summary", body: summary },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
+    { title: "Caveats", body: [
+      "Read-only: check-run verifies a skill run's manifest under .llm-wiki/runs/; it never writes. The manifest is authored by the agent during its own run.",
+      "Default warning; use --strict (for CI) to fail, or set \"run.*\" in llm-wiki.config.json rules. File-level — it proves the pipeline ran, not that the prose is correct."
+    ] }
+  ]);
+}
+
+// ---- review command (Gate 20 human review -> verified) -----------------
+// Supports the weakest, most manual part of the loop: reviewing the needs_review
+// backlog and promoting good docs to verified. LIST mode (default) is READ-ONLY —
+// it risk-ranks needs_review content docs (never-enriched / thin body / missing
+// ## Evidence / broken links / no-evidence first) with a per-doc quality + evidence
+// summary so a human can spot-check quickly. APPROVE mode (--approve <path>... or
+// --approve-all --yes) stamps ONLY the review stamp on the named docs — status:
+// verified + reviewed_by + reviewed_at, plus the tags: status tag when the doc
+// already carries one (syncStatusTag, added 2026-07-31 for N-4); it NEVER
+// auto-verifies, refuses any doc with blocking/structural findings (blocked/error
+// severity), and never edits body / source_files / evidence / last_updated.
+// reviewed_by resolves explicit --reviewer > config reviewer > git
+// user.name, and the command refuses to stamp (never blank/fabricated) when none
+// resolves. Scope: GATE_REVIEW.md ("Review Workflow Scope Decision", Gate 20). MCP
+// exposes the LIST surface only (buildToolOptions copies no approve fields).
+const REVIEW_RISK_WEIGHTS = {
+  "content.not_enriched": 40,
+  "content.thin_body": 30,
+  "related.missing": 20,
+  "markdown_link.missing": 20,
+  "evidence.ungrounded": 20,
+  "evidence.section_missing": 15,
+  "evidence.section_empty": 15,
+  "wiki_link.missing": 15,
+  "evidence.section_unlisted": 10
+};
+
+export async function reviewCommand(options) {
+  const cwd = options.cwd;
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  const approvePaths = Array.isArray(options.approve)
+    ? options.approve.filter((entry) => typeof entry === "string" && entry.trim())
+    : [];
+  const approveAll = options.approveAll === true;
+  const approving = approvePaths.length > 0 || approveAll;
+
+  if (!(await pathExists(wikiRoot))) {
+    return withText({
+      command: "review",
+      result: "pass",
+      mode: approving ? "approve" : "list",
+      needsReview: 0,
+      documents: [],
+      findings: []
+    }, "LLM-WIKI Review", [
+      { title: "Summary", body: [`mode: ${approving ? "approve" : "list"}`, "wiki: not initialized"] },
+      { title: "Caveats", body: ["docs/llm-wiki is not initialized; run init --write first. Nothing to review."] }
+    ]);
+  }
+
+  // One audit run supplies per-document findings for both risk ranking and the
+  // promotion gate (a doc with any blocked/error finding cannot be approved).
+  const auditResult = await audit(options);
+  const findingsByPath = new Map();
+  for (const finding of auditResult.findings) {
+    if (!finding.path || finding.path === ".") continue;
+    if (!findingsByPath.has(finding.path)) findingsByPath.set(finding.path, []);
+    findingsByPath.get(finding.path).push(finding);
+  }
+
+  const docs = await loadContentDocs(cwd);
+  const { kept } = applyFilters(docs, { includeSensitive: options.includeSensitive });
+  const needsReviewDocs = kept.filter((doc) => doc.frontmatter.status === "needs_review" && !isAppendOnlyLog(doc.path));
+  const reviewed = needsReviewDocs
+    .map((doc) => buildReviewEntry(doc, findingsByPath.get(doc.path) ?? []))
+    .sort((left, right) => right.riskScore - left.riskScore || left.path.localeCompare(right.path));
+
+  if (!approving) return renderReviewList(reviewed, docs.length, options.includeSensitive);
+  return approveReview(options, { cwd, reviewed, docs, findingsByPath, approvePaths, approveAll });
+}
+
+function reviewDocType(frontmatter) {
+  if (typeof frontmatter.doc_type === "string" && frontmatter.doc_type.trim()) return frontmatter.doc_type;
+  if (typeof frontmatter.type === "string" && frontmatter.type.trim()) return frontmatter.type;
+  return null;
+}
+
+// Findings that make a document unapprovable no matter what severity they carry.
+// Kept narrow on purpose: most warnings (stale evidence, a broken link) are things
+// a human reviewer can legitimately look at and sign off on, and blocking those
+// would make `review` useless. "This document is still a generated scaffold" is
+// different in kind — there is no content to have reviewed.
+const NEVER_APPROVE_RULES = new Set(["content.not_enriched"]);
+
+function buildReviewEntry(doc, findings) {
+  const blocking = findings.filter((finding) => finding.severity === "blocked" || finding.severity === "error");
+  const unenriched = findings.filter((finding) => NEVER_APPROVE_RULES.has(finding.rule));
+  const findingsBySeverity = {};
+  for (const finding of findings) {
+    findingsBySeverity[finding.severity] = (findingsBySeverity[finding.severity] ?? 0) + 1;
+  }
+  const evidenceBacked =
+    (Array.isArray(doc.frontmatter.source_files) && doc.frontmatter.source_files.some((value) => typeof value === "string" && value.trim()))
+    || (Array.isArray(doc.frontmatter.evidence) && doc.frontmatter.evidence.some((value) => typeof value === "string" && value.trim()));
+  let riskScore = blocking.length * 100;
+  for (const finding of findings) riskScore += REVIEW_RISK_WEIGHTS[finding.rule] ?? 5;
+  if (!evidenceBacked) riskScore += 25;
+  return {
+    path: doc.path,
+    title: typeof doc.frontmatter.title === "string" ? doc.frontmatter.title : null,
+    docType: reviewDocType(doc.frontmatter),
+    visibility: doc.visibility,
+    lastUpdated: typeof doc.frontmatter.last_updated === "string" ? doc.frontmatter.last_updated : null,
+    evidenceBacked,
+    riskScore,
+    // Also gates --approve-all, so a bulk approval cannot sweep up scaffolds.
+    approvable: blocking.length === 0 && unenriched.length === 0,
+    blockingFindings: blocking.map((finding) => `${finding.rule}: ${finding.message}`),
+    findingCount: findings.length,
+    findingsBySeverity,
+    topFindings: findings.slice(0, 6).map((finding) => ({ severity: finding.severity, rule: finding.rule }))
+  };
+}
+
+function renderReviewList(reviewed, totalScanned, includeSensitive) {
+  const approvableCount = reviewed.filter((doc) => doc.approvable).length;
+  const blockedCount = reviewed.length - approvableCount;
+  const summary = [
+    `needs_review: ${reviewed.length}`,
+    `approvable: ${approvableCount}`,
+    `blocked_by_findings: ${blockedCount}`,
+    `total_docs_scanned: ${totalScanned}${includeSensitive ? " (restricted/sensitive included)" : ""}`
+  ];
+  if (reviewed.length === 0) summary.push("No needs_review documents. Nothing to review.");
+  const docLines = reviewed.map((doc) => {
+    const flags = [];
+    if (!doc.approvable) flags.push("BLOCKED");
+    if (!doc.evidenceBacked) flags.push("no-evidence");
+    const severity = doc.findingCount ? ` (${formatCountMap(doc.findingsBySeverity)})` : "";
+    return `${doc.path} — ${doc.title ?? "(no title)"} [risk ${doc.riskScore}${flags.length ? `, ${flags.join(", ")}` : ""}] findings: ${doc.findingCount}${severity}`;
+  });
+  return withText({
+    command: "review",
+    result: "pass",
+    mode: "list",
+    needsReview: reviewed.length,
+    approvable: approvableCount,
+    documents: reviewed,
+    findings: []
+  }, "LLM-WIKI Review", [
+    { title: "Summary", body: summary },
+    { title: "Needs Review (risk-ranked)", body: docLines.length ? docLines : ["none"] },
+    { title: "Caveats", body: [
+      "Read-only list. Risk-ranks needs_review docs (never-enriched / thin / no-evidence / broken-link first) for fast spot-checking. Restricted/sensitive docs are excluded unless --include-sensitive.",
+      "Scope: content documents under docs/llm-wiki, excluding docs/llm-wiki/templates/ (skeletons adopters copy) and the append-only log. The freshness gates (drift, impact) skip templates too, so this boundary no longer produces findings you cannot clear (N-14).",
+      "Promotion to verified is never automatic: run review --approve <path> (or review --approve-all --yes) to stamp verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one. Docs with blocking/structural findings are refused until fixed. Human review is the default; if your project delegates the approval run, set llm-wiki.config.json \"reviewer\" so reviewed_by names whoever actually approves."
+    ] }
+  ]);
+}
+
+// Resolve the reviewer name for a stamp: explicit --reviewer (or config reviewer,
+// merged into options.reviewer with CLI winning) beats the git identity; when none
+// resolves, returns null and the caller refuses to stamp.
+function resolveReviewer(options, cwd) {
+  if (typeof options.reviewer === "string" && options.reviewer.trim()) return options.reviewer.trim();
+  return gitUserName(cwd);
+}
+
+function resolveContentDocPath(docs, given) {
+  const clean = toPosix(String(given ?? "").trim().replace(/^\.\//, "").replace(/^\/+/, ""));
+  if (!clean) return null;
+  const withMd = clean.endsWith(".md") ? clean : `${clean}.md`;
+  const candidates = new Set([clean, withMd, `docs/llm-wiki/${clean}`, `docs/llm-wiki/${withMd}`]);
+  const exact = docs.find((doc) => candidates.has(doc.path));
+  if (exact) return exact.path;
+  return docs.find((doc) => doc.path.endsWith(`/${clean}`) || doc.path.endsWith(`/${clean}.md`))?.path ?? null;
+}
+
+// Stamp status: verified + reviewed_by + reviewed_at on one document, and sync the
+// tags: status tag when the doc already carries one. Mirrors the drift --downgrade
+// discipline in reverse: touches ONLY those fields, never body / source_files /
+// evidence / last_updated. Skips mojibake and re-scans the result for sensitive
+// content (blocking the write if it matches), like fix/drift.
+async function stampVerified(cwd, rel, reviewer, today) {
+  const abs = path.join(cwd, rel);
+  const original = await readUtf8(abs);
+  if (findMojibakeIndicators(original).length > 0) {
+    return { changed: false, blocked: false, reason: "possible mojibake; approval skipped" };
+  }
+  const split = splitFrontmatter(original);
+  if (!split) return { changed: false, blocked: false, reason: "could not locate frontmatter block" };
+
+  let inner = replaceFrontmatterScalar(split.inner, "status", "verified");
+  if (inner === null) inner = upsertFrontmatterScalar(split.inner, "status", "verified", split.eol);
+  inner = upsertFrontmatterScalar(inner, "reviewed_by", reviewer, split.eol);
+  inner = upsertFrontmatterScalar(inner, "reviewed_at", today, split.eol);
+  inner = syncStatusTag(inner, "verified");
+
+  const newContent = `${split.bom}${split.open}${inner}${split.close}${split.body}`;
+  if (newContent === original) return { changed: false, blocked: false, reason: "no change (already verified with this reviewer)" };
+  if (scanSensitiveInfo(newContent).length > 0) {
+    return {
+      changed: false,
+      blocked: true,
+      reason: "resulting content matched sensitive-info rules",
+      finding: { severity: "blocked", rule: "sensitive.redacted", path: rel, message: "Approval skipped: resulting content matched sensitive-info rules." }
+    };
+  }
+  await writeUtf8(abs, newContent);
+  return { changed: true, blocked: false };
+}
+
+// Why a path this command cannot promote is not simply "not found" (N-14,
+// 2026-08-06): review enumerates content docs (listWikiContentDocs, templates
+// excluded) while validate/impact/drift enumerate all of docs/llm-wiki
+// (listTargetMarkdown). Answering "not found under docs/llm-wiki" for a
+// template that is plainly there sent people hunting for a typo instead of
+// telling them the boundary. Resolves against the WIDER enumerator on purpose,
+// so the answer describes the file that exists rather than the set this command
+// happens to hold.
+async function refusalReasonForUnknownPath(cwd, given) {
+  const clean = toPosix(String(given ?? "").trim().replace(/^\.\//, "").replace(/^\/+/, ""));
+  if (!clean) return "not found under docs/llm-wiki";
+  const withMd = clean.endsWith(".md") ? clean : `${clean}.md`;
+  const candidates = new Set([clean, withMd, `docs/llm-wiki/${clean}`, `docs/llm-wiki/${withMd}`]);
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    if (!candidates.has(rel)) continue;
+    if (isTemplateDoc(rel)) {
+      return "outside review scope: templates are skeletons for adopters to copy, so review never promotes them (the freshness gates skip them too)";
+    }
+    return "outside review scope";
+  }
+  return "not found under docs/llm-wiki";
+}
+
+async function approveReview(options, { cwd, reviewed, docs, findingsByPath, approvePaths, approveAll }) {
+  const reviewer = resolveReviewer(options, cwd);
+  if (!reviewer) {
+    const findings = applyRuleConfig([{
+      severity: "error",
+      rule: "review.reviewer_unresolved",
+      path: ".",
+      message: "Cannot stamp reviewed_by: no reviewer resolved. Set git user.name, add \"reviewer\" to llm-wiki.config.json, or pass --reviewer <name>."
+    }], options);
+    return finishReview(reviewed, { mode: "approve", approved: [], refused: [], reviewer: null, findings });
+  }
+
+  // --approve-all is a broad sign-off; require an explicit --yes confirmation.
+  if (approveAll && options.yes !== true) {
+    const eligible = reviewed.filter((doc) => doc.approvable).length;
+    const findings = applyRuleConfig([{
+      severity: "error",
+      rule: "review.confirmation_required",
+      path: ".",
+      message: `review --approve-all would promote ${eligible} needs_review document(s) to verified. Re-run with --yes to confirm.`
+    }], options);
+    return finishReview(reviewed, { mode: "approve", approved: [], refused: [], reviewer, findings });
+  }
+
+  const byPath = new Map(docs.map((doc) => [doc.path, doc]));
+  const reviewByPath = new Map(reviewed.map((entry) => [entry.path, entry]));
+  const targets = approveAll
+    ? reviewed.filter((doc) => doc.approvable).map((doc) => doc.path)
+    : approvePaths.map((given) => resolveContentDocPath(docs, given) ?? given);
+
+  const approved = [];
+  const refused = [];
+  const blockedFindings = [];
+  const today = todayIsoDate();
+
+  for (const rel of targets) {
+    const doc = byPath.get(rel);
+    if (!doc) { refused.push({ path: rel, reason: await refusalReasonForUnknownPath(cwd, rel) }); continue; }
+    // --approve-all already skips the append-only log (it is filtered out of the
+    // review list), but naming it explicitly used to stamp it verified. Same
+    // boundary, two answers; N-14 (2026-08-06) made the explicit path agree.
+    if (isAppendOnlyLog(doc.path)) {
+      refused.push({ path: doc.path, reason: "outside review scope: the append-only log is not a review target" });
+      continue;
+    }
+    const status = doc.frontmatter.status;
+    if (status === "verified") { refused.push({ path: doc.path, reason: "already verified" }); continue; }
+    if (status !== "needs_review") {
+      refused.push({ path: doc.path, reason: `status is ${status ?? "unset"} (only needs_review can be approved)` });
+      continue;
+    }
+    // Blocking gate: reuse the risk entry when present; otherwise (a doc named
+    // explicitly but excluded from the list, e.g. sensitive) compute it directly.
+    const entry = reviewByPath.get(doc.path);
+    const blocking = entry
+      ? entry.blockingFindings
+      : (findingsByPath.get(doc.path) ?? [])
+          .filter((finding) => finding.severity === "blocked" || finding.severity === "error")
+          .map((finding) => `${finding.rule}: ${finding.message}`);
+    if (blocking.length > 0) {
+      refused.push({ path: doc.path, reason: `blocking findings: ${blocking.join("; ")}` });
+      continue;
+    }
+    // Enrichment gate, deliberately separate from the blocked/error gate above.
+    // Matching on the RULE rather than the severity is the point: content.
+    // not_enriched is a warning, so the old gate promoted untouched scaffolds to
+    // verified and the safety line depended on whether the operator passed
+    // --strict. Severity is a reporting concern; "there is nothing here to have
+    // reviewed" is a fact about the document.
+    const unenriched = (findingsByPath.get(doc.path) ?? []).filter((finding) => NEVER_APPROVE_RULES.has(finding.rule));
+    if (unenriched.length > 0) {
+      blockedFindings.push({
+        severity: "error",
+        rule: "review.not_enriched",
+        path: doc.path,
+        message: "Refused: the document is still an unenriched scaffold. Enrich it from source evidence before approving it."
+      });
+      refused.push({ path: doc.path, reason: `unenriched scaffold: ${unenriched.map((finding) => finding.rule).join(", ")}` });
+      continue;
+    }
+    const stamp = await stampVerified(cwd, doc.path, reviewer, today);
+    if (stamp.blocked) { blockedFindings.push(stamp.finding); refused.push({ path: doc.path, reason: stamp.reason }); continue; }
+    if (!stamp.changed) { refused.push({ path: doc.path, reason: stamp.reason ?? "no change" }); continue; }
+    approved.push(doc.path);
+  }
+
+  return finishReview(reviewed, { mode: "approve", approved, refused, reviewer, findings: applyRuleConfig(blockedFindings, options) });
+}
+
+function finishReview(reviewed, { mode, approved, refused, reviewer, findings }) {
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const findingSummary = summarizeFindings(findings);
+  const summary = [
+    `result: ${result}`,
+    `mode: ${mode}`,
+    `reviewer: ${reviewer ?? "(unresolved)"}`,
+    `approved: ${approved.length}`,
+    `refused: ${refused.length}`,
+    `needs_review_remaining: ${Math.max(0, reviewed.length - approved.length)}`
+  ];
+  return withText({
+    command: "review",
+    result,
+    mode,
+    reviewer,
+    approved,
+    refused,
+    needsReview: reviewed.length,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Review", [
+    { title: "Summary", body: summary },
+    { title: "Approved (-> verified)", body: approved.length ? approved.map((rel) => `${rel}: verified (reviewed_by ${reviewer})`) : ["none"] },
+    { title: "Refused", body: refused.length ? refused.map((entry) => `${entry.path}: ${entry.reason}`) : ["none"] },
+    { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
+    { title: "Caveats", body: [
+      "review --approve stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it never edits body, source_files, evidence, or last_updated.",
+      "verified is an explicit decision, never an automatic one: nothing promotes on its own — only --approve/--approve-all stamps — and any doc with blocking/structural findings is refused. Who may run it is your project's policy; reviewed_by records whoever did. Run validate --strict to confirm.",
+      "Scope: --approve-all covers content documents under docs/llm-wiki only; docs/llm-wiki/templates/ and the append-only log are outside it and are not counted as remaining. Naming one of them explicitly is refused with that reason, not with \"not found\" (N-14)."
+    ] }
+  ]);
+}
+
+export async function quickstartCommand(options) {
+  if (options.dryRun && options.write) {
+    return blockedApply("quickstart", "Choose either quickstart --dry-run or quickstart --write. The two modes cannot be used together.");
+  }
+
+  if (!options.dryRun && !options.write) {
+    return needsWriteFlag("quickstart", "Preview the setup with quickstart --dry-run, or run quickstart --write to create the missing LLM-WIKI files and print the Codex/Claude Code handoff prompt.");
+  }
+
+  const doctorResult = await doctor(options);
+  const initResult = await initCommand(options);
+  const frontmatterResult = options.write
+    ? await validateFrontmatterCommand(options)
+    : null;
+  const handoff = buildHandoff(options, doctorResult.detection);
+  const findings = [
+    ...(initResult.findings ?? []),
+    ...(frontmatterResult?.findings ?? []),
+    ...handoff.findings
+  ];
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const completedSteps = [
+    "doctor completed.",
+    options.write ? "init --write completed." : "init --dry-run completed.",
+    options.write ? "validate-frontmatter completed." : "validate-frontmatter skipped because no files were written.",
+    "handoff prompt prepared."
+  ];
+
+  return withText({
+    command: "quickstart",
+    dryRun: options.dryRun,
+    write: options.write,
+    result,
+    doctor: {
+      checks: doctorResult.checks,
+      detection: doctorResult.detection,
+      packageReadiness: doctorResult.packageReadiness
+    },
+    init: initResult,
+    frontmatter: frontmatterResult,
+    handoff,
+    findings
+  }, "LLM-WIKI Quickstart", [
+    { title: "About · 소개", body: [
+      "A code-grounded knowledge base your AI agent reads: scaffold docs → paste the handoff prompt below into your coding agent to fill them from real code → a human reviews and marks them verified.",
+      "AI 에이전트가 읽는 코드-근거 지식베이스입니다. 문서 뼈대 생성 → 아래 handoff 프롬프트를 코딩 에이전트에 붙여넣어 실제 코드로 채움 → 사람이 검토해 verified 승인."
+    ] },
+    { title: "Completed Steps", body: completedSteps },
+    { title: "Init Summary", body: quickstartInitSummary(initResult) },
+    { title: "Frontmatter Summary", body: frontmatterResult?.summary ?? ["not run"] },
+    { title: "Next Step", body: handoffNextStep(handoff) },
+    { title: "Handoff Prompt", body: `\`\`\`text\n${handoff.prompt}\n\`\`\`` },
+    { title: "Caveats", body: ["CLI-created or CLI-edited wiki documents remain needs_review until human review. Run llm-wiki validate separately for structure or CI validation."] }
+  ]);
+}
+
+export async function handoffCommand(options) {
+  const detection = await detectProject(options.cwd, options.type, options.profiles);
+  const handoff = buildHandoff(options, detection);
+  const result = handoff.findings.some((finding) => finding.severity === "blocked") ? "blocked" : "pass";
+
+  return withText({
+    command: "handoff",
+    result,
+    detection,
+    handoff,
+    findings: handoff.findings
+  }, "LLM-WIKI Handoff", [
+    { title: "Next Step", body: handoffNextStep(handoff) },
+    { title: "Handoff Prompt", body: `\`\`\`text\n${handoff.prompt}\n\`\`\`` },
+    { title: "Caveats", body: ["Run this prompt in the selected agent after CLI setup. Keep generated or edited documents as needs_review until human review."] }
+  ]);
+}
+
+export async function promptCommand(options) {
+  const detection = await detectProject(options.cwd, options.type, options.profiles);
+  const taskPrompt = buildTaskPrompt({
+    task: options.task,
+    cwd: options.cwd,
+    projectType: detection.projectType,
+    profiles: detection.activeProfiles,
+    agents: selectedAgents(options),
+    docLang: normalizeLang(options.docLang)
+  });
+
+  if (taskPrompt.result === "blocked") {
+    return withText({
+      command: "prompt",
+      result: "blocked",
+      detection,
+      taskPrompt,
+      findings: taskPrompt.findings
+    }, "LLM-WIKI Task Prompt Blocked", [
+      { title: "Blocked", body: taskPrompt.findings.map(formatFinding) }
+    ]);
+  }
+
+  return withText({
+    command: "prompt",
+    result: "pass",
+    detection,
+    taskPrompt,
+    findings: taskPrompt.findings
+  }, "LLM-WIKI Task Prompt", [
+    { title: "Task", body: [`task: ${taskPrompt.task}`, `project_type: ${taskPrompt.projectType}`, `active_profiles: ${taskPrompt.profiles.join(", ") || "none"}`, `selected_agents: ${taskPrompt.agents.join(", ")}`] },
+    { title: "Prompt", body: `\`\`\`text\n${taskPrompt.prompt}\n\`\`\`` },
+    { title: "Caveats", body: ["Run this prompt in the selected agent after the initial LLM-WIKI is created and enriched. AI-edited wiki documents remain needs_review until human review."] }
+  ]);
+}
+
+export async function releaseNotesCommand(options) {
+  let packageJson = {};
+  try {
+    packageJson = JSON.parse(await readUtf8(path.join(options.cwd, "package.json")));
+  } catch {
+    packageJson = {};
+  }
+
+  const version = options.version ?? packageJson.version ?? "0.0.0";
+  const project = String(packageJson.name ?? path.basename(options.cwd) ?? "project").replace(/^@[^/]+\//, "");
+  const date = todayIsoDate();
+  const { commits, gitAvailable } = collectCommits(options.cwd, { since: options.since });
+
+  // --body-only emits just the change-section body (no frontmatter/title/scaffold),
+  // for use as a GitHub Release body. Because commit subjects flow verbatim into the
+  // body, scan it for sensitive-looking values and BLOCK rather than leak one into a
+  // public release (Gate 12). On stdout the blocked result never prints the body.
+  if (options.bodyOnly) {
+    const body = buildReleaseNotesBody({ commits, gitAvailable });
+    const sensitive = scanSensitiveInfo(body);
+    const base = {
+      schemaVersion: JSON_SCHEMA_VERSION,
+      command: "release-notes",
+      version,
+      project,
+      since: options.since ?? null,
+      commitCount: commits.length,
+      gitAvailable,
+      bodyOnly: true
+    };
+    if (sensitive.length > 0) {
+      return {
+        ...base,
+        result: "blocked",
+        document: null,
+        text: `Refusing to emit release body: ${sensitive.length} sensitive-looking value(s) detected in the generated notes. Rewrite the offending commit subject(s) and retry.`,
+        findings: sensitive.map((finding) => ({
+          severity: "blocked",
+          rule: "sensitive.release_body",
+          path: `release-body:${finding.line}`,
+          message: finding.message
+        }))
+      };
+    }
+    return { ...base, result: "pass", document: body, text: body, findings: [] };
+  }
+
+  const document = buildReleaseNotes({ version, date, project, commits, gitAvailable });
+
+  return {
+    schemaVersion: JSON_SCHEMA_VERSION,
+    command: "release-notes",
+    result: "pass",
+    version,
+    project,
+    since: options.since ?? null,
+    commitCount: commits.length,
+    gitAvailable,
+    document,
+    text: document,
+    findings: []
+  };
+}
+
+// Scaffolds a minimal starter llm-wiki.config.json at the project root for
+// init/quickstart. Additive and preview-first, and NEVER overwrites an existing
+// file (a project's config is user-owned, like the append-only log) — so it is
+// skipped even under --existing overwrite. Seeds the detected type and selected
+// agents so the file is useful immediately; unknown/empty fields are left out.
+// Returns { planned, created, skipped } message arrays for the init report.
+async function scaffoldProjectConfig(cwd, detection, agents, { write }) {
+  if (await pathExists(path.join(cwd, CONFIG_FILENAME))) {
+    return { planned: [], created: [], skipped: [`${CONFIG_FILENAME} exists; kept existing config (never overwritten).`] };
+  }
+  const config = {};
+  if (detection.projectType && detection.projectType !== "unknown") config.type = detection.projectType;
+  if (Array.isArray(agents) && agents.length > 0) config.agents = [...agents];
+  const summary = describeScaffoldConfig(config);
+  if (!write) {
+    return { planned: [`${CONFIG_FILENAME} would be created (${summary}).`], created: [], skipped: [] };
+  }
+  await writeFile(path.join(cwd, CONFIG_FILENAME), `${JSON.stringify(config, null, 2)}\n`, { encoding: "utf8" });
+  return { planned: [], created: [`${CONFIG_FILENAME} created (${summary}).`], skipped: [] };
+}
+
+function describeScaffoldConfig(config) {
+  const parts = [];
+  if (config.type) parts.push(`type=${config.type}`);
+  if (config.agents && config.agents.length > 0) parts.push(`agents=${config.agents.join("+")}`);
+  return parts.length > 0 ? parts.join(", ") : "empty starter; add type/profiles/agents/strict";
+}
+
+export async function initCommand(options) {
+  const detection = await detectProject(options.cwd, options.type, options.profiles);
+  const agents = selectedAgents(options);
+  const baseDocs = plannedDocs(detection.projectType, options.minimal, options.profiles);
+  const candidateSet = new Set(baseDocs);
+  const domainContext = await buildDomainContext(options.cwd, detection.projectType, options.minimal, candidateSet, options.domains);
+  const candidates = [...baseDocs, ...domainContext.plans.map((plan) => plan.rel)];
+  // Don't silently produce zero per-domain docs for a domain-capable project — say why.
+  const domainNotice = (!options.minimal && domainContext.domainCapable && domainContext.plans.length === 0)
+    ? `No per-domain docs: no domain source directories were detected for this ${detection.projectType} project. Name them with --domains <a,b,c>, or add docs/llm-wiki/domains/NN_<name>.md by hand. · 도메인 소스 폴더를 못 찾아 per-domain 문서를 만들지 않았습니다 — --domains <a,b,c>로 지정하거나 수동 추가하세요.`
+    : null;
+
+  if (options.dryRun) {
+    return initDryRun(options, detection, agents, candidates, domainNotice);
+  }
+
+  if (options.write) {
+    return initWrite(options, detection, agents, candidates, domainContext, domainNotice);
+  }
+
+  return needsWriteFlag("init", "Preview the changes with init --dry-run, or run init --write to create the missing LLM-WIKI files. Existing wiki docs are kept (--existing skip by default).");
+}
+
+async function initDryRun(options, detection, agents, candidates, domainNotice = null) {
+  const planned = [];
+  const skipped = [];
+  const docLang = normalizeLang(options.docLang);
+  if (domainNotice) skipped.push(domainNotice);
+
+  for (const rel of candidates) {
+    if (await pathExists(path.join(options.cwd, rel))) {
+      skipped.push(`${rel} exists; would not overwrite.`);
+    } else {
+      const overridePath = options.templates && options.templates[rel];
+      planned.push(`${rel} would be created with status needs_review${overridePath ? ` (via template override ${overridePath})` : ""}.`);
+    }
+  }
+
+  const adapterPlan = await planAdapterSuggestions(options.cwd, agents);
+  planned.push(...adapterPlan.planned);
+  skipped.push(...adapterPlan.skipped);
+
+  const skillPlan = await planSkillArtifacts(options.cwd, agents, detection, options);
+  planned.push(...skillPlan.planned);
+  skipped.push(...skillPlan.skipped);
+
+  const configScaffold = await scaffoldProjectConfig(options.cwd, detection, agents, { write: false });
+  planned.push(...configScaffold.planned);
+  skipped.push(...configScaffold.skipped);
+
+  if (options.withAdapters && agents.length > 0) {
+    skipped.push("--with-adapters is treated as legacy shorthand for --agent all.");
+  }
+
+  return withText({
+    command: "init",
+    dryRun: true,
+    docLanguage: docLang,
+    detection,
+    agents,
+    planned,
+    skipped
+  }, "LLM-WIKI Init Dry Run", [
+    { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
+    { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
+    { title: "Documentation Language", body: [`${docLang} (change with --doc-lang en|ko or config docLanguage).`] },
+    { title: "Planned Creates", body: planned },
+    { title: "Skipped Existing", body: skipped },
+    { title: "Caveats", body: ["No files were written. Existing adapter files are not overwritten."] }
+  ]);
+}
+
+async function findMissingDocs(cwd, projectType, profiles = [], customDocs = []) {
+  const findings = [];
+  const wikiEntry = path.join(cwd, "docs", "llm-wiki", "index.md");
+  if (!(await pathExists(wikiEntry))) {
+    findings.push({
+      severity: "warning",
+      rule: "structure.wiki_missing",
+      path: "docs/llm-wiki/index.md",
+      message: "LLM-WIKI is not initialized; ask the user whether to proceed as-is or run init --write first."
+    });
+    return findings;
+  }
+
+  const required = [...new Set([...plannedDocs(projectType, false, profiles), ...customDocs])];
+  for (const rel of required) {
+    if (!(await pathExists(path.join(cwd, rel)))) {
+      findings.push({
+        severity: "warning",
+        rule: "structure.required_doc",
+        path: rel,
+        message: "Required or profile-recommended LLM-WIKI document is missing."
+      });
+    }
+  }
+  return findings;
+}
+
+async function initWrite(options, detection, agents, candidates, domainContext = emptyDomainContext(), domainNotice = null) {
+  const created = [];
+  const overwritten = [];
+  const skipped = [];
+  const blocked = [];
+  const lastUpdated = todayIsoDate();
+  const docLang = normalizeLang(options.docLang);
+  if (domainNotice) skipped.push(domainNotice);
+
+  for (const rel of candidates) {
+    const absolutePath = path.join(options.cwd, rel);
+    const exists = await pathExists(absolutePath);
+    if (exists && isAppendOnlyLog(rel)) {
+      skipped.push(`${rel} exists; kept append-only log even with --existing overwrite.`);
+      continue;
+    }
+    if (exists && options.existing !== "overwrite") {
+      skipped.push(`${rel} exists; kept existing file because --existing skip is active.`);
+      continue;
+    }
+
+    const overridePath = options.templates && options.templates[rel];
+    let content;
+    let viaOverride = "";
+    if (overridePath) {
+      const override = await renderOverriddenDoc(options.cwd, rel, overridePath, detection, lastUpdated, domainContext, docLang);
+      if (override.missing) {
+        content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext, docLang);
+        skipped.push(`${rel}: template override ${overridePath} not found; used the built-in template.`);
+      } else {
+        content = override.content;
+        viaOverride = ` (via template override ${overridePath})`;
+      }
+    } else {
+      content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext, docLang);
+    }
+    const sensitiveFindings = scanSensitiveInfo(content);
+    if (sensitiveFindings.length > 0) {
+      blocked.push(`${rel} was not written because generated content matched sensitive-info rules.`);
+      continue;
+    }
+
+    await mkdir(path.dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, content, { encoding: "utf8" });
+    if (exists) {
+      overwritten.push(`${rel} overwritten with status needs_review by explicit --existing overwrite${viaOverride}.`);
+    } else {
+      created.push(`${rel} created with status needs_review${viaOverride}.`);
+    }
+  }
+
+  const adapterWrites = await writeAdapterFiles(options.cwd, agents);
+  created.push(...adapterWrites.created);
+  skipped.push(...adapterWrites.skipped);
+  blocked.push(...adapterWrites.blocked);
+
+  const skillWrites = await writeSkillArtifacts(options.cwd, agents, detection, options);
+  created.push(...skillWrites.created);
+  skipped.push(...skillWrites.skipped);
+
+  const configScaffold = await scaffoldProjectConfig(options.cwd, detection, agents, { write: true });
+  created.push(...configScaffold.created);
+  skipped.push(...configScaffold.skipped);
+
+  if (options.withAdapters && agents.length > 0) {
+    skipped.push("--with-adapters is treated as legacy shorthand for --agent all.");
+  }
+
+  const findings = blocked.map((message) => ({
+    severity: "blocked",
+    rule: "init.write_blocked",
+    path: ".",
+    message
+  }));
+  // Warn (never block) when the just-written wiki path is gitignored: the files
+  // were created but git will never track them — a silent failure worth surfacing.
+  const outputIgnored = isPathIgnored(options.cwd, "docs/llm-wiki");
+  if (outputIgnored) {
+    findings.push({
+      severity: "warning",
+      rule: "structure.output_gitignored",
+      path: "docs/llm-wiki",
+      message: "docs/llm-wiki is ignored by git; generated documents were created but will not be tracked. Remove the ignore rule or run git add -f docs/llm-wiki."
+    });
+  }
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "warning")
+      ? "warning"
+      : "pass";
+  const reassurance = [
+    `${created.length} created, ${overwritten.length} overwritten, ${skipped.length} kept (existing files preserved${options.existing === "overwrite" ? "" : "; --existing skip"}).`,
+    `Documentation language: ${docLang} (change with --doc-lang en|ko or config docLanguage).`,
+    // Claude Code discovers skills at session start (not hot-reload), so a freshly
+    // generated skill is invisible until the agent restarts — surface that only when
+    // a skill was actually created, or users hit an "unknown command" surprise.
+    ...(skillWrites.created.length > 0 ? [SKILL_RELOAD_NOTE] : []),
+    ...(outputIgnored ? ["WARNING: docs/llm-wiki is gitignored — created docs will not be tracked by git (git add -f docs/llm-wiki or edit .gitignore)."] : [])
+  ];
+
+  return withText({
+    command: "init",
+    dryRun: false,
+    write: true,
+    existing: options.existing,
+    docLanguage: docLang,
+    result,
+    detection,
+    agents,
+    created,
+    overwritten,
+    skipped,
+    skillsCreated: skillWrites.created.length,
+    findings
+  }, "LLM-WIKI Init Write", [
+    { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
+    { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
+    { title: "Summary", body: reassurance },
+    { title: "Created", body: created },
+    { title: "Overwritten", body: overwritten },
+    { title: "Skipped Existing", body: skipped },
+    { title: "Blocked", body: blocked },
+    { title: "Caveats", body: ["Existing wiki docs are kept unless --existing overwrite is explicit. docs/llm-wiki/log.md and existing adapter files are never overwritten. ANTIGRAVITY.md is not created until the tool contract is confirmed."] }
+  ]);
+}
+
+// ---- graph command (knowledge graph as text/json/mermaid/dot) -----------
+// Read-only. Emits the wiki knowledge graph (documents + resolved doc→doc edges
+// from wiki/related/markdown links) built by collectWikiGraph. `--format` for
+// graph accepts text|json|mermaid|dot (mermaid/dot are graph-only tokens).
+export async function graphCommand(options) {
+  const graph = await collectWikiGraph(options.cwd);
+  const format = options.format;
+
+  const summaryLines = [
+    `documents: ${graph.summary.documents}`,
+    `edges: ${graph.summary.edges}`,
+    `orphan_documents: ${graph.summary.orphanDocuments}`,
+    `unresolved_wiki_links: ${graph.summary.unresolvedWikiLinks}`,
+    `aliases: ${graph.summary.aliases}`
+  ];
+  if (graph.summary.documents === 0) summaryLines.push("wiki: not initialized (run init --write first)");
+
+  const structured = {
+    summary: graph.summary,
+    documents: graph.documents.map((doc) => ({ path: doc.path, title: doc.title, aliases: doc.aliases, inboundCount: doc.inboundCount })),
+    edges: graph.edges,
+    orphanDocuments: graph.orphanDocuments,
+    unresolvedConcepts: graph.unresolvedConcepts,
+    aliases: graph.aliases
+  };
+
+  const result = withText({
+    command: "graph",
+    format,
+    graph: structured,
+    findings: []
+  }, "LLM-WIKI Graph", [
+    { title: "Summary", body: summaryLines },
+    { title: "Orphan Documents", body: graph.orphanDocuments },
+    { title: "Unresolved Wiki Links", body: graph.unresolvedConcepts.map((concept) => `${concept.target} ← ${concept.sources.join(", ")}`) }
+  ]);
+
+  if (format === "mermaid") result.text = renderGraphMermaid(graph);
+  else if (format === "dot") result.text = renderGraphDot(graph);
+
+  return result;
+}
+
+// ---- stats command (wiki health score) ---------------------------------
+// Read-only. Aggregates a health snapshot: document status mix, verified %,
+// enrichment %, evidence coverage %, staleness, and orphans. Reuses the audit
+// findings (content.not_enriched, evidence.stale) and the wiki graph.
+export async function statsCommand(options) {
+  const cwd = options.cwd;
+  const files = await listTargetMarkdown(cwd);
+  const total = files.length;
+
+  const statusCounts = {};
+  let evidenceBacked = 0;
+  const docMeta = [];
+  for (const file of files) {
+    const parsed = parseFrontmatter(await readUtf8(file));
+    const frontmatter = parsed.frontmatter ?? {};
+    const status = typeof frontmatter.status === "string" ? frontmatter.status : "unknown";
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    const evidence = Array.isArray(frontmatter.evidence) ? frontmatter.evidence.filter((item) => typeof item === "string" && item.trim()) : [];
+    const sourceFiles = Array.isArray(frontmatter.source_files) ? frontmatter.source_files.filter((item) => typeof item === "string" && item.trim()) : [];
+    const hasGrounding = evidence.length > 0 || sourceFiles.length > 0;
+    if (hasGrounding) evidenceBacked += 1;
+    docMeta.push({
+      rel: toPosix(path.relative(cwd, file)),
+      status,
+      hasGrounding,
+      reviewedBy: typeof frontmatter.reviewed_by === "string" && frontmatter.reviewed_by.trim() !== "",
+      reviewedAt: typeof frontmatter.reviewed_at === "string" && frontmatter.reviewed_at.trim() !== ""
+    });
+  }
+
+  const auditResult = await audit(options);
+  const findings = auditResult.findings ?? [];
+  const uniquePathsFor = (rule) => new Set(findings.filter((finding) => finding.rule === rule).map((finding) => finding.path)).size;
+  const notEnriched = uniquePathsFor("content.not_enriched");
+  const staleVerified = uniquePathsFor("evidence.stale");
+  const orphanDocuments = auditResult.wikiGraph?.summary?.orphanDocuments ?? 0;
+
+  // Gate 25: computed evidence tiers (additive, report-only). A doc is
+  // reference_checked when it has grounding and no unresolved-reference finding;
+  // human_verified when verified with reviewer metadata. Orthogonal axes.
+  const unresolvedRefPaths = new Set(findings.filter((finding) => EVIDENCE_REFERENCE_RULES.has(finding.rule)).map((finding) => finding.path));
+  let referenceChecked = 0;
+  let humanVerified = 0;
+  let bothTiers = 0;
+  for (const doc of docMeta) {
+    const tier = evidenceTier({
+      status: doc.status,
+      reviewedBy: doc.reviewedBy,
+      reviewedAt: doc.reviewedAt,
+      hasGrounding: doc.hasGrounding,
+      hasUnresolvedRefs: unresolvedRefPaths.has(doc.rel)
+    });
+    if (tier.referenceChecked) referenceChecked += 1;
+    if (tier.humanVerified) humanVerified += 1;
+    if (tier.referenceChecked && tier.humanVerified) bothTiers += 1;
+  }
+
+  const verified = statusCounts.verified ?? 0;
+  const enriched = Math.max(0, total - notEnriched);
+  const pct = (value) => (total === 0 ? 0 : Math.round((value / total) * 100));
+  const verifiedPct = pct(verified);
+  const enrichedPct = pct(enriched);
+  const evidencePct = pct(evidenceBacked);
+  const healthScore = total === 0 ? 0 : Math.round((verifiedPct + enrichedPct + evidencePct) / 3);
+
+  const summaryLines = [
+    `documents: ${total}`,
+    `health_score: ${healthScore}/100`,
+    `verified: ${verified} (${verifiedPct}%)`,
+    `enriched: ${enriched} (${enrichedPct}%)`,
+    `evidence_coverage: ${evidenceBacked} (${evidencePct}%)`,
+    `evidence_tiers: reference_checked ${referenceChecked}, human_verified ${humanVerified} (both ${bothTiers})`,
+    `stale_verified: ${staleVerified}`,
+    `orphan_documents: ${orphanDocuments}`
+  ];
+  if (total === 0) summaryLines.push("wiki: not initialized (run init --write first)");
+  const statusLines = Object.keys(statusCounts).sort().map((status) => `${status}: ${statusCounts[status]}`);
+
+  return withText({
+    command: "stats",
+    result: "pass",
+    stats: {
+      documents: total,
+      healthScore,
+      status: statusCounts,
+      verified,
+      verifiedPct,
+      enriched,
+      enrichedPct,
+      notEnriched,
+      evidenceBacked,
+      evidencePct,
+      evidenceTiers: {
+        referenceChecked,
+        humanVerified,
+        both: bothTiers
+      },
+      staleVerified,
+      orphanDocuments
+    },
+    findings: []
+  }, "LLM-WIKI Stats", [
+    { title: "Summary", body: summaryLines },
+    { title: "Document Status", body: statusLines.length ? statusLines : ["none"] },
+    { title: "Caveats", body: ["Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata."] }
+  ]);
+}
+
+function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext(), docLang = "en") {
+  const meta = docMetadata(rel, detection, lastUpdated, domainContext, docLang);
+  const project = detection.projectName ?? "project";
+
+  return renderWikiDocumentTemplate({
+    title: meta.title,
+    docType: meta.docType,
+    project,
+    lastUpdated,
+    sourceFiles: meta.sourceFiles,
+    related: meta.related,
+    body: meta.body
+  });
+}
+
+// Renders a wiki document from a project-local override template (config
+// `templates`). GUARDRAIL: only the override's BODY is used — the standard CLI
+// frontmatter (status: needs_review) always wraps it via
+// renderWikiDocumentTemplate, so an override can NEVER produce status: verified
+// (any frontmatter in the override file is parsed off and discarded). Returns
+// { content, missing }; missing is true when the override file is absent.
+async function renderOverriddenDoc(cwd, rel, overridePath, detection, lastUpdated, domainContext, docLang = "en") {
+  const abs = path.join(cwd, overridePath);
+  if (!(await pathExists(abs))) return { content: null, missing: true };
+  const meta = docMetadata(rel, detection, lastUpdated, domainContext, docLang);
+  const project = detection.projectName ?? "project";
+  const rendered = renderTemplate(await readUtf8(abs), {
+    title: meta.title,
+    doc_type: meta.docType,
+    project,
+    last_updated: lastUpdated
+  });
+  const parsed = parseFrontmatter(rendered);
+  const body = parsed.frontmatter ? parsed.body : rendered;
+  const content = renderWikiDocumentTemplate({
+    title: meta.title,
+    docType: meta.docType,
+    project,
+    lastUpdated,
+    sourceFiles: meta.sourceFiles,
+    related: meta.related,
+    body
+  });
+  return { content, missing: false };
+}
+
+function plannedDocs(projectType, minimal, profiles = []) {
+  if (minimal) return CORE_REQUIRED_DOCS;
+  const profileDocs = profiles.flatMap((profile) => PROFILE_DOCS[profile] ?? []);
+  return [...new Set([...CORE_REQUIRED_DOCS, ...(PROFILE_DOCS[projectType] ?? PROFILE_DOCS.unknown), ...profileDocs])];
+}
+
+// ---- backend/fullstack domain detection --------------------------------
+// Detect business domains so init can create a per-domain doc next to the
+// overview. Two conventions, boundary-based only (no class/name inference, no
+// LLM, no invented business meaning; GATE_REVIEW "Domain Detection Scope",
+// Gate 10):
+//   - directory domains: a folder per domain under domains/domain/modules/features
+//   - file domains: a route/resource module file per domain under
+//     endpoints/routers/routes/resources/controllers/handlers (e.g. FastAPI
+//     app/api/api_v2/endpoints/item.py)
+// The search is bounded to the project tree, skips vendored/generated/test dirs,
+// and applies aggregator/infra exclusions to keep false positives near zero.
+// Detection I/O is best-effort; planning is pure and exported for unit tests.
+
+async function detectPackageManager(cwd) {
+  if (await pathExists(path.join(cwd, "yarn.lock"))) return "yarn";
+  if (await pathExists(path.join(cwd, "pnpm-lock.yaml"))) return "pnpm";
+  if (await pathExists(path.join(cwd, "package-lock.json"))) return "npm";
+  return null;
+}
+
+async function inspectPackageReadiness(cwd) {
+  const packagePath = path.join(cwd, "package.json");
+  if (!(await pathExists(packagePath))) return [];
+
+  let packageJson = null;
+  try {
+    packageJson = JSON.parse(await readUtf8(packagePath));
+  } catch {
+    return ["package_json: unreadable"];
+  }
+
+  if (!packageJson?.bin?.["llm-wiki"]) return [];
+
+  const checklistExists = await pathExists(path.join(cwd, "RELEASE_CHECKLIST.md"));
+  return [
+    `package_name: ${packageJson.name ?? "missing"}`,
+    `version: ${packageJson.version ?? "missing"}`,
+    `private: ${packageJson.private === true ? "true" : "false"}`,
+    `bin.llm-wiki: ${packageJson.bin["llm-wiki"]}`,
+    `release_checklist: ${checklistExists ? "present" : "missing"}`,
+    "recommended_release_level: stable",
+    "migrate_apply: keep blocked",
+    "external_shells: verify in release CI before publish"
+  ];
+}
+
+function buildNextActions(auditResult, options) {
+  const actions = [];
+  const seen = new Set();
+  const findings = auditResult.findings ?? [];
+  const wikiGraph = auditResult.wikiGraph ?? emptyWikiGraph();
+
+  const add = (action) => {
+    if (seen.has(action.id)) return;
+    seen.add(action.id);
+    actions.push(action);
+  };
+
+  if (findings.some((finding) => finding.severity === "blocked")) {
+    add(nextAction({
+      id: "blocked-sensitive",
+      priority: "blocked",
+      title: "Remove blocked safety findings",
+      reason: "Blocked findings must be resolved before generated reports or release checks are safe.",
+      command: "llm-wiki audit",
+      findings: findings.filter((finding) => finding.severity === "blocked")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "structure.wiki_missing")) {
+    add(nextAction({
+      id: "initialize-wiki",
+      priority: "high",
+      title: "Initialize the LLM-WIKI structure",
+      reason: "The project does not have docs/llm-wiki/index.md yet.",
+      command: "llm-wiki init --write",
+      findings: findings.filter((finding) => finding.rule === "structure.wiki_missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "structure.required_doc")) {
+    add(nextAction({
+      id: "create-required-docs",
+      priority: "high",
+      title: "Create missing required or profile documents",
+      reason: "Required LLM-WIKI documents are missing for the active project type or profiles.",
+      command: "llm-wiki init --write",
+      findings: findings.filter((finding) => finding.rule === "structure.required_doc")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule?.startsWith("frontmatter."))) {
+    add(nextAction({
+      id: "repair-frontmatter",
+      priority: "high",
+      title: "Repair frontmatter contract violations",
+      reason: "Frontmatter errors can block reliable validation, reports, and downstream agents.",
+      command: options.strict ? "llm-wiki validate-frontmatter --strict" : "llm-wiki validate-frontmatter",
+      findings: findings.filter((finding) => finding.rule?.startsWith("frontmatter."))
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule?.startsWith("okf."))) {
+    add(nextAction({
+      id: "repair-okf-profile",
+      priority: "high",
+      title: "Repair OKF v0.1 metadata",
+      reason: "OKF profile documents need explicit type fields and valid aliases/tags arrays.",
+      command: "llm-wiki validate --profile okf-v0.1",
+      findings: findings.filter((finding) => finding.rule?.startsWith("okf."))
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "source_files.missing")) {
+    add(nextAction({
+      id: "repair-source-files",
+      priority: "medium",
+      title: "Fix missing source evidence references",
+      reason: "source_files entries should point to existing local files or explicit external references.",
+      command: "llm-wiki audit",
+      findings: findings.filter((finding) => finding.rule === "source_files.missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule?.startsWith("evidence."))) {
+    add(nextAction({
+      id: "repair-evidence-references",
+      priority: findings.some((finding) => finding.rule === "evidence.shape") ? "high" : "medium",
+      title: "Fix precise evidence references",
+      reason: "evidence entries should use supported file, line, symbol, section, or route references that can be checked from the project root.",
+      command: "llm-wiki validate",
+      findings: findings.filter((finding) => finding.rule?.startsWith("evidence."))
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "markdown_link.missing")) {
+    add(nextAction({
+      id: "repair-markdown-links",
+      priority: "medium",
+      title: "Fix missing Markdown links",
+      reason: "Broken local Markdown links make wiki navigation unreliable.",
+      command: "llm-wiki validate",
+      findings: findings.filter((finding) => finding.rule === "markdown_link.missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule === "wiki_link.missing")) {
+    add(nextAction({
+      id: "repair-wiki-links",
+      priority: "medium",
+      title: "Resolve missing wiki link targets",
+      reason: "Unresolved [[wiki links]] should point to a file path, basename, title, or alias.",
+      command: "llm-wiki validate",
+      findings: findings.filter((finding) => finding.rule === "wiki_link.missing")
+    }));
+  }
+
+  if (wikiGraph.unresolvedConcepts.length > 0) {
+    add({
+      id: "review-unresolved-concepts",
+      priority: "medium",
+      category: "wiki_graph",
+      title: "Review unresolved concepts",
+      reason: `${wikiGraph.unresolvedConcepts.length} wiki-link target(s) are unresolved in wikiGraph.`,
+      command: "llm-wiki audit --format markdown",
+      paths: unique(wikiGraph.unresolvedConcepts.flatMap((item) => item.sources)),
+      targets: wikiGraph.unresolvedConcepts.map((item) => item.target)
+    });
+  }
+
+  if (findings.some((finding) => finding.rule === "adapter.missing")) {
+    const agents = selectedAgents(options);
+    add(nextAction({
+      id: "create-selected-adapters",
+      priority: "medium",
+      title: "Create selected adapter entrypoints",
+      reason: "Selected agents need their adapter files before handoff workflows are smooth.",
+      command: agents.length ? `llm-wiki init --write ${agents.map((agent) => `--agent ${agent}`).join(" ")}` : "llm-wiki init --write --agent codex",
+      findings: findings.filter((finding) => finding.rule === "adapter.missing")
+    }));
+  }
+
+  if (findings.some((finding) => finding.rule?.startsWith("encoding."))) {
+    add(nextAction({
+      id: "review-encoding",
+      priority: "low",
+      title: "Review encoding findings",
+      reason: "Encoding issues such as BOM or mojibake can make generated docs harder to diff and review.",
+      command: "llm-wiki audit",
+      findings: findings.filter((finding) => finding.rule?.startsWith("encoding."))
+    }));
+  }
+
+  const notEnriched = findings.filter((finding) => finding.rule === "content.not_enriched");
+  if (notEnriched.length > 0) {
+    add({
+      id: "enrich-placeholder-docs",
+      priority: "medium",
+      category: "content",
+      title: "Enrich placeholder documents with source-backed content",
+      reason: `${notEnriched.length} document(s) still contain generated placeholder guidance. See the Enrichment Checklist below for the sections to fill per document.`,
+      command: "llm-wiki handoff",
+      paths: unique(notEnriched.map((finding) => finding.path)),
+      targets: []
+    });
+  }
+
+  if (wikiGraph.orphanDocuments.length > 0) {
+    add({
+      id: "connect-orphan-documents",
+      priority: "low",
+      category: "wiki_graph",
+      title: "Connect orphan wiki documents",
+      reason: `${wikiGraph.orphanDocuments.length} document(s) have no inbound wiki links.`,
+      command: "llm-wiki status",
+      paths: wikiGraph.orphanDocuments,
+      targets: []
+    });
+  }
+
+  return actions.sort(compareNextActions);
+}
+
+function nextAction({ id, priority, title, reason, command, findings }) {
+  return {
+    id,
+    priority,
+    category: findingCategory(findings[0]?.rule),
+    title,
+    reason,
+    command,
+    paths: unique(findings.map((finding) => finding.path).filter(Boolean)),
+    targets: []
+  };
+}
+
+function compareNextActions(left, right) {
+  const priorityOrder = { blocked: 0, high: 1, medium: 2, low: 3 };
+  const leftPriority = priorityOrder[left.priority] ?? 9;
+  const rightPriority = priorityOrder[right.priority] ?? 9;
+  return leftPriority - rightPriority || left.title.localeCompare(right.title);
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+async function summarizeDocumentStatuses(cwd, markdownFiles) {
+  const counts = Object.fromEntries([...VALID_STATUSES].map((status) => [status, 0]));
+  counts.unknown = 0;
+  const findings = [];
+
+  for (const file of markdownFiles) {
+    const rel = toPosix(path.relative(cwd, file));
+    const content = await readUtf8(file);
+    const parsed = parseFrontmatter(content);
+
+    for (const message of parsed.errors) {
+      findings.push({ severity: "error", rule: "frontmatter.parse", path: rel, message });
+    }
+    for (const key of parsed.duplicateKeys ?? []) {
+      findings.push(duplicateKeyFinding(rel, key));
+    }
+    for (const finding of validateFrontmatter(parsed.frontmatter)) {
+      findings.push({ ...finding, path: rel });
+    }
+
+    const status = parsed.frontmatter?.status;
+    if (status && VALID_STATUSES.has(status)) {
+      counts[status] += 1;
+    } else {
+      counts.unknown += 1;
+    }
+  }
+
+  return {
+    filesChecked: markdownFiles.length,
+    counts,
+    findings
+  };
+}
+
+function statusNextSteps(initialized, counts, findings, agents) {
+  const steps = [];
+  if (!initialized) {
+    steps.push("Run llm-wiki quickstart --write with the appropriate --type and --agent.");
+  }
+  if ((counts.needs_review ?? 0) > 0) {
+    steps.push("Run llm-wiki handoff --agent codex or --agent claude, then ask the agent to enrich needs_review docs from source evidence.");
+  }
+  if (findings.some((finding) => finding.rule === "structure.required_doc")) {
+    steps.push("Run llm-wiki init --write to create missing recommended docs, or review whether the selected profile is correct.");
+  }
+  if (agents.length === 0) {
+    steps.push("Pass --agent codex or --agent claude when you want adapter status and handoff guidance.");
+  }
+  if (steps.length === 0) {
+    steps.push("Run llm-wiki validate before CI or release.");
+  }
+  return steps;
+}
+
+// Shown after skill artifacts are generated. Claude Code discovers skills at session
+// start (not hot-reload), so a freshly written skill stays invisible — and its
+// /llm-wiki-* command reads as "unknown" — until the agent is restarted.
+const SKILL_RELOAD_NOTE = "New skills appear only after you restart your coding agent — agents load skills (.claude/skills/, .agents/skills/) at session start (not hot-reload). · 새 스킬은 코딩 에이전트를 재시작해야 나타납니다(hot-reload 아님).";
+
+function quickstartInitSummary(initResult) {
+  const lines = [];
+  if (initResult.result) lines.push(`result: ${initResult.result}`);
+  if (initResult.detection) {
+    lines.push(`project_type: ${initResult.detection.projectType}`);
+    lines.push(`confidence: ${initResult.detection.confidence}`);
+  }
+  if (initResult.created?.length) lines.push(`created: ${initResult.created.length}`);
+  if (initResult.overwritten?.length) lines.push(`overwritten: ${initResult.overwritten.length}`);
+  if (initResult.planned?.length) lines.push(`planned: ${initResult.planned.length}`);
+  // Annotate the skipped count with the dominant reason ("already exist") so a
+  // brownfield run that skips everything doesn't read as "the tool did nothing".
+  if (initResult.skipped?.length) {
+    const existing = initResult.skipped.filter((line) => /\bexists\b/i.test(line)).length;
+    lines.push(`skipped: ${initResult.skipped.length}${existing ? ` (${existing} already exist, kept)` : ""}`);
+  }
+  if (initResult.blocked?.length) lines.push(`blocked: ${initResult.blocked.length}`);
+  // Brownfield hint: when nothing new is created or planned but docs already exist,
+  // the value comes from enriching the existing docs (handoff prompt), not re-running init.
+  const newDocs = (initResult.created?.length ?? 0)
+    + (initResult.planned?.filter((line) => line.includes("would be created")).length ?? 0);
+  const existingSkips = initResult.skipped?.filter((line) => /\bexists\b/i.test(line)).length ?? 0;
+  if (newDocs === 0 && existingSkips > 0) {
+    lines.push("note: An LLM-WIKI already exists, so there are no new docs to create — use the handoff prompt below to enrich the existing docs from real code (pass --existing overwrite to rebuild the scaffold). · LLM-WIKI가 이미 있어 새로 만들 문서가 없습니다.");
+  }
+  if (initResult.findings?.some((finding) => finding.rule === "structure.output_gitignored")) {
+    lines.push("WARNING: docs/llm-wiki is gitignored — created docs will not be tracked by git (git add -f docs/llm-wiki or edit .gitignore). · docs/llm-wiki가 gitignore되어 생성 문서가 git에 추적되지 않습니다.");
+  }
+  if (initResult.skillsCreated > 0) {
+    lines.push(SKILL_RELOAD_NOTE);
+  }
+  return lines;
+}
+
+// The "Next Step" body: the short handoff message plus a concrete, self-contained
+// run guide. The exposure test showed users don't realize the "Handoff Prompt" is
+// meant to be pasted into their coding agent (not "run" by the CLI) — this spells
+// that out. Only added when a real prompt exists (a supported agent); the
+// unsupported-agent case keeps just the message.
+function handoffNextStep(handoff) {
+  if (!handoff.supportedAgents?.length) return [handoff.message];
+  return [
+    handoff.message,
+    "How to run — the 'Handoff Prompt' below is an instruction you give your coding agent, not a CLI command · 실행 방법 — 아래 'Handoff Prompt'는 CLI가 실행하는 게 아니라 코딩 에이전트에게 넘기는 지시문입니다:",
+    "1) Paste the prompt below into a Claude Code or Codex session opened on this repo. If you are already inside Claude Code here, paste it right here. · 이 저장소를 연 세션에 아래 프롬프트를 그대로 붙여넣으세요.",
+    "2) The agent reads the real code and fills docs/llm-wiki with evidence; backend/fullstack projects also enrich per-domain domains/*.md. · 에이전트가 실제 코드를 읽고 문서를 근거와 함께 채웁니다.",
+    "3) A human reviews the result and, if correct, promotes status to verified (structure check: llm-wiki validate). · 사람이 검토해 정확하면 verified로 올리세요."
+  ];
+}
+
+function buildHandoff(options, detection = null) {
+  const agents = selectedAgents(options);
+  const supportedAgents = agents.length === 0
+    ? ["codex", "claude"]
+    : agents.filter((agent) => ADAPTER_TARGETS[agent]?.handoffLabel);
+  const unsupportedAgents = agents.filter((agent) => ADAPTER_TARGETS[agent] && !ADAPTER_TARGETS[agent].handoffLabel);
+  const projectType = detection?.projectType ?? options.type ?? "unknown";
+  const evidenceGuidance = evidenceFocus(projectType);
+  const completionPrefix = options.dryRun && !options.write
+    ? "CLI 미리보기가 완료되었습니다. 실제 파일 생성 후"
+    : "CLI 작업이 완료되었습니다.";
+  const findings = unsupportedAgents.map((agent) => ({
+    severity: supportedAgents.length > 0 ? "warning" : "blocked",
+    rule: "handoff.unsupported_agent",
+    path: ".",
+    message: `${agent} handoff is not available because the adapter contract is unconfirmed.`
+  }));
+  const label = handoffLabel(supportedAgents);
+  // Only name adapter files for agents the caller explicitly selected. Without an
+  // explicit --agent, init/quickstart create no adapter files, so defaulting the
+  // entrypoint to codex+claude would tell the receiving agent to first read an
+  // AGENTS.md/CLAUDE.md that was never created. The wiki index always exists after
+  // setup, so it stays the reliable anchor. An explicit --agent still names that
+  // agent's adapter file (the caller committed to that tool's convention).
+  const entrypointAgents = agents.length > 0 ? supportedAgents : [];
+  const entrypoints = handoffEntrypoints(entrypointAgents);
+  const unsupportedNote = unsupportedAgents.length > 0
+    ? ` ${unsupportedAgents.join(", ")} handoff는 adapter contract가 확정되지 않아 아직 지원하지 않습니다.`
+    : "";
+
+  if (supportedAgents.length === 0) {
+    return {
+      agents,
+      supportedAgents,
+      unsupportedAgents,
+      projectType,
+      evidenceGuidance,
+      label: unsupportedAgents.join(", "),
+      entrypoints: "docs/llm-wiki/index.md",
+      message: `${completionPrefix} ${unsupportedNote.trim()}`,
+      prompt: "No Codex or Claude Code handoff prompt is available for the selected agent. Select --agent codex or --agent claude, or run the next documentation work manually after reviewing docs/llm-wiki/index.md.",
+      findings
+    };
+  }
+
+  const enLead = options.dryRun && !options.write
+    ? `CLI preview is complete. After you write the files for real, hand off to ${label} and run the prompt below.`
+    : `CLI setup is complete. Hand off to ${label} and run the prompt below.`;
+  const message = `${enLead} · ${completionPrefix} ${label}에게 넘어가서 아래 프롬프트를 실행하세요.`;
+  // The handoff prompt IS the initial-enrichment workflow, sourced from the single
+  // shared builder so it never drifts from the `bootstrap` task/skill. Handoff names
+  // the selected adapter file(s) as the entrypoint; the workflow itself is identical.
+  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints, docLang: normalizeLang(options.docLang) });
+
+  return {
+    agents,
+    supportedAgents,
+    unsupportedAgents,
+    projectType,
+    evidenceGuidance,
+    label,
+    entrypoints,
+    message: `${message}${unsupportedNote}`,
+    prompt,
+    findings
+  };
+}
+
+function handoffLabel(agents) {
+  const labels = agents.map((agent) => ADAPTER_TARGETS[agent]?.handoffLabel).filter(Boolean);
+  return labels.join(" or ") || "Codex or Claude Code";
+}
+
+function handoffEntrypoints(agents) {
+  const adapterPaths = agents.map((agent) => ADAPTER_TARGETS[agent]?.path).filter(Boolean);
+  const files = [...adapterPaths, "docs/llm-wiki/index.md"];
+  return files.join(" and ");
+}

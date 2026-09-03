@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(npm publish:*)",
+      "PowerShell(npm publish:*)",
+      "Bash(npm version:*)",
+      "PowerShell(npm version:*)",
+      "Bash(git push --force:*)",
+      "PowerShell(git push --force:*)",
+      "Bash(git push -f:*)",
+      "PowerShell(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "PowerShell(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "PowerShell(git clean -fd:*)",
+      "Bash(gh pr merge:*)",
+      "PowerShell(gh pr merge:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "PowerShell(git push:*)",
+      "Bash(git tag:*)",
+      "PowerShell(git tag:*)",
+      "Bash(gh release create:*)",
+      "PowerShell(gh release create:*)",
+      "Bash(llm-wiki review:*)",
+      "PowerShell(llm-wiki review:*)",
+      "Bash(node bin/llm-wiki.js review:*)",
+      "PowerShell(node bin/llm-wiki.js review:*)",
+      "Bash(npx llm-wiki-governance review:*)",
+      "PowerShell(npx llm-wiki-governance review:*)"
+    ]
+  },
+  "enabledMcpjsonServers": ["llm-wiki-local"]
+}

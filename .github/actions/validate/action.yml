@@ -1,0 +1,108 @@
+name: "LLM-WIKI validate"
+description: "Run a read-only llm-wiki governance command against a repository's LLM-WIKI docs (wraps the published npm package via npx)."
+branding:
+  icon: "check-circle"
+  color: "blue"
+
+inputs:
+  command:
+    description: "Read-only command to run: validate | validate-frontmatter | audit | impact | check-run | drift | monorepo | doctor | stats | status | next. Defaults to validate for backward compatibility. Use `impact` with `since:` for the gate that FAILS when source changes without its wiki doc — the action previously hardcoded `validate`, so that gate was unreachable through it. Since 1.28.0 that gate blocks with no flag at all: `strict: true` is a no-op for `impact.source_changed` and only escalates the command's other findings."
+    required: false
+    default: "validate"
+  version:
+    description: "npm version or dist-tag of llm-wiki-governance to run (pinned by default for supply-chain reproducibility; override with a tag/dist-tag such as 'latest' when you want floating). Bump this with every minor release — see RELEASE_FLOW.md."
+    required: false
+    default: "1.29"
+  cwd:
+    description: "Project root to validate."
+    required: false
+    default: "."
+  strict:
+    description: "Fail on warnings (adds --strict)."
+    required: false
+    default: "false"
+  changed:
+    description: "Only report findings on changed docs (adds --changed; validate only)."
+    required: false
+    default: "false"
+  run:
+    description: "Run manifest path for check-run (adds --run; check-run only)."
+    required: false
+    default: ""
+  profile:
+    description: "Profile to validate against, e.g. okf-v0.1 (optional)."
+    required: false
+    default: ""
+  since:
+    description: "Git ref to scope --changed against (adds --since; optional)."
+    required: false
+    default: ""
+  format:
+    description: "Output format: text | json | markdown | html."
+    required: false
+    default: "text"
+  out:
+    description: "Write the report to this path (optional)."
+    required: false
+    default: ""
+
+# Composite action: pulls in NO other actions, preserving the project's zero-
+# dependency ethos. It only shells out to `npx` and the read-only `validate`
+# command. Node.js must be available on the runner (GitHub-hosted runners ship
+# Node; on self-hosted runners run actions/setup-node before this step).
+runs:
+  using: "composite"
+  steps:
+    - name: Run llm-wiki validate
+      shell: bash
+      env:
+        LW_COMMAND: ${{ inputs.command }}
+        LW_VERSION: ${{ inputs.version }}
+        LW_CWD: ${{ inputs.cwd }}
+        LW_STRICT: ${{ inputs.strict }}
+        LW_CHANGED: ${{ inputs.changed }}
+        LW_PROFILE: ${{ inputs.profile }}
+        LW_SINCE: ${{ inputs.since }}
+        LW_RUN: ${{ inputs.run }}
+        LW_FORMAT: ${{ inputs.format }}
+        LW_OUT: ${{ inputs.out }}
+      run: |
+        set -euo pipefail
+
+        # Only read-only commands are reachable. The action must never be a path
+        # to a write command, so the allow-list is here rather than left to the
+        # CLI to reject.
+        case "$LW_COMMAND" in
+          validate|validate-frontmatter|audit|impact|check-run|drift|monorepo|doctor|stats|status|next) ;;
+          *)
+            echo "llm-wiki action: unsupported command '$LW_COMMAND' (read-only commands only)." >&2
+            exit 3
+            ;;
+        esac
+
+        args=("$LW_COMMAND" --cwd "$LW_CWD" --format "$LW_FORMAT")
+
+        # Each optional flag is added only where the command actually accepts it.
+        # This matters now that every command validates its own option set and
+        # rejects an unsupported one with exit 3 — passing --profile to impact
+        # would fail the step for the wrong reason.
+        add_if() { case " $1 " in *" $LW_COMMAND "*) return 0 ;; *) return 1 ;; esac; }
+
+        if [ "$LW_STRICT" = "true" ] && add_if "validate validate-frontmatter audit impact check-run drift monorepo stats next"; then
+          args+=(--strict)
+        fi
+        if [ "$LW_CHANGED" = "true" ] && add_if "validate"; then
+          args+=(--changed)
+        fi
+        if [ -n "$LW_PROFILE" ] && add_if "validate audit stats status next"; then
+          args+=(--profile "$LW_PROFILE")
+        fi
+        if [ -n "$LW_SINCE" ] && add_if "validate impact"; then
+          args+=(--since "$LW_SINCE")
+        fi
+        if [ -n "$LW_RUN" ] && add_if "check-run"; then
+          args+=(--run "$LW_RUN")
+        fi
+        if [ -n "$LW_OUT" ]; then args+=(--out "$LW_OUT"); fi
+
+        npx -y "llm-wiki-governance@$LW_VERSION" "${args[@]}"

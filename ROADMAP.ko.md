@@ -1,0 +1,664 @@
+---
+title: LLM-WIKI Governance Roadmap
+tags:
+  - llm-wiki
+  - roadmap
+  - package
+  - cli
+status: needs_review
+doc_type: roadmap
+project: llm-wiki-governance
+last_updated: 2026-07-30
+author: ai-generated
+last_edited_by: Claude Code
+wiki_block_version: v1
+source_files:
+  - package.json
+  - src/cli.js
+  - src/commands.js
+  - src/frontmatter-schema.js
+  - src/detector.js
+  - src/git.js
+  - src/config-file.js
+  - .github/actions/validate/action.yml
+  - .github/workflows/ci.yml
+  - CHANGELOG.md
+related:
+  - GATE_REVIEW.md
+  - VERIFICATION.md
+  - RELEASE_CHECKLIST.md
+  - docs/llm-wiki/VERSIONING.md
+visibility: internal
+contains_sensitive_info: false
+---
+
+> Language: [English](./ROADMAP.md) | [한국어](./ROADMAP.ko.md)
+
+# LLM-WIKI Governance Roadmap
+
+이 로드맵은 미래 지향 문서다. 구현 이력은 `CHANGELOG.md`, `docs/llm-wiki/log.md`,
+그리고 `docs/llm-wiki/releases/` 아래 릴리스별 노트에 있다. 이 문서는 안정 `1.0.0`
+라인 이후의 `1.x` 마이너 릴리스를 — 한 번에 하나씩, 순서대로 — 계획한다.
+
+## 제품 원칙 (Product Principle)
+
+```text
+CLI는 구조와 안전 가드레일을 만든다.
+Codex나 Claude Code가 소스 근거로 문서를 보강한다.
+사람이 검토하고 verified 상태를 승인한다.
+CI가 품질을 지속적으로 점검한다.
+```
+
+## 1.7.0까지 구현 완료 (Shipped Through 1.7.0)
+
+`1.7.0`(이번 릴리스)은 CI/CD 도입 라인이다 — 분할된 "팀 & 조직 확장" 계획의 리드
+슬라이스: 읽기 전용 `validate`를 `npx`로 감싸는 컴포지트 GitHub Action
+(`.github/actions/validate/action.yml`, 다른 액션을 끌어오지 않아 무의존성, 정확한
+`vX.Y.Z` 태그/SHA로 참조); `v*` 태그 push 시 `publish.yml`의 격리된
+`contents: write` 잡이 러너 `gh` CLI로 만드는 GitHub Release(본문은 새 부가 모드
+`release-notes --body-only`에서 나오고 민감정보 스캔을 거쳐 매치 시 차단); 읽기 전용
+리포트 명령 10개의 `help`에 명령별 `--format json` 예시. 하위호환 — 부가 명령 모드와
+CI 산출물만 추가. Marketplace 게시와 floating `@v1` 태그는 후속 게이트로 보류한다
+(먼저 `v*` 태그 네임스페이스 deconflict 필요). 범위: `GATE_REVIEW.md`(Gate 12).
+
+`1.6.0`은 에이전트 네이티브 라인이다: `llm-wiki mcp`가 stdio 위에서 Model
+Context Protocol 서버를 실행해, 에이전트(Claude Code·Cursor 등 MCP 클라이언트)가 shell을
+거치지 않고 위키를 툴로 질의·점검한다. 읽기 전용 명령(`validate`/`audit`/`next`/`status`/
+`doctor`/`stats`/`graph`/`explain`/`handoff`/`prompt`)을 MCP 툴로 노출한다 — 쓰기 명령은
+노출하지 않고 어떤 툴도 파일을 쓰지 않는다. 서드파티 SDK 없이 Node 내장만으로 JSON-RPC
+2.0을 직접 구현(무의존성 불변식 유지)하고, 결과는 1.5 result 형태(`schemaVersion`)를
+재사용한다. 하위호환 — 새 명령·모듈만 추가. 범위: `GATE_REVIEW.md`(Gate 11).
+
+`1.5.0`은 프로그래매틱 API 라인이다: `package.json` `exports`
+(`src/index.js`)로 패키지를 in-process import할 수 있고, 명령 함수 위의 동결된
+`commands` 맵·`normalizeOptions`·`parseArgs`/`run`·`SCHEMA_VERSION`을 공개하며 반환
+형태를 JSDoc typedef와 `PUBLIC_API.md`로 문서화한다. `--format json` 출력에 부가적
+최상단 `schemaVersion` 필드가 붙어 CI 래퍼·에디터가 출력 계약을 고정할 수 있다.
+하위호환 — 새 import 표면과 부가적 JSON 필드 하나만 추가.
+
+`1.4.0`은 "보이는 지식" 라인이다: `llm-wiki graph`(지식 그래프를
+text/JSON/Mermaid/DOT로), `llm-wiki stats`(헬스 스코어), `--format html` 대시보드의
+탐색용 Document Index + 사람 독자용 공개 가이드, 그리고 라우트/리소스 모듈 **파일**
+(FastAPI/Flask/Express/Rails/Go의 endpoints/routers/…)도 디렉터리-도메인과 함께
+`init`이 감지하는 파일 기반 도메인 감지(GATE_REVIEW Gate 10).
+
+`1.3.0`은 디텍터 & 어댑터 확장 라인이다: backend/fullstack `init`이 업무
+도메인 디렉터리를 감지해 overview에서 링크되는 도메인별 문서(`domains/NN_<name>.md`,
+`doc_type: domain`)를 생성; PHP/Ruby/.NET 생태계 감지; Windsurf·Gemini CLI writable
+어댑터(JetBrains AI는 info-level candidate); OKF `type`를 `doc_type`의 부가적 alias로
+수용.
+
+`1.2.0`은 안전 업그레이드 & 마이그레이션 라인이다: `migrate`/`doctor`의
+`wiki_block_version` 인식 업그레이드 리포트; `fix` 엔진 + 블록버전 stamp를 재사용하는
+승인된 미리보기 우선·`verified` 보존 범위(GATE_REVIEW Gate 8)로 해금된
+`migrate --apply`; 드리프트된 `verified` 문서를 `--downgrade`로 `needs_review`로
+내리는 새 `llm-wiki drift` 명령(GATE_REVIEW Gate 9); 라인 단위 `evidence.stale`
+정밀도; version-agnostic으로 전환한 `VERSIONING`·`project-profile` 문서.
+
+`1.1.0`은 inner-loop 정리 라인을 추가했다: `evidence.stale` 같은날 드리프트 경계
+수정, 변경 문서로 findings를 좁히는 `validate --changed`, 그리고 `pre-commit` 훅
+템플릿과 packed tarball 대상 CI Quick Start 점검. 앞서 `1.0.1`로 준비했던 문서 작업 —
+날짜 없는 로드맵 재작성과 `README`·`CHANGELOG`·`ROADMAP`의 EN–KO 쌍 — 도 함께
+흡수했다.
+
+`1.0.0`은 CLI 명령·옵션 표면, `--format json` 출력 형태, 필수 frontmatter 계약을
+안정으로 선언했다. 이미 갖춰진 것: 전체 명령 표면(`doctor`, `status`, `next`,
+`explain`, `validate`, `validate-frontmatter`, `audit`, `init`, `quickstart`,
+`migrate`[dry-run 전용], `fix`, `handoff`, `prompt`, `release-notes`); 보수적 쓰기
+안전장치; 다중 생태계 감지(Node/Python/Go/Rust/JVM); 어댑터 4종
+(codex/claude/cursor/copilot)과 Antigravity 후보; `okf-v0.1` 프로필;
+frontmatter/링크/소스/근거/드리프트 검증; `--format html` 대시보드; 크로스플랫폼
+릴리스 CI. 자세한 내용은 `CHANGELOG.md` 참조 — 이 로드맵은 완료된 작업을 다시
+나열하지 않는다.
+
+## 이 로드맵을 운용하는 방식 (How This Roadmap Works)
+
+- **모든 `1.x` 릴리스는 부가적이고 하위호환된다.** 새 명령·옵션·어댑터·디텍터와
+  *opt-in* 동작만 추가한다. 여기 있는 어떤 것도 `1.0.0` 계약을 깨지 않는다.
+- **한 번에 하나씩, 순서대로.** 순서는 레버리지·리스크·의존성 기준이며, 각
+  릴리스는 일정이 아니라 필요가 당길 때 진행한다.
+- **날짜 없음.** 이 릴리스들에는 목표 날짜를 붙이지 않는다. 일정보다 품질을
+  우선한다 — 절반만 검증된 채 내보내느니 릴리스를 미룬다.
+- **계약을 깨는 변경은 `1.x` 범위 밖**이며, 아래 "Beyond the 1.x Horizon"에 보류한다.
+
+## 릴리스 계획 (1.8–1.11) — 팀 & 조직 확장, 분할
+
+목표: 단일 저장소·단일 유지보수자를 넘어선 도입을 지원한다.
+
+이 라인은 원래 단일 `1.7 — 팀 & 조직 확장`으로, 게이트 크기의 상호의존적 기능 5개
+(모노레포 프로필, 크로스레포 링크, config 스키마 확장, 가시성 거버넌스, GitHub
+Action + Release)를 묶고 있었다. 이는 표면이 가장 넓고 의존성이 가장 많으며 — 그
+자체 서술대로 — 설계 전에 실제 다중 팀 피드백이 가장 필요하다. 다섯을 한 릴리스로
+내보내는 것은 이 로드맵 자신의 두 규칙과 충돌한다: *한 번에 하나씩, 순서대로*, 그리고
+*절반만 검증된 채 내보내느니 릴리스를 미룬다*(하나가 늦어지면 나머지 넷이 함께 막힌다).
+그래서 이 라인을 **리스크가 낮고 레버리지가 높은 것부터 순서대로 나눈 마이너들**로
+분할한다. 각 마이너는 필요가 당길 때 진행하고, 각자의 범위를 코드 *이전에* 새
+`GATE_REVIEW.md` 게이트(Gate 12가 출시된 1.7을 담당했고, 다음은 1.8용 Gate 13)로
+기록한다 — 이전의 모든 범위 결정을 규율한 바로 그 방식이다.
+
+### enabling prep (부가적; 새 헤드라인 릴리스 아님)
+
+후속 마이너를 해금하고, 큰 기능들이 필요로 하는 실사용 피드백이 흐르기 시작하게 하는
+작은 하위호환 패치들. 어느 것도 `1.0.0` 계약을 바꾸지 않는다:
+
+**상태:** 앞의 둘 — config 로딩 통일과 starter config scaffold + `doctor` echo — 는
+**`1.7.2`**로 출시됐다(Gate 13 enabling prep). 아래 설계 문서 항목은 남아 있다.
+
+- **config 로딩을 명령 계층 아래로 통일.** 지금 `loadProjectConfig` /
+  `mergeConfigIntoOptions`(`src/config-file.js`)는 CLI 경로(`src/cli.js#main`)에서만
+  돈다; 1.5 프로그래매틱 API와 1.6 MCP 표면은 `llm-wiki.config.json`을 병합하지 않는다
+  (Gate 11 정직한 한계). 병합을 공통 진입부로 내려 세 표면이 동일한 유효 옵션을 쓰게
+  한다 — 그러지 않으면 config 확장이 새 안정 계약에 불일치를 박는다.
+- **스타터 `llm-wiki.config.json` 스캐폴딩.** `init` / `quickstart`가 최소 config를
+  쓴다(부가적·미리보기 우선·`--write`에서만·기존 파일 절대 미덮음). `doctor`는 병합된
+  유효 config를 echo한다. 로드맵은 config 확장을 "최소 config의 실사용"에 게이트로
+  걸었지만, 어떤 명령도 config를 만들어 주지 않으면 사용이 쌓일 수 없다 — 이 작업이
+  게이트의 전제 조건을 관측 가능하게 만든다.
+- **후속 마이너가 의존하는 설계 입력을 코드 이전에 작성:** 누락된 가시성 거버넌스
+  정책 문서(`project-profile`의 Open Question), `tests/fixtures/` 아래 모노레포
+  픽스처, 크로스레포 참조 포맷 스펙 — 각각을 승인된 `GATE_REVIEW` 게이트로 기록한다.
+
+### 1.8 — config 스키마 확장
+
+**출시 — Gate 13 완성:** config 3피처 모두. `1.8.0`에서 per-project rule 토글(`rules` 맵)과
+`content.thin_body` opt-in lint, `1.8.1`에서 커스텀 문서셋(`requiredDocs`)과 템플릿
+오버라이드(`templates`, never-`verified` 가드레일). severity 수렴 pre-work 완료(감사로 동작
+보존 확인, 불일치 0). 다음 예정 마이너: visibility governance(`1.9`).
+
+미리 예약된 `llm-wiki.config.json` seam(unknown 키는 이미 설계상 무시)을 **커스텀
+문서 세트, 프로젝트별 규칙 토글, 템플릿 오버라이드**로 확장한다. 이것이 하드 의존성
+게이트다: 모노레포(패키지별 config)와 가시성 거버넌스(규칙 토글)가 모두 이걸 소비한다.
+선행 작업: 규칙 토글이 정합적이도록 스캔별로 인라인된 severity를 하나의 레지스트리로
+통합하고, 템플릿 오버라이드가 `status: verified`를 절대 설정할 수 없다는 하드
+가드레일을 둔다. 토글 기계를 dogfood하려고 더 풍부한 enrichment 린팅
+(`content.thin_body`, warning 레벨)을 토글 가능한 규칙으로 포함한다. 스캐폴딩된
+config가 설계 근거가 될 실사용을 만들어낸 뒤 당긴다.
+
+### 1.9 — 가시성 거버넌스
+
+**1.9.0 출시:** sensitive-info 스캔을 재사용하는 opt-in 일관성 린트 2개
+(`visibility.public_sensitive`, `visibility.declared_mismatch`)와 정책 문서
+`docs/llm-wiki/VISIBILITY.md`(GATE_REVIEW Gate 14). 기본 off·warning·read-only, 민감값
+미노출. 다음 예정 마이너: `1.10`.
+
+이미 필수인 `internal|restricted|public` 필드를 config 규칙 토글로 선택적 강제 —
+**기본 off, warning 레벨, 읽기 전용** — 하며, public-대-내용 일관성 검사에 민감정보
+스캔을 재사용한다. 작지만 1.8 config 설계를 실기능으로 end-to-end 증명하므로, 더 큰
+모노레포 소비자가 이에 의존하기 전에 검증된다. 정책 문서와 그 게이트에 blocked이고,
+기본 error/blocked 규칙이 되어서는 절대 안 된다(부가성 불변식을 깬다).
+
+### 1.10 — 모노레포 프로필
+
+**1.10.0 출시:** `monorepo` 명령이 npm/yarn `workspaces`를 감지해 각 패키지를 validate하고
+additive `packages[]` roll-up으로 집계한다(GATE_REVIEW Gate 15). read-only, 단일 레포
+byte-identical, pnpm/YAML은 후속. 패키지 간 집계 그래프·deeper glob은 이후. 다음 예정 마이너: `1.11`.
+
+검증·그래프를 집계하는 패키지별 wiki를, **이미 cwd 파라미터화된 파이프라인**
+(`audit` / `collectWikiGraph` / `findMissingDocs`) 위의 opt-in map으로 만든다. JSON
+형태는 엄격히 부가적인 `packages[]`라 단일 저장소 출력은 byte 동일하게 유지된다. 이제
+config 토글·실 CI 피드백·enrichment 신호를 손에 쥐고 만든다. `detector.js`에 부가적
+워크스페이스 *감지*를 먼저 넣고, 무의존성 pnpm/YAML 워크스페이스 파싱은 정직하게
+미룬다(npm/yarn `workspaces` 먼저).
+
+### 1.11 — 크로스레포 지식 링크
+
+**1.11.0 출시 — 1.7–1.11 라인 완성.** 예약 `repo:<name>/<path>` 참조 스킴(+ http(s))을
+wiki 링크·frontmatter 참조에서 external로 인식해 cross-repo 참조가 missing-target 규칙에
+걸리지 않게 한다(GATE_REVIEW Gate 16). 인식만 함 — fetch/verify 안 함.
+
+보수적·**비-fetch** 참조 포맷(예약 스킴)으로, 별도 저장소의 API 스펙·도메인
+문서·서비스 계약에 대한 크로스레포 참조가 missing-target 규칙에 걸리지 않고 해소되게
+한다 — 인식하되 절대 검증하지 않는다(검증은 네트워크/git이 필요해 무의존성 불변식을
+깬다). 마지막: 가장 설계 부담이 크고 피드백이 필요하며, 모노레포·config 확장·가시성이
+먼저 갖춰져야 한다. 지금 바로 가능한 슬라이스는 먼저 낼 수 있다 — external-reference
+분류기를 강화해 크로스레포 `[[..]]` 링크가 잘못된 `wiki_link.missing`을 뱉지 않게 한다.
+
+이렇게 나눈 이유: 순서는 레버리지·리스크·의존성 기준이다. 각 마이너는 독립적으로
+출시·검증 가능하고, 가장 크고 피드백이 필요한 기능(모노레포, 크로스레포)은 더 저렴한
+도입·config 작업이 CLI를 실제 다중 팀 사용 앞에 세운 뒤에 온다.
+
+## 릴리스 계획 (1.12–1.14) — detect & adapt 확장
+
+**상태: 완료 — `1.12`(모바일, Gate 17)·`1.13`(infra/DevOps, Gate 18)·`1.14`(stdlib-server, Gate 19) 모두 출시.** `1.7–1.11` "팀 & 조직 확장" 라인은 완료·출시됐다
+(`1.11.1` npm). 다음 라인은 프로젝트 *브레드스*를 확장한다 — `1.3`의 PHP/Ruby/.NET 작업의
+후속 테마 — 그리고 같은 규율을 따른다: 한 번에 한 마이너, 순서대로, 각자 코드보다 **먼저**
+새 `GATE_REVIEW.md` 게이트로 범위를 못박는다(Gate 17 → 18 → 19). 세 항목은 대체로 독립적이라
+하드 의존성이 아니라 레버리지·리스크 기준으로 순서를 정한다.
+
+### 1.12 — 모바일 프로필 (Gate 17)
+
+**1.12.0 출시.** 부가적 새 `mobile` 프로젝트 유형. Android(`build.gradle`/`build.gradle.kts`/`settings.gradle`에
+Android Gradle Plugin 또는 AndroidX 신호, `AndroidManifest.xml`), Flutter(`flutter:` 섹션이
+있는 `pubspec.yaml`), Apple/iOS(`*.xcodeproj`/`*.xcworkspace`, `Podfile`, Apple 플랫폼 대상
+`Package.swift`), React Native(`package.json`의 `react-native` 의존성)를 감지하고 모바일
+문서셋을 추가한다. **먼저 하는 이유는 실제 오분류도 고치기 때문** — 지금 Android `build.gradle`은
+`jvm`+`library`로 감지된다(`src/detector.js`). 부가적·opt-in(새 감지 유형·프로필 문서, `--type`에
+값 추가); 감지는 매니페스트/파일 신호 + bounded 스캔이며 빌드 도구를 절대 호출하지 않는다;
+무의존성. 범위: `GATE_REVIEW.md`(Gate 17).
+
+### 1.13 — infra/DevOps 프로필 (Gate 18)
+
+**1.13.0 출시.** 부가적 새 `infra` 프로젝트 유형. `Dockerfile`, Docker Compose, Kubernetes 매니페스트, Helm
+차트(`Chart.yaml`), Terraform(`*.tf`)을 감지하고 infra/DevOps 문서셋을 추가한다. Gate 17과
+동일한 bounded 감지 패턴을 재사용하므로 두 번째로 온다. 부가적·opt-in; 무의존성(신호 파일 존재
++ bounded 내용 스니프, 클러스터/레지스트리/`terraform`/`kubectl`/`helm` 접근 없음). 범위:
+`GATE_REVIEW.md`(Gate 18).
+
+### 1.14 — stdlib 서버 감지 (Gate 19)
+
+**1.14.0 출시 — 1.12–1.14 detect & adapt 확장 라인 완성.** 오래된 백로그 항목 승격(1.3에서 보류): Go `net/http`·Python stdlib HTTP 서버를 `library`가
+아닌 `backend`로 분류 — bounded·오탐 방지 소스 스캔(HTTP import **와** 서버 시작 호출)으로.
+셋 중 가장 작고 마지막; 유일한 리스크는 과분류라서 휴리스틱은 보수적·단방향(`library`→`backend`
+승격만, 강등 없음)을 유지한다. 무의존성. 범위: `GATE_REVIEW.md`(Gate 19).
+
+## 릴리스 계획 (1.15–1.16) — 완료 (shipped)
+
+- **1.15 — 스킬 생성 (Gate 21).** `init`/`quickstart`이 `feature`/`fix`/`docs-sync` 위키-그라운디드 자동화 프롬프트를 Claude 스킬·Cursor 룰·에이전트-중립 프롬프트로 생성하고 각 본문에 프로젝트 도메인 맵을 주입한다. opt-in·preview-first·미덮어씀·recognize-don't-run. `1.15.0`에서 출시, `1.15.1`에서 재시작 안내 추가(스킬은 세션 시작 시 로드).
+- **1.16 — 개명 + 거버넌스 리포지셔닝 + English-first 출력.** `@dowonk-7949/llm-wiki-standard` → `llm-wiki-governance`(unscoped; `llm-wiki` 명령은 불변) 개명, "AI가 쓴 프로젝트 문서를 위한 거버넌스(OKF-compatible)"로 포지셔닝, CLI 출력을 English-first로 전환(붙여넣는 handoff 프롬프트는 완전 영어; help/About/Next Step은 영어 우선). 부가적·프레젠테이션 — `1.0.0` 명령/`--format json`/프로그래매틱 API/frontmatter 계약·zero-dep 불변. `1.16.1`에서 스토어프론트(README 제목·`keywords`) 교정. 신규 게이트 없음.
+
+## 릴리스 계획 (post-1.16) — 가치를 증명하고, 메모리 루프를 닫는다
+
+독립 제품 정체성 감사(`outputs/audits/product-identity-audit.md`, **Conditional Go**)는 거버넌스 코어는 실제이고 이름도 정확하지만, 궁극적 가치 사슬 — 지속적 프로젝트 메모리 → 재탐색 감소 → 토큰 절감/더 빠르고 안전한 작업 — 이 **미검증**이고, 런치 주장 2개(프로즈의 의미적 "검증", MCP로 문서 본문 "query")를 철회해야 했음을 밝혔다. 그래서 이 라인은 **먼저 측정하고, 그다음 메모리 스토리를 진짜로 만드는 두 기능을 만든다** — 동일 규율(코드 전에 게이트), 각 후속 게이트는 Gate 22 하니스로 재측정. 순서: 측정 → 최고 레버 거버넌스 완결 → "프로젝트 메모리"를 참으로 만드는 메커니즘.
+
+### Gate 22 — Impact 측정 (앞으로 당김)
+
+더 만들기 전에 코어 가치를 증명(또는 반증)한다. 재현 가능·opt-in·zero-dep 벤치마크 하니스가 대표 태스크를 **위키 있음/없음**으로 실행해 input tokens·열어본 파일 수·task 성공·소요시간을 기록하고, 위키 읽기+유지 비용까지 세는 정직한 방법론과 baseline을 남긴다. 주로 검증 트랙(shipped 계약 변경 없음; `bench` 헬퍼는 후속 minor). 불리한 결과 포함 정직하게 보고. **숫자가 뒷받침하기 전까지 token/속도 주장은 안 싣는다.** 주의: 재탐색 감소 메커니즘은 retrieval(Gate 24)이 완성하므로, 헤드라인은 raw baseline이 아니라 retrieval 전후 **delta**다. 범위: `GATE_REVIEW.md`(Gate 22, accepted).
+
+**상태: 하니스+베이스라인 완료.** `bench/` 하니스(zero-dep·repo-내부·npm `files` 밖이라 미배포)를 만들고 베이스라인을 기록했다 — `bench/README.md`·`bench/METHODOLOGY.md`·`bench/results/baseline.md`(거버넌스 기록: `docs/llm-wiki/BENCHMARK.md`). 이 레포 첫 측정(태스크 6개): 세션 단위로 거버넌스 위키는 whole-file grep(A1)의 **0.59×**, 보수적 snippet-grep(A2)의 **0.89×** 입력 토큰이지만, **단일 태스크 6개 중 3개**에서는 보수적 하한(A2)에 진다. 탐색 성공률은 **100%/100% 동률** — 즉 여기서 입증된 이점은 findability가 아니라 컨텍스트 크기이며, 오리엔테이션 읽기를 멀티-태스크 세션에 분할상환할 때만 성립한다. 예측대로 modest·정직한 베이스라인이고, 헤드라인은 여전히 retrieval 전후 delta다(이후 게이트마다 `node bench/run.js --against`로 재측정).
+
+**Gate 24 후 재측정(2026-07-21, 정직하게 불리):** 단순 `--against` 재실행은 `B vs A2`를 0.89×에서 **1.05×**로 이동시켰다(보수적 snippet-grep 하한 대비 토큰 이점이 역전). 그러나 이는 **retrieval 메커니즘이 아니라 코퍼스 드리프트**다 — 전략 B는 대상 **소스**를 통독할 뿐, harness가 Gate 24의 `get_doc`/`search_docs`를 호출하지 않는다.
+
+**Retrieval 델타 측정 완료(2026-07-21):** Gate 24를 직접 모델링하는 다섯 번째 arm **`B2_retrieval`**을 추가했다 — 배포된 `search-docs`(동일 스코어링)를 돌리고 소스 재독 대신 상위 매칭 위키 **문서 본문**을 `get-doc`으로 읽는다. B2와 B는 **같은 코퍼스**에서 돌므로 `B2 vs B`가 드리프트를 상쇄하고 메커니즘만 분리한다: **B2는 B의 0.19×(−81.5%)**, **보수적 snippet-grep 하한 A2의 0.19×(−80.5%)** — pre-retrieval arm B가 A2 대비 갖지 못했던 이점 — 이며 **grounding success 100%**(K=1에서도 견고). 다만 이는 여전히 결정적 `chars/4` 프록시이지 실제 LLM 실측이 아니므로 **실측이 뒷받침하기 전까지 README token/속도 주장은 금지**다. `bench/results/current.md`·`docs/llm-wiki/BENCHMARK.md` 참조.
+
+### Gate 23 — 변경소스 → 위키 reverse-impact 게이트
+
+감사가 찾은 최대 비전-현실 간극: 현재 drift는 날짜 기반이라 가장 중요한 경우 — 코드와 문서가 **다른 곳/PR**에서 바뀌는 경우 — 를 놓친다. `source_files`/`evidence`의 git-diff 역색인을 만들어, 참조된 코드를 건드리는 변경이 관련 `verified` 문서를 flag하게 한다(working-tree/PR-base 인식), strict-governance preset은 drift에서 CI 실패 가능. "위키가 코드를 따라간다"를 실제·CI 강제로 만든다. 부가적·opt-in·zero-dep. 범위: `GATE_REVIEW.md`(Gate 23, **accepted for 1.17.0**; 기존 `changedFiles`/`verifiedSourceAnchors` 프리미티브 재사용이라 대부분 배선 작업).
+
+**상태: 1.17.0에 shipped.** 읽기 전용 `impact` 명령이, 참조한 `source_files`/`evidence`가 현재 변경집합(working tree 또는 `--since <ref>`)에 들어 있는데 문서 자신은 같은 diff에서 안 바뀐 `verified` 문서를 flag한다 — 날짜 기준 `evidence.stale`의 diff 기준·pre-merge 보완이다. 신규 toggleable `impact.source_changed`(기본 warning), `--strict`는 CI 실패 error로 승격, 빈 변경집합은 no-op. `driftTargets`와 `scanReverseImpact`가 순수 `verifiedSourceAnchors` 추출기를 공유한다(동작 보존). 릴리스 노트: `docs/llm-wiki/releases/v1.17.0.md`.
+
+### Gate 24 — 읽기 전용 retrieval (search/get) MCP + API
+
+"프로젝트 메모리 / 에이전트가 위키를 query" 스토리를 참으로 만든다(런치에서 철회한 부분). status/visibility 필터가 있는 읽기 전용 `list_docs`/`search_docs`/`get_doc`/`get_related`를 MCP·프로그래매틱 API로 추가 — 거버넌스 보고가 아니라 **문서 본문**을 반환. **여기서 재측정** — 재탐색/토큰 delta가 나타날 지점. 부가적·opt-in·zero-dep.
+
+**상태: 1.18.0에 shipped.** 읽기 전용 4개 연산 — `list-docs`, `search-docs`(**zero-dep 키워드/부분문자열, semantic 아님**), `get-doc`, `get-related`(MCP 툴 `list_docs`/`search_docs`/`get_doc`/`get_related`) — 이 프로그래매틱 API + MCP + CLI에서 문서 본문을 반환한다. `listWikiContentDocs`·frontmatter 파서·`collectWikiGraph`·sensitive-info 스캔 재사용. 읽기 전용, restricted/민감 문서는 list/search 기본 제외(opt-in `--include-sensitive`), 반환 본문/스니펫은 민감 라인 redact(raw 값 미반환). `src/commands/retrieval.js`. 릴리스 노트: `docs/llm-wiki/releases/v1.18.0.md`. **여기서 Gate 22 벤치를 재측정**해 헤드라인 before/after-retrieval delta를 낸다(`node bench/run.js --against`).
+
+### Gate 25 — Evidence 의미 단계화 — **accepted + built (2026-07-21)**
+
+감사가 실증한 신뢰 갭 해소(존재하지 않는 symbol을 인용해도 지금은 통과). `reference_checked`와 `human_verified`를 구분하고, symbol/section 존재를 실제 검사하며, 근거 없는 `verified`를 flag한다. 부가적·opt-in·zero-dep.
+
+**빌드 완료(다음 minor에 shipped):** `scanEvidenceReferences`가 `#symbol:`/`#section:` 타깃 실재를 보수적으로 검사(`evidence.symbol_unverified`/`evidence.section_unverified` — 파일이 이름을 전혀 언급 안 할 때만; 섹션은 `.md`만; `--strict` 승격), `scanUngroundedVerified`가 `source_files`도 `evidence`도 없는 `verified`를 flag(`evidence.ungrounded`, warning, config 토글), 계산된 `evidenceTier`(`reference_checked` vs `human_verified`)를 `stats` JSON에 additive 노출(신규 frontmatter 필드/status값 없음). 진짜 AST/언어서버 심볼 해석·`route` 실재는 v1 제외(zero-dep 유지). 251 tests·`validate --strict` 0(dogfood: 50/50 reference_checked, 14/50 human_verified). 범위: `GATE_REVIEW.md`(Gate 25, accepted).
+
+### Gate 26 — Agent 실행 러너 + 완료 계약
+
+self-evolving 워크플로 조각: 스킬 실행이 구조화된 manifest(변경 코드·영향 문서·log 갱신·검증)를 남기고 CI가 누락된 위키 갱신을 검출 — 프로즈는 여전히 에이전트가 쓰되 파이프라인은 강제된다. 크고 모호 → 마지막. (코드 전에 신규 게이트.)
+
+### P3 도입 장벽 (흡수)
+
+brownfield 적합성(기존 대형 문서셋)과 비-JS 팀의 Node 런타임 장벽은 별도 기능이 아니라 위 게이트(특히 23/24) 안에서 다루고, 측정(Gate 22)이 실제 어디서 도입이 막히는지 보여준 뒤 재검토한다.
+
+## 미배치 1.x 백로그 (Unscheduled 1.x Backlog)
+
+할 만하지만 아직 릴리스에 배치하지 않은 부가 후보:
+
+- 실제 워크플로가 드러나면 `prompt --task` 프리셋 추가.
+
+위 릴리스 계획으로 승격: stdlib 서버 감지(→ 1.14, Gate 19).
+
+1.7.0에서 출시: 명령별 JSON `help` 예시. 위 릴리스 계획으로 승격: 더 풍부한
+enrichment 린팅(→ 1.8, 토글 가능한 `content.thin_body` 규칙으로).
+
+## 1.x 지평 너머 (Beyond the 1.x Horizon — 지금 계획 안 함)
+
+`1.0.0` 계약을 깨므로 향후 major 버전이 필요한 변경. 잊지 않도록 기록하되 —
+**일정 없음, 실제 필요가 당길 때만**:
+
+- frontmatter 계약 정리: 중복된 `verified` 태그 폐기(status가 이미 담고 있음),
+  `doc_type`를 OKF `type`으로 통일(별칭 제거).
+- 기본값 전환: `content.not_enriched`/`related.missing`를 error로 만들거나,
+  드리프트 자동 강등을 opt-in이 아닌 기본으로.
+
+## 명시적 보류/반려 (Explicitly Declined or Deferred — 현재 판단)
+
+- **core에 전면 Markdown → HTML 정적 사이트 생성기/렌더러: 반려.** 무런타임 의존성
+  불변식과 충돌하고 MkDocs/Docusaurus 영역으로 scope creep을 부르며, 생태계가 이미
+  Markdown-in-git corpus를 더 잘 렌더링한다. 한정된 퍼블리시 가이드 + 대시보드
+  인덱스(1.4)가 목표를 저렴하게 달성한다.
+- **원문 → OKF 완전 자동 추출: 보류.** `okf-extract`로 프롬프트 보조 방식을 유지;
+  엔티티/이벤트 자동 추출은 사람 검토 모델과 상충한다.
+- **모든 문서에 `owner` 필수화: 반려.** 기존 저장소를 오류로 뒤덮고 점진적 도입과
+  충돌한다.
+- **`verified` 자동 승격: 절대 안 함.** `verified`는 마이그레이션 엔진을 포함한 모든
+  명령에서 사람만 승인한다.
+- **Notion 네이티브 모드: 계획 없음.** Notion은 손실 import가 필요하다; 수요가
+  생기면 core 기능이 아니라 단방향 하위 Markdown → Notion 미러로 다룬다.
+
+## 출시 계획 (post-1.19) — 외부 실사용發 반응형 DX
+
+실제 Vue/Quasar SPA에 LLM-WIKI를 구축한 QA/DX 피드백에서 나왔다. 부가적·zero-dependency·
+백엔드/풀스택 byte-identical.
+
+- **1.20 — 프론트엔드 DX + evidence DX + retrieval (npm 1.20.0).** 프론트엔드/모바일(SPA) 도메인
+  탐지(`pages`/`views`/`features`/`modules`/`screens` 폴더 + vue/react-router 라우트 그룹, 정규식),
+  도메인 0개일 때 명시 안내 + `--domains`, `get-doc --section` 집중 읽기, `search-docs`의 change log
+  후순위화, `evidence.section_unlisted` 경로 기준 매칭(locator 형식 관대).
+- **1.21 — 도메인 온보딩 + enrichment DX (npm 1.21.0).** 도메인 문서를 `index`·`DOMAIN_FEATURES`
+  진입점에 사전 배선(P6), `next`의 문서별 enrichment 체크리스트(P5), 탐지/`not_enriched` 휴리스틱
+  투명성 문서 + 스냅샷 회귀 테스트(P7).
+- **1.22 — Findings i18n (npm 1.22.0).** 사람이 읽는 findings 프로즈의 선택적 한국어화(외부 피드백 P4,
+  Gate 27): 전역 `--lang ko|en`(기본 `en`)과 config `lang`가 finding `message`(공유 `applyRuleConfig`
+  seam 경유라 text·`--format json` 양쪽 반영)와 `explain` 프로즈를 zero-dependency 카탈로그
+  (`src/i18n.js`)·영어 fallback으로 지역화. rule ID·`--format json` shape·CLI 명령·경로는 영어 고정,
+  기본 `en`은 byte-identical.
+- **1.23 — Bootstrap 스킬 + Codex 네이티브 스킬 (npm 1.23.0).** 최초 위키 작성 전용 `bootstrap` 태스크
+  (스킬 `/llm-wiki-bootstrap`·`prompt --task bootstrap`)가 `init --write` 뼈대를 실제 코드 근거로 보강하고
+  모두 `needs_review`로 유지한다. 규칙은 단일 소스(`src/task-prompts.js`의 `initialEnrichmentWorkflow`)에서
+  `handoff` 프롬프트와 공유해 갈라지지 않는다. 여기에 Codex 네이티브 스킬 출력
+  (`.agents/skills/llm-wiki-<task>/SKILL.md`)을 더하고, `selectedSkillFormats`가 형식을 대칭 선택한다
+  (`--agent codex`/`claude`/`cursor` → 해당 형식, `--skills` → 전부). 부가적·zero-dependency, 스킬 미요청 시
+  byte-identical이며, 유일한 동작 변경은 `--agent codex` 단독 선택 시 Codex 스킬이 생성되는 것.
+- **1.25 (배포됨) — 토큰 효율: 가장 싼 안전한 경로 선택.** 정확도·최신성·사람 검토를 희생하지 않으면서
+  올바른·검증된 변경까지의 토큰을 줄이는 부가적·opt-in·zero-dependency 작업. 작업 텍스트+후보 수+문서
+  status만으로(정답 파일명 미사용) `source_direct`/`wiki_first`/`hybrid`를 고르는 결정적 경로 선택기
+  (위험 작업·stale 문서·코드 변경엔 안전 오버라이드). retrieval 토큰 제어: `get-doc --strict-section`
+  (전체 본문 fallback 없음)·`--max-chars`(redaction 후 정확 클램프)·`--compact`, `prepare --compact`
+  최소 문맥 번들, 섹션 제목 가중 랭킹. 더 간결한 feature/fix/docs-sync 스킬(런타임 위키 맵, 스냅샷
+  아님; 안전 규칙 전부 유지; bootstrap은 더 풍부한 안내 유지) + 사용자 미수정 관리 스킬만 갱신하는
+  안전한 `--refresh`. MCP 토큰 제어 + content/structuredContent 본문 중복을 피하는 compact 경로. proxy
+  벤치 arm `B3_retrieval_compact`(chars/4 전용). 보류(사람 결정): real/유료 다중 프로젝트·다중 모델
+  측정. 범위: `GATE_REVIEW.md`(Token-Efficiency: Cheapest-Safe-Path Selection + Compact Retrieval).
+- **1.24 (배포됨) — guided 온보딩·작업 준비.** 거버넌스 코어 위에 사람/에이전트
+  워크플로를 얹는 읽기 전용 명령 2개: `onboard`는 신입용 도메인 학습 경로(문서·소스/테스트 진입점·불변조건·
+  최신성 경고·이해도 점검)를, `prepare --task`는 구현 전 작업 범위(관련 문서·후보 소스/테스트·위험)를
+  조립하며 단정이 아닌 후보로 표현한다. retrieval 랭킹(`rankDocsByQuery`)·그래프 재사용, CLI/API/MCP, 신규
+  `llm-wiki-onboard`/`llm-wiki-prepare` 스킬, feature/fix 스킬에 prepare 인지 추가. 분리된 전체 작업 실험
+  뼈대(`bench/whole-task/`, dry-run 전용, 수치 조작 없음)도 추가. 부가적·읽기전용·zero-dep. 초안으로 보류:
+  별도 guided feature/fix CLI 모드·사람 승인용 `review` 명령·언어서버/AST 분석기. 범위:
+  `GATE_REVIEW.md`(Guided Onboarding and Task Preparation).
+- **1.24 (묶음) — 생성 문서 언어 선택(긴급 i18n).** 영어 우선 제품에서 생성 위키 문서가 한국어를 흘리던
+  버그 교정: `init`/`quickstart`이 이제 모든 생성 문서 본문을 기본 영어로(본문·제목·placeholder·review
+  note·초기 log에 한국어 0), 생성 문서(및 에이전트 문서 작성) 언어를 고르는 전역 `--doc-lang en|ko`와 config
+  `docLanguage`를 추가한다(`--lang`과 독립). 단일 언어 선택 계층(`src/commands/doc-content.js`); 기술 식별자
+  미번역; 이미 영어였던 문서는 byte-identical. 보류: 기존 문서 자동 번역·언어 변환 명령·한국어 OKF 템플릿.
+  범위: `GATE_REVIEW.md`(Documentation Language Selection).
+- **실측 완료(2026-07-22):** 외부 Vue/Quasar 프로젝트 대상 실제-LLM **N=3** 벤치(Claude Opus 4.8)로
+  chars/4 프록시를 대체했다. 최신 위키에서 에이전트는 **소스를 안 읽고 동일 정확도로** 답하며 토큰
+  ~10% 절감(태스크 의존적), 반면 **오래된** 위키는 오답을 냈다 — 이득의 본질은 raw 속도가 아니라
+  신선도에서 오는 정확도. 스코프 한정 결과(단일 에이전트/레포). `docs/llm-wiki/BENCHMARK.md` 참조.
+- **벤치 엄밀성 하네스 — scaffolded 2026-07-22(미실행):** 파일럿의 단일 total과 달리 실제 input/output
+  토큰 분리를 내는 SDK 경로 드라이버(`bench/real/agent.js` + `bench/tasks-external-vue-app.json`). dry 검증 완료,
+  유료 실행은 API 예산 대기. Claude 특이성 검증용 교차 에이전트(GPT) 드라이버는 보류. `bench/real/DRIVER_RUNBOOK.md` 참조.
+- **후보(미구현):** `fix`-타임 도메인 링크 재배선; 유료 SDK 경로 실행과 교차 에이전트 벤치; 리포트
+  chrome/severity 단어 지역화 및 KO/EN 외 언어.
+
+## 출시 계획 (post-1.25) — 견고화 & 도입 (Harden & Adopt) — **1.26.0으로 출시됨 (2026-07-27)**
+
+**공개** 저장소에 대한 외부 3자 심층 분석(2026-07-24)은 설계·거버넌스 코어를 "탁월하고 내부적으로
+일관됨"으로, zero-dependency 자세를 대표 강점으로 평가했으나, **더 넓은 도입의 병목은 기능이 아니라
+운영 표준화 + 엔지니어링 위생(hygiene)**에 있다고 지목했다. 이 라인은 그 리포트에 대응하며,
+measure-first 라인(Gate 27까지 완료) 및 global-reach 프로그램과 조화시키되, 무런타임 의존성 정체성의
+제약 안에서 진행한다.
+
+**상태: 이 라인 전체가 2026-07-27에 1.26.0으로 출시됐다.** 이 라인이 드러낸 3개 결정은 모두 권장안대로
+확정됐다 — 커버리지는 Node 내장(nyc/c8 아님), lint는 `node --check` 게이트(ESLint/Prettier devDependency
+아님), 그리고 **Gate 20 승인** 후 헤드라인 `review` 명령으로 구축. 런타임 의존성 **과** devDependency
+모두 0이 유지된다. 아래 계획은 무엇을 왜 제안했는지의 기록으로 원문 그대로 둔다. 항목별 결과는
+`CHANGELOG.md`(1.26.0) 참조.
+
+이 라인에서 **의도적으로 닫지 않은** 항목이 둘 있다: README 성능 헤드라인은 계속 금지(Track C 참조),
+그리고 벤치에서 "위키 내용"과 "retrieval 툴"을 분리해 줄 빈-위키 통제 arm은 아직 실행하지 않았다.
+
+리포트의 사각지대 유의: 공개 파일만 읽었으므로 "미지정" 플래그 다수는 **역량 격차가 아니라 문서-가시성
+격차**다 — 내부 설계 노트·measure-first 벤치 라인·토큰 효율 작업을 보지 못한다. 아래 계획은 진짜 격차만
+남기고 나머지는 뺀다. **README 성능 헤드라인은** 실제 다중 레포/다중 모델 측정이 뒷받침하기 전까지
+**여전히 금지**다(하네스 수치는 `chars/4` 프록시).
+
+### Track A — 엔지니어링 위생 & 공급망 견고화 (부가적; 무런타임 의존성)
+
+리포트의 비기능 항목. 어느 것도 런타임 의존성을 추가하지 않으며, 두 항목은 이 로드맵이 조용히 처리하지
+말고 **명시적으로 내려야 할 정체성 결정**을 담는다.
+
+- **composite action의 기본 `version` 고정.** `.github/actions/validate/action.yml`은 `version` 입력
+  기본값이 `"latest"`다(11행). 그래서 소비자가 action을 태그로 고정해도 실행되는 CLI 버전은 떠 있다.
+  공급망 재현성을 위해 기본값을 고정 `X.Y`/`X.Y.Z`로 바꾸거나 필수 입력으로 만든다. 가장 저렴한 항목,
+  순수 CI, 게이트 불필요. (리포트 #8.)
+- **테스트 커버리지 수집 + 선택적 CI 임계값 — Node 내장으로.** `node --test --experimental-test-coverage`
+  (Node 20+, 이미 CI 매트릭스에 있음 — `.github/workflows/ci.yml`)로 커버리지를 수집·공개하고, 선택적으로
+  비차단 하한을 둔다. **정체성 결정: 이는 zero-dep를 보존한다. 리포트의 문자 그대로의 제안(nyc/c8)은
+  devDependency를 추가해 "의존성 없음 AND devDependency 없음" 정체성을 깬다 — 권장 답은 nyc/c8가 아니라
+  내장 기능이다.** (리포트 #6.)
+- **자동 보안 스캔.** GitHub 네이티브 CodeQL 워크플로(패키지 의존성 없음)를 추가하고 시크릿 스캔을
+  문서화한다; 선택적으로 `npm sbom`로 SBOM. 전부 CI/GitHub 네이티브 — 런타임·패키지 의존성 0. (리포트 #9.)
+- **운영-거버넌스 메타데이터.** `CODEOWNERS`, 유지보수자/승인자 매트릭스, 릴리스 승인자 노트. 순수 저장소
+  설정 + 문서. (리포트 #11.)
+- **Lint/format/typecheck 입장 — 유일한 강한 zero-dep 긴장.** 내장 JS 린터가 없으므로 이 제안은 커버리지처럼
+  충족할 수 없다. **정체성 결정(반드시 명시적으로, 조용한 devDep 추가 금지):** 둘 중 하나 — (a) zero-dep를
+  유지하고 CI에 `node --check` 문법 게이트 + `.editorconfig` + "스타일은 린터 의존성이 아니라 리뷰로
+  강제한다"는 의도적 입장을 문서화; 또는 (b) **범위 한정 devDependency**(ESLint/Prettier)를 수용하고
+  "devDependency 없음" 주장을 폐기. 권장: (a) — 리포트 스스로 칭찬한 정체성을 보존하고, 그 입장을
+  `CONTRIBUTING`에 공개적으로 밝힌다. (리포트 #7.)
+
+### Track B — 거버넌스 완성 (리포트의 기능-HIGH 항목)
+
+- **Gate 20 결정 — 사람 검토 → `verified` 워크플로.** 리포트는 검토/승인 워크플로를 최상위 기능 격차로
+  독립적으로 지목했다; 내부적으로는 첫 외부 end-to-end 실행이 `needs_review` 백로그를 남겼는데 이를
+  검토·승인할 편의 수단이 없던 이래 **초안-미승인**(`GATE_REVIEW.md` Gate 20, `proposed_for_next`) 상태로
+  오래 있었다. 읽기 전용 `review` 명령이 `needs_review` 콘텐츠 문서를 위험 순위(얇음 / 근거 없음 /
+  깨진 링크 / 미보강 우선)로 나열하고 문서별 품질 + 근거 요약으로 빠른 점검을 돕는다; `verified` 승격
+  (`reviewed_by`/`reviewed_at` 기록)은 오직 명시적·확인된 `--approve <경로>…`에서만 일어난다 — 자동은
+  절대 없다. 이는 루프에서 가장 약하고 가장 수동적인 부분이자 거버넌스 코어 그 자체다. **권장: Gate 20을
+  수용하고 이 라인의 헤드라인 기능으로 구축한다.** 부가적·opt-in·기본 읽기전용·zero-dep; `verified`는 모든
+  명령에서 사람 전용을 유지한다.
+- **MCP 접근 경계 문서.** MCP 서버가 가정하는 신뢰 모델(로컬 stdio 서브프로세스 / CI 러너, stdout=프로토콜
+  채널, 읽기 전용 툴, 쓰기 없음)을 문서화하고, 원격 브로커로 노출하지 말 것을 경고하며, 민감 저장소용
+  지침을 준다. 순수 문서; 코드 변경 없음. (리포트 #2.)
+
+### Track C — 도입 자산 (리포트 MED/LOW + global-reach P2)
+
+- **End-to-end 예제 + 픽스처.** `init → enrich → validate → review`의 작은 실동 예제(또는 문서화된
+  `examples/` 워크스루), 확장된 테스트 픽스처, 실제 `quickstart` 출력 스냅샷. (리포트 #3.)
+- **규모별 운영 가이드.** 소규모 레포 / 중규모 레포 / monorepo용 짧은 가이드: 어떤 플래그, CI 비용, 문서 수
+  전략. (리포트 #4.)
+- **README 아키텍처 다이어그램 + 감사 출력 예시.** command → scan → report 파이프라인 다이어그램과 실제
+  (redact된) 감사 출력 몇 개. (리포트 #5.)
+- **기존 벤치를 주기/릴리스 CI 가드에 배선.** `bench/` 하네스는 공개 리포트가 볼 수 있는 것보다 훨씬
+  성숙하다; `node bench/run.js --against <baseline>`을 재실행해 회귀를 표시하는 opt-in 잡을 추가한다.
+  **`chars/4` 프록시는 프록시로 남는다 — 실제 다중 레포 / 다중 모델 측정이 뒷받침하기 전까지 README에
+  토큰/속도 헤드라인은 배포하지 않는다.** (리포트 #10.)
+
+### 이 라인 너머 (게이트 대상, 실제 도입 신호가 당길 때)
+
+global-reach 프로그램의 P3 도입 장벽 — 기존 대규모 문서셋의 브라운필드 적합성, 비-JS 팀을 위한 Node
+런타임 허들 — 은 각자의 게이트 뒤에 보류로 남으며, 측정과 위 도입 자산이 실제로 도입이 막히는 지점을
+드러낼 때만 당긴다.
+
+## 릴리스 계획 (post-1.26) — 감사 잔여·차용 기법·문맥 규율 — **1.27.1로 배포(2026-07-29)**
+
+이 라인은 새 게이트를 제안하지 않는다. 다른 곳에서 이미 범위가 정해진 작업을 마감한다.
+
+- **2026-07-27 품질 감사의 잔여 항목** — 중복 frontmatter 키를 조용한 last-wins 대신 표면화, MCP
+  `inputSchema` 실제 강제(`-32602`), `--type`을 `KNOWN_TYPES` 단일 소스로 검증. `GATE_REVIEW.md`의
+  감사 항목에 기록.
+- **외부 에이전트 하네스(ECC, MIT)에서 차용한 기법 4건** — `GATE_REVIEW.md`의 *"ECC Technique
+  Extraction Scope Decision"*으로 결정: run manifest의 `testEvidence` red→green 트레일, 생성 스킬
+  아티팩트의 `estimated-tokens` 예산, 명명 `rulesPreset` 번들, 단방향 `import-memory` 임포터. ECC는
+  **기법 소스로만** 읽었다 — 의존성도 이 저장소의 툴체인도 아니며, 그중 2건(confidence 스코어링, 세션
+  "instincts")은 사유와 함께 기각했다.
+- **생성 프롬프트의 문맥 규율.** 토큰 효율 라인(1.25)은 CLI가 **돌려주는** 것을 통제했지만 에이전트가
+  **끌어오는** 것은 통제하지 않았다. 이 배치가 그 나머지 절반을 닫는다: 모든 작업 프롬프트·스킬에
+  공유 문맥 예산을 넣고, run manifest 계약이 자기 payload에 상한을 갖게 했다. 소스를 **어떻게** 읽을지만
+  좁히고 **읽을지 여부**는 건드리지 않으며, 코드가 최종 사실이라는 불변식을 프롬프트 본문에 명시한다.
+
+**`chars/4` 프록시는 프록시로 남는다.** `estimated-tokens` 스탬프와 각 스킬 고정 본문의 약 30% 증가는
+프록시 수치이자 설계된 트레이드오프로 보고하며, 실제 다중 레포 / 다중 모델 측정이 뒷받침하기 전까지
+README에 토큰·속도 헤드라인은 배포하지 않는다.
+
+## 릴리스 계획 (post-1.27.1) — 프롬프트 형태 규율(unhobbling) — **1.27.2로 배포(2026-07-30)**
+
+신규 게이트 없음; 범위 결정은 `GATE_REVIEW.md`의 *"Prompt-Shape Discipline (Unhobbling) Scope
+Decision"*에 기록. 유지보수자가 검토한 지침(불필요 설정 삭제 / 목표·금지선·종료기준만 전달 /
+비법 대신 관찰-보완)을 하나의 분류 규칙으로 적용했다: 생성되는 모든 지시 줄을 steering / 계약 /
+안전으로 분류하고 **steering만** 삭제 가능 — `validate`/`check-run`/테스트가 종료 시점에 계약을
+강제하기 때문이다.
+
+- **어댑터 선적재 축소** — Claude Code 어댑터 템플릿(마커 v1→v2)이 `@`-include를
+  `index.md`+`project-profile.md`로 줄이고, 무거운 문서는 retrieval 명령으로 on-demand 로드.
+  이 저장소의 `CLAUDE.md`도 템플릿과 동일(선적재 ~30.3k → ~1.4k 토큰, `chars/4` 프록시).
+- **3블록 프롬프트** — `feature`/`fix`/`refactor`/`docs-sync` 프롬프트/스킬이 Goal / Hard
+  lines / Exit criteria를 서술하고 그 사이는 에이전트에 맡긴다(마커 v4→v5); 계약·안전 줄은
+  전부 보존·회귀 테스트로 고정. 절차형 원샷 워크플로는 의도적으로 체크리스트 유지.
+- **Review Notes 아카이브** — 무거운 위키 문서는 최근 5건만 유지하고 오래된 항목은
+  `docs/llm-wiki/REVIEW_HISTORY.md`로 원문 이전(승인 효력은 frontmatter가 정본; append-only
+  로그는 `log.md`가 소유).
+- **계측화된 삭제 기준** — steering 줄은 부재 시 발화하는 신호(`run.*`·validate/audit
+  findings·테스트 실패)가 없으면 삭제 후보; 프롬프트 표면 재검토는 캘린더가 아니라 모델
+  업그레이드/수 릴리스 주기.
+
+**미측정임을 명시한다.** 재구성이 과제 성과에 주는 효과는 벤치 arm이 없고, 선적재 수치는 파일
+크기 산술(`chars/4` 프록시)이다. README 헤드라인 금지는 유지된다.
+
+## 릴리스 계획 (post-1.27.2) — 하네스 거버넌스 Phase 0 + 누락 게이트 기본 활성화 — **1.28.0으로 배포(2026-08-03)**
+
+`docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md`에서 나온 라인이다: Phase 0(결함부터 고치고, 우리가
+실제로 출하하는 채널에 게이트를 배선)과 2026-08-03에 유지보수자가 결정한 J장 11건. 범위 결정은
+`GATE_REVIEW.md`의 *"Phase 0 Gate Wiring"*·*"Phase 0 Defect Batch"*·*"Monorepo CLI Contract
+Parity"*에 기록.
+
+- **누락 게이트가 기본으로 켜진다(결정 21)** — `impact.source_changed`가 `warning`→`error`가 되어
+  `impact --since <ref>`가 플래그 없이 빌드를 실패시키고, 이 규칙에 대해 `--strict`는 no-op이다.
+  형태로는 SemVer MAJOR지만 **유지보수자 결정으로 MINOR**로 배포한다. `^1.27.2`가 자동으로
+  올라오기 때문에, config 탈출구 2가지(`rules` 또는 `rulesPreset: "relaxed"`)를 README 양쪽·
+  CHANGELOG 양쪽·릴리스 노트에 모두 적었다.
+- **릴리스 노트 면제(결정 28)** — `doc_type: release_notes`는 `evidence.stale`과
+  `impact.source_changed` 양쪽에서 건너뛴다. 이것이 결정 21을 실사용 가능하게 만들었고(기본값을
+  켠 커밋에서 finding 23→9), **커버리지 감소**임을 그대로 적는다.
+- **출하하는 네 채널이 게이트를 돌린다** — pre-commit 훅, 워크플로 템플릿(`fetch-depth: 0` 포함 —
+  없으면 `--since`가 조용히 무력화된다), 컴포지트 액션(`command` 입력 — 이게 없으면 누락 게이트를
+  이 경로로 아예 실행할 수 없다), 그리고 이 저장소의 CI.
+- **Phase 1 `harness-health`** — 위키가 아니라 하네스(어댑터·생성 스킬·상시 선적재 표면)를 검사하는
+  첫 명령. 읽기 전용, 토글 가능한 규칙 4종, 그중 2종은 프로젝트가 예산 숫자를 주기 전까지 비활성.
+  Phase 1만 승인됐고 `fleet` 롤업은 이 신호가 유용하다고 판정될 때까지 미구현이다(브리프 J-27
+  권고 (b)).
+- **감지기 8건 연결** — stale이라고 증명한 위키에 pass를 보고하던 `drift`, 미보강 스캐폴드를 받던
+  `review --approve`, 파일명으로 매니페스트를 고르던 `check-run`, 미커밋 신규 소스를 못 보던
+  `impact --since`, 그리고 작은 4건. 전부 **감지는 되는데 말을 못 하던** 것들이다.
+- **측정 후 출하하지 않음(결정 24)** — `review` 명령을 우회한 승인을 게이트하는 안은 verified 문서
+  129건에 42회 발화했지만 **실제 우회는 0건**이라 권고 자신의 전제 조건이 실패했다. 대신 측정이
+  더 나은 규칙을 지목했다(`reviewed_at`이 승격 커밋보다 앞서는 경우 — 전 코퍼스에서 1건). 이는
+  별도 결정으로 남긴다.
+
+**숫자는 게이트와 함께 다닌다.** `impact.source_changed`의 기준선 오탐률은 아직 내려지지 않은 정책
+판단에 따라 **27% 또는 57%**이고, 허브 파일 하나가 최대 14건으로 퍼지며, 기본값을 켠 커밋에서는
+finding 6건 중 1건이 조치 대상이었다. `harness-health`는 저장소 5곳 finding 33건에서 오탐 0을
+측정했다 — 여기서 "참"은 보고된 사실이 맞다는 뜻이지 조치할 가치가 있다는 뜻이 아니다. 새 CI
+템플릿의 파일럿 저장소 확인은 지시에 따라 건너뛰었다. `chars/4` 프록시와 README 헤드라인 금지는
+그대로다.
+
+## 릴리스 계획 (post-1.28.0) — 릴리스 커밋이 자기 매니페스트 때문에 실패하지 않게 — **1.29.0으로 배포(2026-08-05)**
+
+항목 하나이고, 직전 릴리스가 스스로 치른 비용에서 그대로 나왔다. `impact.source_changed`는
+1.28.0에서 error가 됐고, 그것이 가장 먼저 한 일은 **자기를 출하한 릴리스 커밋에서 발화하는 것**이었다:
+릴리스는 정의상 `package.json`을 바꾸고 이 저장소의 비면제 `verified` 문서 10건이 그 파일을 인용한다.
+이제 `impact`는 그런 매니페스트를 변경된 것으로 보고하되 앵커로 쓰지 않는다.
+N-13으로 기록했다(`docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` H장, 선택지 (c), 2026-08-04
+유지보수자 결정) — 기각한 대안 2개와 그 대가를 함께 적어 두었다. 범위 결정은 `GATE_REVIEW.md`의
+*"Version-Only Manifest Scope Decision"*이다.
+
+- **의도적으로 좁다.** `package.json` 한정 — 루트 매니페스트는 항상, 중첩은 루트가 `workspaces`를
+  선언하고 그 glob의 리터럴 접두사 아래일 때만. `pyproject.toml`·`Cargo.toml`은 아니다: 파서가
+  필요하고 무의존성이 그 대칭성보다 값어치가 크다. 비교는 **키 순서를 구분한다** — Node가 조건부
+  `exports`를 키 순서로 해석하므로 순서 변경은 실제 변경이다.
+- **조용하지 않다.** `anchoring_files`가 `changed_files` 옆에 제외된 경로를 이름과 함께 인쇄하고,
+  `--format json`은 `versionOnlyExcluded[]`를 싣는다. 보이지 않는 카브아웃은 출하 텍스트가 동작을
+  앞지르는 것과 같은 부류의 실패이며 방향만 반대다.
+- **`drift`는 손대지 않았다.** `evidence.stale`은 날짜 앵커라 버전만 올려도 그 매니페스트를 인용한
+  문서를 계속 지목한다. 이 제외는 `impact`만의 것이다.
+- **기각한 것과 그 이유:** 이 저장소 config에서 규칙을 낮추는 방안은 매니페스트만이 아니라 **모든**
+  소스 변경의 차단력을 없앤다(1.28.0에서 게이트가 실제로 잡은 진짜 1건까지 묻혔을 것). 매 릴리스마다
+  팬아웃을 재검토하는 방안은 게이트를 고무도장으로 만들고, Review Notes 5건 상한 때문에 릴리스마다
+  아카이브 회전을 강제한다.
+
+**숫자는 이 저장소에서 실측했다.** `package.json` 단독 diff는 **10건 → 0건**. 릴리스가 만지는 버전
+담지 파일 8종 기준으로는 **11건 → 4건**이고, 이번 릴리스 커밋의 실측값이 정확히 **4건**이다 — 전부
+내용이 진짜로 바뀐 `README.md` 또는 컴포지트 액션을 인용한다. **0에 도달하지 않으며, 이 변경을
+설명하는 모든 자리에 그 사실을 함께 적었다.** 그리고 그 4건을 해소하자 **2차 발화 1건**이 나왔다
+(방금 고친 문서들을 인용하는 리뷰 노트 아카이브) — 총 5건 처리이며, 위키의 팬아웃은 소스→문서
+1홉이 아니다. 4건 중 3건은 실제로 낡은 주장을 담고 있어 재스탬프가
+아니라 본문을 고쳤고, 그중 하나는 **N-13 항목 자신**에 있던 것으로 같은 거짓 전제를 다른 6문서에서
+고친 정정 배치를 살아남은 것이다. 첫 구현은 세 가지가 틀렸고 적대적 검증이 배포 전에 셋 다 잡았으며,
+테스트는 mutation으로 구멍 4개가 드러난 뒤 **9건 → 17건**이 됐다.
+
+## 릴리스 계획 (post-1.29.0) — 게이트가 `review`로는 손댈 수 없는 문서를 지목했다 — **1.29.1로 배포(2026-08-06)**
+
+이번에도 항목 하나이고, 이번에도 직전 릴리스가 남긴 대가다. 1.29.0은 CHANGELOG 2종에 **알려진 문제**를
+함께 실어 보냈다: 최신성 게이트가 `review`로는 구조적으로 재스탬프할 수 없는 문서를 지목하는 문제다.
+문서 열거자가 둘로 갈라져 있었다 — `review`는 `/templates/`를 제외하는 `listWikiContentDocs`를 쓰고,
+`validate`·`drift`·`impact`는 `docs/llm-wiki` 전체를 걷는 `listTargetMarkdown`을 쓴다. N-14로 기록했고
+(`docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` 46번), 선택은 기록된 권고인 (c)+(b)다. 범위 결정은
+`GATE_REVIEW.md`의 *"Template Scope Decision (N-14, 2026-08-06)"*이다.
+
+- **잡음이 아니라 해소 불가능한 finding이었다.** 낡은 템플릿을 강등하면 아무것도 돌아오지 않고,
+  `--approve-all`은 건너뛰면서 `needs_review_remaining: 0`이라 보고하고, 명시 지정하면 분명히
+  `docs/llm-wiki` 안에 있는 파일을 두고 `not found under docs/llm-wiki`라고 답했다. 1.28.0부터
+  `impact.source_changed`가 기본 `error`이므로, 위키 템플릿을 두는 도입처는 **해소 수단 없이 빌드가
+  실패**할 수 있었다.
+- **술어는 공유하고 열거자는 합치지 않았다.** `isTemplateDoc`를 export하고 최신성 스캔 2개가 그것으로
+  건너뛴다. 열거자를 합치면 템플릿이 **승격 대상**이 되어 경계가 반대 방향으로 무너진다. 술어 하나를
+  공유하면 경계는 유지되고 두 답이 다시 갈라질 수 없다.
+- **같은 배치에서 인접 결함 1건도 고쳤다.** append-only 로그는 `--approve-all`에선 건너뛰어졌는데
+  명시 지정하면 `verified`로 **스탬프됐다** — 같은 경계에 답이 둘이었다. 이제 두 경로 모두 거부한다.
+- **PATCH로 판정했고 근거를 기록에 남겼다.** 구현 시점 메모는 "MINOR가 보수적 읽기"라고 적었지만
+  결정은 반대로 갔다: 명령·옵션·리포트 필드가 하나도 움직이지 않고, 1.29.0이 MINOR였던 이유는 바로
+  그 출력 필드 2개를 **추가**했기 때문이다. 동작 변경은 관대해지는 방향뿐이라 도입처 빌드가 새로
+  깨지지 않는다.
+
+**숫자는 이 저장소에서 실측했다.** `evidence.stale` **7건 → 5건**. 사라진 2건이 정확히 해소 경로가
+없던 템플릿이고, 남은 5건은 1.29.0이 남긴 통상적인 릴리스 후 드리프트다. **0이 되지 않으며 그럴
+의도도 아니다.** 테스트 6건 추가(**509 → 515**, `skipped 0`)이며, 픽스처에 frontmatter가 바이트
+동일한 비템플릿 형제를 대조군으로 두어 경로 이외의 이유로 게이트가 멈추면 통과가 아니라 실패한다.
+RED은 파일 단위 크래시가 아니라 **테스트별로** 확인했다 — 이 저장소 테스트는 로드 시점에 import를
+가드하므로 새 export를 통째로 stash하면 크래시 1건만 나오고 아무것도 증명하지 못한다.
+
+## 릴리스 계획 (post-1.29.1) — 프롬프트가 "얼마나"에 더해 "누가" 읽을지까지 정한다 — **1.29.2로 배포(2026-08-18)**
+
+이번에도 항목 하나이고, 이번 것은 1.27.1이 열어둔 공백을 닫는다. `contextBudget`은 생성된 프롬프트가
+에이전트에게 **얼마나** 읽으라고 말할지를 좁혔을 뿐, **누가** 읽을지는 말하지 않았다. 그래서 변경을
+위치 파악하고 스코핑하는 훑기 — 파일 여럿을 열고 대부분 한 번 읽고 버리는 — 는 여전히 추론을 쥐고 있는
+문맥의 가격으로 치러졌다. 1.29.2는 네 번째 레버를 더한다: **위임 예산**(`src/task-prompts.js`의
+`delegationPolicy()`)이며, `contextBudget()` 바로 뒤 호출 지점 3곳(`implementationPrompt`·
+`docsSyncPrompt`·`initialEnrichmentWorkflow`)에 이어 붙는다.
+
+- **내용은 "위임하라"는 권유가 아니라 그 경계다.** 위치 파악과 스코핑은 위임 가능하고, 돌아오는 것은
+  브리프여야 한다 — 발견·`file:line` 근거·확인하지 못한 것이지, 원자료가 아니다. 판단은 위임 불가다:
+  설계 결정, 회귀 위험 판정, 실제 수정, 그리고 위키와 로그 서술은 제자리에 남는다. 싼 에이전트는 이미
+  써 준 텍스트를 넣을 수는 있어도 **왜 그런지를 설명하는 문장은 쓸 수 없기** 때문이다. 기계적 마감은
+  다시 위임 가능하다 — 검사 실행, run 매니페스트, 이미 결정된 편집의 적용.
+- **함정 셋을 못박은 이유는, 각각이 아끼는 것보다 조용히 더 쓰기 때문이다.** 브리프 대신 원자료를
+  돌려받는 위임은 아무것도 사지 못한다. 세션 모델은 고정하고 위임만 싼 모델로 보낸다 — 작업 중간에
+  세션 모델을 바꾸면 그때까지의 대화 전체를 **새 모델의 입력 가격으로 다시 읽는다**. 그리고 위임이
+  검증되지 않은 주장을 사 주지는 않는다: 대리인이 실제 소스를 읽고 근거를 보고하든지, 아니면 직접 읽는다.
+- **에이전트 중립은 우연이 아니라 계약이다.** 첫 초안은 Claude 특정 문장을 `agents`로 분기했다가 중립
+  프롬프트와 Cursor 룰로 새어 나갔다 — `buildTaskPrompt`가 빈 `agents` 목록을 `["codex", "claude"]`로
+  넓히기 때문이다. 특정 하네스를 지목하는 문구는 `templates/adapters/` 아래 그 하네스의 어댑터 몫이고,
+  이제 테스트가 **어떤 인자도 이 텍스트를 바꾸지 못한다**는 것을 고정한다.
+- **의도적으로 넣지 않은 곳.** 읽기 전용 스코핑(`onboard`·`prepare`)과 포맷 변환(`okf-extract`)에는 이
+  블록이 없다. 거기서는 위임해서 읽는 것이 **작업 그 자체**라 블록이 잡음이 된다. 위임하는 4개 작업의
+  관리 스킬 아티팩트 16개를 갱신했고, `onboard`·`prepare` 아티팩트가 **바이트 동일**하게 돌아온 것이
+  의도한 곳에만 들어갔다는 검사다.
+
+**대가는 적고, 절감은 주장하지 않는다.** 영향받는 스킬 본문은 각각 약 **30%** 커진다(`fix` 1077 →
+1406, `bootstrap` 1171 → 1501 — `chars/4` 프록시이지 실측 토큰이 아니다). 한 번도 위임하지 않는
+도입처에는 순수한 비용이다. 이 블록이 사려는 절감은 **여기서 측정하지 않았고 주장하지 않는다** —
+1.27.1이 `contextBudget`에 대해 취한 것과 같은 정직 선이다. 테스트 3건을 추가했다(**515 → 518**,
+`skipped 0`): 하나는 소스가 순수·결정적이며 `agents`에 불변이고 위임하는 프롬프트 5종에 그대로
+박히고 읽기 전용 3종에는 없다는 것을 고정하고, 하나는 경계 문장 자체를 고정해 블록이 일반론적 조언으로
+물러지지 못하게 하며, 하나는 디스크에 생성된 스킬 아티팩트에서 같은 분할을 고정한다. **PATCH**로
+판정했다: 명령·옵션·리포트 필드가 하나도 움직이지 않고, 변경은 도입처가 자기 일정에 따라 재생성하는
+프롬프트 안의 가산적 텍스트다.
+
+## 비목표 (Non-Goals — 안전 원칙 불변)
+
+- 명시적 `--write`/`--apply` 없이는 쓰지 않는다; 어디서나 미리보기 우선.
+- `log.md`나 기존 adapter 파일을 결코 덮어쓰지 않는다; 민감정보 raw value를 결코
+  기록하지 않는다.
+- core CLI에 런타임 서드파티 의존성 없음.
+- AI·CLI가 작성한 문서는 사람이 검증하기 전까지 `needs_review`.

@@ -1,0 +1,90 @@
+{
+  "about": "REDACTED FOR PUBLIC RELEASE (see docs/BENCHMARK_DISCLOSURE.md): the target of these tasks was a private, proprietary Vue 3 / Quasar / TypeScript SPA, so its module paths, endpoint routes, field names, status codes and storage keys appear here as stable pseudonyms in angle brackets. The task set, questions and rubric structure are the originals. Cold-keyword code-comprehension tasks for the EXTERNAL target external-vue-quasar-app@benchmark-baseline (Vue3/Quasar). Ground-truth + rubric captured from the 2026-07-22 real-LLM N=3 run so the SDK-path driver (bench/real/agent.js) reproduces the same protocol. Point runner.js at this file with BENCH_TASKS; point agent.js at the repo with BENCH_TARGET_REPO and the (current) wiki with BENCH_WIKI_CWD. Questions deliberately avoid internal symbol names so arm B is not rigged.",
+  "tasks": [
+    {
+      "id": "auth-signin",
+      "question": "How does a user sign in to this web app — what happens from submitting the login form to being authenticated, and where is the login request sent?",
+      "groundTruth": [
+        "<login-page>",
+        "<user-store>",
+        "<api-client>",
+        "<http-client>",
+        "<crypto-util>"
+      ],
+      "rubric": [
+        "password is encrypted client-side with a server-supplied public key (Web Crypto) before sending — NOT plaintext",
+        "two-step: fetch a public key + session id via POST /api/auth/session, then login POST /api/auth/login",
+        "auth is cookie/session based (axios withCredentials: true, no client-held bearer token)",
+        "optional TOTP MFA path (<mfa-challenge-field> -> <mfa-dialog>)",
+        "session continuity via <expiry-status>+<refresh-signal-code> token refresh interceptor"
+      ]
+    },
+    {
+      "id": "routing-map",
+      "question": "How does this app decide which page component to render for a given browser URL, and where is that URL-to-page mapping defined?",
+      "groundTruth": ["<router-table>", "<router-setup>"],
+      "rubric": [
+        "the URL-to-page mapping is the RouteRecordRaw[] table in <router-table>",
+        "router created with createWebHistory (HTML5 history mode) in <router-setup>",
+        "a global beforeEach guard applies auth/role redirects (can override the raw match)",
+        "unmatched URLs fall through to a catch-all <not-found-page>"
+      ]
+    },
+    {
+      "id": "api-layer",
+      "question": "How does the frontend talk to its backend — where is the server base URL configured, and how are requests authenticated across calls?",
+      "groundTruth": ["<api-client>", "<http-client>"],
+      "rubric": [
+        "single axios instance (<api-client>) with baseURL from <backend-url-env>",
+        "authentication is cookie-session via withCredentials: true (no Authorization/bearer header)",
+        "response interceptor: <expiry-status>+<refresh-signal-code> single-flight token refresh, 401/403 clear session + redirect"
+      ]
+    },
+    {
+      "id": "item-domain",
+      "question": "On the item-management screen, how does the page obtain its list of items from the server and hold that data for display?",
+      "groundTruth": [
+        "<item-list-page>",
+        "<item-store>",
+        "<api-client>",
+        "<search-store>"
+      ],
+      "rubric": [
+        "page <fetch-items> -> <item-store>.<fetch-items> -> <api-client>.<get-items> GET /api/items",
+        "returned rows held in a page-local rows ref (store does not cache the list)",
+        "pagination/count metadata flows through <search-store>",
+        "list screen is <item-list-page> at <item-list-route> (map is <item-map-page>)"
+      ]
+    },
+    {
+      "id": "session-timeout",
+      "question": "How does the app handle an idle user or an expired login session?",
+      "groundTruth": [
+        "<session-timeout-composable>",
+        "<http-client>",
+        "<main-layout>",
+        "<user-store>"
+      ],
+      "rubric": [
+        "client-side idle timer in <session-timeout-composable>: a warning dialog, then a forced logout (exact thresholds redacted), reset on each request",
+        "server-driven expiry in the axios response interceptor: <expiry-status>+<refresh-signal-code> single-flight refresh, replay queued requests",
+        "401/403 -> clear session and redirect to /"
+      ]
+    },
+    {
+      "id": "state-mgmt",
+      "question": "After a user logs in, where is their user, menu, and group information stored so that other pages can use it?",
+      "groundTruth": [
+        "<user-store>",
+        "<login-page>",
+        "<session-storage-util>"
+      ],
+      "rubric": [
+        "sessionStorage under example_session_key_* keys (example_session_key_user AES-encrypted via crypto-js)",
+        "in-memory Pinia <user-store> mirror populated on login",
+        "router beforeEach guard rehydrates the store from sessionStorage on refresh",
+        "no client-held bearer token — auth is the HTTP-only cookie"
+      ]
+    }
+  ]
+}

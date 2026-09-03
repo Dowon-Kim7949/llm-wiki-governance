@@ -1,0 +1,20 @@
+{
+  "status": "needs_review",
+  "requiredFields": [
+    "title",
+    "tags",
+    "status",
+    "doc_type",
+    "project",
+    "last_updated",
+    "author",
+    "last_edited_by",
+    "wiki_block_version",
+    "source_files",
+    "related",
+    "visibility",
+    "contains_sensitive_info"
+  ],
+  "statusValues": ["draft", "needs_review", "verified", "deprecated"],
+  "visibilityValues": ["internal", "public", "restricted"]
+}

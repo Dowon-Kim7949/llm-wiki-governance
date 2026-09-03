@@ -1,0 +1,250 @@
+// Agent context discipline: the generated prompts/skills must spend tokens on
+// EVIDENCE, not on volume. Four levers, all in the single sources the skills are
+// built from, so every generated artifact inherits them:
+//   1. The Gate 26 run manifest declares its own field set as the whole contract
+//      and caps any optional prose, so agents stop writing paragraphs check-run
+//      never reads.
+//   2. The task workflows carry a context budget: locate before reading, read by
+//      line range/section, and use the compact retrieval flags for wiki docs —
+//      WITHOUT weakening the invariant that the actual source is read (the code is
+//      the source of truth; token thrift must never buy an unverified claim).
+//   3. This repo exposes a quiet test reporter so an agent re-running the suite
+//      does not pull ~380 result lines into context each time.
+//   4. The write workflows carry a delegation budget: the sweep that locates and
+//      scopes belongs in a cheap, disposable context that hands back a brief, while
+//      the judgment and the prose stay with the agent holding the reasoning — and a
+//      dispatch that returns the raw material has bought nothing.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import os from "node:os";
+import path from "node:path";
+import { initCommand } from "../src/commands.js";
+import { SKILL_TASKS } from "../src/commands/skills.js";
+import { buildTaskPrompt, contextBudget, delegationPolicy } from "../src/task-prompts.js";
+
+// fileURLToPath, not import.meta.dirname: the latter landed in Node 20.11 and this
+// package supports >=18.18.0, where it is undefined (the house pattern is in mcp.test.js).
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// Tasks that write files carry the run-manifest contract; onboard/prepare are
+// read-only and must never gain one.
+const WRITING_TASKS = ["bootstrap", "feature", "fix", "docs-sync"];
+const READ_ONLY_TASKS = ["onboard", "prepare"];
+
+async function skillsFixture(prefix) {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), `llm-wiki-${prefix}`));
+  await writeFile(
+    path.join(cwd, "package.json"),
+    `${JSON.stringify({ dependencies: { fastify: "^4.0.0" } }, null, 2)}\n`,
+    { encoding: "utf8" }
+  );
+  const result = await initCommand({
+    cwd, minimal: true, withAdapters: false, skills: true,
+    type: "backend", profiles: [], agents: [], existing: "skip", write: true
+  });
+  assert.equal(result.result, "pass");
+  return cwd;
+}
+
+test("the run-manifest contract declares its field set as complete and caps optional prose", async () => {
+  const cwd = await skillsFixture("manifest-cap-");
+
+  for (const task of WRITING_TASKS) {
+    const rel = `.claude/skills/llm-wiki-${task}/SKILL.md`;
+    const body = await readFile(path.join(cwd, ...rel.split("/")), "utf8");
+
+    // The contract must say the listed fields are ALL check-run reads, so an agent
+    // stops inventing extra fields (summary/actor/activeProfiles were being written
+    // and never verified).
+    assert.match(body, /reads no other/i, `${rel}: states the field set is the whole contract`);
+    // An optional summary is allowed but bounded, and never a dumping ground.
+    assert.match(body, /two sentences/i, `${rel}: caps optional summary prose`);
+    assert.match(body, /never paste diffs, file contents, logs, or test output/i, `${rel}: forbids payload dumps`);
+  }
+
+  // Read-only skills have nothing to record, so they must stay manifest-free.
+  for (const task of READ_ONLY_TASKS) {
+    const rel = `.claude/skills/llm-wiki-${task}/SKILL.md`;
+    const body = await readFile(path.join(cwd, ...rel.split("/")), "utf8");
+    assert.doesNotMatch(body, /Completion contract/, `${rel}: no run manifest for a read-only skill`);
+    assert.doesNotMatch(body, /two sentences/i, `${rel}: no manifest prose cap either`);
+  }
+});
+
+test("every generated skill carries the context budget without weakening the read-the-source invariant", async () => {
+  const cwd = await skillsFixture("context-budget-");
+
+  for (const { slug, task } of SKILL_TASKS) {
+    const body = await readFile(path.join(cwd, ".claude", "skills", slug, "SKILL.md"), "utf8");
+
+    assert.match(body, /Context budget/, `${slug}: carries the context budget`);
+    // A concrete narrowing mechanism, not just "be brief".
+    assert.match(body, /line range or section/i, `${slug}: names the narrowing mechanism`);
+    assert.match(body, /--max-chars/, `${slug}: points at the compact retrieval flags`);
+    // The safety invariant: thrift never buys an unverified claim. task-path.js sets
+    // mustReadSource for code changes and risky work — the prompt must agree.
+    assert.match(body, /[Nn]ever trade evidence for brevity/, `${slug}: evidence outranks brevity`);
+    assert.match(body, /read more/i, `${slug}: says to read more when narrowing is not enough`);
+
+    // Code-changing tasks still order a real source inspection (unchanged contract).
+    if (task === "feature" || task === "fix") {
+      assert.match(body, /Inspect actual source files/, `${slug}: still inspects real source`);
+    }
+  }
+});
+
+test("contextBudget is a pure shared source reused by every task prompt", () => {
+  const lines = contextBudget();
+  assert.ok(Array.isArray(lines) && lines.length > 0, "returns lines");
+  assert.deepEqual(contextBudget(), lines, "deterministic");
+  // No machine-specific or absolute-path leakage into committed artifacts.
+  for (const line of lines) {
+    assert.doesNotMatch(line, /[A-Za-z]:\\|\/home\/|\/Users\//, `no absolute path in: ${line}`);
+  }
+
+  const block = lines.join("\n");
+  for (const task of ["bootstrap", "feature", "fix", "refactor", "docs-sync", "onboard", "prepare", "okf-extract"]) {
+    const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
+    assert.equal(built.result, "pass", `${task}: builds`);
+    assert.ok(built.prompt.includes(block), `${task}: embeds the shared budget block verbatim`);
+  }
+});
+
+// Prompt-shape discipline (1.27.2): the recurring write workflows state the goal,
+// the hard lines, and the exit criteria — and stop micromanaging the steps in
+// between. The verification machinery (validate / check-run / tests) is what makes
+// dropping the step list safe: the contract is enforced at the exit, not narrated
+// at every step. One-shot procedural workflows (bootstrap enrichment, guided
+// onboard/prepare, okf-extract format conversion) keep their checklists — there the
+// numbered sequence IS the content, not micromanagement.
+test("recurring write workflows are goal / hard lines / exit criteria, not numbered micro-steps", () => {
+  for (const task of ["feature", "fix", "refactor", "docs-sync"]) {
+    const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
+    assert.equal(built.result, "pass", `${task}: builds`);
+    const p = built.prompt;
+
+    // The three blocks that carry the contract.
+    assert.match(p, /Goal:/, `${task}: has a goal block`);
+    assert.match(p, /Hard lines/, `${task}: has a hard-lines block`);
+    assert.match(p, /Exit criteria/, `${task}: has an exit-criteria block`);
+    // The autonomy statement: the HOW belongs to the agent; the contract does not.
+    assert.match(p, /your call/, `${task}: leaves the how to the agent`);
+    // No numbered micro-steps remain (the old micromanaged workflow shape).
+    assert.doesNotMatch(p, /^\s*\d+\.\s/m, `${task}: no numbered step list`);
+
+    // Every load-bearing contract line survived the restructure.
+    assert.ok(p.includes("Read docs/llm-wiki/index.md first."), `${task}: entrypoint kept`);
+    assert.ok(p.includes("status: needs_review"), `${task}: needs_review kept`);
+    assert.ok(p.includes("verified is human-approved only"), `${task}: verified stays human-only`);
+    assert.ok(p.includes("Append docs/llm-wiki/log.md"), `${task}: log append kept`);
+    assert.match(p, /sensitive raw values/, `${task}: sensitive-info rule kept`);
+    assert.match(p, /Context budget/, `${task}: context budget kept`);
+
+    if (task === "docs-sync") {
+      assert.ok(p.includes("avoid unrelated code edits"), "docs-sync: scope guard kept");
+      assert.ok(p.includes("Detect changed code"), "docs-sync: change detection kept");
+    } else {
+      assert.match(p, /STOP and confirm with a human/, `${task}: conflict/scope STOP kept`);
+      assert.ok(p.includes("Inspect actual source files"), `${task}: source inspection kept`);
+      assert.ok(p.includes("smallest safe scope"), `${task}: smallest safe scope kept`);
+      assert.ok(p.includes("Update every affected LLM-WIKI document"), `${task}: wiki update kept`);
+    }
+  }
+});
+
+test("one-shot procedural workflows deliberately keep their numbered checklists", () => {
+  for (const task of ["bootstrap", "onboard", "prepare", "okf-extract"]) {
+    const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
+    assert.equal(built.result, "pass", `${task}: builds`);
+    assert.match(built.prompt, /^\s*1\.\s/m, `${task}: keeps its checklist (the sequence is the content)`);
+  }
+});
+
+test("the test suite has a quiet reporter script, and the default script keeps the full reporter", async () => {
+  const pkg = JSON.parse(await readFile(path.join(REPO_ROOT, "package.json"), "utf8"));
+
+  // A compact reporter for agent/dev re-runs: ~380 "ok <n>" lines collapse to dots.
+  assert.equal(pkg.scripts["test:quiet"], "node --test --test-reporter=dot tests/*.test.js");
+  // Diagnosis and CI keep the verbose default — the quiet run is additive.
+  assert.equal(pkg.scripts.test, "node --test tests/*.test.js");
+  assert.match(pkg.scripts.verify, /^node --test tests\/\*\.test\.js/);
+});
+
+// Lever 4 (1.29.2): the delegation budget. contextBudget decides how much gets read;
+// this decides WHO reads it. The block is agent-neutral BY DESIGN and these tests pin
+// that: the generated artifact body is one shared text rendered into every skill
+// format (built with agents: []), and initialEnrichmentWorkflow embeds it inside the
+// canonical chunk verification.test.js pins as a verbatim substring of both bootstrap
+// and handoff. A harness-specific instruction belongs in that harness's adapter.
+const DELEGATING_TASKS = ["feature", "fix", "refactor", "docs-sync", "bootstrap"];
+const NON_DELEGATING_TASKS = ["onboard", "prepare", "okf-extract"];
+
+test("delegationPolicy is a pure, agent-neutral source embedded verbatim in the work tasks", () => {
+  const lines = delegationPolicy();
+  assert.ok(Array.isArray(lines) && lines.length > 0, "returns lines");
+  assert.deepEqual(delegationPolicy(), lines, "deterministic");
+  // Neutrality is the contract, not an accident: no argument may change the text.
+  assert.deepEqual(delegationPolicy(["claude"]), lines, "does not vary by agent");
+  assert.deepEqual(delegationPolicy(["codex", "cursor"]), lines, "does not vary by agent");
+
+  // No machine-specific leakage into committed artifacts (the block is static text;
+  // this keeps it that way if anyone later interpolates into it).
+  for (const line of lines) {
+    assert.ok(!line.includes("/home/") && !line.includes("/Users/"), `no absolute path in: ${line}`);
+  }
+  // It must not re-introduce the numbered micro-steps 1.27.2 removed.
+  assert.doesNotMatch(lines.join("\n"), /^\s*\d+\.\s/m, "no numbered steps");
+
+  const block = lines.join("\n");
+  for (const task of DELEGATING_TASKS) {
+    const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
+    assert.equal(built.result, "pass", `${task}: builds`);
+    assert.ok(built.prompt.includes(block), `${task}: embeds the shared delegation budget verbatim`);
+  }
+  // Read-only scoping IS the work a delegate does, and okf-extract is a format
+  // conversion: a delegation budget there is noise, not guidance.
+  for (const task of NON_DELEGATING_TASKS) {
+    const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
+    assert.equal(built.result, "pass", `${task}: builds`);
+    assert.doesNotMatch(built.prompt, /Delegation budget/, `${task}: carries no delegation budget`);
+  }
+});
+
+test("the delegation budget names what cannot be delegated, and never buys an unverified claim", () => {
+  const block = delegationPolicy().join("\n");
+  // The boundary: judgment and prose stay with whoever holds the reasoning.
+  assert.match(block, /Judgment is not dispatchable/, "states the boundary");
+  assert.match(block, /cannot write the sentence that explains why/, "prose stays with the reasoning");
+  // The same safety floor as the context budget: thrift never replaces evidence.
+  assert.match(block, /never buys an unverified claim/, "evidence outranks thrift");
+  assert.match(block, /reads the actual source and reports the evidence/, "the delegate still reads the source");
+  // The economics, so dispatching does not become reflexive.
+  assert.match(block, /only when it pays/, "states the break-even");
+  assert.match(block, /hands back the raw material has bought nothing/, "a raw-material dump is not a brief");
+});
+
+test("every generated write skill carries the delegation budget; the read-only skills do not", async () => {
+  const cwd = await skillsFixture("delegation-budget-");
+
+  for (const { slug, task } of SKILL_TASKS) {
+    const body = await readFile(path.join(cwd, ".claude", "skills", slug, "SKILL.md"), "utf8");
+    if (READ_ONLY_TASKS.includes(task)) {
+      assert.doesNotMatch(body, /Delegation budget/, `${slug}: read-only skill stays free of it`);
+      continue;
+    }
+    assert.match(body, /Delegation budget/, `${slug}: carries the delegation budget`);
+    assert.match(body, /read-only subagent on a cheaper model/, `${slug}: names the mechanism`);
+    assert.match(body, /Judgment is not dispatchable/, `${slug}: keeps judgment local`);
+    assert.match(body, /never buys an unverified claim/, `${slug}: evidence outranks thrift`);
+  }
+
+  // One shared body is rendered into every format, so the neutral prompt and the
+  // Cursor rule must read the same way — with no harness named in the text.
+  for (const rel of [".agents/skills/llm-wiki-fix/SKILL.md", ".cursor/rules/llm-wiki-fix.mdc", ".llm-wiki/prompts/llm-wiki-fix.md"]) {
+    const body = await readFile(path.join(cwd, ...rel.split("/")), "utf8");
+    assert.match(body, /Delegation budget/, `${rel}: carries the delegation budget`);
+    assert.doesNotMatch(body, /Claude Code|\.claude\/agents/, `${rel}: names no specific harness`);
+  }
+});
