@@ -6,6 +6,21 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.29.3 — 2026-09-03
+
+Documentation and artifact hygiene only. **No runtime, CLI, or public API changes.**
+
+- **Public benchmark artifacts sanitized.** The benchmark records under `bench/` were measured
+  against an external, privately owned application. Target-specific identifiers and
+  implementation details have been replaced with stable, role-named pseudonyms, and the raw
+  model-answer prose is withheld rather than published.
+- **Recorded metrics and experimental metadata preserved.** Token counts, wall-clock times,
+  tool-call counts, scores, sample sizes, arm definitions, model identifiers, execution dates,
+  and every recorded caveat and negative result are the originals — nothing was recomputed.
+- **Disclosure documents added.** `docs/BENCHMARK_DISCLOSURE.md` and its Korean counterpart
+  state what was redacted, what was preserved, and the limits on reproducing the historical
+  measurement from this repository alone.
+
 ## 1.29.2 — 2026-08-18
 
 Adds the fourth lever to the token discipline the generated prompts carry: a **delegation budget**.
