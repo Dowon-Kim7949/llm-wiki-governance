@@ -18,11 +18,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Deliberately NO `registry-url`. setup-node's registry-url writes an .npmrc
+      # containing `_authToken=${NODE_AUTH_TOKEN}` and, when no token is supplied,
+      # sets NODE_AUTH_TOKEN to its own literal placeholder. npm then authenticates
+      # with that placeholder instead of falling back to OIDC, and the registry
+      # answers 404 (it masks auth failures as not-found). Trusted Publishing needs
+      # npm to see NO configured credential. registry.npmjs.org is already the
+      # default registry, so dropping this input does not change the publish target.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-          registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
 
       - name: Verify package identity

@@ -6,9 +6,18 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
-## 1.29.3 — 2026-09-03
+## 1.29.4 — 2026-09-03
 
-Documentation and artifact hygiene only. **No runtime, CLI, or public API changes.**
+Documentation and artifact hygiene, plus one release-workflow fix.
+**No runtime, CLI, or public API changes.**
+
+> **1.29.3 was never published.** It was tagged, but the publish workflow could not
+> authenticate to the registry: `actions/setup-node`'s `registry-url` input writes an
+> `.npmrc` with `_authToken=${NODE_AUTH_TOKEN}` and, with no token supplied, sets that
+> variable to its own placeholder — so npm sent the placeholder as a credential instead of
+> falling back to OIDC, and the registry answered 404. Dropping that input restores Trusted
+> Publishing. 1.29.4 carries the same content as 1.29.3 plus this fix; **1.29.3 is a skipped
+> version number on npm.**
 
 - **Public benchmark artifacts sanitized.** The benchmark records under `bench/` were measured
   against an external, privately owned application. Target-specific identifiers and
@@ -20,6 +29,9 @@ Documentation and artifact hygiene only. **No runtime, CLI, or public API change
 - **Disclosure documents added.** `docs/BENCHMARK_DISCLOSURE.md` and its Korean counterpart
   state what was redacted, what was preserved, and the limits on reproducing the historical
   measurement from this repository alone.
+- **Release workflow fixed.** The publish job no longer passes `registry-url` to
+  `actions/setup-node`, so npm sees no configured credential and uses OIDC Trusted
+  Publishing as intended. Publish target and provenance are unchanged.
 
 ## 1.29.2 — 2026-08-18
 
