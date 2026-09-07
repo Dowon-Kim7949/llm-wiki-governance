@@ -1,6 +1,6 @@
 # llm-wiki-bootstrap
 
-<!-- estimated-tokens: 1501 (chars/4 proxy of the skill body, not a measured token count) -->
+<!-- estimated-tokens: 1674 (chars/4 proxy of the skill body, not a measured token count) -->
 
 > Paste this prompt into your coding agent (Codex or any other) to run the workflow below. It is an instruction for the agent, not run by the CLI.
 
@@ -30,6 +30,11 @@ Delegation budget (spend the expensive context on judgment, not on reading):
 - Mechanical finishing is dispatchable: running the checks, writing the run manifest, and applying edits you have already decided on.
 - Dispatch only when it pays: a brief plus its dispatch costs more than reading one file, and a delegate that hands back the raw material has bought nothing. When the harness can choose a model per dispatch, send the dispatch to the cheaper one and keep the session's own model fixed — switching the session model mid-task re-reads the conversation so far at the new model's price.
 - Delegation never buys an unverified claim: either the delegate reads the actual source and reports the evidence, or you read it yourself — never skip the source because a dispatch felt expensive.
+Governance budget (strict — completeness and verification are the deliverable):
+- Update every affected document in the same task, and refresh its source_files and evidence anchors so the mapping still resolves.
+- Verify each claim you leave behind against the actual source. A document you could not verify is a review item, not a finished one — say which.
+- Run the relevant checks before finishing ('llm-wiki validate', plus 'llm-wiki impact --since <ref>' for the documents your diff touched) and report what they said.
+- Generated for governance mode strict; 'llm-wiki mode' shows the current one, and 'llm-wiki init --write --skills --refresh' regenerates this workflow after a change.
 4. Replace placeholder content with descriptions backed by real source evidence. Do not guess — leave anything uncertain as an explicit review item instead of inventing detail.
 5. For backend/fullstack projects, also enrich the related docs/llm-wiki/domains/*.md documents.
 When a domain document mentions API usage, include this API Services inventory:
@@ -60,4 +65,4 @@ Expected final response:
 
 Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-bootstrap-<timestamp>.json with fields: task="bootstrap", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. Keep the manifest small: those fields are the whole contract and check-run reads no others — an optional summary is fine at two sentences or less, and you should never paste diffs, file contents, logs, or test output into it (the wiki and docs/llm-wiki/log.md are where the narrative belongs). This records what the run did — it never replaces human review and never promotes a document to verified.
 
-<!-- llm-wiki-generated v5 9b0f1499ea82e5c6 -->
+<!-- llm-wiki-generated v5 a2ec5cc6ce036306 -->

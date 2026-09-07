@@ -6,6 +6,127 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.30.0 — 2026-09-07
+
+**Governance modes: `lite` / `standard` / `strict`.** One engine, three policy levels, switchable
+at any time in the same repository. The problem they solve was measured in real adoption rather
+than imagined: the governance this package enforces can cost more than the work it protects. A
+three-line fix would trip `impact.source_changed` (an error by default since 1.28.0), pull the
+agent into a doc-sync pass, and re-open a drift scan that shells out to `git log` once per
+`verified` document. On a personal project or a fast-moving frontend, that price buys nothing. On
+a handoff, an audit, or an offboarding it is the entire point.
+
+> **Existing projects are unaffected until they opt in.** A project with no `governance` block in
+> `llm-wiki.config.json` resolves to `strict`, and strict's rule floor is **empty** — the finding
+> registry's own default severities already *are* the strict baseline. Effective options and
+> report output are identical to 1.29.5. The new-project default (`lite`) is deliberately NOT the
+> legacy-project default: silently relaxing an existing project's gate would be a breaking change
+> wearing a default's clothes, and a CI job that quietly stopped failing is the worst possible way
+> to learn about a new feature. See **Migration** below.
+
+- **`llm-wiki mode` reads; `llm-wiki mode set <level> --write` changes.** The read path reports the
+  effective level, where it came from (`--mode` > `llm-wiki.config.json` > legacy default), the
+  rule severities that level contributes, and the full capability matrix. `mode set` previews by
+  default and writes only with `--write`, touching exactly one config key (`governance.mode`) and
+  preserving every other key, including keys this version does not know about. A malformed config
+  is refused, never rewritten (`structure.config_invalid`).
+- **Changing the mode never audits.** Escalating to `strict` writes one key and runs no scan, no
+  drift check, and no document generation — so the switch is instant and the expensive
+  reconstruction stays an explicit, separate `backfill`. Hidden expensive work was treated as the
+  failure mode to avoid, and there is a test that asserts a mode change produces no findings.
+- **`lite` is light by construction, not by suppression.** It plans the core document set only, so
+  a missing profile document is not "missing" — it was never expected. `evidence.stale`,
+  `impact.source_changed`, `content.not_enriched`, `evidence.missing` and `evidence.ungrounded`
+  are off, `structure.required_doc` drops to `info`, and the two scans whose *only* output is a
+  disabled rule are skipped outright rather than run and filtered (`scanEvidenceDrift` shells out
+  to git once per verified document; `scanReverseImpact` walks every document's anchors). That
+  saving reads the effective rule map, so a project that switched a rule off by hand earns it too,
+  without adopting a mode.
+- **`standard` keeps the detection and drops the block.** `impact.source_changed` becomes a
+  warning: governance still reports that source moved without its documentation, but an ordinary
+  build is not gated on a documentation omission. Everything else stays at its registry default,
+  on purpose — spelling the defaults out would fight the push-time `--strict` escalations, the same
+  reasoning that keeps `rulesPreset: "standard"` empty.
+- **`llm-wiki backfill`: the `lite` → `strict` escalation path.** For the scenario the modes exist
+  for — a repository sat in `lite` for months, the wiki was deliberately not kept complete, and now
+  somebody is leaving. It inventories what the repository actually contains (tracked source, tests,
+  manifests, language mix, domain boundaries, git history), measures the wiki against the effective
+  mode's planned document set, and grades handoff readiness as a named checklist rather than a
+  percentage. `--write` creates the missing documents as `needs_review` stubs using the same
+  generator `init` uses — no prose claims, no `verified` stamps, existing files never overwritten,
+  the append-only log kept even under `--existing overwrite`. It writes no adapter files and no
+  skills: it reconstructs documentation, it does not re-provision the harness. `--strict` makes an
+  incomplete readiness report fail the build (`backfill.not_ready`) — the pre-handoff gate.
+- **Backfill never invents history.** Every fact it reports carries one of three labels: *verified*
+  (read from the current source, tests, or configuration), *inferred* (derived from directory
+  boundaries, naming, or git history — and said to be inferred), or *unknown*. The `unknown` list
+  is an output of the command, not a shortfall in it. With no ADR and no commit that explained
+  itself, "why was this chosen?" stays `unknown` and becomes a question for the outgoing maintainer
+  (`backfill.unknown_history`, and a `decision_history` readiness check whose own text says it
+  cannot be closed by generating text). The CLI composes no prose at all — it measures, and the
+  printed prompt hands the writing to an agent under the same three labels.
+- **New `backfill` task prompt and `/llm-wiki-backfill` skill.** The reconstruction workflow an
+  agent runs to fill the stubs, carrying an explicit evidence ladder (current source > tests >
+  configuration > existing docs > ADRs > commit messages > diff/history > local issue metadata),
+  the three confidence labels, and the standing rule not to reconstruct a rationale from file
+  layout, naming, dependency choices, or commit subjects. `SKILL_TASKS` grows from six workflows
+  to seven.
+- **A governance budget in the generated agent prompts.** The third lever, joining `contextBudget`
+  (how much gets read, 1.27.1) and `delegationPolicy` (who reads it, 1.29.2): this one decides
+  *whether* the documentation work happens at all. In `lite` the workflow tells an agent to finish
+  at the code and the tests and report "no wiki change needed (lite)" as a complete result; in
+  `standard` to inspect only the documents the change affects; in `strict` to update every affected
+  document and refresh its anchors. Cost, stated honestly: the block adds **173–234 estimated
+  tokens** (a `chars/4` proxy, never a measured count) to a ~1130-token write prompt — a 15–21%
+  increase in the prompt body. Whether it pays for itself by removing doc-sync passes is **not
+  measured**; this release makes no savings claim.
+- **`--mode <lite|standard|strict>`** on `mode`, `backfill`, `init`, `quickstart`, `audit`,
+  `validate`, `status`, `next`, `stats`, `drift`, `impact`, `handoff`, and `prompt`. Validated at
+  parse time like `--type`, so a typo is a usage error (exit 3) and never a silent fallback to some
+  other level. On the read commands it previews another level's gate without editing the config.
+- **`mode` over MCP, read-only by construction.** The tool schema exposes `cwd` only, and
+  `additionalProperties: false` is enforced before dispatch, so the `set` sub-action is unreachable
+  — an agent can ask which level the project runs at, and changing it stays a CLI action. The MCP
+  tool set grows from 17 to 18.
+- **`doctor` reports the governance level**, its source, and what the gates currently do
+  (`impact gate on (error)` / `advisory (warning)` / `off`, and whether the drift scan runs) —
+  because doctor is where somebody looks when CI stopped failing and nobody knows why.
+  `llm-wiki.config.json` in the same report echoes `governance.mode` by name.
+- **`handoff` names the mode it generated for** (additive `governanceMode` field, additive Next
+  Step line) and points at `mode set strict --write` + `backfill` for a real handoff. The existing
+  handoff payload, message, and prompt contract are otherwise unchanged.
+- Centralized policy layer: `src/governance.js` (a leaf module — no imports beyond `config.js`, no
+  I/O) is the single place a mode's meaning lives, and every other layer asks it a question instead
+  of branching on the mode name. The mode's rule floor is expressed in the vocabulary the engine
+  already had — the same rule-id → severity toggles `rules` accepts — and layers **under** both:
+  mode floor < `rulesPreset` < explicit `rules`, key by key. `GOVERNANCE_MODES`,
+  `getGovernancePolicy`, `governanceCapabilityMatrix`, and `effectiveGovernanceMode` are exported
+  from the programmatic API, and `commands.mode` / `commands.backfill` join the command map.
+- 43 tests added (**522 → 565**), including an end-to-end acceptance fixture for the whole
+  scenario: initialize in `lite`, add source across two domains, change behavior and architecture
+  without syncing the wiki, escalate to `strict`, run `backfill` to detect the gaps, `--write` the
+  stubs, confirm the source mappings and that nothing was promoted to `verified`, and produce the
+  handoff.
+
+### Migration
+
+- **No action required.** Upgrading changes no gate, no exit code, and no document set for a
+  project that already has an `llm-wiki.config.json`, or already has a `docs/llm-wiki/index.md`.
+  Both resolve to `strict`, whose rule floor is empty.
+- **`init` / `quickstart` on a brand-new repository now scaffold `lite`** — no config file *and* no
+  wiki means a genuinely new project, and it gets the core document set plus
+  `"governance": { "mode": "lite" }` in the config it scaffolds. To keep the previous behavior for
+  a new project, pass `--mode strict` (or `--mode standard`).
+- **Generated skills embed the workflow of the mode active when they were written.** After changing
+  the mode, run `llm-wiki init --write --skills --refresh` so an agent reads the new one; `--refresh`
+  still updates only unmodified package-generated artifacts and preserves your edits. The refreshed
+  set includes the new `llm-wiki-backfill` skill.
+- **No existing command gains a finding.** The three new rules fire only in the new commands:
+  `backfill.unknown_history` and `backfill.not_ready` in `backfill`, `structure.config_invalid` in
+  `mode`. An existing CI step cannot turn red because of this release.
+- The `--format json` shape is additive only (`schemaVersion` unchanged at 1): `handoff` gains
+  `governanceMode`, and `mode` / `backfill` are new commands with new payloads.
+
 ## 1.29.5 — 2026-09-07
 
 Documentation and artifact hygiene, plus a release-workflow authentication fix.

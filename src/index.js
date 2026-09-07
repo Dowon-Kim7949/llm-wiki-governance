@@ -18,6 +18,7 @@
 import path from "node:path";
 import {
   audit,
+  backfillCommand,
   checkRunCommand,
   doctor,
   driftCommand,
@@ -33,6 +34,7 @@ import {
   initCommand,
   listDocsCommand,
   migrateCommand,
+  modeCommand,
   monorepoCommand,
   nextCommand,
   onboardCommand,
@@ -98,6 +100,10 @@ import { TOOL_DEFS as MCP_TOOLS } from "./mcp/tools.js";
  * @property {string|null} docType   list-docs/search-docs doc_type filter.
  * @property {boolean} includeSensitive Include restricted/sensitive docs in list/search.
  * @property {number|null} limit     search-docs max results.
+ * @property {string|null} mode      Requested governance mode ("lite"|"standard"|"strict"), or null to resolve from config.
+ * @property {string|null} modeAction `mode` command sub-action ("set"), or null to report.
+ * @property {string} [governanceMode] RESOLVED governance mode; produced by the config merge (resolveOptions), not a caller input.
+ * @property {string} [governanceModeSource] Where the resolved mode came from ("cli"|"config"|"default").
  * @property {string} existing       "skip"|"overwrite".
  * @property {string|null} out       Report output path, or null.
  */
@@ -137,6 +143,8 @@ export const commands = Object.freeze({
   next: nextCommand,
   explain: explainCommand,
   audit,
+  mode: modeCommand,
+  backfill: backfillCommand,
   quickstart: quickstartCommand,
   handoff: handoffCommand,
   prompt: promptCommand,
@@ -206,6 +214,7 @@ export async function resolveOptions(overrides = {}) {
 // import (e.g. `import { audit } from "llm-wiki-governance"`).
 export {
   audit,
+  backfillCommand,
   checkRunCommand,
   doctor,
   driftCommand,
@@ -221,6 +230,7 @@ export {
   initCommand,
   listDocsCommand,
   migrateCommand,
+  modeCommand,
   monorepoCommand,
   nextCommand,
   onboardCommand,
@@ -238,6 +248,12 @@ export {
 
 // CLI helpers: `parseArgs` for argv, `run` as the full CLI entry (argv -> print
 // -> exit code), matching bin/llm-wiki.js.
+// Governance modes (2026-09-07). Exported so a wrapper can read the same policy
+// the CLI enforces instead of re-deriving it: GOVERNANCE_MODES is the valid value
+// set, getGovernancePolicy(mode) the frozen policy, and
+// governanceCapabilityMatrix() the published lite/standard/strict table.
+export { GOVERNANCE_MODES, getGovernancePolicy, governanceCapabilityMatrix, effectiveGovernanceMode } from "./governance.js";
+
 export { parseArgs };
 export { main as run };
 

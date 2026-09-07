@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-governance
-last_updated: 2026-08-19
+last_updated: 2026-09-07
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -112,6 +112,23 @@ llm-wiki drift --watch-needs-review   # needs_review 문서까지 함께 본다(
 
 `--watch-needs-review`는 **`drift`만** 받는다. `impact`에는 의도적으로 넓히지 않는데, 그 규칙은 결정 21 이후 error라 자문용 opt-in이 검토되지 않은 문서에게 빌드를 실패시킬 권한을 주게 되기 때문이다. `doc_type: release_notes` 문서는 `evidence.stale`·`impact.source_changed` 양쪽에서 면제되며, 이 면제가 위 opt-in보다 우선한다.
 
+## 평소에는 lite, 인수인계 전에 strict (거버넌스 모드, 1.30.0)
+
+```bash
+llm-wiki mode                      # 지금 어느 레벨인가, 어디서 왔나, 무엇을 강제하나
+# ... lite로 몇 달간 평범한 개발: 문서 때문에 막히는 일이 없다 ...
+llm-wiki mode set strict --write   # 승격 — 설정 키 하나를 쓰고 스캔은 하지 않는다
+llm-wiki backfill                  # 저장소가 증명하는 것 / 빠진 것 / 복구 불가한 것
+llm-wiki backfill --write          # 빠진 문서를 needs_review 스텁으로 생성
+llm-wiki prompt --task backfill    # 서술은 에이전트에게 넘긴다(또는 /llm-wiki-backfill)
+llm-wiki backfill --strict         # 인수인계 전 게이트: 넘길 준비가 됐나
+llm-wiki handoff --agent claude
+```
+
+승격과 감사를 일부러 분리했다: `mode set`은 저장소 전체 스캔을 유발하지 않으므로 `strict` 전환이 즉시 끝나고, 비싼 재구성은 명시적인 `backfill`로 남는다. `--mode <레벨>`은 config를 고치지 않고 그 실행에만 적용되므로 승격 전에 `llm-wiki backfill --mode strict`로 미리 볼 수 있다.
+
+`backfill`이 인쇄하는 근거 장부는 세 라벨을 섞지 않는다 — *verified*(현재 소스·테스트·설정에서 읽음) / *inferred*(디렉터리 경계·네이밍·git 이력에서 도출했고 도출이라고 말한다) / *unknown*(저장소가 답할 수 없다). ADR도 없고 스스로 설명한 커밋도 없으면 "왜 이걸 골랐나"는 `unknown`으로 남고, `decision_history` 준비도 체크가 자기 문장으로 **텍스트를 생성해서는 닫을 수 없다**고 말한다. 그것을 그럴듯한 이야기로 채우지 않는 것이 이 명령의 목적이다.
+
 ## 다음 조치 추천 / 규칙 설명
 
 ```bash
@@ -125,10 +142,11 @@ llm-wiki explain content.not_enriched
 
 ## Review Notes
 
-Older review notes (7 entries, 2026-07-13 → 2026-07-23) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (8 entries, 2026-07-13 → 2026-07-23) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-07-23에 위 1.24.0(doc-language i18n + guided onboarding) 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. `--doc-lang` 예시가 현재 CLI 표면(HEAD c7a1a7a, npm dist-tags.latest=1.24.0)과 일치함을 확인했다.
 - 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-13 → 2026-07-23)을 `REVIEW_HISTORY.md`의 신규 `Examples` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서도 인수인계의 위반 목록에서 빠져 있었다**(`BENCHMARK.md`와 함께) — 손으로 적은 목록 대신 전 문서를 계수해서야 드러났고, 이제 `tests/review-notes-cap.test.js`가 그 계수를 대신한다. 예제 본문·명령 표기는 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 결정 21·28로 바뀐 `src/cli.js`(신규 `--watch-needs-review`, `impact` 도움말 재작성)와 `README.md`(Upgrading 절)를 대조했다: 기존 예시 중 거짓이 된 문장은 하나도 없었고(이 문서는 `impact --strict`를 쓴 적이 없고 `--strict` 설명은 `validate` 한정이라 그 문장은 **불변**), 대신 CI 절에 `impact --since`가 플래그 없이 exit 1이라는 계약과 되돌리는 설정 두 가지(`rules`의 `warning`/`info`/`off`, `rulesPreset: "relaxed"`)를 더하고 `drift --watch-needs-review` 예시 절을 신설했다 — 두 예시 모두 실제 실행으로 확인했다(`impact --since HEAD~1` → error 6건·exit 1).
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `src/cli.js`, `README.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서의 예제는 `drift`의 usage 요약을 인용하지 않고(직전 노트에서 추가한 것은 `impact` CI 레시피다), README 변경은 Upgrading 절의 **배포 상태 문장**(“다음 릴리스는 MAJOR·미릴리스” → “1.28.0으로 배포”)과 액션 핀 문자열이라 예제가 재현하는 동작에 영향이 없다 — **불변**. 본문 변경 없음.
 - 2026-08-19(1.29.2 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 이번 릴리스 커밋의 README 변경은 **액션 핀 한 줄**(`@v1.29.1` → `@v1.29.2`)이 전부이고, 이 문서의 CI 레시피는 핀 문자열을 재현하지 않는다(인용하는 것은 `impact --since`의 exit 계약과 완화 설정 두 가지다) — 예제가 재현하는 동작에 영향이 없어 본문 **불변**. 1.29.2의 실기능(`delegationPolicy`)은 생성 프롬프트 안의 문장이라 예제 명령 표면을 바꾸지 않는다. 2026-08-03(1.28.0)·2026-08-06(1.29.1)과 같은 유형이다. 상한 5건을 지키려고 최고령 1건(2026-07-23, `--doc-lang` 예시 추가)을 `REVIEW_HISTORY.md`의 `Examples` 절로 원문 그대로 옮겼다.
+
+- 2026-09-07(1.30.0)에 거버넌스 모드 예제 절(`평소에는 lite, 인수인계 전에 strict`)을 추가했다. `impact.source_changed`가 지목한 인용 소스 2건(`src/cli.js`·`README.md`)의 변경은 `mode`/`backfill` 명령·`--mode` 옵션 등록과 README의 새 절이라 기존 예제 절은 전부 그대로 유효하다 — **새 워크플로를 보여줄 예제가 없다**는 것이 실제 공백이었다.

@@ -94,6 +94,29 @@ import {
 } from "./commands/fix-migrate.js";
 import { applyFilters, loadContentDocs } from "./commands/retrieval.js";
 import { planSkillArtifacts, writeSkillArtifacts } from "./commands/skills.js";
+import {
+  buildEvidenceLedger,
+  collectRepositoryInventory,
+  collectWikiCoverage,
+  DECISION_RECORD_SCOPE,
+  formatCoverage,
+  formatInventory,
+  formatLedger,
+  formatReadiness,
+  gradeHandoffReadiness,
+  modeCommand
+} from "./commands/governance-mode.js";
+import {
+  effectiveGovernanceMode,
+  effectiveGovernancePolicy,
+  getGovernancePolicy,
+  governanceModeSource,
+  initGovernanceMode,
+  plannedWikiDocs,
+  ruleSuppressed,
+  suppressDomainDocs,
+  SCAN_GATING_RULES
+} from "./governance.js";
 export { detectDomainDirectories, domainDisplayName, normalizeDomainSlug, planDomainDocs } from "./commands/domains.js";
 export { driftTargets, evidenceTier, scanUngroundedVerified } from "./commands/scans.js";
 export { driftCommand, fixCommand } from "./commands/fix-migrate.js";
@@ -101,6 +124,7 @@ export { getDocCommand, getRelatedCommand, listDocsCommand, searchDocsCommand } 
 export { onboardCommand, prepareCommand } from "./commands/guided.js";
 export { importMemoryCommand } from "./commands/import-memory.js";
 export { harnessHealthCommand } from "./commands/harness-health.js";
+export { modeCommand } from "./commands/governance-mode.js";
 
 export async function doctor(options) {
   const cwd = options.cwd;
@@ -124,6 +148,7 @@ export async function doctor(options) {
       ? `wiki_block_version: current=${blockVersions.current}, gap=${blockVersionGapDocs(blockVersions).length}/${blockVersions.docs.length} docs${blockVersionGapDocs(blockVersions).length ? " (run migrate --dry-run)" : ""}`
       : `wiki_block_version: current=${CURRENT_WIKI_BLOCK_VERSION}`,
     `llm_wiki_config: ${configState}`,
+    `governance_mode: ${describeGovernanceCheck(options)}`,
     `ci_governance: ${ciGovernance}`,
     `project_type: ${detection.projectType} (${detection.confidence})`,
     "utf8_policy: explicit read/write helpers enabled",
@@ -303,6 +328,23 @@ async function describeCiGovernance(cwd) {
 // config the CLI/programmatic-API/MCP surfaces merge is observable: "absent",
 // "present (type=..., profiles=..., agents=..., strict=on)", or a "present
 // (invalid: N error(s))" note when the file is malformed.
+// The governance level this invocation actually runs at, with its provenance and
+// the one consequence users care about: whether the omission gates can fail a
+// build. doctor is where someone looks when CI stopped failing and nobody knows
+// why, so the answer has to be here and it has to name the source.
+function describeGovernanceCheck(options) {
+  const mode = effectiveGovernanceMode(options);
+  const policy = getGovernancePolicy(mode);
+  const source = governanceModeSource(options);
+  const gates = ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)
+    ? "impact gate off"
+    : options.rules?.[SCAN_GATING_RULES.reverseImpact] === "warning"
+      ? "impact gate advisory (warning)"
+      : "impact gate on (error)";
+  const drift = ruleSuppressed(options, SCAN_GATING_RULES.evidenceDrift) ? "drift scan skipped" : "drift scan on";
+  return `${mode} (source: ${source}, governance CI ${policy.governanceCi}; ${gates}, ${drift}) — change with: llm-wiki mode set <lite|standard|strict> --write`;
+}
+
 async function describeEffectiveConfig(cwd) {
   const { found, config, errors } = await loadProjectConfig(cwd);
   if (!found) return "absent";
@@ -312,6 +354,7 @@ async function describeEffectiveConfig(cwd) {
   if (Array.isArray(config.profiles) && config.profiles.length > 0) parts.push(`profiles=${config.profiles.join("+")}`);
   if (Array.isArray(config.agents) && config.agents.length > 0) parts.push(`agents=${config.agents.join("+")}`);
   if (config.strict) parts.push("strict=on");
+  if (config.governance?.mode) parts.push(`governance.mode=${config.governance.mode}`);
   // Additive: the applied preset is echoed by name; `rules=N` keeps counting
   // only the explicit entries (the preset expands at merge time, not here).
   if (config.rulesPreset) parts.push(`rulesPreset=${config.rulesPreset}`);
@@ -409,14 +452,21 @@ export async function statusCommand(options) {
     path: ".",
     message
   }));
-  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles, options.requiredDocs);
+  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles, options.requiredDocs, effectiveGovernanceMode(options));
   const sourceFileFindings = await scanSourceFiles(options.cwd);
   const relatedFindings = await scanRelatedReferences(options.cwd);
   const enrichmentFindings = await scanEnrichment(options.cwd);
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const ungroundedFindings = await scanUngroundedVerified(options.cwd);
-  const driftFindings = await scanEvidenceDrift(options.cwd, options);
+  // Cost gate, not a behavior change: scanEvidenceDrift is the only producer of
+  // evidence.stale and it shells out to `git log` once per verified document, so
+  // when the rule is off applyRuleConfig would drop every finding it worked to
+  // produce. Reads the EFFECTIVE rule map, so a project that switched the rule off
+  // by hand gets the same saving as one that switched to lite.
+  const driftFindings = ruleSuppressed(options, SCAN_GATING_RULES.evidenceDrift)
+    ? []
+    : await scanEvidenceDrift(options.cwd, options);
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
   const linkFindings = [
@@ -583,7 +633,7 @@ export async function audit(options) {
     path: ".",
     message
   }));
-  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles, options.requiredDocs);
+  const structureFindings = await findMissingDocs(options.cwd, detection.projectType, options.profiles, options.requiredDocs, effectiveGovernanceMode(options));
   const encodingFindings = await scanEncoding(options.cwd);
   const sensitiveFindings = await scanSensitive(options.cwd);
   const sourceFileFindings = await scanSourceFiles(options.cwd);
@@ -592,7 +642,14 @@ export async function audit(options) {
   const evidenceFindings = await scanEvidenceReferences(options.cwd, { strict: options.strict });
   const evidenceSectionFindings = await scanEvidenceSections(options.cwd, { strict: options.strict });
   const ungroundedFindings = await scanUngroundedVerified(options.cwd);
-  const driftFindings = await scanEvidenceDrift(options.cwd, options);
+  // Cost gate, not a behavior change: scanEvidenceDrift is the only producer of
+  // evidence.stale and it shells out to `git log` once per verified document, so
+  // when the rule is off applyRuleConfig would drop every finding it worked to
+  // produce. Reads the EFFECTIVE rule map, so a project that switched the rule off
+  // by hand gets the same saving as one that switched to lite.
+  const driftFindings = ruleSuppressed(options, SCAN_GATING_RULES.evidenceDrift)
+    ? []
+    : await scanEvidenceDrift(options.cwd, options);
   const okfFindings = await scanOkfProfile(options.cwd, detection.activeProfiles);
   const wikiGraph = await collectWikiGraph(options.cwd);
   const linkFindings = [
@@ -1026,7 +1083,12 @@ export async function impactCommand(options) {
   // `changed` itself is left alone so changed_files keeps meaning "what moved".
   const versionOnlyExcluded = await versionOnlyManifestChanges(cwd, options.since, changed);
   const changedSet = new Set(changed.filter((relPath) => !versionOnlyExcluded.includes(relPath)));
-  const findings = applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
+  // Same cost gate as the drift scan above: scanReverseImpact is the only producer
+  // of impact.source_changed. In lite the rule is off, so `impact` degrades to a
+  // report of what changed instead of walking every document's anchors.
+  const findings = ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)
+    ? []
+    : applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
 
   const result = findings.some((finding) => finding.severity === "blocked")
     ? "blocked"
@@ -1746,6 +1808,212 @@ function finishReview(reviewed, { mode, approved, refused, reviewer, findings })
   ]);
 }
 
+// The lite -> strict escalation path (2026-09-07).
+//
+// The scenario this exists for: a repository sat in lite for months, the wiki was
+// deliberately not kept complete, and now somebody is leaving. The repository
+// itself is the source of truth at that moment, so backfill measures it — what it
+// contains, what the mode expects, and what is missing — and grades handoff
+// readiness against the mode now in effect.
+//
+// It COMPOSES rather than duplicates: initCommand writes the missing stubs (same
+// generator, same needs_review guarantee, same never-overwrite rules), the scan
+// family supplies coverage, and the printed `backfill` task prompt does the
+// writing. The one thing this command adds is the three-label evidence ledger, and
+// its `unknown` list is an OUTPUT, not a shortfall — the whole point is to hand a
+// receiving developer an honest map of what could not be recovered instead of a
+// convincing story about a project nobody can verify.
+export async function backfillCommand(options) {
+  const cwd = options.cwd;
+  const detection = await detectProject(cwd, options.type, options.profiles);
+  const mode = effectiveGovernanceMode(options);
+  const policy = getGovernancePolicy(mode);
+  const plannedSet = [...new Set([
+    ...plannedDocs(detection.projectType, options.minimal === true, options.profiles, mode),
+    ...(options.requiredDocs ?? [])
+  ])];
+
+  // Stubs are written FIRST so every number below describes the post-write state:
+  // a report that told you 12 documents were missing right after creating them
+  // would be useless. Adapters and skills are explicitly excluded (agents: [] plus
+  // noAdapters) — backfill reconstructs documentation, it does not re-provision the
+  // harness, and quietly rewriting an adopter's CLAUDE.md here would be a surprise.
+  const write = options.write === true;
+  const stubs = { created: [], skipped: [], blocked: [] };
+  if (write) {
+    const initResult = await initCommand({
+      ...options,
+      mode,
+      write: true,
+      dryRun: false,
+      skills: false,
+      refresh: false,
+      agents: [],
+      noAdapters: true,
+      withAdapters: false,
+      existing: options.existing ?? "skip"
+    });
+    stubs.created = initResult.created ?? [];
+    stubs.skipped = initResult.skipped ?? [];
+    stubs.blocked = initResult.blocked ?? [];
+  }
+
+  const inventory = await collectRepositoryInventory(cwd, detection);
+  const coverage = await collectWikiCoverage(cwd, plannedSet);
+  const frontmatter = await validateFrontmatterCommand(options);
+  const structureFindings = await findMissingDocs(cwd, detection.projectType, options.profiles, options.requiredDocs, mode);
+  const sourceFileFindings = await scanSourceFiles(cwd);
+  const enrichmentFindings = await scanEnrichment(cwd);
+  // Run unconditionally, unlike audit/status: the drift scan is the expensive one,
+  // and the whole reason it is gated elsewhere is that ordinary work should not pay
+  // for it. Here the user typed the command whose job IS the full inventory, so
+  // paying is the point — including when the effective mode has the rule off, so a
+  // pre-escalation `backfill --mode strict` still sees the drift.
+  const staleFindings = await scanEvidenceDrift(cwd, { ...options, rules: {} });
+  const wikiGraph = await collectWikiGraph(cwd);
+  const linkFindings = [...(await scanMarkdownLinks(cwd)), ...wikiGraph.findings];
+
+  const unresolvedSources = sourceFileFindings.filter((finding) => finding.rule === "source_files.missing");
+  const notEnrichedDocs = enrichmentFindings.filter((finding) => finding.rule === "content.not_enriched");
+  const staleDocs = staleFindings.filter((finding) => finding.rule === "evidence.stale");
+  const brokenLinks = linkFindings.length;
+
+  const ledger = buildEvidenceLedger({ inventory, coverage, staleDocs, unresolvedSources });
+  const readiness = gradeHandoffReadiness({
+    inventory, coverage, staleDocs, unresolvedSources, notEnrichedDocs, brokenLinks, policy
+  });
+
+  const backfillFindings = [];
+  if (coverage.decisionDocs.length === 0) {
+    backfillFindings.push({
+      severity: "info",
+      rule: "backfill.unknown_history",
+      path: "docs/llm-wiki",
+      // The message names the scope it searched instead of asserting a
+      // repository-wide negative. The first version said the rationale was "not
+      // recoverable from this repository" after looking only inside
+      // docs/llm-wiki — and said it about a repository whose root holds a 196 KB
+      // decision log. Found by running backfill on this repository.
+      message: `No decision record found in the locations this check searches (${DECISION_RECORD_SCOPE}). If this project records decisions elsewhere, name that file in the handoff; if it records them nowhere, the original rationale is unrecoverable and stays unknown.`
+    });
+  }
+  if (readiness.incomplete.length > 0) {
+    backfillFindings.push({
+      severity: "warning",
+      rule: "backfill.not_ready",
+      path: "docs/llm-wiki",
+      message: `${readiness.incomplete.length} of ${readiness.total} handoff-readiness checks are incomplete: ${readiness.incomplete.join(", ")}.`
+    });
+  }
+
+  const findings = applyRuleConfig([
+    ...structureFindings,
+    ...frontmatter.findings,
+    ...sourceFileFindings,
+    ...enrichmentFindings,
+    ...staleFindings,
+    ...linkFindings,
+    ...backfillFindings
+  ], options);
+
+  const taskPrompt = buildTaskPrompt({
+    task: "backfill",
+    cwd,
+    projectType: detection.projectType,
+    profiles: detection.activeProfiles,
+    agents: selectedAgents(options),
+    docLang: normalizeLang(options.docLang),
+    governanceMode: mode
+  });
+
+  const result = findings.some((finding) => finding.severity === "blocked")
+    ? "blocked"
+    : findings.some((finding) => finding.severity === "error")
+      ? "fail"
+      : findings.some((finding) => finding.severity === "warning")
+        ? "warning"
+        : "pass";
+  const findingSummary = summarizeFindings(findings);
+  const plannedCreates = coverage.missing.map((rel) => `${rel} would be created with status needs_review by backfill --write.`);
+
+  const summary = [
+    `result: ${result}`,
+    `mode: ${mode} (${policy.intent})`,
+    `write: ${write ? "on (missing stubs created)" : "off (nothing written)"}`,
+    `readiness: ${readiness.passed}/${readiness.total} checks complete`,
+    `unknown items: ${ledger.unknown.length}`,
+    `findings: ${findings.length}`
+  ];
+
+  return withText({
+    command: "backfill",
+    result,
+    mode,
+    write,
+    detection,
+    inventory,
+    coverage,
+    ledger,
+    readiness,
+    wikiGraph,
+    created: stubs.created,
+    planned: write ? [] : plannedCreates,
+    skipped: stubs.skipped,
+    blocked: stubs.blocked,
+    prompt: taskPrompt.prompt,
+    findingSummary,
+    findings
+  }, "LLM-WIKI Backfill", [
+    { title: "Summary", body: summary },
+    { title: "Repository Inventory", body: formatInventory(inventory) },
+    { title: "Wiki Coverage", body: formatCoverage(coverage) },
+    { title: "Evidence Ledger", body: formatLedger(ledger) },
+    { title: "Handoff Readiness", body: formatReadiness(readiness) },
+    { title: write ? "Created" : "Planned Creates", body: (write ? stubs.created : plannedCreates).length ? (write ? stubs.created : plannedCreates) : ["none"] },
+    { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
+    { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
+    { title: "Backfill Prompt", body: "```text\n" + taskPrompt.prompt + "\n```" },
+    { title: "Next Step", body: backfillNextSteps({ write, coverage, readiness, mode }) },
+    { title: "Caveats", body: [
+      "This command MEASURES. Everything it prints is read from the current source, tests, configuration, wiki frontmatter, or git — and everything it could not read is listed under unknown rather than reconstructed.",
+      "Original architectural rationale is recoverable only where somebody recorded it. Where no ADR or decision entry exists it stays unknown: do not let an agent turn a commit subject into project history.",
+      "Created documents are stubs at status: needs_review with no prose claims. Existing files are never overwritten and the append-only log is always kept.",
+      "Add --strict to make an incomplete readiness report fail the build (exit 1) — the pre-handoff gate."
+    ] }
+  ]);
+}
+
+function backfillNextSteps({ write, coverage, readiness, mode }) {
+  const steps = [];
+  if (mode !== "strict") {
+    steps.push(`Graded against mode ${mode}. For a handoff, escalate first: llm-wiki mode set strict --write (or preview with backfill --mode strict).`);
+  }
+  if (!coverage.initialized) {
+    steps.push("The wiki is not initialized: run llm-wiki init --write before anything else.");
+    return steps;
+  }
+  if (!write && coverage.missing.length > 0) {
+    steps.push(`${coverage.missing.length} planned document(s) are missing. Create the stubs: llm-wiki backfill --write`);
+  }
+  if (readiness.incomplete.includes("documents_enriched") || coverage.missing.length > 0 || write) {
+    steps.push("Fill the stubs from real source evidence: paste the Backfill Prompt above into your coding agent (or run llm-wiki prompt --task backfill).");
+  }
+  if (readiness.incomplete.includes("source_mapping")) {
+    steps.push("Rebuild the source mappings: the prompt covers it, and llm-wiki validate names each unresolved path.");
+  }
+  if (readiness.incomplete.includes("evidence_fresh")) {
+    steps.push("Re-review the drifted documents: llm-wiki drift, then llm-wiki review --approve <path> once each one matches the source again.");
+  }
+  if (readiness.incomplete.includes("review_backlog")) {
+    steps.push("Work the review backlog: llm-wiki review risk-ranks it, and a human approves with llm-wiki review --approve <path>.");
+  }
+  if (readiness.incomplete.includes("decision_history")) {
+    steps.push("Decision history cannot be generated. Ask the outgoing maintainer while they are still reachable, and start recording with docs/llm-wiki/templates/DECISION_LOG.template.md.");
+  }
+  steps.push("When the readiness checks are complete (or the remaining gaps are recorded as known unknowns), produce the handoff: llm-wiki handoff --agent claude");
+  return steps;
+}
+
 export async function quickstartCommand(options) {
   if (options.dryRun && options.write) {
     return blockedApply("quickstart", "Choose either quickstart --dry-run or quickstart --write. The two modes cannot be used together.");
@@ -1932,13 +2200,16 @@ export async function releaseNotesCommand(options) {
 // skipped even under --existing overwrite. Seeds the detected type and selected
 // agents so the file is useful immediately; unknown/empty fields are left out.
 // Returns { planned, created, skipped } message arrays for the init report.
-async function scaffoldProjectConfig(cwd, detection, agents, { write }) {
+async function scaffoldProjectConfig(cwd, detection, agents, { write, governanceMode = null }) {
   if (await pathExists(path.join(cwd, CONFIG_FILENAME))) {
     return { planned: [], created: [], skipped: [`${CONFIG_FILENAME} exists; kept existing config (never overwritten).`] };
   }
   const config = {};
   if (detection.projectType && detection.projectType !== "unknown") config.type = detection.projectType;
   if (Array.isArray(agents) && agents.length > 0) config.agents = [...agents];
+  // Written explicitly rather than left to the default, so the level this project
+  // runs at is visible in the file a human edits instead of implied by its absence.
+  if (governanceMode) config.governance = { mode: governanceMode };
   const summary = describeScaffoldConfig(config);
   if (!write) {
     return { planned: [`${CONFIG_FILENAME} would be created (${summary}).`], created: [], skipped: [] };
@@ -1951,15 +2222,32 @@ function describeScaffoldConfig(config) {
   const parts = [];
   if (config.type) parts.push(`type=${config.type}`);
   if (config.agents && config.agents.length > 0) parts.push(`agents=${config.agents.join("+")}`);
+  if (config.governance?.mode) parts.push(`governance.mode=${config.governance.mode}`);
   return parts.length > 0 ? parts.join(", ") : "empty starter; add type/profiles/agents/strict";
 }
 
 export async function initCommand(options) {
   const detection = await detectProject(options.cwd, options.type, options.profiles);
   const agents = selectedAgents(options);
-  const baseDocs = plannedDocs(detection.projectType, options.minimal, options.profiles);
+  // init is the only command that runs before a project has stated a policy, so it
+  // resolves the mode from evidence: an explicit --mode, else the config, else
+  // "does this repository already exist" (see initGovernanceMode). The resolved
+  // value drives the planned document set AND the config this run scaffolds, so the
+  // two can never disagree — a config that says lite next to a strict document set
+  // would be the worst possible first impression.
+  const projectConfig = await loadProjectConfig(options.cwd);
+  const governanceMode = initGovernanceMode(options, {
+    configMode: projectConfig.config?.governance?.mode ?? null,
+    configPresent: projectConfig.found,
+    wikiInitialized: await pathExists(path.join(options.cwd, "docs", "llm-wiki", "index.md"))
+  });
+  const modeScopedOptions = { ...options, governanceMode, governanceModeSource: options.governanceModeSource ?? "default" };
+  const baseDocs = plannedDocs(detection.projectType, options.minimal, options.profiles, governanceMode);
   const candidateSet = new Set(baseDocs);
-  const domainContext = await buildDomainContext(options.cwd, detection.projectType, options.minimal, candidateSet, options.domains);
+  // suppressDomainDocs folds --minimal together with the mode's domainDocs policy,
+  // and an explicit --domains list always wins over the policy — naming a domain is
+  // a direct instruction, not a preference a mode gets to overrule.
+  const domainContext = await buildDomainContext(options.cwd, detection.projectType, suppressDomainDocs(modeScopedOptions), candidateSet, options.domains);
   const candidates = [...baseDocs, ...domainContext.plans.map((plan) => plan.rel)];
   // Don't silently produce zero per-domain docs for a domain-capable project — say why.
   const domainNotice = (!options.minimal && domainContext.domainCapable && domainContext.plans.length === 0)
@@ -1967,11 +2255,11 @@ export async function initCommand(options) {
     : null;
 
   if (options.dryRun) {
-    return initDryRun(options, detection, agents, candidates, domainNotice);
+    return initDryRun(modeScopedOptions, detection, agents, candidates, domainNotice);
   }
 
   if (options.write) {
-    return initWrite(options, detection, agents, candidates, domainContext, domainNotice);
+    return initWrite(modeScopedOptions, detection, agents, candidates, domainContext, domainNotice);
   }
 
   return needsWriteFlag("init", "Preview the changes with init --dry-run, or run init --write to create the missing LLM-WIKI files. Existing wiki docs are kept (--existing skip by default).");
@@ -2000,7 +2288,7 @@ async function initDryRun(options, detection, agents, candidates, domainNotice =
   planned.push(...skillPlan.planned);
   skipped.push(...skillPlan.skipped);
 
-  const configScaffold = await scaffoldProjectConfig(options.cwd, detection, agents, { write: false });
+  const configScaffold = await scaffoldProjectConfig(options.cwd, detection, agents, { write: false, governanceMode: effectiveGovernanceMode(options) });
   planned.push(...configScaffold.planned);
   skipped.push(...configScaffold.skipped);
 
@@ -2026,7 +2314,7 @@ async function initDryRun(options, detection, agents, candidates, domainNotice =
   ]);
 }
 
-async function findMissingDocs(cwd, projectType, profiles = [], customDocs = []) {
+async function findMissingDocs(cwd, projectType, profiles = [], customDocs = [], mode = undefined) {
   const findings = [];
   const wikiEntry = path.join(cwd, "docs", "llm-wiki", "index.md");
   if (!(await pathExists(wikiEntry))) {
@@ -2039,7 +2327,11 @@ async function findMissingDocs(cwd, projectType, profiles = [], customDocs = [])
     return findings;
   }
 
-  const required = [...new Set([...plannedDocs(projectType, false, profiles), ...customDocs])];
+  // `false` for minimal, but the MODE still narrows the set: in lite only the core
+  // documents are planned, so a missing profile document is not "required" — it was
+  // never expected. That is why lite is quiet here instead of noisy-and-silenced.
+  // An explicit requiredDocs list is a project's own instruction and always applies.
+  const required = [...new Set([...plannedDocs(projectType, false, profiles, mode), ...customDocs])];
   for (const rel of required) {
     if (!(await pathExists(path.join(cwd, rel)))) {
       findings.push({
@@ -2113,7 +2405,7 @@ async function initWrite(options, detection, agents, candidates, domainContext =
   created.push(...skillWrites.created);
   skipped.push(...skillWrites.skipped);
 
-  const configScaffold = await scaffoldProjectConfig(options.cwd, detection, agents, { write: true });
+  const configScaffold = await scaffoldProjectConfig(options.cwd, detection, agents, { write: true, governanceMode: effectiveGovernanceMode(options) });
   created.push(...configScaffold.created);
   skipped.push(...configScaffold.skipped);
 
@@ -2376,10 +2668,12 @@ async function renderOverriddenDoc(cwd, rel, overridePath, detection, lastUpdate
   return { content, missing: false };
 }
 
-function plannedDocs(projectType, minimal, profiles = []) {
-  if (minimal) return CORE_REQUIRED_DOCS;
-  const profileDocs = profiles.flatMap((profile) => PROFILE_DOCS[profile] ?? []);
-  return [...new Set([...CORE_REQUIRED_DOCS, ...(PROFILE_DOCS[projectType] ?? PROFILE_DOCS.unknown), ...profileDocs])];
+// Thin wrapper over the policy layer (src/governance.js), kept so the existing
+// call sites read the same. The document set a mode plans IS a governance
+// decision, and it lives there so init and the missing-document scan cannot
+// disagree about it — see plannedWikiDocs.
+function plannedDocs(projectType, minimal, profiles = [], mode = undefined) {
+  return plannedWikiDocs({ projectType, minimal, profiles, mode });
 }
 
 // ---- backend/fullstack domain detection --------------------------------
@@ -2735,7 +3029,8 @@ function handoffNextStep(handoff) {
     "How to run — the 'Handoff Prompt' below is an instruction you give your coding agent, not a CLI command · 실행 방법 — 아래 'Handoff Prompt'는 CLI가 실행하는 게 아니라 코딩 에이전트에게 넘기는 지시문입니다:",
     "1) Paste the prompt below into a Claude Code or Codex session opened on this repo. If you are already inside Claude Code here, paste it right here. · 이 저장소를 연 세션에 아래 프롬프트를 그대로 붙여넣으세요.",
     "2) The agent reads the real code and fills docs/llm-wiki with evidence; backend/fullstack projects also enrich per-domain domains/*.md. · 에이전트가 실제 코드를 읽고 문서를 근거와 함께 채웁니다.",
-    "3) A human reviews the result and, if correct, promotes status to verified (structure check: llm-wiki validate). · 사람이 검토해 정확하면 verified로 올리세요."
+    "3) A human reviews the result and, if correct, promotes status to verified (structure check: llm-wiki validate). · 사람이 검토해 정확하면 verified로 올리세요.",
+    `Governance mode: ${handoff.governanceMode ?? "strict"}. For a real handoff, escalate and reconstruct first: llm-wiki mode set strict --write, then llm-wiki backfill (add --write to create the missing document stubs, --strict to gate on readiness). · 인수인계라면 strict로 올리고 backfill을 먼저 돌리세요.`
   ];
 }
 
@@ -2791,7 +3086,7 @@ function buildHandoff(options, detection = null) {
   // The handoff prompt IS the initial-enrichment workflow, sourced from the single
   // shared builder so it never drifts from the `bootstrap` task/skill. Handoff names
   // the selected adapter file(s) as the entrypoint; the workflow itself is identical.
-  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints, docLang: normalizeLang(options.docLang) });
+  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints, docLang: normalizeLang(options.docLang), governanceMode: effectiveGovernanceMode(options) });
 
   return {
     agents,
@@ -2802,6 +3097,10 @@ function buildHandoff(options, detection = null) {
     label,
     entrypoints,
     message: `${message}${unsupportedNote}`,
+    // Additive: the handoff prompt now carries the governance workflow of the mode
+    // in effect, so the payload names which one it was rather than leaving the
+    // receiving agent's instructions unattributable.
+    governanceMode: effectiveGovernanceMode(options),
     prompt,
     findings
   };

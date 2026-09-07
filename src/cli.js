@@ -1,13 +1,14 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { audit, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, harnessHealthCommand, impactCommand, importMemoryCommand, initCommand, listDocsCommand, migrateCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { audit, backfillCommand, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, harnessHealthCommand, impactCommand, importMemoryCommand, initCommand, listDocsCommand, migrateCommand, modeCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { KNOWN_TYPES } from "./detector.js";
 import { startMcpServer } from "./mcp/server.js";
 import { SUPPORTED_LANGS } from "./i18n.js";
 import { SUPPORTED_TASK_PROMPTS } from "./task-prompts.js";
+import { GOVERNANCE_MODES } from "./governance.js";
 
 const COMMANDS = new Map([
   ["doctor", doctor],
@@ -18,6 +19,8 @@ const COMMANDS = new Map([
   ["next", nextCommand],
   ["explain", explainCommand],
   ["audit", audit],
+  ["mode", modeCommand],
+  ["backfill", backfillCommand],
   ["quickstart", quickstartCommand],
   ["handoff", handoffCommand],
   ["prompt", promptCommand],
@@ -143,6 +146,14 @@ export function defaultOptions() {
     task: null,
     domain: null,
     goal: null,
+    // Governance mode (2026-09-07). `mode` is the requested level (CLI --mode, or
+    // the positional value of `mode set <level>`); `modeAction` is the `mode`
+    // command's sub-action. The RESOLVED level and where it came from
+    // (governanceMode / governanceModeSource) are produced by the config merge, not
+    // defaulted here — a default would make "unset" indistinguishable from "the
+    // user asked for legacy behavior".
+    mode: null,
+    modeAction: null,
     findingRule: null,
     query: null,
     docPath: null,
@@ -238,6 +249,17 @@ export function parseArgs(argv) {
         // banana") instead of failing as a usage error.
         if (KNOWN_TYPES.includes(value)) options.type = value;
         else errors.push(`Unsupported project type: ${value} (supported: ${KNOWN_TYPES.join(", ")}).`);
+        index += 1;
+      }
+    } else if (arg === "--mode") {
+      usedOptions.add("mode");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        // Validated at parse time like --type/--format: a mode decides whether a
+        // build gates on documentation, so a typo must be a usage error (exit 3)
+        // and never a silent fallback to some other level.
+        if (GOVERNANCE_MODES.includes(value)) options.mode = value;
+        else errors.push(`Unsupported governance mode: ${value} (supported: ${GOVERNANCE_MODES.join(", ")}).`);
         index += 1;
       }
     } else if (arg === "--version") {
@@ -454,6 +476,20 @@ export function parseArgs(argv) {
       options.refresh = true;
     } else if (arg.startsWith("-")) {
       errors.push(`Unknown option: ${arg}`);
+    } else if (command === "mode" && options.modeAction === null) {
+      // `mode set <level>` is the only command with two positionals. It earns the
+      // shape: `mode` reads and `mode set` writes, and collapsing a state-changing
+      // sub-action into a flag on a read command (`mode --set strict`) makes the
+      // dangerous half look like a formatting option.
+      options.modeAction = arg;
+    } else if (command === "mode" && options.mode === null) {
+      // Recorded as supplied even when the VALUE is rejected, so an invalid level
+      // reports one error ("Unsupported governance mode: turbo") instead of that
+      // plus a contradictory "Missing required argument" for the value the user
+      // clearly did supply.
+      usedOptions.add("mode");
+      if (GOVERNANCE_MODES.includes(arg)) options.mode = arg;
+      else errors.push(`Unsupported governance mode: ${arg} (supported: ${GOVERNANCE_MODES.join(", ")}).`);
     } else if (command === "explain" && !options.findingRule) {
       options.findingRule = arg;
     } else if (command === "search-docs" && options.query === null) {
@@ -488,32 +524,47 @@ export function parseArgs(argv) {
   if ((command === "get-doc" || command === "get-related") && !options.docPath) {
     errors.push(`Missing required argument for ${command}: <path>.`);
   }
+  if (command === "mode" && options.modeAction !== null) {
+    if (options.modeAction !== "set") {
+      errors.push(`Unknown mode action: ${options.modeAction}. Usage: llm-wiki mode, or llm-wiki mode set <${GOVERNANCE_MODES.join("|")}> --write.`);
+    } else if (!usedOptions.has("mode")) {
+      errors.push(`Missing required argument for mode set: <${GOVERNANCE_MODES.join("|")}>.`);
+    }
+  }
 
   return { command, options, errors };
 }
 
 const COMMAND_OPTION_RULES = {
   doctor: new Set(["cwd", "format", "out"]),
-  validate: new Set(["cwd", "type", "profile", "agent", "strict", "changed", "since", "format", "out"]),
+  validate: new Set(["cwd", "type", "profile", "agent", "strict", "changed", "since", "mode", "format", "out"]),
   "validate-frontmatter": new Set(["cwd", "strict", "format", "out"]),
   // monorepo spreads its options into each package's validateCommand, so `strict`
   // and `agent` genuinely apply per package. `type`/`profile` are deliberately
   // absent: monorepoCommand overrides them per package (type: null, profiles: []),
   // so accepting them would silently do nothing.
   monorepo: new Set(["cwd", "strict", "agent", "format", "out"]),
-  status: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
-  next: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
+  status: new Set(["cwd", "type", "profile", "agent", "mode", "format", "out"]),
+  next: new Set(["cwd", "type", "profile", "agent", "strict", "mode", "format", "out"]),
   // `cwd` is earned, not cosmetic: main() runs applyProjectConfig(options) for
   // every command, so --cwd selects the llm-wiki.config.json whose `lang` key
   // decides which language explain renders its prose in. Without it the command
   // could never be pointed at another project's config, while the docs presented
   // --cwd as a general option — so the documented invocation exited 3.
   explain: new Set(["cwd", "format", "out"]),
-  audit: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
-  quickstart: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "dry-run", "write", "format", "out"]),
-  handoff: new Set(["cwd", "type", "profile", "agent", "format", "out"]),
-  prompt: new Set(["cwd", "task", "type", "profile", "agent", "format", "out"]),
-  init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "dry-run", "write", "format", "out", "with-adapters", "no-adapters"]),
+  audit: new Set(["cwd", "type", "profile", "agent", "strict", "mode", "format", "out"]),
+  // `mode` reads; `mode set <level> --write` persists. --write (not a bare
+  // sub-action) is what actually edits llm-wiki.config.json, matching every other
+  // writing command in this CLI: preview first, write on an explicit flag.
+  mode: new Set(["cwd", "mode", "write", "dry-run", "format", "out"]),
+  // backfill is the Lite -> Strict escalation path. --write creates the missing
+  // planned document STUBS (needs_review, no prose claims); without it the command
+  // is a read-only plan. `strict` grades the readiness report as a gate.
+  backfill: new Set(["cwd", "type", "profile", "agent", "mode", "strict", "dry-run", "write", "existing", "format", "out"]),
+  quickstart: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "mode", "dry-run", "write", "format", "out"]),
+  handoff: new Set(["cwd", "type", "profile", "agent", "mode", "format", "out"]),
+  prompt: new Set(["cwd", "task", "type", "profile", "agent", "mode", "format", "out"]),
+  init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "mode", "dry-run", "write", "format", "out", "with-adapters", "no-adapters"]),
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
   "import-memory": new Set(["cwd", "dry-run", "apply", "format", "out"]),
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
@@ -525,8 +576,8 @@ const COMMAND_OPTION_RULES = {
   // DATE-anchored check to unreviewed documents. impact stays verified-only
   // because its rule is an error since decision 21, and an advisory opt-in must
   // not hand an unreviewed document the power to fail a build.
-  drift: new Set(["cwd", "dry-run", "downgrade", "strict", "watch-needs-review", "format", "out"]),
-  impact: new Set(["cwd", "since", "strict", "format", "out"]),
+  drift: new Set(["cwd", "dry-run", "downgrade", "strict", "watch-needs-review", "mode", "format", "out"]),
+  impact: new Set(["cwd", "since", "strict", "mode", "format", "out"]),
   "check-run": new Set(["cwd", "run", "strict", "format", "out"]),
   // `agent` is earned: the command inspects the adapters of the SELECTED agents,
   // so pointing it at one agent is a real narrowing. The two budget options are
@@ -536,7 +587,7 @@ const COMMAND_OPTION_RULES = {
   "harness-health": new Set(["cwd", "agent", "strict", "preload-budget", "skill-token-cap", "format", "out"]),
   review: new Set(["cwd", "approve", "approve-all", "yes", "reviewer", "include-sensitive", "format", "out"]),
   graph: new Set(["cwd", "format", "out"]),
-  stats: new Set(["cwd", "type", "profile", "agent", "strict", "format", "out"]),
+  stats: new Set(["cwd", "type", "profile", "agent", "strict", "mode", "format", "out"]),
   "list-docs": new Set(["cwd", "status", "visibility", "doc-type", "include-sensitive", "format", "out"]),
   "search-docs": new Set(["cwd", "status", "visibility", "doc-type", "include-sensitive", "limit", "format", "out"]),
   "get-doc": new Set(["cwd", "section", "strict-section", "compact", "max-chars", "format", "out"]),
@@ -654,6 +705,13 @@ What it does / 무엇을 하나:
      · 출력되는 handoff 프롬프트를 Claude Code/Codex에 붙여넣어 실제 코드로 채우고
   3) a human reviews and marks them verified · 사람이 검토해 verified로 승인합니다
 
+Governance modes / 거버넌스 모드 (llm-wiki mode):
+  lite     — fast development, minimal doc overhead (default for new projects)
+  standard — keep the important domain/architecture knowledge current
+  strict   — full completeness, verification, and handoff readiness
+  Day to day in lite; before a handoff switch to strict and run backfill.
+  평소에는 lite, 인수인계 전에 strict로 올리고 backfill을 돌리세요.
+
 Why / 왜:
   Your agent grounds on a verified wiki instead of re-deriving from the code each time — fewer tokens, fewer errors.
   에이전트가 매번 코드를 다시 읽는 대신 '검증된 위키'를 근거로 삼아 토큰·오류를 줄입니다.
@@ -675,6 +733,9 @@ Usage:
   llm-wiki validate-frontmatter [--cwd <path>] [--strict]
   llm-wiki monorepo [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki mode [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki mode set <lite|standard|strict> [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki backfill [--write] [--mode <lite|standard|strict>] [--strict] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
@@ -716,7 +777,9 @@ Safety:
   stats is read-only: it reports a wiki health snapshot (verified %, enrichment %, evidence coverage, staleness, orphans).
   list-docs/search-docs/get-doc/get-related are read-only retrieval: they return document content (not governance reports). search-docs is keyword/substring only (not semantic). Restricted/sensitive docs are excluded from list/search unless --include-sensitive, and returned bodies/snippets redact sensitive-looking lines.
   onboard/prepare are read-only guided surfaces: onboard assembles a domain learning path (docs, source/test entrypoints, invariants, freshness warnings, comprehension checks) for a newcomer; prepare scopes a change (relevant docs, candidate source/tests, risks) before implementing. Both assemble from the existing wiki + evidence + search — the CLI invents no explanation and concludes nothing; the /llm-wiki-onboard and /llm-wiki-prepare skills do the teaching. Restricted/sensitive docs excluded, text redacted.
-  mcp starts a read-only Model Context Protocol server over stdio, exposing the read-only commands (validate/audit/next/status/doctor/stats/graph/explain/handoff/prompt/list_docs/search_docs/get_doc/get_related/onboard/review/prepare) as MCP tools. review is list-only over MCP — --approve is never exposed. No MCP tool writes files.
+  mcp starts a read-only Model Context Protocol server over stdio, exposing the read-only commands (validate/audit/next/status/doctor/stats/graph/explain/mode/handoff/prompt/list_docs/search_docs/get_doc/get_related/onboard/review/prepare) as MCP tools. review is list-only over MCP — --approve is never exposed. No MCP tool writes files.
+  mode is read-only by default: it reports the effective governance level, where it came from, and the capability matrix. 'mode set <level>' previews the change and writes llm-wiki.config.json only with --write; it never runs an audit, a scan, or a document generation as a side effect.
+  backfill is the lite -> strict escalation: it inventories the repository, measures wiki coverage against the mode's planned document set, and grades handoff readiness. It writes nothing without --write, and with --write it creates only missing planned document STUBS at status needs_review — it never writes prose, never invents history, and labels every recovered fact verified / inferred / unknown.
   Adapter checks and suggestions are opt-in with --agent. ANTIGRAVITY.md remains an info-level candidate.
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
   next is advisory: it reuses audit coverage and recommends follow-up actions without writing files.
@@ -870,6 +933,89 @@ Purpose:
 
 JSON (--format json):
   Top-level keys: schemaVersion, command, result, detection, wikiGraph, findingSummary, findings[]. findings[] items are { severity, rule, path, message }.
+`,
+  mode: `llm-wiki mode
+
+Usage:
+  llm-wiki mode [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki mode set <lite|standard|strict> [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Reports or changes the project's governance mode — the operational level this
+  repository runs at. One engine, three policy levels; all three share the same
+  wiki layout, frontmatter contract, and commands.
+
+    lite      Optimize for development speed. Plans the core documents only, and
+              switches the completeness/freshness rules off, so an ordinary change
+              needs no documentation work: evidence.stale, impact.source_changed,
+              content.not_enriched, evidence.missing and evidence.ungrounded are
+              off, and a missing planned document is info, not a warning.
+    standard  Balance speed and knowledge. Plans profile + per-domain documents and
+              keeps the detection, but demotes impact.source_changed to a warning so
+              governance reports an omission instead of failing the build.
+    strict    Optimize for completeness, verification, and handoff readiness. The
+              registry defaults, unchanged — this is what the CLI enforced before
+              modes existed.
+
+  Structural and safety rules stay on in EVERY mode: malformed frontmatter, a
+  dangling source_files path, a broken link, and sensitive-info detection are
+  never dialed by a mode.
+
+Reading the mode:
+  'llm-wiki mode' is read-only. It prints the effective level, where it came from
+  (--mode > llm-wiki.config.json > legacy default), the rule floor it contributes,
+  and the capability matrix.
+
+Changing the mode:
+  'mode set <level>' previews the transition and writes nothing. Add --write to
+  persist 'governance.mode' into llm-wiki.config.json (the only key it touches;
+  every other key is preserved). Changing the mode NEVER triggers an audit, a
+  scan, or document generation — escalating to strict is instant, and the
+  expensive reconstruction is a separate, explicit 'llm-wiki backfill'.
+
+Backward compatibility:
+  A project with no 'governance' block resolves to strict, whose rule floor is
+  empty — so an existing repository behaves exactly as it did before this feature.
+  New projects created by 'init --mode <level>' default to lite.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, mode, requestedMode, source, policy, capabilities[], transition[], configPath, written, planned, findings[].
+`,
+  backfill: `llm-wiki backfill
+
+Usage:
+  llm-wiki backfill [--write] [--mode <lite|standard|strict>] [--strict] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--existing skip|overwrite] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  The escalation path: a repository that sat in lite for months, then needs a real
+  handoff. Inventories what the repository actually contains, measures the wiki
+  against the effective mode's planned document set, and grades handoff readiness.
+
+  Evidence discipline is the point of this command. It reports what it MEASURED and
+  never narrates a story about the project:
+    verified   read from the current source, tests, or configuration
+    inferred   derived from directory boundaries, naming, or git history — labeled
+               as inferred, never asserted as fact
+    unknown    the repository cannot answer it (no ADR, no decision-log entry, no
+               document) — and it stays unknown
+
+  It never fabricates historical reasoning. Why a decision was made is recoverable
+  only from an ADR or a commit that recorded it; where neither exists, backfill
+  reports "unknown" and hands the question to the agent prompt it prints.
+
+Writing:
+  Without --write nothing is written. With --write it creates the MISSING planned
+  documents as stubs at status: needs_review, with the same generator init uses —
+  no prose claims, no verified stamps, existing files never overwritten (the
+  append-only log is kept even under --existing overwrite). The prose is agent
+  work: run the printed backfill prompt (or 'llm-wiki prompt --task backfill').
+
+Gate:
+  --strict grades an incomplete readiness report as a failure (exit 1), for the
+  pre-handoff check. Without it the command reports and exits 0.
+
+JSON (--format json):
+  Top-level keys: schemaVersion, command, result, mode, inventory, coverage, ledger, readiness, prompt, created, planned, skipped, findings[].
 `,
   migrate: `llm-wiki migrate
 
@@ -1282,8 +1428,8 @@ Purpose:
         "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 
 Tools (all read-only — no MCP tool writes files):
-  validate, audit, next, status, doctor, stats, graph, explain, handoff, prompt,
-  list_docs, search_docs, get_doc, get_related, onboard, review, prepare.
+  validate, audit, next, status, doctor, stats, graph, explain, mode, handoff,
+  prompt, list_docs, search_docs, get_doc, get_related, onboard, review, prepare.
   review is list-only here: --approve is not exposed over MCP.
   Each returns the command's structured result (with schemaVersion) as
   structuredContent plus a human-readable text summary.

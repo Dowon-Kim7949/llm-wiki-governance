@@ -24,6 +24,130 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-07 - fix(governance): 도그푸딩에서 새 명령이 자기 증거보다 넓은 부정을 단언하고, 통과 불가한 준비도 체크를 요구했다
+
+- status: needs_review (에이전트 편집 — 배치 끝에 `review --approve-all --yes`로 승격)
+- actor: Claude Code (유지보수자 지시 — `feat/governance-modes` 브랜치에서 도그푸딩 후 merge)
+- scope: src + tests + wiki (1.30.0 같은 라인)
+- changed:
+  - `src/commands/governance-mode.js` — 의사결정 기록 탐색을 위키 밖 관례 위치까지 확장
+    (`repositoryDecisionRecords`·`DECISION_PATH_RE`), 탐색 범위 문구를 `DECISION_RECORD_SCOPE`
+    상수로 단일화, 커버리지 집계에서 append-only 로그 제외
+  - `src/commands.js` — `backfill.unknown_history` 메시지가 자기 탐색 범위를 밝히도록 교체
+  - `llm-wiki.config.json` — 이 저장소가 자기 레벨을 명시(`governance.mode: strict`)
+  - `tests/governance-modes.test.js` — 회귀 3건(범위 문구·위키 밖 ADR 탐지·로그 제외)
+  - `docs/llm-wiki/PUBLIC_API.md`·`DOMAIN_FEATURES.md`·`ARCHITECTURE_CONVENTIONS.md` — 계약·기능·모듈
+    서술 갱신 + Review Note(각각 아카이브로 1건 회전)
+  - `docs/llm-wiki/GLOSSARY.md`·`domains/00_overview.md`·`HARNESS_GOVERNANCE_ROADMAP.md` — 같은
+    리뷰 이벤트이므로 기존 1.30.0 노트를 **연장**(새 항목 추가 아님)
+  - `docs/llm-wiki/index.md`·`REVIEW_HISTORY.md`
+  - `log`(이 항목)
+- summary:
+  - **발견 경로가 이 배치의 요점이다.** 코드 리뷰가 아니라 **이 저장소에 `backfill`을 실행해서**
+    나왔다. 기능이 통과한 테스트 43건 중 어느 것도 이 두 결함을 보지 못했다 — 픽스처는 전부 갓
+    init된 임시 저장소였고, 두 결함은 **성숙한 저장소에서만** 드러나는 종류다.
+  - ① **증거보다 넓은 부정.** `backfill`이 `docs/llm-wiki/` 안만 뒤지고 "why the current design was
+    chosen is **not recoverable from this repository**"라고 단언했다. 이 저장소 루트에는 자기
+    `project-profile.md`가 "릴리스 게이트/의사결정 기록"으로 지목하는 **196 KB `GATE_REVIEW.md`**가
+    있다. 이것은 이 기능이 방어하려고 만들어진 실패 유형 그 자체다 — 검증한 범위보다 넓은 주장.
+    고친 방향 둘: git이 추적하는 관례 위치(`docs/adr/`·`docs/decisions/`·`adr/`·`decisions/`·
+    `DECISIONS.md`·`ADR-*.md`)까지 찾고, **못 찾았을 때 자기가 뒤진 범위를 문장 안에 적는다.**
+    `GATE_REVIEW.md`용 패턴을 넣지 **않은** 것은 의도다 — 시험한 단 하나의 저장소 파일명에 맞추는
+    것은 overfitting이고, 그래서 대신 "다른 데 있으면 인수인계에서 그 파일을 지목하라"고 말한다.
+  - ② **통과 불가한 준비도 체크.** `review_backlog`가 append-only 로그를 `needs_review` 백로그로
+    셌다. 로그는 관례상 영구 `needs_review`이고 `review`가 의도적으로 스탬프하지 않으므로(N-14),
+    **로그를 쓰는 모든 저장소에서 `backfill --strict`가 영원히 실패**했을 것이다. 이 제품이 이미 두
+    번 고친 "해소 경로가 없는 finding" 계열의 세 번째이고, 하마터면 세 번째를 출하할 뻔했다.
+    실측: 이 저장소 준비도 7/9 → **8/9**(남은 1건은 `decision_history`이고 그것은 **사실**이다).
+  - **도그푸딩의 세 번째 결과**는 결함이 아니라 결정이다: 이 저장소가 `llm-wiki.config.json`에
+    `governance.mode: strict`를 명시하게 했다. 블록이 없어도 `strict`로 해소되지만, CI를 게이트하는
+    레벨을 기본값에 맡기는 것은 `doctor`의 `source:` 필드가 드러내라고 존재하는 애매함이다.
+    이제 `doctor`가 `source: config`로 보고한다.
+- evidence:
+  - `src/commands/governance-mode.js#symbol:DECISION_RECORD_SCOPE` ·
+    `src/commands/governance-mode.js#symbol:collectWikiCoverage` · `src/commands.js#symbol:backfillCommand`
+  - 실행 확인: `backfill` 준비도 7/9 → 8/9, `review_backlog` incomplete → ok,
+    `decision_history` 문구가 탐색 범위를 명시. `mode`·`doctor`가 `source: config` 보고.
+  - 테스트 565 → **568**(신규 3), `skipped 0`. `validate --strict` 0 · `audit` 0 · `impact` 0 ·
+    `drift` 0 · `validate-frontmatter` 0 · `lint` OK.
+- caveats:
+  - **관례 밖 이름은 여전히 못 잡는다.** 이 저장소의 `GATE_REVIEW.md`가 그 예이고, 그래서
+    `decision_history` 체크는 이 저장소에서 계속 incomplete다. 그것을 통과시키려면 파일명 패턴을
+    늘리는 대신 사람이 인수인계에서 그 파일을 지목해야 한다 — 체크의 문구가 그렇게 말한다.
+  - 앞 항목에 적은 하네스 공백(**모드 변경 후 낡은 스킬을 제품이 finding으로 잡지 못한다**)은
+    이 배치에서도 **미해결**이다.
+  - 테스트 픽스처가 전부 신규 저장소라 이런 결함을 못 봤다는 사실 자체가 남은 위험이다. 성숙한
+    저장소를 흉내내는 픽스처(문서 50건·verified 49건·긴 이력)는 이 배치에서 만들지 않았다.
+
+## 2026-09-07 - feat(governance): 거버넌스가 자기가 보호하는 작업보다 비쌀 수 있었고, 그것을 고를 수 있는 레벨이 없었다
+
+- status: needs_review (에이전트 편집 — 작업 끝에 `review --approve-all --yes`로 승격)
+- actor: Claude Code (유지보수자 요청 — lite/standard/strict 거버넌스 모드 구현)
+- scope: src + tests + docs + wiki (1.30.0)
+- changed:
+  - `src/governance.js` (신규) — 중앙 정책 레이어(leaf, I/O 없음)
+  - `src/commands/governance-mode.js` (신규) — `mode` 명령 + `backfill`의 분석 절반
+  - `src/config-file.js` — `governance.mode` 파싱·검증, mode floor를 `rulesPreset` 아래에 병합
+  - `src/cli.js` — `mode`/`backfill` 명령 등록, `--mode` 옵션, `mode set <레벨>` 위치 인자, help 3곳
+  - `src/commands.js` — `backfillCommand`, 모드별 계획 문서 집합, 비싼 스캔 2종의 비용 게이트,
+    `doctor`의 `governance_mode` 줄, `handoff`의 `governanceMode`, config scaffold에 모드 씨앗
+  - `src/task-prompts.js` — `governanceBudget()` 블록 + `backfill` 태스크 프롬프트
+  - `src/commands/skills.js` — `llm-wiki-backfill` 스킬 추가, 생성 시점 모드 전달
+  - `src/commands/findings.js` — `backfill.unknown_history`·`backfill.not_ready`·`structure.config_invalid`
+  - `src/mcp/tools.js`·`src/mcp/dispatch.js` — 읽기 전용 `mode` 툴(17 → 18종)
+  - `src/index.js` — `commands.mode`·`commands.backfill` + 정책 레이어 export
+  - `tests/governance-modes.test.js` (신규, 43건) + 기존 테스트 3파일의 의도적 갱신
+  - `README.md`·`README.ko.md`·`CHANGELOG.md`·`CHANGELOG.ko.md`·`ROADMAP.md`·`ROADMAP.ko.md`
+  - `docs/llm-wiki/PUBLIC_API.md`·`DOMAIN_FEATURES.md`·`ARCHITECTURE_CONVENTIONS.md`·`index.md`
+  - `package.json`(1.29.5 → 1.30.0)·`.github/actions/validate/action.yml`
+  - `log`(이 항목)
+- summary:
+  - **문제는 관측된 것이다.** 이 패키지가 강제하는 거버넌스가 그것이 보호하는 작업보다 비쌀 수
+    있다. 세 줄 수정이 `impact.source_changed`(결정 21부터 기본 error)를 발화시키고, 에이전트를
+    doc-sync 패스로 끌고 가고, `verified` 문서마다 `git log`를 부르는 드리프트 스캔을 다시 연다.
+    이전의 모든 레버는 거버넌스를 *돌리는* 비용을 낮췄고(1.27.1·1.29.0·1.29.1·1.29.2), 아무것도
+    "지금 이 작업을 아예 해야 하는가"에는 답하지 못했다.
+  - **모드는 엔진이 이미 갖고 있던 어휘로 표현했다.** 레벨은 rule-id → severity floor를 기여하고
+    `rulesPreset`·명시 `rules` 아래에 키 단위로 깔린다. 새 게이트 기계를 만들지 않았기 때문에
+    `src/governance.js`가 프레임워크가 아니라 leaf 모듈이다.
+  - **`strict`의 floor는 비어 있고 그것이 마이그레이션 보증이다.** `governance` 블록이 없는
+    프로젝트는 `strict`로 해소되고 1.29.5와 바이트 단위로 같게 동작한다(테스트로 고정: 같은 저장소에
+    대해 `governance.mode: "strict"`를 명시한 config와 블록이 없는 config의 `validate` 출력이
+    동일해야 한다). 새 프로젝트 기본값 `lite`는 의도적으로 별개의 질문이며 `init`이 근거로
+    해소한다 — 명시 `--mode` > 기록된 모드 > *이 저장소에 이미 config나 위키가 있는가*.
+  - **비용 게이트는 동작 변경이 아니다.** `evidence.stale`이 꺼져 있으면 `applyRuleConfig`가
+    어차피 그 finding을 전부 버리므로, 스캔을 건너뛰는 것은 동일 출력에 대한 절감이다. 유효 rule
+    map을 읽으므로 모드를 도입하지 않고 규칙을 손으로 끈 프로젝트도 같은 절감을 얻는다.
+  - **`backfill`은 이력을 발명하지 않는다.** CLI는 산문을 전혀 조립하지 않고 측정만 하며, 모든
+    사실에 *verified*/*inferred*/*unknown* 라벨을 단다. `unknown` 목록은 산출물이다.
+- evidence:
+  - `src/governance.js` · `src/commands/governance-mode.js` · `src/config-file.js` ·
+    `src/task-prompts.js#symbol:governanceBudget` · `src/commands.js#symbol:backfillCommand`
+  - 실행 확인(임시 저장소, 실제 CLI): `init --write`(새 프로젝트 → lite, 코어 10문서, config에
+    `governance.mode: lite` 씨앗) → `mode`(레벨·출처·rule floor·capability matrix) →
+    `mode set strict --write`(전환 16줄, 스캔 0, 문서 0) → `backfill`(준비도 5/9, unknown 3건,
+    누락 5문서) → `backfill --write`(준비도 6/9, 누락 0) → `doctor`(`governance_mode: strict
+    (source: config, ...)`) → `mode set turbo --write`(exit 3)
+  - 테스트 522 → 565(`node --test`, `skipped 0`), `lint-syntax: OK (77 files)`
+- caveats:
+  - **`governanceBudget` 블록의 비용은 측정했고 절감은 측정하지 않았다.** ~1130 토큰짜리 쓰기
+    프롬프트에 추정 173–234 토큰(chars/4 프록시)을 더한다 — 15–21% 증가다. 그것이 doc-sync 패스를
+    없애서 값을 하는지는 미측정이며, 이 저장소는 미측정 절감을 주장하지 않는다(1.27.1의
+    `contextBudget`과 같은 자세).
+  - **기존 init 테스트 21건이 실패했고, 그것은 기능이 아니라 기본값이 바뀐 결과다.** 그 테스트들은
+    감지 → 프로필/도메인 문서 매핑을 고정하는데, 새 픽스처는 config도 위키도 없어서 정의상 "새
+    프로젝트"이므로 이제 `lite`로 해소된다. 문서 계획 엔진을 시험하는 호출에 `mode: "strict"`를
+    명시하는 방식으로 갱신했다(우회가 아니라 "어느 레벨을 시험하는지 말하라"는 요구다). 새
+    `lite` 기본값 자체는 신규 테스트가 별도로 고정한다.
+  - **생성된 스킬은 작성 시점 모드의 워크플로를 담는다.** 모드를 바꾼 뒤
+    `init --write --skills --refresh`를 돌리지 않으면 에이전트는 옛 워크플로를 읽는다. 블록이 자기
+    안에 그 사실과 갱신 명령을 적어 두지만, 제품이 이 불일치를 **finding으로 잡지는 않는다** —
+    남은 결함으로 기록한다.
+  - `mcp.test.js`의 stdio 왕복 테스트가 전체 스위트 부하에서 25초 타임아웃으로 간헐 실패한다.
+    단독 실행에서는 이 브랜치와 손대지 않은 기준선 양쪽 모두 통과하므로 이 변경과 무관한 기존
+    flake로 판단했다.
+  - 이 저장소 자신은 `governance` 블록을 두지 않으므로 계속 `strict`다(자기 게이트를 낮추지 않았다).
+
 ## 2026-09-03 - chore(docs): sanitized public mirror의 새 root commit을 기준으로 evidence 재검증
 
 - status: verified → needs_review → verified (에이전트 승격)

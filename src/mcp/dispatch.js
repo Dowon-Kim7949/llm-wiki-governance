@@ -79,7 +79,7 @@ export async function handleMessage(msg, ctx = {}) {
         capabilities: { tools: {} },
         serverInfo: { name: SERVER_NAME, version: ctx.serverVersion ?? "0.0.0" },
         instructions:
-          "Read-only LLM-WIKI tools. Use validate/audit/next/status/doctor to check the wiki, graph/stats to inspect it, list_docs/search_docs/get_doc/get_related to read document content (search_docs is keyword-only, not semantic), onboard/prepare to assemble a domain learning path or scope a change from the wiki, review to list the needs_review backlog (listing only — approval stays a human CLI action), explain to understand a finding rule, and handoff/prompt for agent workflows. No tool writes files."
+          "Read-only LLM-WIKI tools. Use validate/audit/next/status/doctor to check the wiki, graph/stats to inspect it, list_docs/search_docs/get_doc/get_related to read document content (search_docs is keyword-only, not semantic), onboard/prepare to assemble a domain learning path or scope a change from the wiki, review to list the needs_review backlog (listing only — approval stays a human CLI action), explain to understand a finding rule, mode to see which governance level (lite/standard/strict) this project runs at and what it enforces, and handoff/prompt for agent workflows. No tool writes files."
       });
 
     case "ping":

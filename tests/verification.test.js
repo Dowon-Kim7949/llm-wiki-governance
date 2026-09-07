@@ -39,7 +39,7 @@ test("init dry-run detects frontend projects", async () => {
   });
   await mkdir(path.join(cwd, "src", "components"), { recursive: true });
 
-  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: true, type: null });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: true, type: null });
 
   assert.equal(result.detection.projectType, "frontend");
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/WCAG.md")));
@@ -230,12 +230,12 @@ test("init surfaces a no-domains notice for a domain-capable project, and --doma
   await writeJson(path.join(cwd, "package.json"), { name: "p3", dependencies: { vue: "^3.0.0" } });
 
   // Frontend project with no domain folders → explicit notice, no per-domain docs (no silent no-op).
-  const bare = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: "frontend" });
+  const bare = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: "frontend" });
   assert.ok(bare.skipped.some((line) => line.includes("No per-domain docs")), "explicit no-domains notice shown");
   assert.ok(!bare.planned.some((line) => line.includes("domains/01_")), "no per-domain doc planned");
 
   // --domains names them explicitly → per-domain docs planned, notice cleared.
-  const manual = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: "frontend", domains: ["items", "jobs"] });
+  const manual = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: "frontend", domains: ["items", "jobs"] });
   assert.ok(manual.planned.some((line) => line.includes("domains/01_items.md")));
   assert.ok(manual.planned.some((line) => line.includes("domains/02_jobs.md")));
   assert.ok(!manual.skipped.some((line) => line.includes("No per-domain docs")), "notice cleared when domains are named");
@@ -290,7 +290,7 @@ test("init --write on a FastAPI endpoints layout creates a doc per route module"
     await writeFile(path.join(cwd, "app", "api", "endpoints", `${name}.py`), "# module\n", { encoding: "utf8" });
   }
 
-  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+  await initCommand({ mode: "strict", cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
 
   const domainsDir = path.join(cwd, "docs", "llm-wiki", "domains");
   assert.ok(await fileExists(path.join(domainsDir, "01_item.md")));
@@ -307,7 +307,7 @@ test("init --dry-run --type backend plans individual domain docs", async () => {
   await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
   await mkdir(path.join(cwd, "src", "modules", "order"), { recursive: true });
 
-  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: "backend" });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: "backend" });
 
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/domains/01_order.md")));
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/domains/02_user.md")));
@@ -318,7 +318,7 @@ test("init --write --type backend creates overview plus per-domain docs", async 
   await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
   await mkdir(path.join(cwd, "src", "modules", "order"), { recursive: true });
 
-  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+  await initCommand({ mode: "strict", cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
 
   const domainsDir = path.join(cwd, "docs", "llm-wiki", "domains");
   assert.ok(await fileExists(path.join(domainsDir, "00_overview.md")));
@@ -343,7 +343,7 @@ test("init --write wires domain docs into index and DOMAIN_FEATURES (P6)", async
   await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
   await mkdir(path.join(cwd, "src", "modules", "order"), { recursive: true });
 
-  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+  await initCommand({ mode: "strict", cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
 
   const wikiDir = path.join(cwd, "docs", "llm-wiki");
   // Index links the domain overview (read order + related) so the entry point
@@ -379,7 +379,7 @@ test("init --write merges a duplicate domain across locations into one doc", asy
   await mkdir(path.join(cwd, "src", "modules", "user"), { recursive: true });
   await mkdir(path.join(cwd, "app", "domains", "user"), { recursive: true });
 
-  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+  await initCommand({ mode: "strict", cwd, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
 
   const domainsDir = path.join(cwd, "docs", "llm-wiki", "domains");
   assert.ok(await fileExists(path.join(domainsDir, "01_user.md")));
@@ -963,7 +963,7 @@ test("init dry-run detects library/CLI projects from bin field", async () => {
     bin: { "my-cli": "./bin/cli.js" }
   });
 
-  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
 
   assert.equal(result.detection.projectType, "library");
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/PUBLIC_API.md")));
@@ -1053,7 +1053,7 @@ test("detects React Native projects as mobile and plans the mobile doc set", asy
     dependencies: { react: "^18.2.0", "react-native": "0.74.0" }
   });
 
-  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
 
   assert.equal(result.detection.projectType, "mobile");
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/profiles/mobile.md")));
@@ -1064,7 +1064,7 @@ test("detects Flutter projects as mobile", async () => {
   const cwd = await makeProject("flutter-");
   await writeFile(path.join(cwd, "pubspec.yaml"), "name: my_app\ndependencies:\n  flutter:\n    sdk: flutter\nflutter:\n  uses-material-design: true\n", { encoding: "utf8" });
 
-  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
 
   assert.equal(result.detection.projectType, "mobile");
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/SCREENS.md")));
@@ -1129,10 +1129,10 @@ test("detects infrastructure projects (Terraform / Dockerfile / Helm / Kubernete
   const k8sCwd = await makeProject("infra-k8s-");
   await writeFile(path.join(k8sCwd, "deployment.yaml"), "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\n", { encoding: "utf8" });
 
-  const tf = await initCommand({ cwd: tfCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
-  const docker = await initCommand({ cwd: dockerCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
-  const helm = await initCommand({ cwd: helmCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
-  const k8s = await initCommand({ cwd: k8sCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const tf = await initCommand({ mode: "strict", cwd: tfCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const docker = await initCommand({ mode: "strict", cwd: dockerCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const helm = await initCommand({ mode: "strict", cwd: helmCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
+  const k8s = await initCommand({ mode: "strict", cwd: k8sCwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: [], agents: [] });
 
   assert.equal(tf.detection.projectType, "infra");
   assert.equal(docker.detection.projectType, "infra");
@@ -1220,7 +1220,7 @@ test("init dry-run detects fullstack projects", async () => {
     dependencies: { vue: "^3.0.0", express: "^4.18.0" }
   });
 
-  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: null });
 
   assert.equal(result.detection.projectType, "fullstack");
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/CONTRACT_BOUNDARIES.md")));
@@ -3249,7 +3249,7 @@ test("explicit profiles add profile documents without changing project type", as
     devDependencies: { vite: "^6.0.0" }
   });
 
-  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: ["library"] });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: null, profiles: ["library"] });
 
   assert.equal(result.detection.projectType, "frontend");
   assert.deepEqual(result.detection.activeProfiles, ["core", "frontend", "library"]);
@@ -3326,7 +3326,7 @@ test("okf-v0.1 fixture corpus validates expected document types and links", asyn
 
 test("init dry-run includes okf-v0.1 profile guide", async () => {
   const cwd = await makeProject("okf-init-");
-  const result = await initCommand({ cwd, dryRun: true, minimal: false, withAdapters: false, type: "unknown", profiles: ["okf-v0.1"], agents: [] });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: true, minimal: false, withAdapters: false, type: "unknown", profiles: ["okf-v0.1"], agents: [] });
 
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/profiles/okf-v0.1.md")));
   assert.ok(result.planned.some((line) => line.includes("docs/llm-wiki/templates/OKF_CONCEPT.template.md")));
@@ -3339,7 +3339,7 @@ test("init dry-run includes okf-v0.1 profile guide", async () => {
 
 test("init write creates okf-v0.1 profile guide and templates with concise writing sections", async () => {
   const cwd = await makeProject("okf-write-");
-  const result = await initCommand({ cwd, dryRun: false, write: true, minimal: false, withAdapters: false, type: "unknown", profiles: ["okf-v0.1"], agents: [], existing: "skip" });
+  const result = await initCommand({ mode: "strict", cwd, dryRun: false, write: true, minimal: false, withAdapters: false, type: "unknown", profiles: ["okf-v0.1"], agents: [], existing: "skip" });
   const profile = await readFile(path.join(cwd, "docs", "llm-wiki", "profiles", "okf-v0.1.md"), { encoding: "utf8" });
   const concept = await readFile(path.join(cwd, "docs", "llm-wiki", "templates", "OKF_CONCEPT.template.md"), { encoding: "utf8" });
   const apiReference = await readFile(path.join(cwd, "docs", "llm-wiki", "templates", "OKF_API_REFERENCE.template.md"), { encoding: "utf8" });
@@ -3561,7 +3561,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.29.5");
+  assert.equal(packageJson.version, "1.30.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");
@@ -3733,7 +3733,7 @@ No Evidence section here on purpose.
 test("programmatic API exposes a frozen command map mirroring the CLI surface", () => {
   const expected = [
     "doctor", "validate", "validate-frontmatter", "monorepo", "status", "next", "explain",
-    "audit", "quickstart", "handoff", "prompt", "init", "migrate", "import-memory", "fix",
+    "audit", "mode", "backfill", "quickstart", "handoff", "prompt", "init", "migrate", "import-memory", "fix",
     "drift", "impact", "check-run", "harness-health", "review", "graph", "stats", "list-docs", "search-docs", "get-doc",
     "get-related", "onboard", "prepare", "release-notes"
   ];
@@ -4739,12 +4739,12 @@ test("--refresh updates only managed, unmodified skills; user edits and custom s
   const markerRe = /\n<!-- llm-wiki-generated v\S+ [0-9a-f]{16} -->\n?$/;
   const cwd = await makeProject("skills-refresh-");
   await writeFile(path.join(cwd, "requirements.txt"), "fastapi==0.110.0\n", { encoding: "utf8" });
-  await initCommand({ cwd, write: true, minimal: true, withAdapters: false, skills: true, type: "backend", profiles: [], agents: [], existing: "skip" });
+  await initCommand({ mode: "strict", cwd, write: true, minimal: true, withAdapters: false, skills: true, type: "backend", profiles: [], agents: [], existing: "skip" });
   const featurePath = path.join(cwd, ".claude", "skills", "llm-wiki-feature", "SKILL.md");
   const original = await readFile(featurePath, "utf8");
 
   // Managed + unmodified + identical to the current template: --refresh leaves it byte-identical.
-  const r1 = await initCommand({ cwd, write: true, minimal: true, withAdapters: false, skills: true, refresh: true, type: "backend", profiles: [], agents: [], existing: "skip" });
+  const r1 = await initCommand({ mode: "strict", cwd, write: true, minimal: true, withAdapters: false, skills: true, refresh: true, type: "backend", profiles: [], agents: [], existing: "skip" });
   assert.ok(r1.skipped.some((l) => l.includes("llm-wiki-feature/SKILL.md") && /up to date/.test(l)), "unchanged managed skill reported up to date");
   assert.equal(await readFile(featurePath, "utf8"), original, "up-to-date managed skill left byte-identical");
 
@@ -4752,13 +4752,13 @@ test("--refresh updates only managed, unmodified skills; user edits and custom s
   const olderBody = `${original.replace(markerRe, "")}\nAN OLDER GENERATED LINE\n`;
   const olderHash = createHash("sha256").update(olderBody, "utf8").digest("hex").slice(0, 16);
   await writeFile(featurePath, `${olderBody}\n<!-- llm-wiki-generated v1 ${olderHash} -->\n`, { encoding: "utf8" });
-  const r2 = await initCommand({ cwd, write: true, minimal: true, withAdapters: false, skills: true, refresh: true, type: "backend", profiles: [], agents: [], existing: "skip" });
+  const r2 = await initCommand({ mode: "strict", cwd, write: true, minimal: true, withAdapters: false, skills: true, refresh: true, type: "backend", profiles: [], agents: [], existing: "skip" });
   assert.ok(r2.created.some((l) => l.includes("llm-wiki-feature/SKILL.md") && /refreshed/.test(l)), "stale managed skill refreshed");
   assert.equal((await readFile(featurePath, "utf8")).includes("AN OLDER GENERATED LINE"), false, "stale content replaced by the current template");
 
   // User-modified (no valid marker match): NEVER overwritten, even with --refresh.
   await writeFile(featurePath, "I EDITED THIS SKILL\n", { encoding: "utf8" });
-  const r3 = await initCommand({ cwd, write: true, minimal: true, withAdapters: false, skills: true, refresh: true, type: "backend", profiles: [], agents: [], existing: "skip" });
+  const r3 = await initCommand({ mode: "strict", cwd, write: true, minimal: true, withAdapters: false, skills: true, refresh: true, type: "backend", profiles: [], agents: [], existing: "skip" });
   assert.equal(await readFile(featurePath, "utf8"), "I EDITED THIS SKILL\n", "user-modified skill never overwritten with --refresh");
   assert.ok(r3.skipped.some((l) => l.includes("llm-wiki-feature/SKILL.md") && /conflict/.test(l)), "user-modified skill reported as a conflict");
 
@@ -4793,7 +4793,9 @@ test("skill generation surfaces a restart-required note only when skills are cre
 
 // --- Bootstrap skill + Codex native skill generation ---
 
-const CODEX_SKILL_TASKS = ["llm-wiki-bootstrap", "llm-wiki-onboard", "llm-wiki-prepare", "llm-wiki-feature", "llm-wiki-fix", "llm-wiki-docs-sync"];
+// llm-wiki-backfill joined the set with governance modes (2026-09-07): it is the
+// lite -> strict escalation workflow, and an adopter reaches for it by name.
+const CODEX_SKILL_TASKS = ["llm-wiki-bootstrap", "llm-wiki-onboard", "llm-wiki-prepare", "llm-wiki-feature", "llm-wiki-fix", "llm-wiki-docs-sync", "llm-wiki-backfill"];
 
 test("skill formats: --agent codex and --skills both select the codex native format", () => {
   assert.ok(selectedSkillFormats(["codex"], {}).has("codex"), "--agent codex selects codex skills");
@@ -4824,7 +4826,7 @@ test("skill generation: init --write --agent codex writes four Codex skills with
   await mkdir(path.join(cwd, "app", "api", "v2", "endpoints"), { recursive: true });
   await writeFile(path.join(cwd, "app", "api", "v2", "endpoints", "item.py"), "from fastapi import APIRouter\nrouter = APIRouter()\n", { encoding: "utf8" });
 
-  const result = await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", profiles: [], agents: ["codex"], existing: "skip" });
+  const result = await initCommand({ mode: "strict", cwd, write: true, minimal: false, withAdapters: false, type: "backend", profiles: [], agents: ["codex"], existing: "skip" });
   assert.equal(result.result, "pass");
 
   const descBySlug = Object.fromEntries(SKILL_TASKS.map((t) => [t.slug, t.description]));
@@ -4939,7 +4941,11 @@ async function backendWikiFixture(prefix) {
   await writeFile(path.join(cwd, "requirements.txt"), "fastapi==0.110.0\n", { encoding: "utf8" });
   await mkdir(path.join(cwd, "app", "api", "v2", "endpoints"), { recursive: true });
   await writeFile(path.join(cwd, "app", "api", "v2", "endpoints", "item.py"), "from fastapi import APIRouter\nrouter = APIRouter()\n", { encoding: "utf8" });
-  await initCommand({ cwd, write: true, minimal: false, withAdapters: false, type: "backend", profiles: [], agents: [], existing: "skip" });
+  // mode: "strict" is explicit because this fixture's whole purpose is a FULL
+  // wiki (profile docs + per-domain docs) for the readers that consume it. A
+  // brand-new project defaults to lite since governance modes landed, and lite
+  // plans the core documents only.
+  await initCommand({ mode: "strict", cwd, write: true, minimal: false, withAdapters: false, type: "backend", profiles: [], agents: [], existing: "skip" });
   return cwd;
 }
 
@@ -4967,11 +4973,11 @@ test("onboard on an uninitialized project guides to quickstart/init", async () =
 
 test("onboard --domain selects a work area; an unknown domain lists the available ones", async () => {
   const cwd = await backendWikiFixture("onboard-domain-");
-  const hit = await onboardCommand({ cwd, type: "backend", profiles: [], domain: "item" });
+  const hit = await onboardCommand({ cwd, type: "backend", profiles: [], domain:"item" });
   assert.equal(hit.domainFound, true, "known domain matched");
   assert.ok(hit.availableDomains.some((d) => /item/i.test(d.name)), "item is an available domain");
 
-  const miss = await onboardCommand({ cwd, type: "backend", profiles: [], domain: "nope-not-a-domain" });
+  const miss = await onboardCommand({ cwd, type: "backend", profiles: [], domain:"nope-not-a-domain" });
   assert.equal(miss.domainFound, false, "unknown domain not matched");
   assert.equal(miss.domainRequested, "nope-not-a-domain");
   assert.ok(miss.availableDomains.length >= 1, "still lists available domains");
@@ -5252,13 +5258,13 @@ test("doc-lang #8: an invalid --doc-lang value is a usage error (exit code 3)", 
 
 test("doc-lang #9: per-domain docs are generated in English and Korean", async () => {
   const en = await setupBackendProject("doclang-domain-en-");
-  await initCommand({ cwd: en, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
+  await initCommand({ mode: "strict", cwd: en, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip" });
   const enDomain = await readFile(path.join(en, "docs", "llm-wiki", "domains", "01_billing.md"), "utf8");
   assert.ok(enDomain.includes("This is a draft for the domain"), "English domain doc");
   assert.ok(!HANGUL.test(enDomain), "English domain doc has no Hangul");
 
   const ko = await setupBackendProject("doclang-domain-ko-");
-  await initCommand({ cwd: ko, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip", docLang: "ko" });
+  await initCommand({ mode: "strict", cwd: ko, write: true, minimal: false, withAdapters: false, type: "backend", existing: "skip", docLang: "ko" });
   const koDomain = await readFile(path.join(ko, "docs", "llm-wiki", "domains", "01_billing.md"), "utf8");
   assert.ok(koDomain.includes("디렉터리 경계로 탐지한 도메인"), "Korean domain doc");
   assert.ok(koDomain.includes("- `src/modules/billing`"), "source directory identifier stays verbatim in Korean mode");

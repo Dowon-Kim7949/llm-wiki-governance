@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: glossary
 project: llm-wiki-governance
-last_updated: 2026-08-06
+last_updated: 2026-09-07
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-03
+reviewed_at: 2026-09-07
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -43,11 +43,15 @@ contains_sensitive_info: false
 - **wikiGraph** — 위키 링크(이중 대괄호 표기) 기반 문서 그래프. 미해결 개념(unresolved concepts)·별칭(aliases)·고아 문서(orphans)를 집계한다.
 - **adapter** — 에이전트에게 wiki 진입점을 알리는 파일. `AGENTS.md`(Codex), `CLAUDE.md`(Claude Code), `.cursor/rules/llm-wiki.mdc`(Cursor), `.github/copilot-instructions.md`(GitHub Copilot), 후보 `ANTIGRAVITY.md`.
 - **profile** — 프로젝트 유형별 추가 문서 집합(`frontend`/`backend`/`fullstack`/`library`/`okf-v0.1`). `src/config.js` `PROFILE_DOCS`.
-- **llm-wiki.config.json** — 프로젝트 루트의 선택적 설정 파일. 인식하는 키는 `type`·`profiles`·`agents`·`strict`·`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage`이며, unknown 키는 무시돼 옛 파일이 계속 동작한다. 적용 우선순위는 CLI 플래그 > config > 자동감지(`strict`는 additive라 config가 켤 수만 있다). `src/config-file.js`. 키별 의미는 [PUBLIC_API](PUBLIC_API.md)의 Configuration 절이 소유한다.
+- **llm-wiki.config.json** — 프로젝트 루트의 선택적 설정 파일. 인식하는 키는 `type`·`profiles`·`agents`·`strict`·`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage`·`harnessHealth`·`governance`(1.30.0, `{ "mode": "lite"|"standard"|"strict" }`)이며, unknown 키는 무시돼 옛 파일이 계속 동작한다. 적용 우선순위는 CLI 플래그 > config > 자동감지(`strict`는 additive라 config가 켤 수만 있다). `src/config-file.js`. 키별 의미는 [PUBLIC_API](PUBLIC_API.md)의 Configuration 절이 소유한다.
 - **rules / rulesPreset** — finding 규칙의 severity를 프로젝트 단위로 조정하는 수단. `rules`는 규칙 id → `off`/`blocked`/`error`/`warning`/`info` 맵이고, `rulesPreset`은 `relaxed`/`standard`/`strict` 명명 번들(`src/commands/findings.js` `RULE_PRESETS`)을 바닥값으로 깐다 — 명시적 `rules` 항목이 항상 프리셋을 이긴다. `sensitive.*`는 어느 쪽으로도 끌 수 없다. 둘 다 finding severity만 바꾸며 `--strict`(exit code 의미론)와는 별개다.
 - **OKF v0.1** — 외부 지식 포맷 호환 프로필. `type`/`aliases`/`tags`와 위키 링크를 검증한다.
 - **not_enriched** — 생성 후 아직 실제 내용으로 보강되지 않은 문서 신호(`content.not_enriched`, P0-3에서 추가).
 - **템플릿 문서(template doc)** — `docs/llm-wiki/templates/` 하위 문서. **도입처가 복사해 쓰는 뼈대이지 그 저장소를 서술하는 문서가 아니므로** 검토(`review`) 대상도, 최신성 게이트(`evidence.stale`/`impact.source_changed`) 대상도 아니다. 판정의 단일 소스는 `src/commands/wiki-files.js#symbol:isTemplateDoc`이며 `listWikiContentDocs`가 쓰던 경계와 같다. 1.29.1(2026-08-06) 이전에는 이 경계가 명령마다 달라서(N-14) 게이트는 지목하는데 `review`로는 손댈 수 없는 문서가 존재했다 — **해소 경로가 없는 finding**. 승격 대상이 아니라는 사실과 최신성 검사 대상이 아니라는 사실이 이제 같은 술어에서 나온다.
+- **거버넌스 모드(governance mode)** — 이 저장소가 도는 운영 레벨. `lite`/`standard`/`strict` 세 값이며 config `governance.mode`(또는 `--mode`)로 정한다. **프로젝트 템플릿이 아니라 하나의 엔진 위의 정책 레벨**이라 세 레벨이 위키 레이아웃·frontmatter 계약·명령 표면·finding 레지스트리를 공유하고, 같은 저장소에서 제자리로 옮긴다. `lite`=개발 속도, `standard`=속도와 지식의 균형, `strict`=완전성·검증·인수인계. `governance` 블록이 없는 프로젝트는 `strict`로 해소된다(모드 이전 동작과 동일). 단일 소스는 `src/governance.js#symbol:getGovernancePolicy`.
+- **rule floor** — 거버넌스 모드가 기여하는 rule-id → severity 바닥값. `rules`가 받는 것과 **같은 어휘**이며 `rulesPreset`·명시 `rules` **아래**에 키 단위로 깔린다(mode floor < `rulesPreset` < `rules`). `strict`의 floor는 **비어 있다** — 레지스트리의 기본 severity가 이미 strict 베이스라인이기 때문이고, 그것이 기존 프로젝트의 마이그레이션 보증이다. 어떤 모드도 `sensitive.*`를 건드릴 수 없고 기본이 `blocked`인 규칙도 만지지 않는다.
+- **backfill** — `lite`에서 `strict`로 올린 뒤 불완전한 위키를 **현재 저장소를 진리의 원천으로 삼아** 재구성하는 명령. 저장소를 인벤토리하고(추적 소스·테스트·매니페스트·도메인 경계·git 이력) 유효 모드의 계획 문서 집합과 대조하고 인수인계 준비도를 이름 붙은 체크 9종으로 채점한다. `--write`는 빠진 문서를 `needs_review` 스텁으로만 만들고(산문 없음·adapter/스킬 없음) 서술은 출력되는 `backfill` 프롬프트가 에이전트에게 넘긴다. `--strict`는 미완성 준비도를 빌드 실패로 만든다.
+- **근거 라벨(verified / inferred / unknown)** — `backfill`이 보고하는 모든 사실에 붙는 confidence 라벨이며 세 값이 섞이지 않는 것이 계약이다. *verified*=현재 소스·테스트·설정에서 읽음, *inferred*=디렉터리 경계·네이밍·git 이력에서 도출했고 **도출이라고 말한다**, *unknown*=저장소가 답할 수 없다. 세 번째가 핵심이다 — ADR도 없고 스스로 설명한 커밋도 없으면 “왜 이걸 골랐나”는 `unknown`으로 남으며, 그것을 그럴듯한 이야기로 채우는 것이 이 기능이 방어하는 실패다. 문서 `status`(`draft`/`needs_review`/`verified`/`deprecated`)와는 **다른 축**이다: `status`는 사람이 문서를 승인했는지를 말하고, 근거 라벨은 개별 주장이 무엇에 근거하는지를 말한다.
 
 ## Evidence
 
@@ -56,10 +60,11 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (2 entries, 2026-07-13 → 2026-07-16) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (3 entries, 2026-07-13 → 2026-07-20) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-07-20에 1.14.1 노출-테스트 fix 배치에 따라 재검토했다: 용어 목록은 불변이며(광의의 `src/commands.js` 참조만), 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-20)로 재승인하고 review baseline을 갱신해 `evidence.stale`을 해소했다.
 - 2026-07-31에 `evidence.stale`(commands.js가 2026-07-28 이후 변경) 대응으로 재검토하다가 **실제 내용 오류**를 찾아 고쳤다: `llm-wiki.config.json` 항목이 인식 키를 `type`/`profiles`/`agents`/`strict` 4개로만 적고 있었으나 `src/config-file.js`는 11개(`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage` 추가)를 받는다. 키 목록을 소스와 맞추고 상세 계약 소유권을 PUBLIC_API Configuration 절로 넘겼으며, 거버넌스 핵심 어휘인 `rules`/`rulesPreset` 항목을 신설했다(프리셋=바닥값, 명시 `rules` 우선, `sensitive.*` 비토글, `--strict`와 무관). `related`에 PUBLIC_API를 추가했다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 `status`·`verified` 정의를 이 저장소의 새 승격 정책에 맞게 고치고 **`human_verified` tier를 용어로 신설했다**(유지보수자 결정 반영). `verified` 항목이 "사람 검토가 끝난 문서에만 부여"라고 단정하고 있었는데, 이 저장소는 2026-08-03부터 에이전트 승인을 허용하므로 그 문장은 거짓이 됐다 — 도구가 스스로 승격하지 않는다는 사실(명시적 `--approve`만이 스탬프한다)과 **누가 그 명령을 실행하는지는 저장소 정책이라는 사실**을 분리해 적었다. `status` 항목의 "CLI/에이전트 산출물은 항상 `needs_review`"도 **생성 시점** 한정으로 좁혔다(생성기에 `verified` 경로가 없다는 것은 여전히 참이다). `human_verified`를 새로 적은 이유는 그 이름이 실제 계산과 어긋나기 때문이다 — 정의는 "`verified` + reviewer 메타 존재"일 뿐 사람인지 검사하지 않으므로, 이 저장소의 그 수치는 에이전트 승인분을 포함한다. 인용할 때 함께 적어야 한다. 에이전트(Claude Code) 편집이며 새 정책에 따라 같은 작업 안에서 승격했다 — `reviewed_by`는 에이전트다.
 - 2026-08-03에 `impact.source_changed` 기본 severity의 error화, 신규 규칙 2종(`run.manifest_untracked` info·`run.change_set_undeclared` warning), `strict` 프리셋에서 `impact.source_changed` 항목 제거, `FRESHNESS_EXEMPT_DOC_TYPES`(release_notes) 면제, `drift --watch-needs-review` 도입에 따라 재검토했다: 이 문서가 severity·빌드 실패·`--strict`에 대해 취한 입장 셋 — `verified`의 "`--strict`에서 `reviewed_by`/`reviewed_at` 없으면 실패"(`frontmatter.verified_review`는 HEAD에서도 기본 warning), `related.missing` 경고, `rules`/`rulesPreset`이 severity만 바꾸고 `--strict`(exit code 의미론)와 별개라는 문장(`RULE_PRESETS` 주석이 그대로 재확인) — 이 모두 여전히 참이고, `human_verified` 정의의 근거인 `evidenceTier()`도 무변경이며 근거 파일 `src/frontmatter-schema.js`·`src/config.js`·`src/config-file.js`는 이 커밋에서 아예 바뀌지 않았다(`src/commands.js`는 광의 앵커일 뿐이다) — **내용 불변, 무편집**. 신규 규칙 2종과 exit code 계약은 같은 커밋에서 갱신된 [PUBLIC_API](PUBLIC_API.md)가 소유하므로, 규칙을 열거하지 않는 용어집에 옮겨 적지 않았다.
 - 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `src/commands.js`를 재확인했다. 이번 변경은 `impact`의 change set에서 `version`만 바뀐 `package.json`을 빼는 판정기(`versionOnlyManifestChanges`)를 더하고 고친 것이며, 이 용어집이 정의하는 어휘(`status`·`verified`·`human_verified`·`source_files`·`evidence`·`rules`/`rulesPreset`)의 계약은 하나도 건드리지 않았다 — `rules`/`rulesPreset`이 severity만 바꾸고 `--strict`와 별개라는 문장도 그대로 참이다. 새 제외 규칙은 설정 키가 아니라 하드코딩이므로 `rules` 항목에 추가할 것도 없다. 본문 **불변**. 재스탬프가 no-op이 되는 N-11 때문에 노트로 남긴다.
+
+- 2026-09-07(1.30.0)에 용어 4종을 신설하고 한 곳의 낡은 목록을 고쳤다: **거버넌스 모드**·**rule floor**·**backfill**·**근거 라벨(verified/inferred/unknown)**을 추가하고, `llm-wiki.config.json` 항목이 직접 나열하는 인식 키 목록에 `governance`를 더했다(그 목록은 이 문서가 손으로 나열하므로 새 키가 생기면 반드시 낡는다 — 2026-07-31에 같은 자리에서 같은 이유로 한 번 고쳤다). `impact.source_changed`가 지목한 인용 소스 `src/commands.js`의 변경은 `backfillCommand` 신설과 모드 배선이며 기존 용어 정의는 하나도 낡지 않았다. **(이어서)** 같은 배치의 도그푸딩으로 `src/commands.js`가 다시 바뀌었다(의사결정 기록 탐색 범위, append-only 로그 제외). 새로 넣은 용어 4종의 정의는 그대로 유효하다 — **근거 라벨** 항목이 이미 “그것을 그럴듯한 이야기로 채우는 것이 이 기능이 방어하는 실패”라고 적고 있고, 이번 수정은 그 방어를 **명령 자신에게** 적용한 것이다. 용어 본문 **불변**.

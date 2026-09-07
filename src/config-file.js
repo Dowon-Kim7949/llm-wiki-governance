@@ -2,6 +2,7 @@ import path from "node:path";
 import { pathExists } from "./files.js";
 import { readTextAuto } from "./encoding.js";
 import { RULE_PRESETS } from "./commands/findings.js";
+import { GOVERNANCE_MODES, LEGACY_GOVERNANCE_MODE, getGovernancePolicy, isGovernanceMode } from "./governance.js";
 
 export const CONFIG_FILENAME = "llm-wiki.config.json";
 
@@ -88,6 +89,26 @@ export async function loadProjectConfig(cwd) {
     }
   }
 
+  // Governance mode (2026-09-07): the operational level this project runs at.
+  // Validated strictly — an unknown mode is a config ERROR, never a silent
+  // fallback, because the difference between lite and strict is the difference
+  // between a build that gates on documentation and one that does not, and a typo
+  // that quietly picked one of them would be the worst kind of surprise. Nested
+  // under `governance` rather than a bare top-level `mode` so the block has room
+  // to grow without colonizing the config root.
+  if ("governance" in parsed) {
+    const governance = parsed.governance;
+    if (governance === null || typeof governance !== "object" || Array.isArray(governance)) {
+      errors.push(`${CONFIG_FILENAME}: "governance" must be an object.`);
+    } else if ("mode" in governance) {
+      if (!isGovernanceMode(governance.mode)) {
+        errors.push(`${CONFIG_FILENAME}: "governance.mode" must be one of ${GOVERNANCE_MODES.join(", ")}.`);
+      } else {
+        config.governance = { mode: governance.mode };
+      }
+    }
+  }
+
   if ("requiredDocs" in parsed) {
     const docs = parsed.requiredDocs;
     if (!Array.isArray(docs) || docs.some((value) => typeof value !== "string")) {
@@ -159,7 +180,14 @@ export async function loadProjectConfig(cwd) {
 // Explicit CLI flags win; config fills only what the CLI left unset.
 // strict is additive (config can turn it on; the CLI has no way to turn it off).
 export function mergeConfigIntoOptions(options, config) {
-  if (!config) return options;
+  // Resolved BEFORE the no-config early return: `--mode lite` in a project with no
+  // llm-wiki.config.json is a legitimate invocation (it is how `init --mode lite`
+  // seeds the very file that would have answered the question), and reporting its
+  // source as "default" would be a lie in the one place users go to check.
+  if (!config) {
+    resolveGovernanceIntoOptions(options, null);
+    return options;
+  }
 
   if (options.type == null && config.type != null) {
     options.type = config.type;
@@ -192,9 +220,19 @@ export function mergeConfigIntoOptions(options, config) {
   // neither fills options.rules when the caller already supplied one. Presets
   // only preload rule-severity toggles — the --strict flag and its exit-code
   // semantics are a separate mechanism (see RULE_PRESETS).
+  //
+  // The governance mode adds a THIRD layer, underneath both: mode floor <-
+  // rulesPreset <- explicit `rules`. That ordering is the contract. A mode is the
+  // broadest statement of intent ("this is a fast-moving personal project"), a
+  // preset is a narrower one ("dial the noisy heuristics down"), and an explicit
+  // rule entry is the narrowest ("this exact rule, this exact severity") — so each
+  // wins over the one above it, key by key. The strict mode's floor is empty, so a
+  // config with no `governance` block produces exactly the map it produced before
+  // modes existed.
   const presetRules = config.rulesPreset ? RULE_PRESETS[config.rulesPreset] : null;
-  if ((presetRules || config.rules) && (!options.rules || Object.keys(options.rules).length === 0)) {
-    options.rules = { ...(presetRules ?? {}), ...(config.rules ?? {}) };
+  const modeRules = resolveGovernanceIntoOptions(options, config);
+  if ((modeRules || presetRules || config.rules) && (!options.rules || Object.keys(options.rules).length === 0)) {
+    options.rules = { ...(modeRules ?? {}), ...(presetRules ?? {}), ...(config.rules ?? {}) };
   }
   if (Array.isArray(config.requiredDocs) && (!options.requiredDocs || options.requiredDocs.length === 0)) {
     options.requiredDocs = [...config.requiredDocs];
@@ -216,4 +254,28 @@ export function mergeConfigIntoOptions(options, config) {
   }
 
   return options;
+}
+
+// Resolves the effective governance mode onto `options` and returns its rule floor
+// (or null when nothing is resolvable, which cannot happen — the legacy default
+// always resolves — but keeps the caller honest about the contract).
+//
+// Precedence is the same "explicit wins" rule every other config value follows:
+// an explicit --mode beats the config file, which beats the legacy default. The
+// SOURCE is recorded alongside the value because a mode is the one setting whose
+// wrong value is invisible until a build behaves unexpectedly.
+function resolveGovernanceIntoOptions(options, config) {
+  const cliMode = isGovernanceMode(options.mode) ? options.mode : null;
+  const configMode = isGovernanceMode(config?.governance?.mode) ? config.governance.mode : null;
+  const mode = cliMode ?? configMode ?? LEGACY_GOVERNANCE_MODE;
+
+  options.governanceMode = mode;
+  options.governanceModeSource = cliMode ? "cli" : configMode ? "config" : "default";
+  // Deliberately NOT recorded here: whether a config file exists. `init` needs that
+  // fact (to tell a brand-new project from a pre-modes one) but it reads it from the
+  // filesystem itself, because putting it on `options` would make the resolved
+  // option set differ between "no config" and "a config that sets nothing" — and
+  // that equivalence is pinned by the rulesPreset: "standard" no-op test.
+
+  return getGovernancePolicy(mode).rules;
 }
