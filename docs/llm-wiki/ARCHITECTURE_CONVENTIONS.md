@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: architecture_conventions
 project: llm-wiki-governance
-last_updated: 2026-08-20
+last_updated: 2026-09-07
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-03
+reviewed_at: 2026-09-07
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -71,6 +71,8 @@ contains_sensitive_info: false
 ## Module Layout
 
 - `src/cli.js` — 인자 파싱(`parseArgs`), 기본 옵션 단일 소스(`defaultOptions`), 명령→핸들러 매핑, exit code 계산. 1.7.2부터 config 로드+병합+agent 재정규화를 공유 `applyProjectConfig`로 노출해, CLI·프로그래매틱 API·MCP 세 표면이 하나의 `llm-wiki.config.json`에서 동일 effective options를 얻게 한다.
+- `src/governance.js` — (1.30.0) **거버넌스 모드의 단일 정책 레이어.** `lite`/`standard`/`strict`가 각각 무엇을 뜻하는지가 사는 유일한 장소이고, 다른 모든 계층은 모드 이름으로 분기하는 대신 여기에 질문한다 — 대안(모든 명령 안의 `if (mode === "lite")`)이야말로 이 기능이 없애려는 유지보수 비용 그 자체다. **leaf 모듈**이다: `config.js`(문서 목록 상수) 외 import이 없고 I/O도 없어 순수 데이터 + 조회다. 내보내는 것: `GOVERNANCE_MODES`·`getGovernancePolicy(mode)`(frozen 정책)·`effectiveGovernanceMode(options)`(config 병합을 거치지 않은 옵션은 **레거시로 폴백**하므로 기존 in-process 호출자의 동작이 바뀌지 않는다)·`initGovernanceMode(options, {configMode, configPresent, wikiInitialized})`(새 프로젝트=lite와 레거시=strict를 근거로 가르는 유일한 지점)·`plannedWikiDocs(...)`(모드별 계획 문서 집합 — `init`과 누락 문서 스캔이 **같은 함수**를 쓰므로 계획하지 않은 문서를 누락이라고 지목할 수 없다)·`suppressDomainDocs`·`ruleSuppressed`·`SCAN_GATING_RULES`·`governanceCapabilityMatrix()`(공표되는 표를 정책에서 **파생**시켜 코드에 없는 능력을 주장할 수 없게 한다)·`describeModeTransition`. 모드의 rule floor는 엔진이 이미 갖고 있던 어휘로 표현된다(`rules`가 받는 것과 같은 rule-id → severity 토글) — 그래서 새 게이트 기계가 하나도 필요하지 않았다.
+- `src/commands/governance-mode.js` — (1.30.0) `mode` 명령 전체와 `backfill`의 **분석 절반**(저장소 인벤토리·위키 커버리지·세 라벨 근거 장부·인수인계 준비도 채점·포매터). `mode`가 여기 온전히 사는 이유는 config를 읽고 정책을 인쇄할 뿐 `commands.js`에서 아무것도 필요하지 않기 때문이고, `backfillCommand`가 `commands.js`에 남는 이유는 다른 명령을 **조합**하기 때문이다(스텁 생성은 `initCommand`) — `quickstartCommand`가 거기 사는 것과 같은 이유이고, 이 파일이 `commands.js`를 import하지 않아야 하는 것과 같은 이유다. 이 파일의 근거 규율(*verified*/*inferred*/*unknown*을 섞지 않는 것)은 스타일이 아니라 제품 요구다: 몇 달 묵은 `lite` 저장소를 인수인계 가능하게 만들라는 요청에 대한 손쉬운 답은 프로젝트에 대한 확신 있는 이야기를 쓰는 것이고, 그것이 정확히 금지 대상이다. 여기서는 산문을 조립하지 않는다.
 - `src/index.js` — 공개 프로그래매틱 API 진입점(`package.json` `exports`). 동결된 `commands` 맵·개별 함수 export·`normalizeOptions`·`parseArgs`/`run`·`SCHEMA_VERSION`을 re-export하고, MCP 표면(`startMcpServer`·`MCP_TOOLS`·`handleMcpMessage`·`MCP_PROTOCOL_VERSION`)도 함께 export한다. JSDoc typedef로 반환 형태를 문서화한다. 1.7.2부터 config 인식 async `resolveOptions`(= 동기 `normalizeOptions` + `applyProjectConfig`)도 export한다(동기 `normalizeOptions`·동결 맵은 불변).
 - `src/mcp/` — Model Context Protocol 서버(1.6, `llm-wiki mcp`). `tools.js`가 읽기 전용 툴 정의(`commands` 위 얇은 래퍼)를, `dispatch.js`가 순수 JSON-RPC 핸들러(`handleMessage`)를, `server.js`가 stdio 배선(개행 구분 JSON-RPC 2.0)을 담당한다. 서드파티 SDK 없이 Node 내장만 사용(무의존성). 쓰기 명령은 노출하지 않는다. 2026-07-27 감사부터 `validate-args.js`(순수·zero-dep leaf)가 공표된 `inputSchema`를 **실제로 강제**한다: `dispatch.js`의 `handleToolCall`이 `buildToolOptions` 전에 `validateToolArguments`를 호출해 위반(type/enum/required/minimum/`additionalProperties:false` — TOOL_DEFS가 실제 쓰는 JSON-Schema 서브셋만, 범용 엔진 아님)을 JSON-RPC `-32602 Invalid params`(`data: {tool, errors}`)로 돌려준다 — 이전에는 위반 호출이 조용히 강제 변환/필드 필터링돼 그대로 실행됐다(예: `validate {strict:"true"}`가 non-strict로 실행). 실행 수준 실패(잘못된 config·명령 throw)는 여전히 `isError:true` 결과로 구분 유지. `tools.js`의 enum은 단일 소스에서 파생한다(`KNOWN_TYPES`←detector.js, `SUPPORTED_TASK_PROMPTS`←task-prompts.js, `SUPPORTED_LANGS`←i18n.js, visibility←frontmatter-schema.js) — 손으로 관리하던 type enum이 mobile(1.12)/infra(1.13)를 빠뜨린 채 썩어 있었다.
 - `src/commands.js` — 명령 핸들러(오케스트레이션)와 중심 `audit` 파이프라인, 그리고 순환을 피해야 하는 소수의 핸들러(`migrateCommand`는 `audit`를 호출하므로 잔류; `graphCommand`/`statsCommand`도 헬퍼만 분리하고 본체는 잔류). 재사용 로직은 아래 `src/commands/*` 모듈로 분리했다(1.11.1 동작 보존 내부 리팩터). 배럴 re-export로 `from "./commands.js"` import 표면과 동결된 CLI/프로그래매틱 API는 byte-identical하게 유지된다.

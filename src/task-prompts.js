@@ -1,6 +1,7 @@
 import { normalizeLang } from "./i18n.js";
+import { LEGACY_GOVERNANCE_MODE, getGovernancePolicy } from "./governance.js";
 
-export const SUPPORTED_TASK_PROMPTS = new Set(["bootstrap", "onboard", "prepare", "feature", "fix", "refactor", "docs-sync", "okf-extract"]);
+export const SUPPORTED_TASK_PROMPTS = new Set(["bootstrap", "onboard", "prepare", "feature", "fix", "refactor", "docs-sync", "okf-extract", "backfill"]);
 
 // The single instruction that tells an agent which language to WRITE generated
 // LLM-WIKI content in (prose only). Driven by the resolved documentation language
@@ -58,7 +59,62 @@ export function delegationPolicy() {
   ];
 }
 
-export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents = [], docLang = null }) {
+// The governance budget: the third lever, next to contextBudget (how much gets
+// read) and delegationPolicy (who reads it). This one decides WHETHER the
+// documentation work happens at all — the cost the other two cannot reach, because
+// the cheapest doc-sync pass is the one a mode says is not needed.
+//
+// It is the load-bearing half of the feature in practice. The rule floor keeps a
+// build from failing; this text is what an agent actually obeys after a three-line
+// fix, and without it "lite" would only mean "the gate is off" while the agent
+// still went and rewrote four documents.
+//
+// Bullets, never a numbered list: the recurring write workflows are pinned as
+// goal / hard lines / exit criteria (1.27.2 prompt-shape discipline) and a numbered
+// step here would re-introduce exactly the micro-step narration that removed.
+// Mode-parameterized but otherwise static, and agent-neutral for the same reason
+// delegationPolicy is: one shared body renders into every skill format.
+export function governanceBudget(mode = LEGACY_GOVERNANCE_MODE) {
+  const policy = getGovernancePolicy(mode);
+  // Kept deliberately tight. The block costs 187-273 estimated tokens (chars/4
+  // proxy) on top of a ~1130-token write prompt, so every line has to earn its
+  // place: the mode name, the decision rule, the permission to stop, and the one
+  // override that keeps lite useful rather than merely cheap.
+  const shared = [
+    `- Generated for governance mode ${policy.mode}; 'llm-wiki mode' shows the current one, and 'llm-wiki init --write --skills --refresh' regenerates this workflow after a change.`
+  ];
+
+  if (policy.mode === "lite") {
+    return [
+      "Governance budget (lite — documentation is not the work here):",
+      "- Do NOT touch the wiki for an ordinary change. Update it only when a new domain concept appeared, an architectural decision was made, a constraint a future agent must know was introduced, or a critical document is now demonstrably wrong.",
+      "- When none of those applies, finish at the code and the tests and say \"no wiki change needed (lite)\". That is a complete result, not a skipped step — do not append to the log either.",
+      "- Never run a repository-wide audit, a drift scan, or document generation here; those are explicit on-demand commands.",
+      "- The one override: knowledge an agent cannot re-derive from the code. If the next agent would get it wrong, record it — that is the only documentation lite keeps.",
+      ...shared
+    ];
+  }
+
+  if (policy.mode === "standard") {
+    return [
+      "Governance budget (standard — protect the knowledge that outlives this change):",
+      "- Update the wiki when the change moves a domain concept, an architectural boundary, a public contract, or a recorded constraint. Skip the doc work for a local refactor that leaves all four intact, and say you skipped it.",
+      "- Inspect only the documents this change affects — scope them with 'llm-wiki impact --since <ref>' or 'llm-wiki prepare --task \"<the task>\" --compact'. A repository-wide audit is a separate explicit action.",
+      "- Keep the source_files and evidence anchors of the documents you touch accurate; leave the rest alone.",
+      ...shared
+    ];
+  }
+
+  return [
+    "Governance budget (strict — completeness and verification are the deliverable):",
+    "- Update every affected document in the same task, and refresh its source_files and evidence anchors so the mapping still resolves.",
+    "- Verify each claim you leave behind against the actual source. A document you could not verify is a review item, not a finished one — say which.",
+    "- Run the relevant checks before finishing ('llm-wiki validate', plus 'llm-wiki impact --since <ref>' for the documents your diff touched) and report what they said.",
+    ...shared
+  ];
+}
+
+export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents = [], docLang = null, governanceMode = LEGACY_GOVERNANCE_MODE }) {
   if (!SUPPORTED_TASK_PROMPTS.has(task)) {
     return {
       task,
@@ -78,7 +134,8 @@ export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents 
     projectType: projectType ?? "unknown",
     profiles,
     agents: agents.length ? agents : ["codex", "claude"],
-    docLang
+    docLang,
+    governanceMode: getGovernancePolicy(governanceMode).mode
   };
 
   const prompt = task === "bootstrap"
@@ -91,7 +148,9 @@ export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents 
           ? docsSyncPrompt(context)
           : task === "okf-extract"
             ? okfExtractPrompt(context)
-            : implementationPrompt(task, context);
+            : task === "backfill"
+              ? backfillPrompt(context)
+              : implementationPrompt(task, context);
 
   return {
     task,
@@ -99,6 +158,7 @@ export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents 
     projectType: context.projectType,
     profiles: context.profiles,
     agents: context.agents,
+    governanceMode: context.governanceMode,
     prompt,
     findings: []
   };
@@ -175,7 +235,7 @@ export function evidenceFocus(projectType) {
 // `entrypoints` names what to read first (handoff passes the selected adapter
 // file(s); bootstrap passes a generic instruction). `projectType` selects the
 // evidence focus. Callers pass repo-relative text only — no machine-absolute paths.
-export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints, docLang = null } = {}) {
+export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints, docLang = null, governanceMode = LEGACY_GOVERNANCE_MODE } = {}) {
   const entry = entrypoints || "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md";
   return [
     documentLanguageDirective(docLang),
@@ -185,6 +245,7 @@ export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints
     ...evidenceFocus(projectType),
     ...contextBudget(),
     ...delegationPolicy(),
+    ...governanceBudget(governanceMode),
     "4. Replace placeholder content with descriptions backed by real source evidence. Do not guess — leave anything uncertain as an explicit review item instead of inventing detail.",
     "5. For backend/fullstack projects, also enrich the related docs/llm-wiki/domains/*.md documents.",
     "When a domain document mentions API usage, include this API Services inventory:",
@@ -214,7 +275,7 @@ Enrich the freshly initialized LLM-WIKI (created by 'llm-wiki init --write') so 
 Preconditions: this runs after init has generated docs/llm-wiki/index.md, the core/profile documents, and (when detected) docs/llm-wiki/domains/*.md.
 
 Required workflow:
-${initialEnrichmentWorkflow({ projectType: context.projectType, entrypoints: "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md", docLang: context.docLang })}
+${initialEnrichmentWorkflow({ projectType: context.projectType, entrypoints: "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md", docLang: context.docLang, governanceMode: context.governanceMode })}
 
 Expected final response:
 - Changed wiki docs (and any domain docs enriched).
@@ -336,6 +397,7 @@ ${documentLanguageDirective(context.docLang)}
 - Never write sensitive raw values into documents, logs, or reports.
 ${contextBudget().join("\n")}
 ${delegationPolicy().join("\n")}
+${governanceBudget(context.governanceMode).join("\n")}
 
 Exit criteria (done means all of these):
 - The requested change is implemented and verified against the actual source.
@@ -375,6 +437,7 @@ ${documentLanguageDirective(context.docLang)}
 - Never write sensitive raw values into documents, logs, or reports.
 ${contextBudget().join("\n")}
 ${delegationPolicy().join("\n")}
+${governanceBudget(context.governanceMode).join("\n")}
 
 Exit criteria (done means all of these):
 - Every stale document found is updated, or explicitly reported as still stale with the reason.
@@ -421,6 +484,71 @@ Expected final response:
 - Source evidence inspected.
 - Unresolved wiki links or ambiguous concepts.
 - Review items before any human approval.`;
+}
+
+// llm-wiki-backfill: reconstruct a wiki that was deliberately not kept complete,
+// from the repository as it stands today. This is the escalation workflow, and the
+// only prompt in this package whose PRIMARY risk is not doing too little — it is
+// doing too much. An agent asked to "reconstruct project knowledge for a handoff"
+// will happily produce a fluent account of why the architecture is the way it is,
+// and none of it is checkable. Every rule below exists to stop that: an evidence
+// ladder that ranks the source above the story, three explicit labels, and a
+// standing instruction that unrecoverable history stays unrecovered.
+//
+// Keeps its numbered checklist for the same reason bootstrap/onboard do: here the
+// sequence IS the content, because the order of evidence is the safeguard.
+function backfillPrompt(context) {
+  return `You are a senior engineer reconstructing an LLM-WIKI from the repository as it stands today, so this project can be handed to someone else.
+
+Workspace:
+${context.cwd}
+
+Task:
+Recover as many EVIDENCE-BACKED facts about this project as possible, and clearly identify what cannot be recovered. The project type is ${context.projectType}. Active profiles: ${formatList(context.profiles)}. Target agent context: ${formatList(context.agents)}. Governance mode: ${context.governanceMode}.
+Preconditions: run 'llm-wiki backfill' first and use its inventory, coverage, evidence ledger, and readiness report as your starting map. 'llm-wiki backfill --write' creates the missing document stubs; this workflow fills them.
+
+What this task IS and IS NOT:
+- It IS: recover what the repository can prove, and name what it cannot.
+- It is NOT: produce a complete and convincing story about the project. A plausible history that nobody can verify is worse than an admitted gap, because the next developer will act on it.
+
+Evidence ladder (prefer the higher source; never let a lower one contradict a higher one):
+1. current source code — what the system does today
+2. tests — the behavior somebody committed to
+3. configuration and manifests — how it is built, wired, and deployed
+4. existing wiki documents — a compressed map, not an authority
+5. ADRs / decision records — the only real source for WHY
+6. git commit messages — intent where the author recorded it
+7. git diff / history — what changed and when, not why
+8. locally available issue/PR metadata — context where present, if any
+
+Label every claim you write with one of three confidence levels, and keep them apart:
+- verified: read directly from the current source, tests, or configuration. Cite the file (and symbol or line range) in source_files / evidence.
+- inferred: derived from directory boundaries, naming, or history. Write it as inferred, in the sentence itself ("inferred from commit history"), never as plain fact.
+- unknown: the repository cannot answer it. Say so in the document, and leave it as an open review item.
+
+${documentLanguageDirective(context.docLang)}
+1. Read docs/llm-wiki/index.md and the 'llm-wiki backfill' report first, then work the gaps it names.
+2. Establish CURRENT behavior before anything historical: entrypoints, architecture, data flow, external integrations, public contracts, configuration, and the business rules the code actually enforces.
+3. Rebuild the source mapping as you go: broad evidence in source_files, precise references in the frontmatter evidence entries, mirrored in the body ## Evidence section. A document with no source mapping is not finished.
+4. For each domain the report lists as a source boundary with no document, describe what the code in it does. The boundary is evidence; the business MEANING of the domain is not — mark it inferred unless a test, a contract, or a document confirms it.
+5. Then, and only then, attempt history. Look for ADRs, decision records, and commit messages that recorded a rationale. Where one exists, cite the commit or the document. Where none exists, write "Decision reason: unknown" and stop — do NOT reconstruct a rationale from file layout, naming, dependency choices, or commit subjects.
+6. Never present the ABSENCE of evidence as evidence. "No ADR exists for this" is a fact; "this was probably chosen for performance" is an invention.
+7. Cover the handoff areas the report and the profile documents ask for, ONLY where evidence exists: purpose, technology stack, local setup, build/run, deployment, directory and architecture overview, important source locations, core domain concepts, major data flows, external integrations, API usage, state management, important business rules, operational constraints, known issues, technical debt, recorded decisions, and open items. Where a section has no evidence, keep the section and record it as unknown rather than deleting it or filling it in.
+8. Produce an explicit "Unknown / needs human confirmation" list — the questions only the outgoing maintainer can answer. This list is a deliverable, not a failure.
+9. Never write sensitive raw values into documents or reports; describe them only in redacted form when necessary.
+10. Keep every created or edited wiki document at status: needs_review.
+11. Do not promote anything to verified — verified is human-approved only, and a reconstructed document is precisely the kind that needs a human to read it.
+12. Append docs/llm-wiki/log.md in append-only style with the documents touched, the evidence used, what stayed inferred, and what stayed unknown.
+13. Finish by running 'llm-wiki backfill' again (add --strict for the pre-handoff gate) and report which readiness checks are now complete and which are not.
+${contextBudget().join("\n")}
+${delegationPolicy().join("\n")}
+
+Expected final response:
+- Documents created or filled, with the confidence label distribution.
+- Source evidence inspected, and the source mappings rebuilt.
+- What stayed INFERRED, and on what basis.
+- What stayed UNKNOWN, as questions for the outgoing maintainer.
+- The readiness checks still incomplete, and why each one cannot be closed by writing text.`;
 }
 
 function formatList(values) {

@@ -135,6 +135,16 @@ export const TOOL_DEFS = [
     inputSchema: schema({ rule: { type: "string", description: "The finding rule id to explain." } }, ["rule"])
   },
   {
+    name: "mode",
+    title: "Governance mode",
+    // Read-only by construction, not by promise: the schema exposes `cwd` only, and
+    // `additionalProperties: false` is enforced before dispatch, so the `set`
+    // sub-action modeCommand needs (options.modeAction) is unreachable over MCP.
+    description: "Report the project's effective governance mode (lite/standard/strict), where it came from, the rule severities it contributes, and the lite/standard/strict capability matrix. Read-only here: changing the mode is never available over MCP — only the CLI writes it (llm-wiki mode set <level> --write).",
+    command: "mode",
+    inputSchema: schema({ cwd: cwdProp })
+  },
+  {
     name: "handoff",
     title: "Agent handoff prompt",
     description: "Produce the next prompt to run in a coding agent after CLI setup, with project-type-specific source-evidence guidance.",

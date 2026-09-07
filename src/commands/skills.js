@@ -21,6 +21,7 @@ import { readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { buildTaskPrompt } from "../task-prompts.js";
 import { normalizeLang } from "../i18n.js";
+import { effectiveGovernanceMode } from "../governance.js";
 import { estimateTokens } from "./retrieval.js";
 
 // Bumped when the generated skill format changes. Recorded in each artifact's
@@ -35,7 +36,8 @@ export const SKILL_TASKS = [
   { task: "prepare", slug: "llm-wiki-prepare", description: "Scope a feature/fix from the LLM-WIKI (relevant docs, source, tests, risks) before implementing (read-only)." },
   { task: "feature", slug: "llm-wiki-feature", description: "Add or modify a feature grounded in the project's LLM-WIKI, then update the wiki (needs_review)." },
   { task: "fix", slug: "llm-wiki-fix", description: "Fix a bug grounded in the project's LLM-WIKI, then update the wiki (needs_review)." },
-  { task: "docs-sync", slug: "llm-wiki-docs-sync", description: "Sync LLM-WIKI docs with recent code changes (needs_review)." }
+  { task: "docs-sync", slug: "llm-wiki-docs-sync", description: "Sync LLM-WIKI docs with recent code changes (needs_review)." },
+  { task: "backfill", slug: "llm-wiki-backfill", description: "Reconstruct an incomplete LLM-WIKI from the current repository for a handoff, labeling every fact verified / inferred / unknown (needs_review)." }
 ];
 
 // Read-only guided tasks: they investigate/explain but never change files, so they
@@ -179,7 +181,7 @@ export function skillArtifactPaths(slug) {
 // bootstrap; the live run-time map for the rest), the reusable wiki-grounded
 // workflow from task-prompts.js, then the Gate 26 completion contract (a run
 // manifest the agent writes so `llm-wiki check-run` can verify the pipeline).
-async function artifactBody(cwd, task, detection, docLang = "en") {
+async function artifactBody(cwd, task, detection, docLang = "en", governanceMode = undefined) {
   const built = buildTaskPrompt({
     // The artifact is committed to the repo and invoked from its root, so the body
     // must not bake in the generating machine's absolute path (non-portable, and it
@@ -189,7 +191,8 @@ async function artifactBody(cwd, task, detection, docLang = "en") {
     projectType: detection?.projectType ?? "unknown",
     profiles: detection?.activeProfiles ?? [],
     agents: [],
-    docLang
+    docLang,
+    governanceMode
   });
   const mapSection = task === "bootstrap"
     ? domainMapSection(await readDomainMap(cwd))
@@ -295,8 +298,9 @@ export async function planSkillArtifacts(cwd, agents, detection, options) {
   if (formats.size === 0) return { planned, skipped };
   const refresh = Boolean(options && options.refresh);
   const docLang = normalizeLang(options && options.docLang);
+  const governanceMode = effectiveGovernanceMode(options);
   for (const entry of SKILL_TASKS) {
-    const body = await artifactBody(cwd, entry.task, detection, docLang);
+    const body = await artifactBody(cwd, entry.task, detection, docLang, governanceMode);
     for (const target of artifactTargets(formats, entry)) {
       const absolutePath = path.join(cwd, target.path);
       if (!(await pathExists(absolutePath))) {
@@ -335,8 +339,9 @@ export async function writeSkillArtifacts(cwd, agents, detection, options) {
   if (formats.size === 0) return { created, skipped };
   const refresh = Boolean(options && options.refresh);
   const docLang = normalizeLang(options && options.docLang);
+  const governanceMode = effectiveGovernanceMode(options);
   for (const entry of SKILL_TASKS) {
-    const body = await artifactBody(cwd, entry.task, detection, docLang);
+    const body = await artifactBody(cwd, entry.task, detection, docLang, governanceMode);
     for (const target of artifactTargets(formats, entry)) {
       const absolutePath = path.join(cwd, target.path);
       const content = withGeneratedMarker(target.render(entry, body));

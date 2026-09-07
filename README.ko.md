@@ -79,7 +79,8 @@ CLI 자체는 모델이 필요 없습니다. 오직 **보강(enrichment)** 단�
 | `check-run` | 스킬 실행이 남긴 run manifest로 그 실행이 주장한 내용을 감사: 바뀐 소스마다 그걸 참조하는 문서가 touch됐는지, 로그가 append됐는지, `validate`가 통과했는지, (feature/fix라면) `testEvidence` red→green 트레일이 기록됐는지. 읽기 전용. |
 | `harness-health` | 문서가 아니라 하네스를 검사: 이 패키지가 배포하는 버전보다 낮게 스탬프된 adapter 파일·생성 스킬 산출물, 그리고 생성기를 더 이상 따라가지 않는 스킬 본문(생성 마커가 아예 없거나, 마커는 있지만 본문 해시가 그 마커와 어긋남 — `init --refresh`는 둘 다 그대로 둔다). 나머지 두 규칙(선적재 문맥 예산·스킬 길이 상한)은 숫자를 직접 줄 때만 동작한다(`--preload-budget <n>`/`--skill-token-cap <n>` 또는 `llm-wiki.config.json`의 `harnessHealth`). 그 크기 값은 다른 곳과 같은 `chars/4` 프록시이며 실측 토큰 수가 아니다. 읽기 전용. |
 | `import-memory` | 에이전트 하네스의 portable 메모리(`ecc.memory.v1`)를 `needs_review` 위키 초안으로 변환. 기본은 미리보기이고 `--apply`에서만 씀. `verified`를 만들 수 없고, 기존 파일을 덮지 않으며, 민감값이 있는 메모리는 skip. |
-| `handoff` · `prompt` | 에이전트 handoff 프롬프트 · 반복 작업 프롬프트(bootstrap/feature/fix/refactor/docs-sync/okf-extract). |
+| `mode` · `backfill` | 거버넌스 레벨(`lite`/`standard`/`strict`) · 불완전한 위키를 저장소 자체에서 재구성하는 승격 경로. 아래 **거버넌스 모드** 참조. |
+| `handoff` · `prompt` | 에이전트 handoff 프롬프트 · 반복 작업 프롬프트(bootstrap/feature/fix/refactor/docs-sync/okf-extract/backfill). |
 | `onboard` · `prepare` | 읽기 전용 guided: 업무 영역을 코드 근거와 함께 학습(`onboard [--domain]`) · 구현 전 작업 범위 조사(`prepare --task`). 위키에서 조립하며 CLI는 설명을 창작하지 않음. |
 | `list-docs` · `search-docs` · `get-doc` · `get-related` | 문서 **본문**을 돌려주는 읽기 전용 retrieval: `--status`/`--visibility`/`--doc-type` 필터 열거 · 무의존성 키워드 검색(semantic 아님) · 문서 하나의 frontmatter+본문(`--section`·`--max-chars`) · 해소된 그래프 이웃. 제한·민감 문서는 `--include-sensitive` 없이는 제외되고, 민감 라인은 redact된다. |
 | `mcp` | 읽기 전용 MCP 서버 실행(아래 참조). |
@@ -93,6 +94,55 @@ rule severity는 프로젝트별로 조정할 수 있습니다: 개별 finding I
 retrieval에는 opt-in 토큰 제어가 있습니다(기본 출력 불변): `get-doc --strict-section`은 매칭이 없을 때 전체 본문으로 되돌아가지 않고 보류하며, `--max-chars <n>`은 반환 본문을 정확히 캡하고, `--compact`는 frontmatter echo를 생략합니다. `prepare --compact`는 한 번의 호출로 최소 문맥 번들(선택 경로·최대 3개 후보 문서·최상위 문서의 관련 섹션 1개·확장 방법)을 반환합니다. 이들은 진단용 `estimatedTokens`(실측이 아니라 `chars/4` 프록시)를 함께 노출합니다.
 
 전체 명령·옵션·exit code·프로그래매틱 API 레퍼런스: `npx llm-wiki help <command>`(오프라인) 또는 [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) 참조.
+
+## 거버넌스 모드 (1.30.0)
+
+문서가 일이 아닙니다. 문서는 앞으로의 일을 쉽게 만들기 위해 있고, 따라서 유지할 문서의 양은 **지금** 그 프로젝트에 필요한 만큼이어야 합니다. 엔진은 하나, 정책 레벨은 셋이며 같은 저장소에서 언제든 바꿀 수 있습니다.
+
+| | `lite` | `standard` | `strict` |
+| --- | --- | --- | --- |
+| 목적 | 개발 속도 | 속도 **와** 지식 | 완전성·검증·인수인계 |
+| 계획하는 문서 | 코어만 | 코어 + 프로필 + 도메인별 | 코어 + 프로필 + 도메인별 |
+| 코드 변경 후 문서 | 코드로 알 수 없는 지식만 | 도메인·아키텍처·계약이 움직일 때 | 영향받은 모든 문서 |
+| 드리프트(`evidence.stale`) | 끔(스캔 자체를 건너뜀 — 단순 억제가 아님) | 필요할 때 | 켬 |
+| 누락 문서 게이트(`impact.source_changed`) | 끔 | **보고**(warning) | **빌드 실패**(error) |
+| 거버넌스 CI | 요구 안 함 | 선택 | 기대함 |
+| `audit` · `backfill` | on-demand | on-demand | 핵심 워크플로 |
+
+구조·안전 검사는 **모든 모드에서** 돕니다: 깨진 frontmatter, 해소되지 않는 `source_files` 경로, 깨진 링크, 민감정보 탐지는 어떤 모드도 낮추지 않습니다.
+
+### 어떤 모드를 쓸까?
+
+- **`lite`** — 개인 프로젝트, 빠른 반복, AI 에이전트를 많이 쓰는 작업, 문서 오버헤드 최소화. lite는 에이전트가 코드에서 다시 끌어낼 수 없는 것만 남깁니다: 이 프로젝트가 무엇인지, 도메인 용어, 제약, 결정.
+- **`standard`** — 장기 유지보수하는 프로젝트, 또는 개발자가 여럿인 프로젝트. 매 커밋을 문서 이벤트로 만들지 않으면서 아키텍처·도메인 지식을 현재 상태로 유지합니다.
+- **`strict`** — 인수인계·주요 릴리스 준비, 저장소 감사, 개발자 온/오프보딩, 규제 환경. 의도적으로 느립니다 — 완전성과 신뢰가 산출물입니다.
+
+### 평소에는 lite, 인수인계 전에 strict
+
+이것이 예외 케이스가 아니라 **주 워크플로**입니다 — 저장소는 몇 달을 `lite`로 지내고도 승격·재구성할 수 있습니다.
+
+```bash
+llm-wiki mode                      # 지금 어느 레벨인가, 어디서 왔나, 무엇을 강제하나?
+# ... lite로 몇 달간 평범한 개발: 문서 때문에 막히는 일이 없습니다 ...
+llm-wiki mode set strict --write   # 승격 — 설정 키 하나를 쓰고 스캔은 **하지 않습니다**
+llm-wiki backfill                  # 저장소가 증명하는 것은 무엇이고, 빠진 것은 무엇인가?
+llm-wiki backfill --write          # 빠진 문서를 needs_review 스텁으로 생성
+llm-wiki prompt --task backfill    # 서술은 에이전트에게 넘김(또는 /llm-wiki-backfill)
+llm-wiki backfill --strict         # 인수인계 전 게이트: 넘길 준비가 됐나?
+llm-wiki handoff --agent claude
+```
+
+승격과 감사를 일부러 분리했습니다: `mode set`은 저장소 전체 스캔을 절대 유발하지 않아 `strict` 전환이 즉시 끝나고, 비싼 재구성은 명시적인 `backfill`로 남습니다.
+
+`backfill`은 저장소가 증명할 수 있는 것을 복구하고 나머지에 라벨을 붙입니다 — **verified**(현재 소스·테스트·설정에서 읽음), **inferred**(디렉터리 경계·네이밍·git 이력에서 도출했고, 도출이라고 말함), **unknown**. 아무도 기록하지 않은 근거는 절대 재구성하지 않습니다: ADR도 없고 스스로 설명한 커밋도 없다면 "왜 이걸 골랐나"는 `unknown`으로 남고, 떠나는 유지보수자에게 물을 질문이 됩니다. 그게 이 명령의 목적이고, 부족함이 아닙니다.
+
+레벨은 `llm-wiki.config.json`에서 정합니다.
+
+```json
+{ "governance": { "mode": "lite" } }
+```
+
+`init`/`quickstart`는 새 프로젝트에 **`lite`**를 씨앗으로 넣고, `--mode <레벨>`로 비대화형 지정이 가능합니다. **`governance` 블록이 없는 프로젝트는 `strict`로 해소되며**, 그 규칙 집합은 모드가 존재하기 전 이 CLI가 강제했던 것과 정확히 같습니다 — 즉 업그레이드해도 직접 켜기 전까지는 아무것도 바뀌지 않습니다.
 
 ## 작동 방식
 
@@ -144,7 +194,7 @@ $ npx llm-wiki-governance validate --strict
 - **드리프트를 조기에.** 모든 문서가 `source_files`/정밀 `evidence`를 인용하고, 그게 바뀌면 `evidence.stale`·`drift`가 표시합니다. `drift --downgrade`로 낡은 `verified` 문서를 `needs_review`로 되돌리고, `drift --watch-needs-review`(기본 꺼짐, `drift` 전용)로 date 기준 검사를 `needs_review` 문서까지 넓힙니다. **릴리스 노트는 면제됩니다:** `doc_type`(또는 OKF `type`)이 `release_notes`인 문서는 `evidence.stale`과 `impact.source_changed` 양쪽에서 건너뜁니다 — 릴리스 노트는 이미 나간 릴리스의 불변 기록이고, 매 릴리스마다 바뀌는 `package.json`을 앵커로 삼기 때문입니다. 대가는 분명히 적어 둡니다: 이 면제는 **릴리스 노트를 지금 들어 있는 검사에서 빼냅니다.** 즉 릴리스 노트가 인용하는 소스가 움직여도 더는 flag되지 않습니다. **버전만 올린 매니페스트는 `impact`에서만 면제입니다:** `version` 값만 바뀐 `package.json`은 변경된 것으로 보고되지만 앵커 대조에는 쓰이지 않습니다 — 릴리스마다 올라가는 값이고 어떤 문서의 주장도 그 숫자에 의존하지 않기 때문입니다. 반면 `drift`/`evidence.stale`은 날짜 앵커라 **무엇이** 바뀌었는지가 아니라 **언제** 바뀌었는지만 보므로, 버전만 올려도 그 매니페스트를 인용한 문서를 계속 지목합니다. `impact` 쪽에서도 다른 키가 바뀌거나, `version` 필드가 추가·삭제되거나, `version`이 실제로 움직이지 않았거나, 파싱이 안 되거나, 비교할 기준 내용이 없으면 그대로 셉니다. 비교는 **키 순서를 구분**하며(Node가 조건부 `exports`를 키 순서로 해석하므로 순서 변경은 실제 변경입니다), 대상은 루트 `package.json`과 선언된 `workspaces` 멤버뿐입니다 — `pyproject.toml`·`Cargo.toml`은 파서가 필요하고 이 패키지는 그것을 싣지 않습니다.
 - **같은 변경에서 최신 유지.** 코드와 같은 변경에서 위키도 갱신(`prompt --task docs-sync` 또는 `docs-sync` 스킬)하고, pre-commit/CI에서 `validate --changed` 실행.
 - **에이전트가 스스로 쓰게.** `mcp` 서버를 연결하면 에이전트가 코드를 다시 훑는 대신 위키를 툴로 질의합니다.
-- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.29.5`(정확한 태그로 고정). `impact`를 필수 체크에 넣기 전에 바로 아래 *업그레이드* 안내를 읽으세요 — 이제 `--strict` 없이도 빌드를 실패시킵니다.
+- **CI 연결.** [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사해 PR마다 `validate`를 실행하거나, 컴포지트 액션을 한 스텝으로 참조하세요 — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.30.0`(정확한 태그로 고정). `impact`를 필수 체크에 넣기 전에 바로 아래 *업그레이드* 안내를 읽으세요 — 이제 `--strict` 없이도 빌드를 실패시킵니다.
 - **눈에 보이게.** `graph --format mermaid`·`stats`·`audit --format html`로 사람이 코퍼스를 봅니다. GitHub/GitLab·Obsidian·MkDocs에서 그대로 렌더(정적 사이트 생성기가 아니라 Markdown-in-git 유지).
 
 ### 업그레이드: `impact`가 이제 빌드를 실패시킵니다

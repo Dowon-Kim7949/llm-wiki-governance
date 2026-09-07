@@ -104,7 +104,7 @@ async function captureHelp(topic) {
 
 test("prompt --task help lists every supported task, not a hand-copied subset", async () => {
   const expected = [...SUPPORTED_TASK_PROMPTS];
-  assert.equal(expected.length, 8, "guard: the supported set is the source of truth");
+  assert.equal(expected.length, 9, "guard: the supported set is the source of truth");
 
   for (const topic of [helpText(), await captureHelp("prompt")]) {
     const line = topic.split("\n").find((entry) => entry.includes("llm-wiki prompt --task"));

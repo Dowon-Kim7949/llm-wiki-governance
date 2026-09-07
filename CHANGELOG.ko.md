@@ -5,6 +5,115 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
+## 1.30.0 — 2026-09-07
+
+**거버넌스 모드: `lite` / `standard` / `strict`.** 엔진은 하나, 정책 레벨은 셋이며 같은 저장소에서
+언제든 바꿀 수 있다. 이 모드들이 푸는 문제는 상상한 게 아니라 실제 도입에서 관측한 것이다: 이
+패키지가 강제하는 거버넌스가 그것이 보호하는 작업보다 비쌀 수 있다. 세 줄 수정이
+`impact.source_changed`(1.28.0부터 기본 error)를 발화시키고, 에이전트를 doc-sync 패스로 끌고 가고,
+`verified` 문서마다 `git log`를 한 번씩 부르는 드리프트 스캔을 다시 열게 한다. 개인 프로젝트나 빠르게
+움직이는 프론트엔드에서 그 값은 아무것도 사지 못한다. 인수인계·감사·오프보딩에서는 그게 전부다.
+
+> **기존 프로젝트는 직접 켤 때까지 영향을 받지 않는다.** `llm-wiki.config.json`에 `governance`
+> 블록이 없는 프로젝트는 `strict`로 해소되고, strict의 rule floor는 **비어 있다** — finding
+> 레지스트리의 기본 severity가 이미 strict 베이스라인이기 때문이다. 해소된 옵션과 리포트 출력이
+> 1.29.5와 동일하다. 새 프로젝트 기본값(`lite`)은 **의도적으로** 레거시 프로젝트 기본값과 다르다:
+> 기존 프로젝트의 게이트를 조용히 완화하는 것은 기본값의 옷을 입은 breaking change이고, CI가 조용히
+> 실패를 멈추는 것은 새 기능을 알게 되는 최악의 방법이다. 아래 **마이그레이션** 참조.
+
+- **`llm-wiki mode`는 읽고, `llm-wiki mode set <레벨> --write`가 바꾼다.** 읽기 경로는 유효 레벨,
+  그 출처(`--mode` > `llm-wiki.config.json` > 레거시 기본값), 그 레벨이 기여하는 rule severity,
+  전체 capability matrix를 보고한다. `mode set`은 기본이 미리보기이고 `--write`에서만 쓰며, 정확히
+  설정 키 하나(`governance.mode`)만 건드리고 나머지 키는 — 이 버전이 모르는 키까지 — 그대로 보존한다.
+  깨진 설정 파일은 재작성이 아니라 거부한다(`structure.config_invalid`).
+- **모드 변경은 절대 감사하지 않는다.** `strict`로 승격해도 키 하나를 쓰고 스캔도, 드리프트 검사도,
+  문서 생성도 하지 않는다 — 그래서 전환이 즉시 끝나고 비싼 재구성은 명시적·별개의 `backfill`로 남는다.
+  숨은 비싼 작업을 피해야 할 실패 양식으로 못박았고, 모드 변경이 finding을 하나도 내지 않는다는
+  테스트가 있다.
+- **`lite`는 억제가 아니라 구조로 가볍다.** 코어 문서 집합만 계획하므로 빠진 프로필 문서는 "누락"이
+  아니다 — 애초에 기대하지 않았다. `evidence.stale`·`impact.source_changed`·`content.not_enriched`·
+  `evidence.missing`·`evidence.ungrounded`는 끄고, `structure.required_doc`은 `info`로 내리며,
+  **유일한 산출이 꺼진 규칙인 스캔 2종은 돌린 뒤 걸러내는 대신 아예 건너뛴다**
+  (`scanEvidenceDrift`는 verified 문서마다 git을 부르고, `scanReverseImpact`는 모든 문서의 앵커를
+  훑는다). 이 절감은 유효 rule map을 읽으므로, 모드를 도입하지 않고 규칙을 손으로 끈 프로젝트도 같은
+  절감을 얻는다.
+- **`standard`는 탐지를 유지하고 차단을 뺀다.** `impact.source_changed`가 warning이 된다: 소스가
+  움직였는데 문서가 안 따라왔다는 사실은 계속 보고하되, 평범한 빌드가 문서 누락으로 막히지 않는다.
+  나머지는 의도적으로 레지스트리 기본값 그대로다 — 기본값을 나열하면 push 시점의 `--strict` 상향과
+  싸우게 되고, 이는 `rulesPreset: "standard"`를 비워 둔 것과 같은 이유다.
+- **`llm-wiki backfill`: `lite` → `strict` 승격 경로.** 모드가 존재하는 이유가 되는 시나리오를 위한
+  것이다 — 저장소가 몇 달을 `lite`로 지냈고, 위키는 의도적으로 완전하게 유지하지 않았고, 이제 누군가
+  떠난다. 저장소가 실제로 담고 있는 것을 인벤토리하고(추적 소스·테스트·매니페스트·언어 구성·도메인
+  경계·git 이력), 위키를 유효 모드의 계획 문서 집합과 대조하고, 인수인계 준비도를 퍼센트가 아니라
+  **이름 붙은 체크리스트**로 채점한다. `--write`는 빠진 문서를 `init`이 쓰는 것과 같은 생성기로
+  `needs_review` 스텁으로 만든다 — 산문 주장 없음, `verified` 스탬프 없음, 기존 파일은 절대
+  덮어쓰지 않고, append-only 로그는 `--existing overwrite`에서도 지킨다. adapter 파일과 스킬은 쓰지
+  않는다: 문서를 재구성하는 명령이지 하네스를 다시 깔아 주는 명령이 아니다. `--strict`는 미완성
+  준비도 리포트를 빌드 실패로 만든다(`backfill.not_ready`) — 인수인계 전 게이트다.
+- **backfill은 이력을 발명하지 않는다.** 보고하는 모든 사실이 세 라벨 중 하나를 단다: *verified*
+  (현재 소스·테스트·설정에서 읽음), *inferred*(디렉터리 경계·네이밍·git 이력에서 도출했고, 도출이라고
+  말함), *unknown*. `unknown` 목록은 이 명령의 **산출물**이고 부족함이 아니다. ADR도 없고 스스로
+  설명한 커밋도 없다면 "왜 이걸 골랐나"는 `unknown`으로 남아 떠나는 유지보수자에게 물을 질문이 된다
+  (`backfill.unknown_history`, 그리고 "텍스트를 생성해서는 닫을 수 없다"고 스스로 밝히는
+  `decision_history` 준비도 체크). CLI는 산문을 전혀 조립하지 않는다 — 측정하고, 출력되는 프롬프트가
+  같은 세 라벨 아래에서 서술을 에이전트에게 넘긴다.
+- **새 `backfill` 태스크 프롬프트와 `/llm-wiki-backfill` 스킬.** 스텁을 채우기 위해 에이전트가 돌리는
+  재구성 워크플로로, 명시적 근거 사다리(현재 소스 > 테스트 > 설정 > 기존 문서 > ADR > 커밋 메시지 >
+  diff/이력 > 로컬 이슈 메타데이터), 세 confidence 라벨, 그리고 파일 배치·네이밍·의존성 선택·커밋
+  제목에서 근거를 재구성하지 말라는 상시 규칙을 담는다. `SKILL_TASKS`가 6개에서 7개로 늘어난다.
+- **생성 프롬프트의 governance budget.** `contextBudget`(얼마나 읽을지, 1.27.1)과
+  `delegationPolicy`(누가 읽을지, 1.29.2)에 이어지는 세 번째 레버로, 이번 것은 **문서 작업을 아예 할
+  것인지**를 정한다. `lite`에서는 코드와 테스트에서 끝내고 "no wiki change needed (lite)"를 완결된
+  결과로 보고하라고 하고, `standard`에서는 변경이 실제로 건드리는 문서만 보라고 하고, `strict`에서는
+  영향받은 모든 문서를 갱신하고 앵커를 새로 맞추라고 한다. 비용은 정직하게 적는다: 이 블록은 ~1130
+  토큰짜리 쓰기 프롬프트에 **추정 173–234 토큰**(`chars/4` 프록시이며 실측이 아니다)을 더한다 — 프롬프트
+  본문 15–21% 증가다. 그것이 doc-sync 패스를 없애서 값을 하는지는 **측정하지 않았다**. 이 릴리스는
+  절감을 주장하지 않는다.
+- **`--mode <lite|standard|strict>`** 를 `mode`·`backfill`·`init`·`quickstart`·`audit`·`validate`·
+  `status`·`next`·`stats`·`drift`·`impact`·`handoff`·`prompt`에서 받는다. `--type`처럼 파싱 시점에
+  검증하므로 오타는 usage error(exit 3)이고 다른 레벨로 조용히 폴백하지 않는다. 읽기 명령에서는 설정을
+  고치지 않고 다른 레벨의 게이트를 미리 볼 수 있다.
+- **MCP의 `mode`는 구조적으로 읽기 전용이다.** 툴 스키마가 `cwd`만 노출하고
+  `additionalProperties: false`가 dispatch 전에 강제되므로 `set` 하위 동작에 도달할 수 없다 —
+  에이전트는 프로젝트가 어느 레벨인지 물어볼 수 있고, 바꾸는 것은 CLI 행위로 남는다. MCP 툴은 17개에서
+  18개가 된다.
+- **`doctor`가 거버넌스 레벨**과 그 출처, 그리고 게이트가 현재 무엇을 하는지를 보고한다
+  (`impact gate on (error)` / `advisory (warning)` / `off`, 드리프트 스캔 동작 여부) — CI가 실패를
+  멈췄는데 아무도 이유를 모를 때 사람들이 보는 곳이 doctor이기 때문이다. 같은 리포트의
+  `llm-wiki.config.json` 줄도 `governance.mode`를 이름으로 반향한다.
+- **`handoff`가 어느 모드로 생성했는지 밝힌다**(추가 필드 `governanceMode`, 추가 Next Step 줄)
+  그리고 실제 인수인계라면 `mode set strict --write` + `backfill`을 먼저 하라고 가리킨다. 기존
+  handoff payload·message·prompt 계약은 그 외에는 불변이다.
+- 중앙 정책 레이어: `src/governance.js`(leaf 모듈 — `config.js` 외 import 없음, I/O 없음)가 모드의
+  의미가 사는 단일 장소이고, 다른 모든 계층은 모드 이름으로 분기하는 대신 여기에 질문한다. 모드의 rule
+  floor는 엔진이 이미 갖고 있던 어휘로 표현되고(`rules`가 받는 것과 같은 rule-id → severity 토글)
+  둘 **아래**에 깔린다: mode floor < `rulesPreset` < 명시 `rules`, 키 단위로. `GOVERNANCE_MODES`·
+  `getGovernancePolicy`·`governanceCapabilityMatrix`·`effectiveGovernanceMode`를 프로그래매틱 API로
+  내보내고, `commands.mode`·`commands.backfill`이 command map에 합류한다.
+- 테스트 43건 추가(**522 → 565**). 전체 시나리오의 end-to-end 수락 fixture를 포함한다: `lite`로
+  초기화 → 두 도메인에 소스 추가 → 위키를 동기화하지 않고 동작과 아키텍처 변경 → `strict`로 승격 →
+  `backfill`로 공백 탐지 → `--write`로 스텁 생성 → source mapping과 "`verified`로 승격된 것이 없음"
+  확인 → handoff 산출.
+
+### 마이그레이션
+
+- **할 일 없음.** 이미 `llm-wiki.config.json`이 있거나 `docs/llm-wiki/index.md`가 있는 프로젝트는
+  업그레이드해도 게이트·exit code·문서 집합이 바뀌지 않는다. 둘 다 `strict`로 해소되고 strict의 rule
+  floor는 비어 있다.
+- **완전히 새 저장소에서의 `init`/`quickstart`는 이제 `lite`를 씨앗으로 넣는다** — 설정 파일도 없고
+  위키도 없으면 진짜 새 프로젝트이고, 코어 문서 집합과 함께 스캐폴드하는 설정에
+  `"governance": { "mode": "lite" }`가 들어간다. 새 프로젝트에서 종전 동작을 원하면 `--mode strict`
+  (또는 `--mode standard`)를 넘긴다.
+- **생성된 스킬은 작성 시점에 유효했던 모드의 워크플로를 담고 있다.** 모드를 바꾼 뒤
+  `llm-wiki init --write --skills --refresh`를 돌려 에이전트가 새 워크플로를 읽게 한다. `--refresh`는
+  여전히 수정되지 않은 패키지 생성물만 갱신하고 사용자의 편집은 보존한다. 갱신 대상에 새
+  `llm-wiki-backfill` 스킬이 포함된다.
+- **기존 명령은 finding이 늘지 않는다.** 새 규칙 3종은 새 명령에서만 발화한다:
+  `backfill.unknown_history`·`backfill.not_ready`는 `backfill`에서, `structure.config_invalid`는
+  `mode`에서. 이 릴리스 때문에 기존 CI 스텝이 빨개질 수 없다.
+- `--format json` shape은 추가만 있다(`schemaVersion`은 1 그대로): `handoff`에 `governanceMode`가
+  붙고, `mode`·`backfill`은 새 payload를 가진 새 명령이다.
+
 ## 1.29.5 — 2026-09-07
 
 문서와 산출물 위생 작업, 그리고 릴리스 워크플로 인증 수정 1건.

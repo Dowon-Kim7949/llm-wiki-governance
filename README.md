@@ -79,7 +79,8 @@ The `llm-wiki mcp` server is deterministic (no model); the agent *calling* its t
 | `check-run` | Audit what a skill run claims it did, from the run manifest it wrote: every changed source is referenced by a touched document, the log was appended, `validate` passed, and (for feature/fix) a `testEvidence` red→green trail is recorded. Read-only. |
 | `harness-health` | Inspect the harness instead of the documents: adapter files and generated skill artifacts stamped below the version this package ships, and skill bodies that no longer track their generator (no generation marker at all, or a marker whose body no longer hashes to it — `init --refresh` keeps both). Two further rules, an always-loaded context budget and a per-skill size cap, stay inert until you supply a number (`--preload-budget <n>` / `--skill-token-cap <n>`, or `harnessHealth` in `llm-wiki.config.json`); those sizes are the same `chars/4` proxy used elsewhere, never a measured token count. Read-only. |
 | `import-memory` | Convert an agent harness's portable memories (`ecc.memory.v1`) into `needs_review` wiki drafts. Preview by default; `--apply` writes. Never produces `verified`, never overwrites, and skips memories containing sensitive values. |
-| `handoff` · `prompt` | Agent handoff prompt · repeatable task prompts (bootstrap/feature/fix/refactor/docs-sync/okf-extract). |
+| `mode` · `backfill` | Governance level (`lite`/`standard`/`strict`) · the escalation path that reconstructs an incomplete wiki from the repository. See **Governance modes** below. |
+| `handoff` · `prompt` | Agent handoff prompt · repeatable task prompts (bootstrap/feature/fix/refactor/docs-sync/okf-extract/backfill). |
 | `onboard` · `prepare` | Guided, read-only: learn a work area from real code evidence (`onboard [--domain]`) · scope a change before implementing (`prepare --task`). Assembled from the wiki; the CLI invents no explanation. |
 | `list-docs` · `search-docs` · `get-doc` · `get-related` | Read-only retrieval that returns document **content**: enumerate with `--status`/`--visibility`/`--doc-type` filters · zero-dependency keyword search (not semantic) · one document's frontmatter + body (`--section`, `--max-chars`) · resolved graph neighbours. Restricted/sensitive documents are excluded unless you pass `--include-sensitive`, and sensitive lines are redacted. |
 | `mcp` | Run the read-only MCP server (see below). |
@@ -93,6 +94,55 @@ Rule severities are tunable per project: set `rules` for individual finding IDs,
 Retrieval has opt-in token controls (default output unchanged): `get-doc --strict-section` withholds the full body when nothing matches (instead of falling back to a whole-doc read), `--max-chars <n>` caps the returned body exactly, `--compact` drops the frontmatter echo; and `prepare --compact` returns one bounded context bundle — a chosen path, at most three candidate docs, only the top doc's most-relevant section, and how to expand. These surface a diagnostic `estimatedTokens` (a `chars/4` proxy, not a measured token count).
 
 Full command, option, exit-code, and programmatic-API reference: run `npx llm-wiki help <command>` (offline), or see [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md).
+
+## Governance modes (1.30.0)
+
+Documentation is not the work. It exists to make future work easier — so how much of it you maintain should match what the project needs *now*. One engine, three policy levels, changeable at any time in the same repository:
+
+| | `lite` | `standard` | `strict` |
+| --- | --- | --- | --- |
+| Intent | development speed | speed **and** knowledge | completeness, verification, handoff |
+| Documents planned | core only | core + profile + per-domain | core + profile + per-domain |
+| Docs after a code change | only knowledge the code cannot show | when a domain / architecture / contract moves | every affected document |
+| Drift (`evidence.stale`) | off (the scan is skipped, not just silenced) | on demand | on |
+| Missing-doc gate (`impact.source_changed`) | off | **reports** (warning) | **fails the build** (error) |
+| Governance CI | not expected | optional | expected |
+| `audit` · `backfill` | on demand | on demand | core workflow |
+
+Structural and safety checks run in **every** mode: malformed frontmatter, a dangling `source_files` path, a broken link, and sensitive-info detection are never dialed down by a mode.
+
+### Which mode should I use?
+
+- **`lite`** — personal projects, fast iteration, heavy AI-agent use, minimum documentation overhead. Lite keeps only what an agent cannot re-derive from the code: what the project is, the domain vocabulary, the constraints, the decisions.
+- **`standard`** — a project you maintain long-term, or with several developers, where the architecture and domain knowledge should stay current without every commit becoming a documentation event.
+- **`strict`** — preparing a handoff or a major release, auditing a repository, on/offboarding a developer, or a regulated environment. Slower on purpose; completeness and trust are the deliverable.
+
+### Day to day in lite, strict before a handoff
+
+This is the primary workflow, not an edge case — a repository can sit in `lite` for months and still be escalated and reconstructed:
+
+```bash
+llm-wiki mode                      # which level am I on, where did it come from, what does it enforce?
+# ... months of ordinary development in lite: nothing gates on documentation ...
+llm-wiki mode set strict --write   # escalate — writes one config key and runs NO scan
+llm-wiki backfill                  # what does the repository prove, and what is missing?
+llm-wiki backfill --write          # create the missing documents as needs_review stubs
+llm-wiki prompt --task backfill    # hand the writing to your agent (or /llm-wiki-backfill)
+llm-wiki backfill --strict         # the pre-handoff gate: is this handoff-ready?
+llm-wiki handoff --agent claude
+```
+
+Escalating is deliberately separate from auditing: `mode set` never triggers a repository-wide scan, so switching to `strict` is instant and the expensive reconstruction stays an explicit `backfill`.
+
+`backfill` recovers what the repository can prove and labels the rest — **verified** (read from current source, tests, or configuration), **inferred** (derived from directory boundaries, naming, or git history, and said to be inferred) or **unknown**. It never reconstructs a rationale nobody recorded: with no ADR and no commit that explained itself, "why was this chosen?" stays `unknown` and becomes a question for the outgoing maintainer. That is the point of the command, not a shortfall in it.
+
+Set the level in `llm-wiki.config.json`:
+
+```json
+{ "governance": { "mode": "lite" } }
+```
+
+`init` / `quickstart` scaffold **`lite`** for a brand-new project, and `--mode <level>` overrides it non-interactively. A project with **no `governance` block resolves to `strict`**, whose rule set is exactly what this CLI enforced before modes existed — so upgrading changes nothing until you opt in.
 
 ## How it works
 
@@ -144,7 +194,7 @@ When something needs attention, findings are `severity · rule · path` — mach
 - **Catch drift early.** Every doc cites `source_files` / precise `evidence`; when those change, `evidence.stale` and `drift` flag the doc. Run `drift --downgrade` to flip stale `verified` docs back to `needs_review`, and `drift --watch-needs-review` (off by default, `drift` only) to widen the date-anchored check to `needs_review` docs too. **Release notes are exempt:** a document whose `doc_type` — or OKF `type` — is `release_notes` is skipped by both `evidence.stale` and `impact.source_changed`, because a release note is an immutable record of a release that already shipped and it anchors `package.json`, which changes on every release. State the cost plainly: the exemption **removes release notes from a check they are currently inside**, so a release note will no longer be flagged when the source it cites moves. **A version-only manifest bump is exempt from `impact` — and only from `impact`:** a `package.json` whose diff moves nothing but the `version` value is reported as changed but not used for anchoring, because every release bumps it and no document's claims depend on the number. `drift`/`evidence.stale` is date-anchored — it asks *when* a file changed, not *what* changed in it — so a version bump will still make it flag a document that cites the manifest. Any other key, a `version` field added or removed, a version that did not actually move, an unparseable manifest, or a manifest with no baseline to compare against all still count for `impact` too. Comparison is order-sensitive (Node resolves conditional `exports` in key order, so reordering them is a real change), and the exclusion covers the root `package.json` plus declared `workspaces` members only — never `pyproject.toml` or `Cargo.toml`, which would need a parser this package does not ship.
 - **Keep it current in the same change.** Update the wiki alongside the code (`prompt --task docs-sync`, or the `docs-sync` skill), and run `validate --changed` in pre-commit / CI.
 - **Let agents self-serve.** Point your agent at the `mcp` server so it queries the wiki as tools instead of re-scanning the code.
-- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.29.5` (pin an exact tag). Before you add `impact` to a required check, read the *Upgrading* note directly below — it now fails a build without `--strict`.
+- **Wire up CI.** Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml) to run `validate` on every PR, or reference the composite action in one step — `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.30.0` (pin an exact tag). Before you add `impact` to a required check, read the *Upgrading* note directly below — it now fails a build without `--strict`.
 - **Make it readable.** `graph --format mermaid`, `stats`, and `audit --format html` help humans see the corpus; it stays Markdown-in-git (renders on GitHub/GitLab, Obsidian, MkDocs — not a static-site generator).
 
 ### Upgrading: `impact` now fails a build

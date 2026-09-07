@@ -825,6 +825,67 @@ pins the same split in the generated skill artifacts on disk. Sized **PATCH**: n
 report field moves, and the change is additive text inside prompts an adopter regenerates on their own
 schedule.
 
+## Release Plan (post-1.29.5) — three policy levels, one engine — **shipped as 1.30.0 (2026-09-07)**
+
+The first release that treats **the cost of governance** as a first-class product problem rather
+than a tuning detail. Every lever before this one made the governance cheaper to *run*
+(`contextBudget` 1.27.1, the release-commit carve-out 1.29.0, the template carve-out 1.29.1,
+`delegationPolicy` 1.29.2). None of them could answer the question adopters actually kept asking:
+*should this work happen at all right now?* A three-line fix in a personal project would trip
+`impact.source_changed` (an error by default since decision 21), pull the agent into a doc-sync
+pass, and re-open a drift scan that shells out to `git log` once per `verified` document. That
+price is correct before a handoff and worthless on a Tuesday afternoon.
+
+1.30.0 adds **`governance.mode`** — `lite` / `standard` / `strict` — as a policy level over the
+existing engine, not as three project templates. All three share the wiki layout, the frontmatter
+contract, the command surface, and the finding registry; a repository moves between them at any
+time in place, and the primary supported path is *months in `lite`, then `strict` the week somebody
+leaves*.
+
+- **The mode is expressed in the vocabulary the engine already had.** A level contributes a
+  rule-id → severity floor — the same toggles `rules` accepts and `rulesPreset` bundles — layered
+  **under** both, key by key: mode floor < `rulesPreset` < explicit `rules`. Nothing new had to be
+  invented for a mode to gate differently, which is why `src/governance.js` is a leaf module with
+  no I/O rather than a framework. The alternative, an `if (mode === "lite")` in every command, is
+  exactly the maintenance cost the feature exists to remove.
+- **`strict`'s rule floor is empty, and that is the migration guarantee.** The registry's own
+  default severities already *are* the strict baseline, so a project with no `governance` block
+  resolves to `strict` and behaves byte-for-byte as it did in 1.29.5. The new-project default
+  (`lite`) is deliberately a different question: `init` resolves it from evidence — an explicit
+  `--mode`, else the recorded mode, else *does this repository already have a config or a wiki*.
+  Silently relaxing an existing project's gate would have been a breaking change wearing a
+  default's clothes.
+- **`lite` is light by construction, not by suppression.** It plans the core document set only, so
+  `structure.required_doc` stops firing for profile documents because they were never expected —
+  and the two scans whose only output is a disabled rule are skipped outright rather than run and
+  filtered. That saving reads the *effective* rule map, so a project that switched a rule off by
+  hand earns it without adopting a mode at all.
+- **Escalation and audit are separate commands on purpose.** `mode set strict --write` writes one
+  config key and runs no scan; `backfill` does the expensive reconstruction when asked. Hidden
+  expensive work was named as the failure mode to avoid, and a test asserts that a mode change
+  produces no findings.
+- **`backfill` recovers what the repository can prove and refuses to invent the rest.** The
+  temptation this command had to be designed against is real: an agent asked to reconstruct project
+  knowledge for a handoff will produce a fluent account of *why* the architecture is the way it is,
+  and none of it is checkable. So the CLI composes no prose at all — it measures, labels every
+  fact *verified* / *inferred* / *unknown*, and treats the `unknown` list as an output. Where no
+  ADR and no self-explaining commit exists, "why was this chosen?" stays `unknown` and becomes a
+  question for the outgoing maintainer; the `decision_history` readiness check says in its own text
+  that it cannot be closed by generating text.
+- **The prompts carry the third lever.** `contextBudget` bounded how much gets read;
+  `delegationPolicy` decided who reads it; `governanceBudget` decides whether the documentation
+  work happens. Cost stated honestly rather than framed as a saving: the block adds **173–234
+  estimated tokens** (`chars/4` proxy) to a ~1130-token write prompt, a 15–21% increase, and
+  whether it pays for itself by removing doc-sync passes is **not measured**. This repository does
+  not publish unmeasured savings claims.
+
+Sized **MINOR**: two new commands (`mode`, `backfill`), one new option (`--mode`), one new task
+prompt and skill (`backfill`), one new MCP tool (`mode`, read-only), three new finding rules that
+fire only in the new commands, and additive JSON fields — with no existing command changing its
+findings, its exit code, or its document set for a project that has a config or a wiki. 43 tests
+added (**522 → 565**, `skipped 0`), including an end-to-end acceptance fixture that runs the whole
+lite → drift → strict → backfill → handoff scenario against a real git repository.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.
