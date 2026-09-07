@@ -5,17 +5,18 @@
 `llm-wiki-governance`(옛 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. 이
 프로젝트는 [유의적 버전(Semantic Versioning)](https://semver.org/)을 따르며, 항목은 최신순입니다.
 
-## 1.29.4 — 2026-09-03
+## 1.29.5 — 2026-09-07
 
-문서와 산출물 위생 작업, 그리고 릴리스 워크플로 수정 1건.
+문서와 산출물 위생 작업, 그리고 릴리스 워크플로 인증 수정 1건.
 **런타임·CLI·공개 API 변경은 없다.**
 
-> **1.29.3은 게시되지 않았다.** 태그는 만들었지만 publish 워크플로가 레지스트리 인증에
-> 실패했다: `actions/setup-node`의 `registry-url` 입력이 `_authToken=${NODE_AUTH_TOKEN}`이
-> 담긴 `.npmrc`를 쓰는데, 토큰을 주지 않으면 그 변수를 자기 플레이스홀더로 채운다 — 그래서
-> npm이 OIDC로 폴백하지 않고 플레이스홀더를 자격증명으로 보냈고 레지스트리가 404를 돌려줬다.
-> 그 입력을 제거하면 Trusted Publishing이 정상 동작한다. 1.29.4는 1.29.3과 같은 내용에 이
-> 수정을 더한 것이며, **npm에서 1.29.3은 결번이다.**
+> **1.29.3과 1.29.4는 태그만 있고 게시되지 않았다.** 두 publish 실행이 모두 레지스트리
+> 인증에 실패했다. 1.29.3은 `actions/setup-node`의 플레이스홀더 `NODE_AUTH_TOKEN`을
+> 자격증명으로 보냈고(레지스트리가 404 응답), 1.29.4는 그 입력을 제거해 npm이 OIDC Trusted
+> Publishing으로 폴백하게 했지만 npm은 자격증명을 전혀 찾지 못했다(`ENEEDAUTH`) — 이
+> 저장소에서 OIDC 토큰 교환이 완료되지 않았다. 1.29.5는 `npm-release` 환경 secret에 보관한
+> 패키지 한정 granular access token으로 인증한다 — 이전 릴리스들이 실제로 쓰던 경로다 —
+> provenance는 여전히 OIDC 신원에서 나온다. **npm에서 1.29.3과 1.29.4는 결번이다.**
 
 - **공개 벤치마크 산출물을 익명화했다.** `bench/` 아래 측정 기록은 외부의 비공개 소유
   애플리케이션을 대상으로 한 것이다. 대상에 특정된 식별자와 구현 세부사항을 역할명 기반의
@@ -25,9 +26,9 @@
   원본 그대로다 — 재계산한 값은 없다.
 - **공개 고지 문서를 추가했다.** `docs/BENCHMARK_DISCLOSURE.md`와 그 한국어본이 무엇을
   지웠고 무엇을 보존했는지, 그리고 이 저장소만으로 역사적 측정을 재현할 때의 한계를 밝힌다.
-- **릴리스 워크플로를 고쳤다.** publish 잡이 `actions/setup-node`에 `registry-url`을 더 이상
-  넘기지 않는다. 그래서 npm이 설정된 자격증명을 보지 않고 의도대로 OIDC Trusted Publishing을
-  사용한다. 배포 대상과 provenance는 그대로다.
+- **릴리스 워크플로가 다시 패키지 한정 토큰으로 인증한다.** publish 잡이 `actions/setup-node`에
+  `registry-url`을 넘기고 `npm-release` 환경 secret에서 `NODE_AUTH_TOKEN`을 공급한다.
+  `--provenance`와 배포 대상은 그대로다.
 
 ## 1.29.2 — 2026-08-18
 

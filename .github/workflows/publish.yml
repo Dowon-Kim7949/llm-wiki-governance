@@ -18,17 +18,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # Deliberately NO `registry-url`. setup-node's registry-url writes an .npmrc
-      # containing `_authToken=${NODE_AUTH_TOKEN}` and, when no token is supplied,
-      # sets NODE_AUTH_TOKEN to its own literal placeholder. npm then authenticates
-      # with that placeholder instead of falling back to OIDC, and the registry
-      # answers 404 (it masks auth failures as not-found). Trusted Publishing needs
-      # npm to see NO configured credential. registry.npmjs.org is already the
-      # default registry, so dropping this input does not change the publish target.
+      # `registry-url` makes setup-node write an .npmrc whose auth line reads
+      # `_authToken=${NODE_AUTH_TOKEN}`; the publish step below supplies that
+      # variable from the `npm-release` environment secret. Authentication is a
+      # package-scoped granular access token; provenance still comes from the
+      # GitHub OIDC token (id-token: write), as it did for every release so far.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "24"
+          registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
 
       - name: Verify package identity
@@ -53,9 +52,13 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --access public --provenance
-        # Trusted Publishing/OIDC is the default path for this workflow.
-        # If a legacy token fallback is ever required, add NODE_AUTH_TOKEN
-        # from a short-lived npm automation token in a separate reviewed change.
+        env:
+          # Package-scoped granular access token stored as an `npm-release`
+          # environment secret. OIDC-only Trusted Publishing was attempted for
+          # v1.29.3/v1.29.4 and did not complete the token exchange in this
+          # repository (see RELEASE_FLOW.md); auth therefore uses this token while
+          # --provenance keeps using the OIDC identity. Rotate before expiry.
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
   # GitHub Release on the same v* tag push (GATE_REVIEW.md Gate 12). Runs only
   # after npm publish succeeds. Isolated to contents:write (job-level permissions

@@ -6,18 +6,19 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
-## 1.29.4 — 2026-09-03
+## 1.29.5 — 2026-09-07
 
-Documentation and artifact hygiene, plus one release-workflow fix.
+Documentation and artifact hygiene, plus a release-workflow authentication fix.
 **No runtime, CLI, or public API changes.**
 
-> **1.29.3 was never published.** It was tagged, but the publish workflow could not
-> authenticate to the registry: `actions/setup-node`'s `registry-url` input writes an
-> `.npmrc` with `_authToken=${NODE_AUTH_TOKEN}` and, with no token supplied, sets that
-> variable to its own placeholder — so npm sent the placeholder as a credential instead of
-> falling back to OIDC, and the registry answered 404. Dropping that input restores Trusted
-> Publishing. 1.29.4 carries the same content as 1.29.3 plus this fix; **1.29.3 is a skipped
-> version number on npm.**
+> **1.29.3 and 1.29.4 were tagged but never published.** Both publish runs failed to
+> authenticate to the registry. 1.29.3 sent `actions/setup-node`'s placeholder
+> `NODE_AUTH_TOKEN` as a credential (the registry answered 404). 1.29.4 removed that input so
+> npm could fall back to OIDC Trusted Publishing, and npm then found no credential at all
+> (`ENEEDAUTH`) — the OIDC token exchange did not complete in this repository. 1.29.5
+> authenticates with a package-scoped granular access token held as an `npm-release`
+> environment secret — the path every earlier release actually used — while provenance still
+> comes from the OIDC identity. **1.29.3 and 1.29.4 are skipped version numbers on npm.**
 
 - **Public benchmark artifacts sanitized.** The benchmark records under `bench/` were measured
   against an external, privately owned application. Target-specific identifiers and
@@ -29,9 +30,9 @@ Documentation and artifact hygiene, plus one release-workflow fix.
 - **Disclosure documents added.** `docs/BENCHMARK_DISCLOSURE.md` and its Korean counterpart
   state what was redacted, what was preserved, and the limits on reproducing the historical
   measurement from this repository alone.
-- **Release workflow fixed.** The publish job no longer passes `registry-url` to
-  `actions/setup-node`, so npm sees no configured credential and uses OIDC Trusted
-  Publishing as intended. Publish target and provenance are unchanged.
+- **Release workflow authenticates with a package-scoped token again.** The publish job passes
+  `registry-url` to `actions/setup-node` and supplies `NODE_AUTH_TOKEN` from the `npm-release`
+  environment secret. `--provenance` and the publish target are unchanged.
 
 ## 1.29.2 — 2026-08-18
 
