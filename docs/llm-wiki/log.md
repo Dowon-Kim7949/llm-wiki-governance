@@ -24,6 +24,61 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-07 - fix(governance): 도그푸딩에서 새 명령이 자기 증거보다 넓은 부정을 단언하고, 통과 불가한 준비도 체크를 요구했다
+
+- status: needs_review (에이전트 편집 — 배치 끝에 `review --approve-all --yes`로 승격)
+- actor: Claude Code (유지보수자 지시 — `feat/governance-modes` 브랜치에서 도그푸딩 후 merge)
+- scope: src + tests + wiki (1.30.0 같은 라인)
+- changed:
+  - `src/commands/governance-mode.js` — 의사결정 기록 탐색을 위키 밖 관례 위치까지 확장
+    (`repositoryDecisionRecords`·`DECISION_PATH_RE`), 탐색 범위 문구를 `DECISION_RECORD_SCOPE`
+    상수로 단일화, 커버리지 집계에서 append-only 로그 제외
+  - `src/commands.js` — `backfill.unknown_history` 메시지가 자기 탐색 범위를 밝히도록 교체
+  - `llm-wiki.config.json` — 이 저장소가 자기 레벨을 명시(`governance.mode: strict`)
+  - `tests/governance-modes.test.js` — 회귀 3건(범위 문구·위키 밖 ADR 탐지·로그 제외)
+  - `docs/llm-wiki/PUBLIC_API.md`·`DOMAIN_FEATURES.md`·`ARCHITECTURE_CONVENTIONS.md` — 계약·기능·모듈
+    서술 갱신 + Review Note(각각 아카이브로 1건 회전)
+  - `docs/llm-wiki/GLOSSARY.md`·`domains/00_overview.md`·`HARNESS_GOVERNANCE_ROADMAP.md` — 같은
+    리뷰 이벤트이므로 기존 1.30.0 노트를 **연장**(새 항목 추가 아님)
+  - `docs/llm-wiki/index.md`·`REVIEW_HISTORY.md`
+  - `log`(이 항목)
+- summary:
+  - **발견 경로가 이 배치의 요점이다.** 코드 리뷰가 아니라 **이 저장소에 `backfill`을 실행해서**
+    나왔다. 기능이 통과한 테스트 43건 중 어느 것도 이 두 결함을 보지 못했다 — 픽스처는 전부 갓
+    init된 임시 저장소였고, 두 결함은 **성숙한 저장소에서만** 드러나는 종류다.
+  - ① **증거보다 넓은 부정.** `backfill`이 `docs/llm-wiki/` 안만 뒤지고 "why the current design was
+    chosen is **not recoverable from this repository**"라고 단언했다. 이 저장소 루트에는 자기
+    `project-profile.md`가 "릴리스 게이트/의사결정 기록"으로 지목하는 **196 KB `GATE_REVIEW.md`**가
+    있다. 이것은 이 기능이 방어하려고 만들어진 실패 유형 그 자체다 — 검증한 범위보다 넓은 주장.
+    고친 방향 둘: git이 추적하는 관례 위치(`docs/adr/`·`docs/decisions/`·`adr/`·`decisions/`·
+    `DECISIONS.md`·`ADR-*.md`)까지 찾고, **못 찾았을 때 자기가 뒤진 범위를 문장 안에 적는다.**
+    `GATE_REVIEW.md`용 패턴을 넣지 **않은** 것은 의도다 — 시험한 단 하나의 저장소 파일명에 맞추는
+    것은 overfitting이고, 그래서 대신 "다른 데 있으면 인수인계에서 그 파일을 지목하라"고 말한다.
+  - ② **통과 불가한 준비도 체크.** `review_backlog`가 append-only 로그를 `needs_review` 백로그로
+    셌다. 로그는 관례상 영구 `needs_review`이고 `review`가 의도적으로 스탬프하지 않으므로(N-14),
+    **로그를 쓰는 모든 저장소에서 `backfill --strict`가 영원히 실패**했을 것이다. 이 제품이 이미 두
+    번 고친 "해소 경로가 없는 finding" 계열의 세 번째이고, 하마터면 세 번째를 출하할 뻔했다.
+    실측: 이 저장소 준비도 7/9 → **8/9**(남은 1건은 `decision_history`이고 그것은 **사실**이다).
+  - **도그푸딩의 세 번째 결과**는 결함이 아니라 결정이다: 이 저장소가 `llm-wiki.config.json`에
+    `governance.mode: strict`를 명시하게 했다. 블록이 없어도 `strict`로 해소되지만, CI를 게이트하는
+    레벨을 기본값에 맡기는 것은 `doctor`의 `source:` 필드가 드러내라고 존재하는 애매함이다.
+    이제 `doctor`가 `source: config`로 보고한다.
+- evidence:
+  - `src/commands/governance-mode.js#symbol:DECISION_RECORD_SCOPE` ·
+    `src/commands/governance-mode.js#symbol:collectWikiCoverage` · `src/commands.js#symbol:backfillCommand`
+  - 실행 확인: `backfill` 준비도 7/9 → 8/9, `review_backlog` incomplete → ok,
+    `decision_history` 문구가 탐색 범위를 명시. `mode`·`doctor`가 `source: config` 보고.
+  - 테스트 565 → **568**(신규 3), `skipped 0`. `validate --strict` 0 · `audit` 0 · `impact` 0 ·
+    `drift` 0 · `validate-frontmatter` 0 · `lint` OK.
+- caveats:
+  - **관례 밖 이름은 여전히 못 잡는다.** 이 저장소의 `GATE_REVIEW.md`가 그 예이고, 그래서
+    `decision_history` 체크는 이 저장소에서 계속 incomplete다. 그것을 통과시키려면 파일명 패턴을
+    늘리는 대신 사람이 인수인계에서 그 파일을 지목해야 한다 — 체크의 문구가 그렇게 말한다.
+  - 앞 항목에 적은 하네스 공백(**모드 변경 후 낡은 스킬을 제품이 finding으로 잡지 못한다**)은
+    이 배치에서도 **미해결**이다.
+  - 테스트 픽스처가 전부 신규 저장소라 이런 결함을 못 봤다는 사실 자체가 남은 위험이다. 성숙한
+    저장소를 흉내내는 픽스처(문서 50건·verified 49건·긴 이력)는 이 배치에서 만들지 않았다.
+
 ## 2026-09-07 - feat(governance): 거버넌스가 자기가 보호하는 작업보다 비쌀 수 있었고, 그것을 고를 수 있는 레벨이 없었다
 
 - status: needs_review (에이전트 편집 — 작업 끝에 `review --approve-all --yes`로 승격)

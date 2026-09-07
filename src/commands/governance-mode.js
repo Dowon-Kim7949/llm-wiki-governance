@@ -25,7 +25,7 @@ import { readTextAuto, readUtf8 } from "../encoding.js";
 import { CONFIG_FILENAME, loadProjectConfig } from "../config-file.js";
 import { VALID_STATUSES } from "../config.js";
 import { parseFrontmatter } from "../frontmatter.js";
-import { listTargetMarkdown, isTemplateDoc } from "./wiki-files.js";
+import { isAppendOnlyLog, listTargetMarkdown, isTemplateDoc } from "./wiki-files.js";
 import { detectDomainDirectories, detectFrontendDomains, planDomainDocs } from "./domains.js";
 import { runGit, trackedPaths } from "../git.js";
 import { withText } from "./findings.js";
@@ -372,6 +372,13 @@ export async function collectWikiCoverage(cwd, plannedDocs) {
   for (const file of initialized ? await listTargetMarkdown(cwd) : []) {
     const rel = toPosix(path.relative(cwd, file));
     if (isTemplateDoc(rel)) continue;
+    // The append-only change log is outside the review scope by design (`review`
+    // refuses to stamp it, N-14), so counting it as a needs_review document made
+    // the review_backlog readiness check impossible to close in EVERY repository
+    // that keeps a log — found by running this command on this repository. A check
+    // with no resolution path is the defect class this product has already fixed
+    // twice; it does not get to ship a third one.
+    if (isAppendOnlyLog(rel)) continue;
     const parsed = parseFrontmatter(await readUtf8(file));
     const frontmatter = parsed.frontmatter ?? {};
     const status = frontmatter.status;
@@ -390,7 +397,11 @@ export async function collectWikiCoverage(cwd, plannedDocs) {
     documentCount: documents.length,
     missing,
     unmapped,
-    decisionDocs,
+    // Wiki documents plus repository-level records in the conventional locations.
+    // Searched OUTSIDE docs/llm-wiki too, because the first run of this command on
+    // this repository reported "no decision record" while a 196 KB decision log sat
+    // in the root — the check had only looked at the wiki.
+    decisionDocs: [...decisionDocs, ...repositoryDecisionRecords(cwd)],
     statusCounts,
     documents
   };
@@ -402,9 +413,37 @@ export async function collectWikiCoverage(cwd, plannedDocs) {
 function isDecisionDoc(rel, frontmatter) {
   const docType = String(frontmatter.doc_type ?? frontmatter.type ?? "").toLowerCase();
   if (docType === "decision_log" || docType === "decision" || docType === "adr") return true;
-  const posix = toPosix(rel).toLowerCase();
-  return /decision|(^|\/)adr[-_/]|(^|\/)adrs?\//.test(posix);
+  return DECISION_PATH_RE.test(toPosix(rel).toLowerCase());
 }
+
+// The conventional homes for architecture decision records, as a path predicate.
+// Deliberately conventions ONLY: this repository keeps its decisions in
+// `GATE_REVIEW.md`, and adding a pattern for that name would be overfitting to the
+// one repository the check was tested on — which is why the finding below names the
+// locations it searched instead of claiming the repository has none.
+const DECISION_PATH_RE = /(^|\/)(adr|adrs|decisions?)\/|(^|\/)decisions?\.md$|(^|\/)adr[-_.]|decision[-_]?log/;
+
+// Repository-level records, read from git so untracked scratch files never count.
+// Best-effort: with no git, this contributes nothing and the finding's wording
+// (which names its own scope) stays true.
+function repositoryDecisionRecords(cwd) {
+  const tracked = trackedPaths(cwd, ".");
+  if (!tracked) return [];
+  return [...tracked]
+    .map((rel) => toPosix(rel))
+    .filter((rel) => rel.toLowerCase().endsWith(".md"))
+    .filter((rel) => !rel.startsWith("docs/llm-wiki/"))
+    .filter((rel) => !rel.includes("/fixtures/"))
+    .filter((rel) => DECISION_PATH_RE.test(rel.toLowerCase()))
+    .sort();
+}
+
+// The locations the decision-record check actually searches, quoted verbatim in
+// every message that reports finding none. A negative claim has to carry its own
+// scope: "no decision record HERE" is measurable, "this repository cannot answer
+// why" is not — and the second one is what the first version printed.
+export const DECISION_RECORD_SCOPE =
+  "docs/llm-wiki documents declaring doc_type decision_log/decision/adr, plus docs/adr/, docs/decisions/, adr/, decisions/, DECISIONS.md and ADR-*.md anywhere in the tree";
 
 function normalizeList(value) {
   if (Array.isArray(value)) return value.filter((entry) => typeof entry === "string" && entry.trim()).map((entry) => entry.trim());
@@ -457,7 +496,7 @@ export function buildEvidenceLedger({ inventory, coverage, staleDocs, unresolved
   }
 
   if (coverage.decisionDocs.length === 0) {
-    unknown.push("Original architectural rationale: no decision-log or ADR content found. Why the current design was chosen is not recoverable from this repository — record it as unknown, or ask the outgoing maintainer.");
+    unknown.push(`Original architectural rationale: no decision record was found in the locations this check searches (${DECISION_RECORD_SCOPE}). If this project records decisions somewhere else, name that file in the handoff; if it records them nowhere, the rationale is unrecoverable and stays unknown — ask the outgoing maintainer.`);
   } else {
     verified.push(`Recorded decisions: ${coverage.decisionDocs.length} document(s) (${coverage.decisionDocs.slice(0, 5).join(", ")}${coverage.decisionDocs.length > 5 ? ", …" : ""}).`);
   }
@@ -493,7 +532,7 @@ export function gradeHandoffReadiness({ inventory, coverage, staleDocs, unresolv
     { key: "evidence_fresh", ok: staleDocs.length === 0, detail: staleDocs.length === 0 ? "no verified document cites source that changed after its review." : `${staleDocs.length} verified document(s) have drifted from their cited source.` },
     { key: "link_integrity", ok: brokenLinks === 0, detail: brokenLinks === 0 ? "no broken document links." : `${brokenLinks} broken document link(s).` },
     { key: "review_backlog", ok: coverage.statusCounts.needs_review === 0, detail: coverage.statusCounts.needs_review === 0 ? "nothing is waiting for human review." : `${coverage.statusCounts.needs_review} document(s) awaiting human review — a handoff should not ship unreviewed claims as fact.` },
-    { key: "decision_history", ok: coverage.decisionDocs.length > 0, detail: coverage.decisionDocs.length > 0 ? `${coverage.decisionDocs.length} decision record(s) present.` : "no decision-log/ADR content — original rationale stays unknown (this check cannot be closed by generating text)." },
+    { key: "decision_history", ok: coverage.decisionDocs.length > 0, detail: coverage.decisionDocs.length > 0 ? `${coverage.decisionDocs.length} decision record(s) present.` : "no decision record in the locations this check searches — name the file in the handoff if this project keeps them elsewhere, otherwise the original rationale stays unknown (writing more text cannot close it)." },
     { key: "history_readable", ok: inventory.history.available, detail: inventory.history.available ? `git history readable (${inventory.history.commits} commits).` : "git history unreadable, so change context cannot be reconstructed." }
   ];
 

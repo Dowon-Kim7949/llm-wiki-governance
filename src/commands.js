@@ -98,6 +98,7 @@ import {
   buildEvidenceLedger,
   collectRepositoryInventory,
   collectWikiCoverage,
+  DECISION_RECORD_SCOPE,
   formatCoverage,
   formatInventory,
   formatLedger,
@@ -1888,7 +1889,12 @@ export async function backfillCommand(options) {
       severity: "info",
       rule: "backfill.unknown_history",
       path: "docs/llm-wiki",
-      message: "No decision-log or ADR content found: why the current architecture was chosen is not recoverable from this repository. Record it as unknown rather than reconstructing it."
+      // The message names the scope it searched instead of asserting a
+      // repository-wide negative. The first version said the rationale was "not
+      // recoverable from this repository" after looking only inside
+      // docs/llm-wiki — and said it about a repository whose root holds a 196 KB
+      // decision log. Found by running backfill on this repository.
+      message: `No decision record found in the locations this check searches (${DECISION_RECORD_SCOPE}). If this project records decisions elsewhere, name that file in the handoff; if it records them nowhere, the original rationale is unrecoverable and stays unknown.`
     });
   }
   if (readiness.incomplete.length > 0) {

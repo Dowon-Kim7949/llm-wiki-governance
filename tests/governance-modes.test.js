@@ -25,7 +25,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -668,7 +668,7 @@ test("backfill: unrecoverable history stays unknown and is never reconstructed",
 
   const unknown = result.ledger.unknown.join("\n");
   assert.match(unknown, /Original architectural rationale/, "the gap is named");
-  assert.match(unknown, /not recoverable from this repository/);
+  assert.match(unknown, /the rationale is unrecoverable and stays unknown/);
   assert.ok(
     result.findings.some((finding) => finding.rule === "backfill.unknown_history" && finding.severity === "info"),
     "and it is reported as a finding, not buried"
@@ -679,12 +679,93 @@ test("backfill: unrecoverable history stays unknown and is never reconstructed",
   );
   // The check must say so itself: writing more text cannot close it.
   const check = result.readiness.checks.find((entry) => entry.key === "decision_history");
-  assert.match(check.detail, /cannot be closed by generating text/);
+  assert.match(check.detail, /writing more text cannot close it/);
 
   // Nothing in the CLI's own output asserts a REASON for anything.
   for (const line of [...result.ledger.verified, ...result.ledger.inferred]) {
     assert.doesNotMatch(line, /\b(because|in order to|was chosen (for|to)|due to)\b/i, `ledger line asserts a rationale: ${line}`);
   }
+});
+
+// Both of these were found by running `backfill` on THIS repository — the dogfood
+// run, not a review. They are the two ways a governance check goes wrong: claiming
+// more than it measured, and asking for something that cannot be delivered.
+test("backfill: the no-decision-record claim names the locations it searched, and never asserts a repository-wide negative", async () => {
+  const cwd = await project("gov-scope-", { config: { governance: { mode: "strict" }, type: "library" } });
+  await initCommand((await api.resolveOptions({ cwd, mode: "strict", write: true, existing: "skip", agents: [], profiles: [], type: null })).options);
+  const result = await backfillCommand((await api.resolveOptions({ cwd, type: null, profiles: [], agents: [] })).options);
+
+  const finding = result.findings.find((entry) => entry.rule === "backfill.unknown_history");
+  assert.ok(finding, "the gap is still reported");
+  for (const text of [finding.message, result.ledger.unknown.join("\n"), result.readiness.checks.find((c) => c.key === "decision_history").detail]) {
+    assert.match(text, /locations this check searches/, "the claim carries its own scope");
+    assert.match(text, /(elsewhere|somewhere else)/, "and tells the reader what to do if the records live somewhere else");
+    // The first version said the rationale was "not recoverable from this
+    // repository" after looking only inside docs/llm-wiki — and said it about a
+    // repository whose root holds a 196 KB decision log. A check may report what
+    // it did not find; it may not conclude the repository has nothing.
+    assert.doesNotMatch(text, /not recoverable from this repository/, "no repository-wide negative");
+  }
+});
+
+test("backfill: a decision record outside docs/llm-wiki counts, so the check is not blind to the conventional homes", async (t) => {
+  if (!hasGit()) return t.skip("git unavailable");
+  const cwd = await project("gov-adr-", { config: { governance: { mode: "strict" }, type: "library" } });
+  await initCommand((await api.resolveOptions({ cwd, mode: "strict", write: true, existing: "skip", agents: [], profiles: [], type: null })).options);
+  await mkdir(path.join(cwd, "docs", "adr"), { recursive: true });
+  await writeFile(path.join(cwd, "docs", "adr", "0001-use-a-single-engine.md"), "# 0001\n\nWe chose one engine because…\n", { encoding: "utf8" });
+  const git = (args) => execFileSync("git", args, {
+    cwd,
+    stdio: "ignore",
+    env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@e" }
+  });
+  git(["init"]);
+  git(["add", "-A"]);
+  git(["-c", "commit.gpgsign=false", "commit", "-m", "init"]);
+
+  const result = await backfillCommand((await api.resolveOptions({ cwd, type: null, profiles: [], agents: [] })).options);
+  assert.ok(result.coverage.decisionDocs.some((rel) => rel.includes("docs/adr/0001")), "the ADR is counted");
+  assert.ok(!result.findings.some((entry) => entry.rule === "backfill.unknown_history"), "and the gap is no longer reported");
+  assert.ok(!result.readiness.incomplete.includes("decision_history"));
+  // Read from git, so an untracked scratch file never counts as project history.
+  await writeFile(path.join(cwd, "docs", "adr", "0002-scratch.md"), "# scratch\n", { encoding: "utf8" });
+  const after = await backfillCommand((await api.resolveOptions({ cwd, type: null, profiles: [], agents: [] })).options);
+  assert.ok(!after.coverage.decisionDocs.some((rel) => rel.includes("0002")), "untracked files are not project history");
+});
+
+test("backfill: the append-only log never blocks the review backlog, so the readiness check is closable", async () => {
+  const cwd = await project("gov-logscope-", { config: { governance: { mode: "strict" }, type: "library" } });
+  await initCommand((await api.resolveOptions({ cwd, mode: "strict", write: true, existing: "skip", agents: [], profiles: [], type: null })).options);
+  // Stamp every document `review` CAN reach, the way an approval would. The
+  // append-only log is deliberately outside that scope (N-14) and stays
+  // needs_review forever, so it is the one document left behind.
+  const wikiRoot = path.join(cwd, "docs", "llm-wiki");
+  const stamped = [];
+  async function stamp(dir) {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { await stamp(full); continue; }
+      if (!entry.name.endsWith(".md")) continue;
+      const relPath = path.relative(cwd, full).split(path.sep).join("/");
+      if (relPath === "docs/llm-wiki/log.md" || relPath.includes("/templates/")) continue;
+      const text = await readFile(full, "utf8");
+      await writeFile(full, text.replace(/^status: needs_review$/m, "status: verified"), { encoding: "utf8" });
+      stamped.push(relPath);
+    }
+  }
+  await stamp(wikiRoot);
+  assert.ok(stamped.length > 0, "guard: nothing was stamped, so this test checked nothing");
+
+  const logText = await readFile(path.join(wikiRoot, "log.md"), "utf8");
+  assert.match(logText, /^status: needs_review$/m, "guard: the log is still needs_review, which is the whole point");
+
+  const result = await backfillCommand((await api.resolveOptions({ cwd, type: null, profiles: [], agents: [] })).options);
+  assert.ok(
+    result.coverage.documents.every((doc) => doc.path !== "docs/llm-wiki/log.md"),
+    "the append-only log is not a coverage document"
+  );
+  assert.equal(result.coverage.statusCounts.needs_review, 0, "the log is not counted as a review backlog item");
+  assert.ok(!result.readiness.incomplete.includes("review_backlog"), "so the check can actually be closed");
 });
 
 test("backfill: the ledger keeps inferred signals labeled as inferred", async () => {

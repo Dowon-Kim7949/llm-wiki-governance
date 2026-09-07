@@ -1,5 +1,6 @@
 {
   "type": "library",
   "agents": ["codex", "claude"],
+  "governance": { "mode": "strict" },
   "reviewer": "Claude Code (delegated by Dowon-Kim)"
 }
