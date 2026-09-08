@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-08 - fix(roadmap): 국문만 고쳐 둔 항목 순서를 영문에도 반영했다
+
+- status: verified (Review Note 후 review --approve-all --yes)
+- actor: Claude Code (유지보수자 확인 요청에서 발견)
+- scope: docs (영문 ROADMAP 순서 정렬 + 위키 Review Note 1건·아카이브 회전 1건)
+  "이제 문제 없나"는 확인 요청을 받고 EN/KO 쌍을 실제로 대조하다 찾았다. 2026-09-08 국문 재작성
+  때 ROADMAP.ko.md의 post-1.19 목록에서 1.25가 1.24보다 앞에 있던 순서를 바로잡았는데, 영문
+  ROADMAP.md는 그대로 뒀다. CONTRIBUTING이 "한쪽을 고치면 짝도 함께 고쳐 주세요"를 요구하므로
+  그 규칙을 어긴 상태였다.
+  영문도 1.24(released) → 1.24(bundled) → 1.25 순으로 맞췄다. 항목 본문은 글자 하나 건드리지
+  않은 순수 이동이라, 스크립트가 재배열 후 파일 바이트 수가 같은지를 단언한다.
+  같은 자리에서 나머지 쌍도 대조했다. README는 EN/KO 모두 절 7개가 같은 순서로 대응하고 104줄로
+  동일하며, ROADMAP도 절 38개로 일치한다. SECURITY.ko의 누락 절은 이번 라인에서 이미 복원했다.
+  CHANGELOG의 절 제목이 언어별로 다른 것(Added/추가)은 의도된 지역화이지 불일치가 아니다.
+  impact가 HARNESS_GOVERNANCE_ROADMAP.md를 지목해서, 그 문서가 ROADMAP.md에 대해 하는 말을
+  확인했다 — 소유 경계(릴리스별 계획은 ROADMAP이 소유)와 스캔 범위(루트 문서는 listTargetMarkdown
+  밖)뿐이라 목록 순서와 무관하다. 본문 불변으로 두고 Review Note를 남겼으며, 상한 5건을 지키려
+  최고령 1건을 REVIEW_HISTORY.md로 돌렸다(12 → 13건).
+  tests 568/568 · validate --strict 0 · impact 0 · drift 0 · review 0
+
 ## 2026-09-08 - docs(deck): 타임라인이 화면을 넘겨서, 두 장으로 나눠 마무리 앞으로 옮겼다
 
 - status: needs_review (에이전트 편집 — `outputs/`는 위키 내용 문서가 아니라 승격 대상 없음)
