@@ -1,4 +1,4 @@
-<title>llm-wiki-governance 팀 발표 (v1.0 → v1.29.2)</title>
+<title>llm-wiki-governance 팀 발표 (v1.0 → v1.30.1)</title>
 <style>
   :root{
     --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Segoe UI",system-ui,sans-serif;
@@ -262,7 +262,7 @@
       <h1 class="anim">AI를 위한<br>회사 지식 관리 도구</h1>
       <p class="lead anim" style="color:var(--muted)">우리가 만들고 써 온 <strong>llm-wiki-governance</strong> 이야기 —<br>왜 필요하고, 어떻게 발전했고, 어떻게 잘 쓰는가.</p>
       <div class="titlemeta anim">
-        <span class="versionpill">v1.0.0 &nbsp;→&nbsp; v1.29.2</span>
+        <span class="versionpill">v1.0.0 &nbsp;→&nbsp; v1.30.1</span>
         <span class="metachip">방향키 ← → 로 넘기세요</span>
       </div>
     </div>
@@ -498,7 +498,7 @@
   <!-- 6 · TIMELINE -->
   <section class="slide">
     <div class="wrap">
-      <p class="eyebrow anim">발전 스토리 · 1.0 → 1.29.2</p>
+      <p class="eyebrow anim">발전 스토리 · 1.0 → 1.30.1</p>
       <h2 class="anim">한 번에 하나씩, 순서대로 쌓아온 기능</h2>
       <ul class="tl anim">
         <li><span class="ver">1.0</span><span class="desc">안정 선언<small>“사용법을 함부로 안 바꾸겠다”는 약속</small></span></li>
@@ -518,7 +518,8 @@
         <li><span class="ver">1.28</span><span class="desc">게이트를 실제로 켠 릴리스<small><b>문서를 안 고치면 빌드가 빨개진다</b>(<b>impact</b>가 이제 기본으로 차단 — 되돌리는 설정 2가지 제공) · 우리가 배포하는 4개 채널(훅·CI 템플릿·액션·우리 CI)이 드디어 그 게이트를 실행 · 어댑터 8종 전부 v2 형태로 · AI 작업환경 자체를 점검하는 <b>harness-health</b> · 릴리스 노트는 검사 면제</small></span></li>
         <li><span class="ver">1.29</span><span class="desc">켠 게이트가 우리 릴리스에서 울던 것을 고침<small>버전 숫자 <b>한 줄만</b> 바뀐 <b>package.json</b>은 이제 "바뀐 파일"로는 계속 보고하되 <b>문서 대조에는 쓰지 않는다</b> — 배포할 때마다 아무도 조치할 수 없는 경고가 쏟아지던 문제. <b>0이 되지는 않는다</b>(11건 → 4건, 남는 건 내용이 진짜 바뀐 파일들) · 첫 구현이 세 군데 틀렸고 <b>배포 전 교차검증</b>이 전부 잡아냈다</small></span></li>
         <li><span class="ver">1.29.1</span><span class="desc">고칠 방법이 없는 경고를 없앰<small>도구가 <b>손댈 수 없는 문서</b>(도입처가 복사해 쓰는 <b>문서 템플릿</b>)를 두고 "낡았다"고 경고해서, <b>해결할 방법이 없는데 빌드가 빨개지는</b> 상황이 있었다 — 이제 그 문서들은 검사 대상에서 빠진다. 함께: 존재하는 파일을 "없다"고 답하던 메시지를 <b>범위 밖</b>이라고 정확히 말하게 고쳤다. <b>7건 → 5건</b>이고 여기서도 <b>0이 되지는 않는다</b></small></span></li>
-        <li class="now"><span class="ver">1.29.2</span><span class="desc">AI에게 “누가 읽을지”까지 지시 &nbsp;—&nbsp; 가장 최근<small>지금까지는 AI가 <b>얼마나 읽을지</b>만 정해줬다. 이제 <b>훑어보고 찾는 일</b>은 값싼 보조 AI에게 맡기고 <b>요약만 받아오도록</b>, <b>판단·수정·문서 서술</b>은 맡기지 않도록 지시문에 적어 보낸다. <b>정직 포인트</b>: 지시문이 약 <b>30% 길어지는 비용</b>은 확실하고, 절감은 <b>측정하지 않았으므로 주장하지 않는다</b></small></span></li>
+        <li><span class="ver">1.29.2</span><span class="desc">AI에게 “누가 읽을지”까지 지시<small>지금까지는 AI가 <b>얼마나 읽을지</b>만 정해줬다. 이제 <b>훑어보고 찾는 일</b>은 값싼 보조 AI에게 맡기고 <b>요약만 받아오도록</b>, <b>판단·수정·문서 서술</b>은 맡기지 않도록 지시문에 적어 보낸다. <b>정직 포인트</b>: 지시문이 약 <b>30% 길어지는 비용</b>은 확실하고, 절감은 <b>측정하지 않았으므로 주장하지 않는다</b></small></span></li>
+        <li class="now"><span class="ver">1.30</span><span class="desc">부담을 프로젝트에 맞게 고른다 &nbsp;—&nbsp; 가장 최근<small>지금까지는 이 도구를 쓰면 <b>모든 프로젝트가 같은 수준의 문서 관리</b>를 받았다. 이제 <b>lite · standard · strict</b> 세 단계 중에 고른다 — 개인 프로젝트나 빠르게 도는 작업은 <b>lite</b>로 두면 문서 때문에 빌드가 막히지 않고, <b>인수인계</b>를 앞두면 <b>strict</b>로 올린 뒤 <b>backfill</b>이 빠진 문서를 찾아 준다. 검사 엔진은 <b>하나 그대로</b>이고 같은 저장소에서 <b>언제든 오간다</b>. <b>기존 프로젝트는 손대기 전까지 아무것도 안 바뀐다</b>. <b>정직 포인트</b>: AI 지시문이 <b>15~21% 길어지는 비용</b>은 확실하고, 그게 문서 작업을 줄여 값을 하는지는 <b>측정하지 않았다</b></small></span></li>
       </ul>
     </div>
   </section>
@@ -734,7 +735,7 @@
       <p class="big anim">AI는 단순한 도구가 아니라,<br><em>일하는 방식</em>을 바꾸는 것입니다.</p>
       <p class="closeline anim">정답을 찾기보다 <strong>계속 배우고 시도하며</strong> 현장에서 임팩트를 만든다.<br>우리는 이미 그 길 위에 있습니다 — <strong>안전하게, 한 걸음씩.</strong></p>
       <div class="titlemeta anim">
-        <span class="versionpill">감사합니다 · v1.29.2</span>
+        <span class="versionpill">감사합니다 · v1.30.1</span>
       </div>
     </div>
   </section>
