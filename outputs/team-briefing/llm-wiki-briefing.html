@@ -163,6 +163,15 @@
   .tl .desc{display:block;color:var(--ink);font-weight:600;margin-top:.1rem;font-size:1.02rem}
   .tl .desc small{display:block;font-weight:400;color:var(--muted);font-size:.9rem;margin-top:.1rem}
 
+  /* History slides carry ~13 entries and must fit one screen: same content,
+     tighter rhythm. Only the two 발전 스토리 slides use this. */
+  .tl--compact li{padding:.3rem 0 .3rem 1.5rem}
+  .tl--compact li::before{top:.75rem;width:10px;height:10px;left:-6px}
+  .tl--compact .ver{font-size:.86rem}
+  .tl--compact .desc{font-size:.95rem;margin-top:.05rem}
+  .tl--compact .desc small{font-size:.83rem;line-height:1.45}
+  .histhead{font-size:clamp(1.4rem,2.8vw,2.1rem);margin-bottom:.9rem;max-width:34ch}
+
   /* ---- principles ---- */
   .plist{display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem}
   @media (max-width:820px){.plist{grid-template-columns:1fr}}
@@ -495,35 +504,6 @@
     </div>
   </section>
 
-  <!-- 6 · TIMELINE -->
-  <section class="slide">
-    <div class="wrap">
-      <p class="eyebrow anim">발전 스토리 · 1.0 → 1.30.1</p>
-      <h2 class="anim">한 번에 하나씩, 순서대로 쌓아온 기능</h2>
-      <ul class="tl anim">
-        <li><span class="ver">1.0</span><span class="desc">안정 선언<small>“사용법을 함부로 안 바꾸겠다”는 약속</small></span></li>
-        <li><span class="ver">1.1 – 1.4</span><span class="desc">일상 편의 &amp; 보이는 지식<small>바뀐 것만 검사 · 낡은 문서 알림 · 더 많은 언어/도구 · 지식 그래프 · 대시보드</small></span></li>
-        <li><span class="ver">1.5 – 1.7</span><span class="desc">프로그램·AI 연동 &amp; 자동화<small>API · MCP(AI가 도구처럼 위키 조회) · PR마다 자동 점검(CI/CD)</small></span></li>
-        <li><span class="ver">1.8 – 1.11</span><span class="desc">팀·조직 규모 대응<small>프로젝트별 설정 · 공개범위 관리 · 여러 프로젝트 · 저장소 간 연결</small></span></li>
-        <li><span class="ver">1.12 – 1.14</span><span class="desc">더 넓은 지원<small>모바일 · 인프라(도커/쿠버네티스) · 표준 서버 자동 인식</small></span></li>
-        <li><span class="ver">1.15</span><span class="desc">스킬 생성<small>AI가 ‘우리 방식’ 워크플로를 직접 실행하도록 자동화 프롬프트 생성</small></span></li>
-        <li><span class="ver">1.16</span><span class="desc">표준 → 거버넌스 &amp; 새 이름<small>포지셔닝을 ‘거버넌스 도구’로 · 패키지명 <b>llm-wiki-governance</b></small></span></li>
-        <li><span class="ver">1.17 – 1.19</span><span class="desc">측정 · 검색 · 감사<small>영향도 점검 · AI가 위키를 검색 · 근거 단계화 · 작업 실행 감사</small></span></li>
-        <li><span class="ver">1.20 – 1.22</span><span class="desc">현장 피드백 &amp; 한국어화<small>프론트엔드 화면 자동 인식 · 근거/체크리스트 사용성 · 한국어 메시지(<b>--lang ko</b>)</small></span></li>
-        <li><span class="ver">1.23</span><span class="desc">스킬 심화<small>최초 위키 작성 스킬(<b>bootstrap</b>) · Codex 네이티브 스킬(<b>.agents/skills/</b>)</small></span></li>
-        <li><span class="ver">1.24</span><span class="desc">가이드 온보딩 &amp; 문서 언어<small>신입 온보딩·작업 준비(<b>onboard</b>/<b>prepare</b>) · 생성 문서 영어 기본(<b>--doc-lang</b>)</small></span></li>
-        <li><span class="ver">1.25</span><span class="desc">토큰 효율<small>가장 싼 안전한 경로 선택 · compact 조회(<b>--compact</b>/<b>--strict-section</b>) · 스킬 간소화 &amp; 안전한 <b>--refresh</b></small></span></li>
-        <li><span class="ver">1.26</span><span class="desc">견고화 &amp; 도입<small>사람 검토 워크플로(<b>review</b>) · 공급망/CI 위생(무의존성 유지) · 도입 문서(운영 가이드 · 예제 · MCP 신뢰 모델)</small></span></li>
-        <li><span class="ver">1.27</span><span class="desc">감사 마감 &amp; 문맥 규율<small>중복 키·MCP 인자 검증 등 감사 잔여 · 명명 규칙 프리셋(<b>rulesPreset</b>) · 테스트 증거 트레일 · 메모리 임포트(<b>import-memory</b>) · AI가 읽어들이는 양을 제한하는 문맥 예산 · 프롬프트를 목표/금지선/종료기준 3블록으로(선적재 축소, unhobbling)</small></span></li>
-        <li><span class="ver">1.28</span><span class="desc">게이트를 실제로 켠 릴리스<small><b>문서를 안 고치면 빌드가 빨개진다</b>(<b>impact</b>가 이제 기본으로 차단 — 되돌리는 설정 2가지 제공) · 우리가 배포하는 4개 채널(훅·CI 템플릿·액션·우리 CI)이 드디어 그 게이트를 실행 · 어댑터 8종 전부 v2 형태로 · AI 작업환경 자체를 점검하는 <b>harness-health</b> · 릴리스 노트는 검사 면제</small></span></li>
-        <li><span class="ver">1.29</span><span class="desc">켠 게이트가 우리 릴리스에서 울던 것을 고침<small>버전 숫자 <b>한 줄만</b> 바뀐 <b>package.json</b>은 이제 "바뀐 파일"로는 계속 보고하되 <b>문서 대조에는 쓰지 않는다</b> — 배포할 때마다 아무도 조치할 수 없는 경고가 쏟아지던 문제. <b>0이 되지는 않는다</b>(11건 → 4건, 남는 건 내용이 진짜 바뀐 파일들) · 첫 구현이 세 군데 틀렸고 <b>배포 전 교차검증</b>이 전부 잡아냈다</small></span></li>
-        <li><span class="ver">1.29.1</span><span class="desc">고칠 방법이 없는 경고를 없앰<small>도구가 <b>손댈 수 없는 문서</b>(도입처가 복사해 쓰는 <b>문서 템플릿</b>)를 두고 "낡았다"고 경고해서, <b>해결할 방법이 없는데 빌드가 빨개지는</b> 상황이 있었다 — 이제 그 문서들은 검사 대상에서 빠진다. 함께: 존재하는 파일을 "없다"고 답하던 메시지를 <b>범위 밖</b>이라고 정확히 말하게 고쳤다. <b>7건 → 5건</b>이고 여기서도 <b>0이 되지는 않는다</b></small></span></li>
-        <li><span class="ver">1.29.2</span><span class="desc">AI에게 “누가 읽을지”까지 지시<small>지금까지는 AI가 <b>얼마나 읽을지</b>만 정해줬다. 이제 <b>훑어보고 찾는 일</b>은 값싼 보조 AI에게 맡기고 <b>요약만 받아오도록</b>, <b>판단·수정·문서 서술</b>은 맡기지 않도록 지시문에 적어 보낸다. <b>정직 포인트</b>: 지시문이 약 <b>30% 길어지는 비용</b>은 확실하고, 절감은 <b>측정하지 않았으므로 주장하지 않는다</b></small></span></li>
-        <li class="now"><span class="ver">1.30</span><span class="desc">부담을 프로젝트에 맞게 고른다 &nbsp;—&nbsp; 가장 최근<small>지금까지는 이 도구를 쓰면 <b>모든 프로젝트가 같은 수준의 문서 관리</b>를 받았다. 이제 <b>lite · standard · strict</b> 세 단계 중에 고른다 — 개인 프로젝트나 빠르게 도는 작업은 <b>lite</b>로 두면 문서 때문에 빌드가 막히지 않고, <b>인수인계</b>를 앞두면 <b>strict</b>로 올린 뒤 <b>backfill</b>이 빠진 문서를 찾아 준다. 검사 엔진은 <b>하나 그대로</b>이고 같은 저장소에서 <b>언제든 오간다</b>. <b>기존 프로젝트는 손대기 전까지 아무것도 안 바뀐다</b>. <b>정직 포인트</b>: AI 지시문이 <b>15~21% 길어지는 비용</b>은 확실하고, 그게 문서 작업을 줄여 값을 하는지는 <b>측정하지 않았다</b></small></span></li>
-      </ul>
-    </div>
-  </section>
-
   <!-- NEW · 표준 → 거버넌스 + 새 이름 (1.16) -->
   <section class="slide">
     <div class="wrap">
@@ -725,6 +705,49 @@
         </div>
       </div>
       <p class="callout anim" style="margin-top:1.3rem;color:var(--muted)">그래서 진짜 자산은 <strong style="color:var(--ink)">‘유지된 내용’</strong>입니다 — 낡은 위키를 믿게 한 이전 실험에선 <strong style="color:var(--ink)">보안 관련 오답</strong>이 나왔고, 그걸 막는 게 <span class="mono">drift</span>·사람 검토(<span class="mono">verified</span>)입니다. <span style="font-family:var(--mono);font-size:.85em">외부 Vue/Quasar 앱 1개 · Claude Opus 4.8 · 태스크 6개 · N=3 · 채점은 에이전트(기준은 사람 표본 비준) · 6개 중 1개는 조회가 3.17배로 패 — 보편적 속도 주장이 아닌, 스코프가 한정된 결과.</span></p>
+    </div>
+  </section>
+
+  <!-- HISTORY 1 · 1.0 → 1.26 (two columns; short entries) -->
+  <section class="slide">
+    <div class="wrap">
+      <p class="eyebrow anim">발전 스토리 ① · 1.0 → 1.26</p>
+      <h2 class="anim histhead">한 번에 하나씩, 순서대로 쌓아온 기능</h2>
+      <div class="grid g2 anim" style="align-items:start;column-gap:2.4rem">
+        <ul class="tl tl--compact">
+          <li><span class="ver">1.0</span><span class="desc">안정 선언<small>“사용법을 함부로 안 바꾸겠다”는 약속</small></span></li>
+          <li><span class="ver">1.1 – 1.4</span><span class="desc">일상 편의 &amp; 보이는 지식<small>바뀐 것만 검사 · 낡은 문서 알림 · 더 많은 언어/도구 · 지식 그래프 · 대시보드</small></span></li>
+          <li><span class="ver">1.5 – 1.7</span><span class="desc">프로그램·AI 연동 &amp; 자동화<small>API · MCP(AI가 도구처럼 위키 조회) · PR마다 자동 점검(CI/CD)</small></span></li>
+          <li><span class="ver">1.8 – 1.11</span><span class="desc">팀·조직 규모 대응<small>프로젝트별 설정 · 공개범위 관리 · 여러 프로젝트 · 저장소 간 연결</small></span></li>
+          <li><span class="ver">1.12 – 1.14</span><span class="desc">더 넓은 지원<small>모바일 · 인프라(도커/쿠버네티스) · 표준 서버 자동 인식</small></span></li>
+          <li><span class="ver">1.15</span><span class="desc">스킬 생성<small>AI가 ‘우리 방식’ 워크플로를 직접 실행하도록 자동화 프롬프트 생성</small></span></li>
+          <li><span class="ver">1.16</span><span class="desc">표준 → 거버넌스 &amp; 새 이름<small>포지셔닝을 ‘거버넌스 도구’로 · 패키지명 <b>llm-wiki-governance</b></small></span></li>
+        </ul>
+        <ul class="tl tl--compact">
+          <li><span class="ver">1.17 – 1.19</span><span class="desc">측정 · 검색 · 감사<small>영향도 점검 · AI가 위키를 검색 · 근거 단계화 · 작업 실행 감사</small></span></li>
+          <li><span class="ver">1.20 – 1.22</span><span class="desc">현장 피드백 &amp; 한국어화<small>프론트엔드 화면 자동 인식 · 근거/체크리스트 사용성 · 한국어 메시지(<b>--lang ko</b>)</small></span></li>
+          <li><span class="ver">1.23</span><span class="desc">스킬 심화<small>최초 위키 작성 스킬(<b>bootstrap</b>) · Codex 네이티브 스킬(<b>.agents/skills/</b>)</small></span></li>
+          <li><span class="ver">1.24</span><span class="desc">가이드 온보딩 &amp; 문서 언어<small>신입 온보딩·작업 준비(<b>onboard</b>/<b>prepare</b>) · 생성 문서 영어 기본(<b>--doc-lang</b>)</small></span></li>
+          <li><span class="ver">1.25</span><span class="desc">토큰 효율<small>가장 싼 안전한 경로 선택 · compact 조회(<b>--compact</b>/<b>--strict-section</b>) · 스킬 간소화 &amp; 안전한 <b>--refresh</b></small></span></li>
+          <li><span class="ver">1.26</span><span class="desc">견고화 &amp; 도입<small>사람 검토 워크플로(<b>review</b>) · 공급망/CI 위생(무의존성 유지) · 도입 문서(운영 가이드 · 예제 · MCP 신뢰 모델)</small></span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY 2 · 1.27 → 1.30 (single column; detailed entries) -->
+  <section class="slide">
+    <div class="wrap">
+      <p class="eyebrow anim">발전 스토리 ② · 1.27 → 1.30 · 가장 최근</p>
+      <h2 class="anim histhead">최근 릴리스는 조금 더 자세히</h2>
+      <ul class="tl tl--compact anim">
+        <li><span class="ver">1.27</span><span class="desc">감사 마감 &amp; 문맥 규율<small>중복 키·MCP 인자 검증 등 감사 잔여 · 명명 규칙 프리셋(<b>rulesPreset</b>) · 테스트 증거 트레일 · 메모리 임포트(<b>import-memory</b>) · AI가 읽어들이는 양을 제한하는 문맥 예산 · 프롬프트를 목표/금지선/종료기준 3블록으로(선적재 축소, unhobbling)</small></span></li>
+        <li><span class="ver">1.28</span><span class="desc">게이트를 실제로 켠 릴리스<small><b>문서를 안 고치면 빌드가 빨개진다</b>(<b>impact</b>가 이제 기본으로 차단 — 되돌리는 설정 2가지 제공) · 우리가 배포하는 4개 채널(훅·CI 템플릿·액션·우리 CI)이 드디어 그 게이트를 실행 · 어댑터 8종 전부 v2 형태로 · AI 작업환경 자체를 점검하는 <b>harness-health</b> · 릴리스 노트는 검사 면제</small></span></li>
+        <li><span class="ver">1.29</span><span class="desc">켠 게이트가 우리 릴리스에서 울던 것을 고침<small>버전 숫자 <b>한 줄만</b> 바뀐 <b>package.json</b>은 이제 "바뀐 파일"로는 계속 보고하되 <b>문서 대조에는 쓰지 않는다</b> — 배포할 때마다 아무도 조치할 수 없는 경고가 쏟아지던 문제. <b>0이 되지는 않는다</b>(11건 → 4건, 남는 건 내용이 진짜 바뀐 파일들) · 첫 구현이 세 군데 틀렸고 <b>배포 전 교차검증</b>이 전부 잡아냈다</small></span></li>
+        <li><span class="ver">1.29.1</span><span class="desc">고칠 방법이 없는 경고를 없앰<small>도구가 <b>손댈 수 없는 문서</b>(도입처가 복사해 쓰는 <b>문서 템플릿</b>)를 두고 "낡았다"고 경고해서, <b>해결할 방법이 없는데 빌드가 빨개지는</b> 상황이 있었다 — 이제 그 문서들은 검사 대상에서 빠진다. 함께: 존재하는 파일을 "없다"고 답하던 메시지를 <b>범위 밖</b>이라고 정확히 말하게 고쳤다. <b>7건 → 5건</b>이고 여기서도 <b>0이 되지는 않는다</b></small></span></li>
+        <li><span class="ver">1.29.2</span><span class="desc">AI에게 “누가 읽을지”까지 지시<small>지금까지는 AI가 <b>얼마나 읽을지</b>만 정해줬다. 이제 <b>훑어보고 찾는 일</b>은 값싼 보조 AI에게 맡기고 <b>요약만 받아오도록</b>, <b>판단·수정·문서 서술</b>은 맡기지 않도록 지시문에 적어 보낸다. <b>정직 포인트</b>: 지시문이 약 <b>30% 길어지는 비용</b>은 확실하고, 절감은 <b>측정하지 않았으므로 주장하지 않는다</b></small></span></li>
+        <li class="now"><span class="ver">1.30</span><span class="desc">부담을 프로젝트에 맞게 고른다 &nbsp;—&nbsp; 가장 최근<small>지금까지는 이 도구를 쓰면 <b>모든 프로젝트가 같은 수준의 문서 관리</b>를 받았다. 이제 <b>lite · standard · strict</b> 세 단계 중에 고른다 — 개인 프로젝트나 빠르게 도는 작업은 <b>lite</b>로 두면 문서 때문에 빌드가 막히지 않고, <b>인수인계</b>를 앞두면 <b>strict</b>로 올린 뒤 <b>backfill</b>이 빠진 문서를 찾아 준다. 검사 엔진은 <b>하나 그대로</b>이고 같은 저장소에서 <b>언제든 오간다</b>. <b>기존 프로젝트는 손대기 전까지 아무것도 안 바뀐다</b>. <b>정직 포인트</b>: AI 지시문이 <b>15~21% 길어지는 비용</b>은 확실하고, 그게 문서 작업을 줄여 값을 하는지는 <b>측정하지 않았다</b></small></span></li>
+      </ul>
     </div>
   </section>
 
