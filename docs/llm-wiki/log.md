@@ -24,6 +24,33 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-08 - fix(deck): 덱이 MCP 툴 개수를 1.30.0 이전 숫자로 말하고 있었다
+
+- status: needs_review (에이전트 편집 — `outputs/`는 위키 내용 문서가 아니라 승격 대상 없음)
+- actor: Claude Code (유지보수자 지시로 브라우저 눈 확인 수행)
+- scope: docs (발표 덱 1줄 교정)
+- changed:
+  - `outputs/team-briefing/llm-wiki-briefing.html` 슬라이드 8 — "열려 있는 건 읽기/확인 **17개**뿐"을
+    **18개**로 고쳤다. 1.30.0이 MCP에 읽기 전용 `mode` 툴을 더해 17 → 18이 됐는데, 덱 정렬 배치가
+    타임라인과 버전 표기만 보고 이 문장을 놓쳤다. 소스로 확인했다: `MCP_TOOLS.length === 18`
+    (validate·audit·next·status·doctor·stats·graph·explain·**mode**·handoff·prompt·list_docs·
+    search_docs·get_doc·get_related·onboard·review·prepare).
+  - Artifact 재게시(같은 URL) 후 브라우저에서 반영 확인.
+- evidence:
+  - 브라우저로 22장 전부 넘겨 확인(게시본 기준, 1440x900). 레이아웃 깨짐·줄바꿈 깨짐·오탈자 없음,
+    콘솔 에러 0. 버전 표기 4곳(탭 제목·표지 필·타임라인 eyebrow·마무리 필) 모두 v1.30.1.
+  - 1.30 타임라인 항목이 전문 렌더되고 "가장 최근" 주황 마커가 1.29.2에서 1.30으로 이동한 것 확인.
+  - 숫자 주장 일괄 점검: 노트의 "21장" 2건은 21번 슬라이드 상호참조로 정상, 노트 절 22개 = 슬라이드
+    22장 일치.
+- caveats:
+  - **슬라이드 11(타임라인)이 화면보다 훨씬 길다.** 1440x900에서 한 화면에 1.16까지만 보이고 1.30까지
+    보려면 스크롤이 필요하며, 이 상태에서 방향키를 누르면 다음 장으로 건너뛴다(실제로 확인 중
+    11 → 12로 건너뛰었다). 발표 시 이 장은 스크롤로 넘겨야 한다. 항목이 20개라 구조적인 문제이고,
+    이번 배치에서 고치지 않았다 — 장을 쪼개면 노트 12~22장 번호를 전부 밀어야 한다.
+  - 확인은 게시본(Artifact) 기준이다. 저장소의 HTML은 doctype·head가 없어 로컬 파일로 직접 열면
+    quirks mode로 렌더된다(게시 시 래퍼가 붙는다). 브라우저 확장이 `file://`을 막아 로컬 렌더는
+    확인하지 못했다.
+
 ## 2026-09-08 - chore(wiki): 1.30.1 릴리스 후 재기준선
 
 - status: verified (재스탬프 후 `review --approve-all --yes`)
