@@ -6,6 +6,55 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.30.1 — 2026-09-08
+
+Documentation only. No runtime, CLI, or public-API change — published so the rewritten
+README reaches the npm package page, the same reason 1.26.1–1.26.3 shipped.
+
+- **The README is an introduction again, not a specification.** `README.md` and
+  `README.ko.md` drop from 270 lines to 104 each and are kept structurally identical.
+  What stays: the intro, quick start, the five things governance buys you, a command
+  table with one line per group, the governance-mode table, MCP, supported environments,
+  the CI one-liner, and the links. What goes: the RAG comparison table, the model-tier
+  table, the pipeline diagram with its sample output, the *Governance in practice*
+  bullets (including a fifteen-line paragraph on exemption rules), the entire
+  *Upgrading* section, and the benchmark section. **Nothing was dropped from the
+  repository.** All eight topics were checked against `GATE_REVIEW.md`, this changelog,
+  `PUBLIC_API.md`, `BENCHMARK.md`, and `docs/OPERATIONS.md`, which carry them at equal
+  or greater depth.
+- **Two things were deliberately kept in the shorter README.** The warning to read
+  before putting `impact` in a required check, with all three ways to soften it: a
+  project on `^1.27.2` picks that gate up automatically and should not learn about it
+  from a red build. And one benchmark conclusion that changes how you use the tool — a
+  wiki that exists but was never enriched measured *worse* than no wiki at all — while
+  the numbers moved to `BENCHMARK.md`. Moving the numbers out also matches this
+  project's standing ban on performance headlines in the README.
+- **The Korean documents now read as Korean rather than as a translation.**
+  `README.ko.md`, `CHANGELOG.ko.md`, `ROADMAP.ko.md`, `CONTRIBUTING.ko.md`,
+  `SECURITY.ko.md`, and `docs/BENCHMARK_DISCLOSURE.ko.md` were rewritten: the English
+  sentence structure showed through, em dashes used as English parentheticals fell from
+  491 to 69 across the set, bold markers sat on Korean particles, and the register
+  switched mid-document. Section titles in `CHANGELOG.ko.md` had been splitting three
+  ways (`### Added`, `### 추가`, `### 추가 (Added)`) and are now consistent. Every
+  measurement, judgement, and recorded caveat is unchanged; `CODE_OF_CONDUCT.ko.md` was
+  left alone because it is the standard Contributor Covenant 2.1 translation.
+- **`SECURITY.ko.md` regained a section it never had.** The English "Reporting a
+  sensitive-info false positive" — what to do while blocked, what to put in a report,
+  why there is no per-document exception, and what a sensitive finding costs while it
+  stands — was missing from the Korean file entirely: 68 lines that only English readers
+  could see. Also corrected: three links in `CONTRIBUTING.ko.md` pointed at English
+  documents that have Korean counterparts, and `ROADMAP.ko.md` carried a transliterated
+  mistranslation ("breadth") plus two release entries in the wrong order.
+- **Missing 1.30.0 facts added to the Korean README while rewriting it:** governance
+  modes set the default severity of `impact.source_changed`, the mode floor sits under
+  `rulesPreset` and explicit `rules` in the precedence chain, and `governance.mode` is
+  a third way to soften the gate.
+- Wiki upkeep, per this repository's own gate: trimming the README made
+  `impact.source_changed` fire on the three `verified` documents that cite it
+  (`EXAMPLES.md`, `index.md`, `docs/llm-wiki/README.md`). Each was re-read rather than
+  re-stamped blind; all three bodies survived unchanged, two gained a review note, and
+  the oldest note in each rotated into `REVIEW_HISTORY.md`.
+
 ## 1.30.0 — 2026-09-07
 
 **Governance modes: `lite` / `standard` / `strict`.** One engine, three policy levels, switchable

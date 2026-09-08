@@ -24,6 +24,116 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-08 - chore(release): 1.30.1 배포 준비 (문서 전용)
+
+- status: needs_review (에이전트 편집 — 위키 내용 문서는 건드리지 않아 승격 대상 없음)
+- actor: Claude Code (유지보수자 지시로 배포 진행)
+- scope: release (버전·CHANGELOG 2종·README 2종의 액션 핀·버전 단언 테스트)
+- changed:
+  - `package.json` — `1.30.0` → `1.30.1`. 런타임·CLI·공개 API 무변경이므로 PATCH이며,
+    npm 패키지 페이지에 다시 쓴 README를 올리기 위한 배포다(1.26.1~1.26.3과 같은 이유).
+  - `CHANGELOG.md`·`CHANGELOG.ko.md` — 1.30.1 항목 신설.
+  - `README.md`·`README.ko.md` — 축약하면서 빠졌던 CI 안내를 한 문단으로 되살리고 컴포지트 액션을
+    `@v1.30.1`로 고정했다. `RELEASE_CHECKLIST.md`가 "README 2종이 현재 태그의 컴포지트 액션을
+    참조할 것"을 요구하는데, 축약이 그 줄을 지워서 체크리스트를 통과할 수 없는 상태였다. 축약 자체보다
+    체크리스트가 옳다고 판단했다 — 그 항목은 1.27.0~1.27.2에서 핀이 실제로 낡았던 사고 때문에 생겼다.
+  - `tests/verification.test.js` — 패키지 버전을 못박는 단언을 `1.30.1`로 갱신(릴리스 절차의 일부).
+- evidence:
+  - `npm test` — 568/568 pass, fail 0, skipped 0
+  - `validate --strict`·`impact`·`drift`·`review`·`validate-frontmatter` — 전부 pass, finding 0
+  - `npm pack --dry-run` — `llm-wiki-governance-1.30.1.tgz`, 78 파일, `rules/frontmatter.schema.json`·
+    `README.ko.md`·`CHANGELOG.ko.md` 포함 확인
+  - `doctor` — `governance_mode: strict`, `ci_governance: 4 blocking`, omission gate 있음
+- caveats:
+  - `.github/actions/validate/action.yml`의 `version` 기본값은 `"1.30"` 그대로다. PATCH라 `X.Y`가
+    바뀌지 않아 갱신 대상이 아니다.
+  - ROADMAP 2종에는 항목을 추가하지 않았다. 문서 전용 PATCH는 로드맵 라인을 만들지 않는 것이
+    1.26.1~1.26.3의 선례다.
+  - 팀 브리핑 덱은 갱신하지 않았다. `RELEASE_CHECKLIST.md`의 조건은 "사용자 대상 동작(명령·옵션·
+    사용법·MCP 툴 표면)이 바뀐 경우"인데 이번 릴리스는 해당하지 않는다.
+  - 배포 인증은 OIDC 단독이 아니라 `npm-release` 환경 secret의 패키지 한정 토큰 경로다
+    (v1.29.3·v1.29.4에서 OIDC 토큰 교환이 완료되지 않은 것이 기록돼 있다). provenance는 계속 OIDC.
+
+## 2026-09-08 - docs(readme): README가 제품 사양서로 자라서 처음 온 사람에게 너무 무거웠다
+
+- status: verified (에이전트 편집 후 `review --approve-all --yes`로 승격; 이 저장소 정책)
+- actor: Claude Code (유지보수자 지시)
+- scope: docs (루트 README 2종 축약 + 게이트가 지목한 위키 3종 + 아카이브 1종; 코드·CLI·계약 무변경)
+- changed:
+  - `README.md`·`README.ko.md` — 각각 **270 → 102줄**. 남긴 것은 소개, 빠른 시작, 핵심 기능 5가지,
+    명령 표(그룹당 한 줄), 거버넌스 모드(표 + 3문단), MCP, 지원 환경, 링크. 걷어낸 것은 RAG 대비 표,
+    권장 모델 표, "작동 방식"(mermaid + 샘플 출력), "거버넌스 실전"(15줄짜리 면제 규칙 문단 포함),
+    "업그레이드: impact가 이제 빌드를 실패시킵니다" 절 전체, "실제로 도움이 되나?" 절. 두 파일을
+    같은 구조·같은 줄 수로 맞췄다.
+  - 잘라낸 내용은 **버리지 않고 이미 있는 문서로 넘겼다.** 8개 항목(impact error 기본값과 탈출구 2종,
+    오탐률 27%/57%, 릴리스 노트 면제, version-only 매니페스트 면제, templates/ 제외, 모드 상세,
+    벤치 수치, 명령별 상세)이 `GATE_REVIEW.md`·`CHANGELOG`·`PUBLIC_API.md`·`BENCHMARK.md`·
+    `docs/OPERATIONS.md`에 동등하거나 더 자세히 있음을 대조로 확인했다.
+  - **안전 고지는 남겼다.** `impact`를 필수 체크에 넣기 전 읽으라는 경고와 완화 3경로
+    (`governance.mode` `standard`/`lite`, `rules`의 `warning`)를 거버넌스 모드 절에 한 문단으로
+    유지하고 상세는 CHANGELOG 1.28.0으로 링크했다. 벤치 수치는 README에서 뺐고, 대신 사용 판단에
+    필요한 결론 하나(보강하지 않은 위키는 없느니만 못하다)만 링크와 함께 남겼다 — README 성능
+    헤드라인 금지 규칙과도 맞는 방향이다.
+  - `docs/llm-wiki/README.md`·`EXAMPLES.md` — `impact.source_changed`가 지목해 인용 소스
+    `README.md`를 재확인하고 Review Note를 각 1건 추가(본문 불변). 상한 5건을 지키려고 각각
+    최고령 1건을 `REVIEW_HISTORY.md`로 원문 그대로 이동.
+  - `docs/llm-wiki/index.md` — 같은 게이트가 지목했고 본문 주장(1.29.0 실측 서술)이 축약과 무관해
+    재스탬프만 했다. Review Notes 절이 없는 문서다.
+  - `docs/llm-wiki/REVIEW_HISTORY.md` — 이동분 2건 수용, `Wiki README` 1→2건·`Examples` 8→9건.
+- evidence:
+  - `npm test` — 568/568 pass, fail 0, skipped 0
+  - `validate --strict` / `impact` / `drift` / `review` / `validate-frontmatter` — 전부 pass, finding 0
+  - 축약 직후 `impact`가 **error 3건**을 냈다(`EXAMPLES.md`·`index.md`·`README.md`가 루트
+    `README.md`를 인용). 게이트가 의도대로 동작한 것이고, 세 문서의 주장이 실제로 깨졌는지 대조한
+    뒤 해소했다.
+- caveats:
+  - **도그푸딩이 내 실수를 잡았다.** `EXAMPLES.md`의 아카이브 포인터를 8건 그대로 두고
+    `REVIEW_HISTORY`만 9건으로 고쳤는데, `tests/review-notes-cap.test.js`의 정합성 검사가
+    "pointer says 8 entries, archive section holds 9"로 실패시켰다. 사람 눈으로는 넘어갈 불일치다.
+  - 영문 README가 `PUBLIC_API.md`를 상세 레퍼런스로 가리키는데 **그 문서 본문은 한국어다**(한글 30.5%).
+    축약으로 이 의존이 더 커져서, 영문 README에는 `npx llm-wiki help <command>`가 영어 경로임을
+    명시하고 PUBLIC_API 링크에 한국어임을 적었다. 영문 레퍼런스 부재 자체는 미해결이다.
+  - 국문 README에서 `docs/OPERATIONS.md`와 `GATE_REVIEW.md`가 영문임을 링크에 표시했다.
+
+## 2026-09-08 - docs(ko): 한국어 문서가 영어 원문의 문장 구조를 그대로 옮겨 사람이 쓴 글로 읽히지 않았다
+
+- status: needs_review (에이전트 편집 — 이 배치는 `docs/llm-wiki/` 내용 문서를 건드리지 않아
+  `review --approve-all`이 승격할 대상이 없다. 로그는 1.29.1부터 승격 대상에서 제외된다)
+- actor: Claude Code (유지보수자 지시)
+- scope: docs (사람이 읽는 한국어 문서 6종; 코드·CLI·계약 무변경)
+- changed:
+  - `README.ko.md` — 전면 재작성. 삽입구용 em dash 62 → 13(정의 목록 자리만 남김), 조사에 붙은
+    굵은 글씨 제거, `harness-health`·retrieval 행과 "실제로 도움이 되나?" 절만 한다체였던 것을
+    합니다체로 통일. 1.30.0 사실 보강 3건: `impact` 행에 모드별 기본 severity, `rules`/
+    `rulesPreset` 우선순위에 모드 바닥값, 업그레이드 절에 `governance.mode` 경로.
+    "더 알아보기"의 ROADMAP 링크를 국문판으로 교정.
+  - `CHANGELOG.ko.md` — 전면 재작성(과거 릴리스 기록 포함, 유지보수자 결정). em dash 235 → 53.
+    `### Added`/`Changed`/`Fixed`/`Notes`/`Breaking`/`Tests`/`Internal`/`Safety`/
+    `Documentation`로 갈려 있던 하위 절 제목을 한국어로 통일. 버전 항목 51개와 모든 수치·판정·
+    유보 문구는 원문 그대로.
+  - `ROADMAP.ko.md` — 전면 재작성. em dash 162 → 9. 오역 1건 교정("프로젝트 *브레드스*를
+    확장한다" → "다룰 수 있는 프로젝트의 폭을 넓힌다"), "하니스"/"하네스" 표기 혼용 통일,
+    post-1.19 목록에서 1.25가 1.24보다 앞서 있던 순서 교정. `last_updated` 재스탬프.
+  - `CONTRIBUTING.ko.md` — 재작성. "런타임 AND 개발 의존성" 같은 직역 정리. 국문 문서인데
+    영문판을 가리키던 내부 링크 3건을 국문판으로 교정(CODE_OF_CONDUCT·SECURITY·ROADMAP).
+  - `SECURITY.ko.md` — 재작성 + **누락 절 복원**. 영문판의 "Reporting a sensitive-info false
+    positive"(68줄, 하위 절 4개)가 국문판에 통째로 빠져 있었다. `#mcp-서버-신뢰-모델` 앵커는
+    README가 참조하므로 제목 문자열을 보존했다.
+  - `docs/BENCHMARK_DISCLOSURE.ko.md` — 재작성. 측정값·가명 규칙·잔여 노출 서술은 원문 그대로.
+- unchanged:
+  - `CODE_OF_CONDUCT.ko.md` — Contributor Covenant 2.1의 표준 번역이라 손대지 않았다. 임의로
+    고치면 원문과 어긋난다.
+  - `docs/llm-wiki/` 하위 위키 52종 — 에이전트가 읽는 문서라 이번 범위 밖(유지보수자 결정).
+- evidence:
+  - `npm test` — 568/568 pass, fail 0, skipped 0 (출하 문구를 읽는 prose census 테스트 포함)
+  - `validate --strict` — result pass, findings 0
+  - `impact` — result pass, impacted_verified_docs 0
+  - `validate-frontmatter` — result pass, findings 0
+- caveats:
+  - 영문 정본과의 쌍이 세 곳에서 의도적으로 갈렸다: README.ko의 1.30.0 사실 보강 3건, ROADMAP.ko의
+    항목 순서 교정, CONTRIBUTING.ko의 국문 링크. 영문판에 같은 내용을 반영할지는 미결이다.
+  - 문장 재작성이므로 수치·판정·유보는 하나도 바꾸지 않았으나, 문구 대조는 사람 검토가 필요하다.
+
 ## 2026-09-07 - fix(governance): 도그푸딩에서 새 명령이 자기 증거보다 넓은 부정을 단언하고, 통과 불가한 준비도 체크를 요구했다
 
 - status: needs_review (에이전트 편집 — 배치 끝에 `review --approve-all --yes`로 승격)
