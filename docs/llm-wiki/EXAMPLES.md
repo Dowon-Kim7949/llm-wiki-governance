@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-governance
-last_updated: 2026-09-07
+last_updated: 2026-09-08
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-07
+reviewed_at: 2026-09-08
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -142,11 +142,11 @@ llm-wiki explain content.not_enriched
 
 ## Review Notes
 
-Older review notes (8 entries, 2026-07-13 → 2026-07-23) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (9 entries, 2026-07-13 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-13 → 2026-07-23)을 `REVIEW_HISTORY.md`의 신규 `Examples` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서도 인수인계의 위반 목록에서 빠져 있었다**(`BENCHMARK.md`와 함께) — 손으로 적은 목록 대신 전 문서를 계수해서야 드러났고, 이제 `tests/review-notes-cap.test.js`가 그 계수를 대신한다. 예제 본문·명령 표기는 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 결정 21·28로 바뀐 `src/cli.js`(신규 `--watch-needs-review`, `impact` 도움말 재작성)와 `README.md`(Upgrading 절)를 대조했다: 기존 예시 중 거짓이 된 문장은 하나도 없었고(이 문서는 `impact --strict`를 쓴 적이 없고 `--strict` 설명은 `validate` 한정이라 그 문장은 **불변**), 대신 CI 절에 `impact --since`가 플래그 없이 exit 1이라는 계약과 되돌리는 설정 두 가지(`rules`의 `warning`/`info`/`off`, `rulesPreset: "relaxed"`)를 더하고 `drift --watch-needs-review` 예시 절을 신설했다 — 두 예시 모두 실제 실행으로 확인했다(`impact --since HEAD~1` → error 6건·exit 1).
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `src/cli.js`, `README.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서의 예제는 `drift`의 usage 요약을 인용하지 않고(직전 노트에서 추가한 것은 `impact` CI 레시피다), README 변경은 Upgrading 절의 **배포 상태 문장**(“다음 릴리스는 MAJOR·미릴리스” → “1.28.0으로 배포”)과 액션 핀 문자열이라 예제가 재현하는 동작에 영향이 없다 — **불변**. 본문 변경 없음.
 - 2026-08-19(1.29.2 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 이번 릴리스 커밋의 README 변경은 **액션 핀 한 줄**(`@v1.29.1` → `@v1.29.2`)이 전부이고, 이 문서의 CI 레시피는 핀 문자열을 재현하지 않는다(인용하는 것은 `impact --since`의 exit 계약과 완화 설정 두 가지다) — 예제가 재현하는 동작에 영향이 없어 본문 **불변**. 1.29.2의 실기능(`delegationPolicy`)은 생성 프롬프트 안의 문장이라 예제 명령 표면을 바꾸지 않는다. 2026-08-03(1.28.0)·2026-08-06(1.29.1)과 같은 유형이다. 상한 5건을 지키려고 최고령 1건(2026-07-23, `--doc-lang` 예시 추가)을 `REVIEW_HISTORY.md`의 `Examples` 절로 원문 그대로 옮겼다.
 
 - 2026-09-07(1.30.0)에 거버넌스 모드 예제 절(`평소에는 lite, 인수인계 전에 strict`)을 추가했다. `impact.source_changed`가 지목한 인용 소스 2건(`src/cli.js`·`README.md`)의 변경은 `mode`/`backfill` 명령·`--mode` 옵션 등록과 README의 새 절이라 기존 예제 절은 전부 그대로 유효하다 — **새 워크플로를 보여줄 예제가 없다**는 것이 실제 공백이었다.
+- 2026-09-08에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README를 소개와 핵심 기능 위주로 축약하면서, `impact`의 exit 계약과 완화 설정 두 가지를 적어 두던 Upgrading 절이 README에서 빠지고 그 상세가 `CHANGELOG`(1.28.0)로 넘어갔다. 이 문서의 CI 레시피는 README를 인용하는 것이 아니라 그 계약 자체를 재현하므로 예제는 전부 그대로 유효하다 — `impact --since`가 플래그 없이 exit 1이라는 것도, `rules`의 `warning`/`info`/`off`와 `rulesPreset: "relaxed"`도 제품 동작이 바뀐 것이 아니라 서술 위치만 옮겼다. 거버넌스 모드 예제 절도 README의 요약본이 아니라 실제 명령을 재현하므로 영향이 없다. 본문 **불변**. 상한 5건을 지키려고 최고령 1건(2026-08-03, Review Notes 상한 집행 배치)을 `REVIEW_HISTORY.md`의 `Examples` 절로 원문 그대로 옮겼다.

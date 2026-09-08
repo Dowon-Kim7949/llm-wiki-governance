@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: review_history
 project: llm-wiki-governance
-last_updated: 2026-09-07
+last_updated: 2026-09-08
 author: Claude Code
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -35,7 +35,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-07
+reviewed_at: 2026-09-08
 ---
 
 # Review History
@@ -224,7 +224,7 @@ reviewed_at: 2026-09-07
 - 2026-08-03에 **`impact` 게이트가 이 문서를 옳게 지목했고, 그것을 노이즈로 분류한 내 판정이 틀렸다.** N-10 배치(배포 텍스트의 거짓 쓰기 범위 수정)에서 이 문서의 `review --approve` 서술은 이미 정확했지만(직전 세션에 교정) **`drift [--downgrade]` 서술은 같은 `tags` 동기화를 빠뜨린 채였다** — N-4가 두 명령을 같은 `syncStatusTag`로 묶었으므로 계약도 양쪽에 있어야 한다. `drift` 항목에 상태 태그 동기화와 그 보수적 조건(이미 있는 태그만 고침)을 추가했다. **이 문서가 이 배치의 11건 팬아웃 중 참 양성 5번째이며, 참/노이즈 판정이 4/7에서 5/6으로 바뀌었다**(로드맵 N-10 절에 정정 기록). 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입. 별건: 이 문서의 Review Notes는 이 항목으로 8건이 되어 5건 상한을 넘고 아카이브 섹션이 없다(`PUBLIC_API.md` 38건·로드맵 9건과 같은 미집행 상태).
 ## Examples
 
-원문서: [EXAMPLES.md](EXAMPLES.md) — 8건(2026-07-13 → 2026-07-23), 2026-08-03 이전분.
+원문서: [EXAMPLES.md](EXAMPLES.md) — 9건(2026-07-13 → 2026-08-03), 2026-09-08 이전분.
 
 - 2026-07-13에 CLI 도움말과 공개 명령 표면을 기준으로 검토했다.
 - 2026-07-16에 1.12.0 release-prep에서 `README.md`가 변경되어(감지 대상 행 추가) `evidence.stale`이 발생했다. 이 문서 내용은 무관하며 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 baseline을 refresh해 `verified`를 유지한다(내용 불변).
@@ -234,6 +234,8 @@ reviewed_at: 2026-09-07
 - 2026-07-23에 Guided Onboarding and Task Preparation(1.24 대상; 읽기 전용 `onboard`/`prepare` 명령·스킬, 검색 랭킹 `rankDocsByQuery` 재사용)을 반영했다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등한다 — 사람 검토 전까지 미확정이며 허위 검토 메타를 넣지 않는다. 이번 소스 변경(`src/commands/guided.js` 신규 등)으로 소스를 참조하는 다른 verified 문서도 재검토가 필요하다(그 문서들은 `drift --downgrade`로 정직하게 needs_review 처리).
 - 2026-07-23에 "생성 문서 언어 선택(--doc-lang, 1.24)" 예시 섹션을 추가했다(`quickstart --write --agent claude` 영어 기본 / `--doc-lang ko` 한국어 / config `docLanguage`). 예시 명령은 현재 CLI 표면과 일치한다. 에이전트(Claude Code) 편집이라 `needs_review` 유지 — 사람 검토 후 재승인 예정.
 - 2026-07-23에 위 1.24.0(doc-language i18n + guided onboarding) 반영분을 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-23)를 거쳐 `verified`로 재승인했다. `--doc-lang` 예시가 현재 CLI 표면(HEAD c7a1a7a, npm dist-tags.latest=1.24.0)과 일치함을 확인했다.
+- 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-13 → 2026-07-23)을 `REVIEW_HISTORY.md`의 신규 `Examples` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서도 인수인계의 위반 목록에서 빠져 있었다**(`BENCHMARK.md`와 함께) — 손으로 적은 목록 대신 전 문서를 계수해서야 드러났고, 이제 `tests/review-notes-cap.test.js`가 그 계수를 대신한다. 예제 본문·명령 표기는 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+
 ## Glossary
 
 원문서: [GLOSSARY.md](GLOSSARY.md) — 3건(2026-07-13 → 2026-07-20), 2026-08-04 이전분.
@@ -311,6 +313,7 @@ reviewed_at: 2026-09-07
 
 ## Wiki README
 
-원문서: [README.md](README.md) — 1건(2026-08-03 → 2026-08-03), 2026-09-07 이전분.
+원문서: [README.md](README.md) — 2건(2026-08-03 → 2026-08-03), 2026-09-08 이전분.
 
 - 2026-08-03에 HEAD의 루트 `README.md` 변경(impact 기본 error Upgrading 절·`drift --watch-needs-review`·release_notes 면제·adapter 본문 영어 고정)을 이 문서 전 항목과 대조했다. 이 문서는 impact/drift 게이트와 adapter 언어에 대해 아무 주장도 하지 않고(게이트 계약은 `AGENTS.md`·index.md에 위임), EN/KO 짝 갱신 규칙은 이번 커밋에서 `README.md`·`README.ko.md`가 함께 바뀌어 지켜졌으며, `review --approve-all --yes`와 `content.not_enriched`도 소스에서 재확인돼 **불변** — 본문 무수정(`package.json`은 이번 커밋에서 변경 없음).
+- 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `package.json`, `README.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서가 소유한 것은 위키 운영 규칙(상태 전이·근거 규약·로그)이고 루트 README의 Upgrading 절·액션 핀은 그 규칙과 무관하며, `package.json`의 version 한 줄도 마찬가지다 — 본문 **불변**.
