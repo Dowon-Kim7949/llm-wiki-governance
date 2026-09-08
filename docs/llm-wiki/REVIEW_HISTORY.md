@@ -44,6 +44,7 @@ reviewed_at: 2026-09-08
 
 - 이 문서는 아카이브 전용입니다: 새 review note는 원문서 `## Review Notes`에 먼저 쌓고, 원문서가 5건을 넘으면 오래된 항목을 이 문서의 해당 섹션 **끝에** 옮겨 붙입니다(항목 순서는 오래된 것 → 새것).
 - 항목의 검토·승인 효력은 frontmatter(`reviewed_by`/`reviewed_at`)가 정본이며, 이 아카이브는 서술 이력일 뿐입니다.
+- 2026-09-08(1.30.1 릴리스 후 재기준선): 원문서 `HARNESS_GOVERNANCE_ROADMAP.md`·`PUBLIC_API.md`·`project-profile.md`가 `package.json` 커밋 날짜 이동 때문에 `evidence.stale`로 지목돼 재스탬프됐습니다. **이 아카이브로 옮긴 항목은 없습니다** — 세 문서의 `## Review Notes`는 상한 5건 아래이고 내용도 그대로입니다. 이 줄을 남기는 이유는 파일 단위 게이트(`impact.source_changed`)가 "인용 소스가 바뀌었는데 이 문서는 안 바뀌었다"고 지목했는데, 재스탬프는 `reviewed_at`이 이미 같은 날짜라 **아무것도 바꾸지 않는 no-op**이었기 때문입니다(N-11).
 
 ## Architecture Conventions
 

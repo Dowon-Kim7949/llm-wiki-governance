@@ -24,6 +24,27 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-08 - chore(wiki): 1.30.1 릴리스 후 재기준선
+
+- status: verified (재스탬프 후 `review --approve-all --yes`)
+- actor: Claude Code (유지보수자 지시)
+- scope: wiki (재스탬프 6건 + 아카이브 머리말 1줄; 서술 내용 변경 없음)
+- changed:
+  - `drift --downgrade` → `review --approve-all --yes`로 `evidence.stale` 6건을 해소했다
+    (`HARNESS_GOVERNANCE_ROADMAP`·`PUBLIC_API`·`project-profile`·`RELEASE_FLOW`·`VERSIONING`·
+    `profiles/library`). 릴리스 커밋이 `package.json`의 커밋 날짜를 옮겨서 생긴 통상적 드리프트다.
+    `impact`의 version-only 매니페스트 면제(N-13)는 `drift`에 적용되지 않는다 — 날짜 앵커라
+    **무엇이** 바뀌었는지가 아니라 **언제** 바뀌었는지만 보기 때문이고, 1.29.0에서 의도적으로 그렇게 정했다.
+  - `REVIEW_HISTORY.md` 머리말에 재기준선 한 줄을 추가했다. 위 재스탬프가 2차 팬아웃을 만들어
+    `impact.source_changed`가 이 문서를 지목했는데, 여기서는 재스탬프가 **no-op**이었다
+    (`reviewed_at`이 이미 같은 날짜 — N-11). 파일이 안 바뀌니 게이트가 계속 울고, 커밋해도 CI가
+    `--since HEAD~1`로 같은 것을 다시 잡는다. 그래서 손댄 이유를 기록으로 남겼고, 그 내용은
+    **아카이브로 옮긴 항목이 없다**는 사실이다(세 문서의 Review Notes는 상한 아래이고 내용도 그대로).
+- evidence: tests 568/568 · validate --strict 0 · impact 0 · drift 0 · review 0
+- caveats:
+  - 이 항목의 첫 작성분은 셸이 백틱을 명령 치환으로 먹어 코드 식별자가 전부 빈칸이 됐다.
+    커밋 전에 스크립트 파일로 다시 썼다.
+
 ## 2026-09-08 - docs(deck): 팀 발표 덱이 1.29.2에 멈춰 있어 거버넌스 모드를 한 글자도 담고 있지 않았다
 
 - status: needs_review (에이전트 편집 — `outputs/`는 위키 내용 문서가 아니라 승격 대상 없음)

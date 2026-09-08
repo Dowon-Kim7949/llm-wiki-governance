@@ -9,11 +9,11 @@ tags:
 status: verified
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-09-07
+last_updated: 2026-09-08
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-07
+reviewed_at: 2026-09-08
 wiki_block_version: v1
 source_files:
   - package.json
