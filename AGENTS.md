@@ -1,17 +1,34 @@
 # Project Agent Guide
 
-## Wiki <!-- wiki-block v1 -->
+## Wiki <!-- wiki-block v2 -->
 
-모든 개발 작업은 `docs/llm-wiki/index.md`에서 시작한다. 이 파일은 프로젝트 LLM-WIKI의 공식 진입점이며, 작업 전 참조 순서와 문서 상태를 안내한다.
+Read the project LLM-WIKI before making code or documentation changes.
 
-### 필수 운영 규칙
+Always read first (kept deliberately small):
 
-- 모든 wiki 문서는 YAML frontmatter를 가진다.
-- LLM이 새로 만들거나 수정한 문서의 `status`는 편집 시점에 `needs_review`로 둔다.
-- **이 저장소에서는 에이전트가 스스로 `verified`로 승격한다**(2026-08-03, 유지보수자 결정). 아래 "Wiki discipline" 절이 정본이다. 이 완화는 **이 저장소 한정**이며, `templates/adapters/*`가 도입처로 내보내는 규칙(`verified` only after human review)은 그대로다.
-- 코드 또는 문서를 변경하면 관련 wiki와 `docs/llm-wiki/log.md`를 같은 작업 안에서 갱신한다.
-- 민감정보는 wiki에 기록하지 않는다.
-- Markdown 파일은 UTF-8로 읽고 쓴다.
+- `docs/llm-wiki/index.md` — entrypoint, read order, document status
+- `docs/llm-wiki/project-profile.md` — what this project is and where its boundaries are
+
+Load the rest on demand — do not preload the whole wiki:
+
+- `docs/llm-wiki/README.md` — wiki operating rules
+- `docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md` — module layout and conventions
+- `docs/llm-wiki/DOMAIN_FEATURES.md` — user-facing features and evidence
+- Locate before reading: `llm-wiki search-docs "<query>"` or `llm-wiki prepare --task "<task>" --compact`, then read only the needed section with `llm-wiki get-doc <path> --section "<heading>" --strict-section`, or open the file directly when the task depends on all of it.
+
+Required rules:
+
+- Every wiki document carries YAML frontmatter.
+- Set LLM-created or LLM-edited wiki docs to `needs_review` at edit time.
+- **This repository then approves them itself** (2026-08-03, maintainer's decision):
+  run `node bin/llm-wiki.js review --approve-all --yes`. The "Wiki discipline"
+  section below is the full contract. This relaxation is **local to this repo** —
+  the rule shipped to adopters in `templates/adapters/*` still requires human
+  review, and nothing outside `docs/llm-wiki/` may seed `verified`.
+- If code or docs change, update related wiki docs and append `docs/llm-wiki/log.md`
+  in the same piece of work.
+- Do not record sensitive information in wiki docs, logs, reports, or prompts.
+- Read and write Markdown as UTF-8.
 
 ## Orca Parallel Agent Rules
 

@@ -3561,7 +3561,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.30.1");
+  assert.equal(packageJson.version, "1.31.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");
@@ -3573,8 +3573,12 @@ test("GitHub Actions validation example includes strict LLM-WIKI checks", async 
   const workflow = await readFile(path.join(process.cwd(), "templates", "github-actions", "llm-wiki-validate.yml"), { encoding: "utf8" });
 
   assert.ok(workflow.includes("run: npm test"));
-  assert.ok(workflow.includes("run: npx llm-wiki validate-frontmatter"));
-  assert.ok(workflow.includes("run: npx llm-wiki validate --strict --agent codex"));
+  // --no-install is load-bearing, not cosmetic: this package's bin is `llm-wiki`
+  // and npm hosts an unrelated package under that name, so a bare `npx llm-wiki`
+  // on a runner without the devDependency runs a stranger's package.
+  assert.ok(workflow.includes("run: npx --no-install llm-wiki validate-frontmatter"));
+  assert.ok(workflow.includes("run: npx --no-install llm-wiki validate --strict --agent codex"));
+  assert.doesNotMatch(workflow, /npx (?!--no-install)llm-wiki /, "every npx call in the template must be --no-install");
 });
 
 test("parseArgs reports missing option values and unknown options", () => {

@@ -85,11 +85,19 @@ export async function scanSourceFiles(cwd) {
       if (!source || isExternalSourceReference(source)) continue;
 
       if (!(await pathExists(path.join(cwd, source)))) {
+        // A locator here is the common cause of this finding reading as nonsense:
+        // the file exists, only the `#…` suffix does not. source_files is the
+        // broad anchor by contract, so the fix is to move the locator to
+        // `evidence` — say that instead of insisting a real file is missing.
+        const hash = source.indexOf("#");
+        const located = hash > 0 && await pathExists(path.join(cwd, source.slice(0, hash)));
         findings.push({
           severity: "warning",
           rule: "source_files.missing",
           path: rel,
-          message: `source_files entry does not exist: ${source}.`,
+          message: located
+            ? `source_files entry carries a locator: ${source}. source_files takes bare paths (the whole file backs the document); move the locator to evidence, where a line range also narrows the freshness check.`
+            : `source_files entry does not exist: ${source}.`,
           params: { source }
         });
       }
@@ -586,7 +594,23 @@ export function verifiedSourceAnchors(frontmatter) {
   if (frontmatter?.status !== "verified") return null;
   if (freshnessExempt(frontmatter)) return null;
 
-  // source_files are broad anchors (the whole file backs the document).
+  // source_files are BROAD anchors: the whole file backs the document. That is
+  // the published contract (GLOSSARY.md: source_files = 넓은 범위 근거, evidence =
+  // 정밀 근거 참조), and it is deliberately NOT relaxed here.
+  //
+  // Defect N-7 measured 58 of 58 line-range anchors never narrowing anything,
+  // because a document that cites `file#L10-L20` in evidence usually also lists
+  // `file` in source_files, and a broad anchor for a file outranks a precise one.
+  // Re-examined 2026-09-08: that is the contract working, not failing, and the way
+  // to ask for narrowing already exists — cite the file ONLY in `evidence` with a
+  // line range and leave it out of `source_files`. Verified on a fixture: that
+  // shape narrows drift and produces no evidence.ungrounded or
+  // source_files.missing finding. Reading a locator in source_files as precise was
+  // implemented and reverted: no document in this repository writes one, so it
+  // would have had no local consumer, while for an adopter it would silently
+  // narrow anchors they wrote as broad — a false negative in a freshness gate,
+  // which is the one direction a fix here must never move. What N-7 leaves behind
+  // is a discoverability gap, fixed in the docs and in `explain evidence.stale`.
   const sources = [];
   for (const entry of Array.isArray(frontmatter.source_files) ? frontmatter.source_files : []) {
     if (typeof entry !== "string") continue;
@@ -651,9 +675,22 @@ export function driftTargets(frontmatter, options = {}) {
 // re-stamp them, so flagging them produced findings with no way to clear them.
 export async function scanEvidenceDrift(cwd, options = {}) {
   const findings = [];
+  // One `git log` per (file, baseline) pair instead of per (document, file,
+  // baseline): documents share both anchors and review dates, so the same query
+  // was re-spawned many times per run. Pure memoization of a read-only query
+  // inside a single scan — no behavior change.
+  const fileChangedCache = new Map();
+  const fileChangedMemo = (base, baseline) => {
+    const key = `${base}\u0000${baseline}`;
+    if (fileChangedCache.has(key)) return fileChangedCache.get(key);
+    const answer = fileChangedSinceSafe(cwd, base, baseline);
+    fileChangedCache.set(key, answer);
+    return answer;
+  };
   for (const file of await listTargetMarkdown(cwd)) {
     const rel = toPosix(path.relative(cwd, file));
     if (isTemplateDoc(rel)) continue;
+    if (isAppendOnlyLog(rel)) continue; // see scanReverseImpact (N-14 class)
     const parsed = parseFrontmatter(await readUtf8(file));
     const targets = driftTargets(parsed.frontmatter, options);
     if (!targets) continue;
@@ -690,13 +727,13 @@ export async function scanEvidenceDrift(cwd, options = {}) {
           }
         }
         if (fallbackFileLevel) {
-          if (fileChangedSinceSafe(cwd, base, targets.baseline)) {
+          if (fileChangedMemo(base, targets.baseline)) {
             findings.push(driftFinding(rel, `${base}`, targets.baseline));
           }
         } else if (staleRange) {
           findings.push(driftFinding(rel, `${base}#L${staleRange.start}-L${staleRange.end}`, targets.baseline));
         }
-      } else if (fileChangedSinceSafe(cwd, base, targets.baseline)) {
+      } else if (fileChangedMemo(base, targets.baseline)) {
         findings.push(driftFinding(rel, `${base}`, targets.baseline));
       }
     }
@@ -738,13 +775,29 @@ export function driftFinding(rel, reference, baseline) {
 export async function scanReverseImpact(cwd, changedSet) {
   const findings = [];
   if (!changedSet || changedSet.size === 0) return findings;
+  const changedPaths = [...changedSet];
+  // A directory anchor matched NOTHING here, because this scan compared exact
+  // strings while git only ever lists files (defect N-8): a verified document
+  // anchored to `src/commands/` was never flagged when a file under it changed,
+  // even though the date-anchored drift scan fires on the same edit via
+  // `git log -- <dir>`. That is a false negative in the one gate that catches what
+  // this product exists for, so the two scans now agree. A file anchor cannot
+  // gain a false positive from this: no path can start with "<a file>/".
+  const anchorMatches = (base) => changedSet.has(base)
+    || changedPaths.some((changed) => changed.startsWith(`${base.replace(/\/+$/, "")}/`));
   for (const file of await listTargetMarkdown(cwd)) {
     const rel = toPosix(path.relative(cwd, file));
     if (isTemplateDoc(rel)) continue;
+    // Same reason templates are out of scope (N-14): the append-only change log
+    // is a document `review` refuses to stamp, so flagging it would produce a
+    // finding with no way to clear it. Today it is unreachable only because the
+    // log happens to sit at needs_review; making the skip explicit means the two
+    // enumerators cannot drift apart if that ever changes.
+    if (isAppendOnlyLog(rel)) continue;
     if (changedSet.has(rel)) continue; // doc changed in the same diff → not drift
     const anchors = verifiedSourceAnchors(parseFrontmatter(await readUtf8(file)).frontmatter);
     if (!anchors) continue;
-    const changedSources = anchors.files.filter((base) => changedSet.has(base));
+    const changedSources = anchors.files.filter(anchorMatches);
     if (changedSources.length === 0) continue;
     findings.push({
       // Error, not warning: decision 21 (maintainer, 2026-08-03) made this gate

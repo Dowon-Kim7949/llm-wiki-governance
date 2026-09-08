@@ -1,3 +1,15 @@
+// The agent vocabulary, shared by the CLI's --agent parser and the config
+// loader's `agents` field so the two surfaces cannot disagree about what an
+// agent name is. `all` is an input alias that expands to ALL_AGENTS; it is never
+// a member of a resolved agent list. Lives here rather than in cli.js because
+// config-file.js must read it and cli.js imports config-file.js.
+export const SUPPORTED_AGENTS = new Set(["codex", "claude", "cursor", "copilot", "windsurf", "gemini", "jetbrains", "antigravity", "all"]);
+
+// `--agent all` expands to the three adapters this package actually writes by
+// default. cursor/copilot/windsurf/gemini are writable but must be named
+// explicitly; jetbrains/antigravity are info-level candidates.
+export const ALL_AGENTS = ["codex", "claude", "antigravity"];
+
 export const REQUIRED_FRONTMATTER_FIELDS = [
   "title",
   "tags",

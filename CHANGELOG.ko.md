@@ -4,6 +4,232 @@
 
 `llm-wiki-governance`(옛 이름 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. [유의적 버전](https://semver.org/)을 따르며, 항목은 최신 릴리스가 위로 옵니다.
 
+## 1.31.0 — 2026-09-08
+
+일관성을 맞춘 릴리스입니다. 게이트와 리포트, 그리고 출하되는 문서가 저마다 조금씩 다른
+이야기를 하고 있었고, 그 차이를 문서로 적어 두는 대신 없앴습니다. 이 중 둘은 지금까지
+통과하던 빌드를 새로 실패시킬 수 있어서, "버그 수정"에 묶지 않고 따로 적었습니다.
+
+### 올리기 전에 읽어 두실 동작 변경
+
+- **`drift`가 거버넌스 모드와 설정된 severity를 따릅니다.** 1.30.0부터 `audit`과 `validate`는
+  실효 규칙 맵을 보고 드리프트 스캔을 건너뛰는데, `drift`만 그러지 않았습니다. 그래서 `lite`인
+  프로젝트에서도(이 모드에서 `evidence.stale`은 `off`입니다) `llm-wiki drift`가 경고를 냈고,
+  `drift --strict`는 자기 모드가 꺼 둔 규칙으로 빌드를 실패시킬 수 있었고, `drift --downgrade`는
+  그 규칙 때문에 문서를 `needs_review`로 되돌렸습니다. findings가 `applyRuleConfig`를 거치지도
+  않아서, 규칙을 손으로 `"info"`나 `"error"`로 바꿔 둔 프로젝트도 여기서는 무시됐습니다.
+  **변화의 방향:** `lite`이거나 규칙을 꺼 둔 상태에서 `drift`는 이제 아무것도 보고하지 않고 exit
+  code가 1에서 0으로 내려갑니다 — 이것 때문에 실패하던 빌드가 통과합니다. `strict`에서는 그대로입니다.
+- **`impact`가 디렉터리 앵커를 지목합니다(결함 N-8).** reverse-impact 스캔이 정확한 문자열
+  비교를 했는데 git은 파일만 열거합니다. 그래서 `src/commands/`를 인용한 `verified` 문서는 그 아래
+  파일이 바뀌어도 **한 번도** 지목되지 않았습니다 — 이 제품이 존재하는 이유인 그 게이트에서의
+  위음성입니다. 날짜 앵커 `drift`는 같은 편집에 `git log -- <dir>`로 발화하는데도요. 이제 두 스캔이
+  같은 답을 냅니다. **변화의 방향: findings가 늘어납니다. `strict`에서 `impact.source_changed`는
+  error이므로, 디렉터리 앵커를 쓰는 저장소는 업그레이드 후 첫 커밋에서 빌드가 빨개질 수 있습니다.**
+  되돌리는 길은 그대로 설정뿐입니다. `llm-wiki.config.json`의 `rules`에
+  `"impact.source_changed": "warning"`(또는 `"info"`/`"off"`), `rulesPreset: "relaxed"`, 또는
+  `governance.mode`를 `standard`/`lite`로. 파일 앵커에서 오탐이 생길 수는 없습니다 — 어떤 경로도
+  "\<파일\>/"로 시작할 수 없습니다 — 그리고 `src/command`는 여전히 `src/commands/scans.js`에
+  걸리지 않습니다.
+- **`llm-wiki.config.json`의 `type`과 `agents`가 CLI 플래그와 같은 어휘로 검증됩니다.** `--type`은
+  2026-07-27 감사부터 `KNOWN_TYPES`로, `--agent`는 자기 목록으로 검증해 왔지만, config 쪽은
+  "문자열인가" · "문자열 배열인가"만 봤습니다. 그래서 `{"type": "frontendd"}`가 통과한 뒤 알 수 없는
+  유형으로 동작했고, `{"agents": ["all"]}`은 `all`이라는 문자열 그대로 adapter 스캔에 넘어갔습니다 —
+  CLI 경로에서는 이미 세 이름으로 펼쳐진 뒤였는데요. 설정 하나에 답이 둘인 셈이고, CLI·프로그래매틱
+  API·MCP가 같은 effective options를 해석한다는 문서화된 약속과 어긋납니다. 이제 둘 다 허용값을
+  알려 주는 usage error(exit 3)이고, config 경로에서도 `all`이 펼쳐집니다. **변화의 방향: 조용히
+  틀려 있던 설정이 소리 내어 실패합니다.**
+
+### 리포트가 어떤 정책으로 돌았는지 말합니다
+
+- **리포트의 `mode:`는 더 이상 `--strict`를 뜻하지 않습니다.** `validate`·`impact`·`check-run`·
+  `harness-health` 네 곳이 "`--strict`를 줬는가"를 `mode: strict` / `mode: standard`로 찍고
+  있었습니다. 1.30.0부터 그 둘은 거버넌스 레벨 이름이기도 해서, 그 줄이 아닌 것을 말하는 것처럼
+  읽혔습니다. 그리고 초록색 결과를 해석하려면 정확히 그 레벨을 알아야 합니다. 이제 각각
+  `strict: true|false`와 별도의 `governance_mode: <level>`을 찍습니다. `drift`의 요약도 같이
+  바꿨습니다. `mode: report|downgrade`는 `run:`이 되고,
+  `evidence.stale: on|off (scan skipped — governance mode or config)`가 추가돼서 `lite`에서 초록으로
+  끝난 drift를 "신선하다"로 읽을 수 없게 했습니다.
+- **`impact`의 caveat가 모드를 압니다.** `impact.source_changed`가 "기본적으로 error"라고만 적혀
+  있었는데, 1.30.0부터 그게 전부가 아닙니다. `lite`에서는 꺼져 있고 `standard`에서는 warning이라,
+  초록으로 끝난 `impact`가 "아무것도 검사하지 않았다"를 뜻할 수 있습니다. 이제 세 레벨 전부와,
+  이번 실행이 어느 레벨로 해석됐고 그 값이 어디서 왔는지, 그리고 우선순위 사슬(모드 바닥값 <
+  `rulesPreset` < 명시 `rules`)까지 말합니다. `tests/impact-default-gate.test.js`가 그 문장의 모든
+  조각을 고정합니다.
+- **`impact`가 자기 자기제외로 빠져나간 것을 보고합니다(결함 N-9).** diff에 등장하는 문서는
+  "이번 변경에서 갱신됐다"는 판단으로 지목하지 않습니다. 그런데 검토 스탬프만으로도 그 조건이
+  충족되기 때문에, PR 범위 안의 무관한 `review --approve-all` 한 번이 그 PR 내내 스탬프된 문서
+  전부를 면제시켰습니다 — 실제 피해가 측정됐습니다. 낡은 계약 서술이 그렇게 게이트를 통과했습니다.
+  새 `stamp_only_exclusions` 줄(그리고 `--format json`의 `stampOnlyExclusions`)이 이번 diff에서
+  검토 스탬프만 바뀐 문서를 이름으로 알려 줍니다. **보고일 뿐이고 exit code를 절대 움직이지
+  않습니다** — 의도한 것입니다. 같은 자기제외가 문서화된 해소 경로가 findings를 지우는 방식이기도
+  해서, 여기서 강제하면 실제 드리프트에 해소 경로가 없어집니다(결함 N-11). 둘을 함께 닫으려면
+  "재확인이란 무엇인가"에 대한 결정이 필요하고, 그 결정은 이제 스캔 안에 암묵적으로 남는 대신
+  `GATE_REVIEW.md`에 미결로 기록돼 있습니다.
+
+### 해소할 수 없던 findings를 해소할 수 있게
+
+- **`init --refresh`가 본문은 최신인데 마커만 뒤처진 관리 산출물을 다시 스탬프합니다.**
+  `harness-health`가 스킬 산출물 8개를 v5 생성기에 대해 v4로 찍혀 있다고 보고했고, 그 메시지가
+  막힌 길을 그대로 말하고 있었습니다. `--refresh`는 본문만 비교했습니다 — 양쪽에 `stripMarker()`를
+  적용해서요 — 그래서 본문이 이미 같은 파일은 "already up to date"였고 낡은 마커는 영원히 다시 쓰이지
+  않았습니다. 이 finding에는 해소 경로가 아예 없었습니다. 플래그도, 재실행도 없었습니다. 산출물이
+  최신이라는 것은 본문 **과** 스탬프가 모두 맞을 때이고, 스탬프만 뒤처졌으면 이제 다시 스탬프합니다.
+  그리고 refresh가 아니라 `re-stamped (body already current; marker v4 -> v5)`로 보고합니다 —
+  내용이 똑같은 파일을 "refreshed"라고 말하는 것이야말로 독자가 다음 메시지를 믿지 않게 되는
+  방식이기 때문입니다. 여전히 패키지가 생성했고 손대지 않은 산출물에만 적용되므로 안전 계약은
+  움직이지 않습니다. 이 저장소 실측: `harness-health`가 findings 9 → 0.
+- **adapter에 대한 `harness.marker_drift` 메시지가 조치 방법을 말합니다.** "nothing re-generates
+  it"은 사실이지만 쓸모가 없었습니다. 이제 기존 adapter 파일은 절대 덮어쓰지 않는다는 것과, 빠져나갈
+  길은 마커와 `<!-- /llm-wiki-adapter -->` 사이 블록을 `templates/adapters/*` 수준으로 올리면서
+  프로젝트 고유 규칙은 남기는 것, 또는 파일을 지우고 `init --write --agent <agent>`를 다시 돌리는
+  것이라고 말합니다.
+- **append-only 변경 로그가 두 신선도 게이트 양쪽에서 빠집니다.** 1.29.1에서 템플릿을 뺀 것과 같은
+  이유입니다(N-14). `review`가 `log.md` 스탬프를 거부하므로, 지목당한 `log.md`는 해소할 방법이 없는
+  finding이 됩니다. 지금은 로그가 마침 `needs_review`에 있어서 닿지 않을 뿐이라, 건너뛰기를 명시로
+  바꿨습니다. 그 상황이 바뀌어도 두 열거자가 서로 다른 답을 낼 수 없게요.
+- **`source_files.missing`이 로케이터가 붙은 항목에 무엇을 하라고 말합니다.** 분명히 존재하는 파일을
+  두고 `src/cli.js#symbol:main`이 "존재하지 않는 경로"라고 보고했습니다. `source_files`는 계약상
+  넓은 앵커이므로, 이제 로케이터를 `evidence`로 옮기라고 말합니다 — 거기서는 라인 범위가 신선도
+  검사를 좁혀 주기도 합니다.
+
+### 결함 N-7 — 다시 검토했고, 바꾸지 않았습니다
+
+N-7은 같은 파일이 `source_files`에도 있으면 라인 범위 좁히기가 발동하지 않는다고 기록하고, 5개
+저장소에서 라인 범위 앵커 58/58이 가려짐을 측정하고, 한 줄짜리 의미론 변경을 제안했습니다. 여기서
+다시 검토했고 **결론이 다릅니다. 그것은 버그가 아니라 공표된 계약입니다.** `GLOSSARY.md`가
+`source_files`를 넓은 앵커로, `evidence`를 정밀 앵커로 정의합니다. 그러니 파일을 `source_files`에
+올린 문서는 파일 전체에 의존한다고 선언한 것이고, 스캔은 그 어휘가 말하는 대로 동작하고 있습니다.
+좁히기를 요청하는 방법은 이미 있습니다. 파일을 `evidence`에**만** 라인 범위로 인용하고
+`source_files`에서는 빼는 것입니다 — 픽스처로 확인했습니다. drift가 좁혀지고
+`evidence.ungrounded`나 `source_files.missing`도 나오지 않습니다.
+
+`source_files`의 로케이터를 정밀 앵커로 읽는 구현을 했다가 되돌렸습니다. 이 저장소의 어떤 문서도
+그렇게 쓰지 않아 지역 소비자가 없었고, 반면 도입처에서는 넓게 써 둔 앵커를 조용히 좁히게 됩니다 —
+신선도 게이트의 위음성이고, 여기서의 수정이 절대 움직여선 안 되는 방향입니다. N-7이 남기는 것은
+발견 가능성의 공백이고, 그건 문서에서 메꿨습니다. `tests/anchor-semantics.test.js`가 계약을 양방향으로
+고정해서, 앞으로 이걸 바꾸려면 주석이 아니라 테스트와 다퉈야 합니다.
+
+### 더 빠르고 더 조용하게
+
+- **`scanEvidenceDrift`가 git 질의를 메모이즈합니다.** (문서, 파일, 기준일) 조합마다 `git log`를
+  띄웠는데, 문서들은 앵커와 검토일을 공유하므로 같은 질의가 한 실행에서 여러 번 다시 떠올랐습니다.
+  이제 (파일, 기준일)마다 한 번입니다. 한 스캔 안에서 읽기 전용 질의를 순수하게 메모이즈한 것이라
+  동작 변경은 없습니다.
+
+### 제품과 어긋나 있던 출하 문서
+
+여기 적은 항목은 전부 사용자가 읽는 문서가 코드가 하지 않는 일을 말하고 있던 자리입니다. 이
+저장소는 "출하된 문서가 동작을 앞질러 가는 것"을 최상위 결함 유형으로 취급하므로, 개수로
+줄이지 않고 하나씩 적었습니다.
+
+- **복사해 간 CI 템플릿이 남의 npm 패키지를 실행할 수 있었습니다.**
+  `templates/github-actions/llm-wiki-validate.yml`이 `npm ci` 뒤에 `npx llm-wiki …`를 세 번
+  돌리면서, `llm-wiki-governance`가 devDependency여야 한다는 말을 한 번도 하지 않았습니다. 이
+  패키지의 bin 이름은 `llm-wiki`이지만 npm에는 그 이름의 **무관한** 패키지가 따로 있습니다. 그래서
+  devDependency가 없는 러너에서는 그 스텝들이 남의 코드를 내려받아 실행했고, 그 패키지에는 그런
+  서브커맨드가 없으니 공급망 사건이 아니라 설정 문제처럼 읽혔습니다. 이제 템플릿은 이 저장소의 CI와
+  `pre-commit` 훅 템플릿과 같은 `npx --no-install llm-wiki`를 쓰므로 devDependency가 없으면 소리
+  내어 실패하고, 전제 조건을 템플릿 안에 적었습니다. `docs/llm-wiki/EXAMPLES.md`의 CI 레시피도 같이
+  바꿨고, 첫 실행 지면(`outputs/distribution/reddit-post.md`·`launch-post.md`)과 MCP 레지스트리
+  스니펫(`registries.md`)은 거기서는 참조할 설치물이 없으니 실제 패키지 이름을 적도록 했습니다.
+  `tests/verification.test.js`가 옛 문자열을 고정하고 있어 함께 갱신했고, 템플릿의 **어떤** `npx`
+  호출도 `--no-install` 없이는 안 된다는 단언을 더해서 이 유형이 한 줄씩 되돌아오지 못하게 했습니다.
+- **`README.md`가 `help`에 없는 exit code 레퍼런스를 약속했습니다.** `help <command>`가 "명령·옵션·
+  exit code 전부를 오프라인으로" 준다고 적혀 있었는데, help 출력에 exit code는 어디에도 없었습니다.
+  이제 help가 `Exit codes` 블록으로 끝납니다(0 pass / 1 error 또는 `--strict`에서의 warning /
+  2 blocked / 3 usage). 나머지처럼 이중 언어입니다.
+- **`help`가 13개 명령이 받는 `--mode`를 한 번도 언급하지 않았습니다.** `backfill`의 usage 줄만
+  광고하고 있었습니다. 이제 Governance modes 블록이 레벨은 `llm-wiki.config.json`에서 오고,
+  `--mode <level>`이 한 번만 그것을 덮어쓰며, 어떤 명령들이 받는지 말합니다.
+- **`help mode`가 잘못된 기본값을 설명했습니다.** "`init --mode <level>`로 만든 새 프로젝트는 lite가
+  기본"이라고 적혀 있었는데, 실제 동작도 아니고 자기모순입니다 — 명시한 `--mode`는 기본값이 아닙니다.
+  `init`/`quickstart`가 `lite`로 만드는 것은 config도 **없고** 위키도 없는 저장소뿐이고, 둘 중 하나라도
+  있으면 `strict`를 유지해서 기존 프로젝트의 문서 집합이 조용히 좁아지지 않게 하며, 명시한 `--mode`는
+  둘 다 이깁니다.
+- **릴리스 준비도 리포트가 `migrate --apply`가 막혀 있다고 주장했습니다.**
+  `migrate_apply: keep blocked`를 찍고 있었는데, 1.2부터 사실이 아닙니다. 이제
+  `migrate_apply: unblocked since 1.2 (previews by default; writes only with --apply)`입니다.
+- **README 2종이 생성 스킬 7종 중 4종만 적고 있었습니다.** `bootstrap`·`feature`·`fix`·`docs-sync`만
+  적고, 1.24.0과 1.30.0부터 출하된 `onboard`·`prepare`·`backfill`이 빠져 있었습니다.
+- **`SECURITY.md`·`SECURITY.ko.md`가 쓰기 표면과 MCP 툴 목록을 축소해 적었습니다.** 위협 모델이 CLI가
+  `--write`/`--apply`로 "위키와 adapter 파일"을 쓴다고 했는데, `review --approve`와
+  `drift --downgrade`가 빠졌고, 1.30.0부터는 비위키 파일(`llm-wiki.config.json`)을 쓰는 유일한 명령인
+  `mode set --write`도 빠졌습니다. 이제 전체 표면을 열거합니다. MCP 절은 제외되는 쓰기 명령 5개를
+  이름으로 적고 있었는데, 이제 노출되는 툴 18개 전부를 적고 `backfill`·`drift --downgrade`·
+  `mode set --write`가 없다는 것과 `mode`는 읽기 전용 리포트로만 노출된다는 사실을 함께 적습니다.
+- **`docs/OPERATIONS.md`가 모든 레시피를 저장소 규모로만 나누고 거버넌스 모드를 언급하지
+  않았습니다.** 정작 그 레시피들이 빌드를 실패시킬 수 있는지를 정하는 것이 모드입니다. 앞쪽에 새 절을
+  넣어 `llm-wiki mode`를 먼저 읽으라고 말하고, 레벨마다 게이트 규칙 3개가 어떻게 되는지 표로 적고,
+  두 가지 귀결을 그대로 적었습니다. `lite`인 프로젝트는 아무것도 잡지 않는 초록색 `impact` 스텝을
+  갖게 되고, 기존 저장소는 이미 `strict`라는 것입니다. "Wiring the gate" 절과 preview-first 노트도
+  맞춰 고쳤습니다.
+- **`PUBLIC_API.md`가 명령을 30개로 세고 1.30.0 export를 빠뜨렸습니다.** `COMMAND_OPTION_RULES`에는
+  32개가 있습니다. 프로그래매틱 API 절이 이제 `GOVERNANCE_MODES`·`getGovernancePolicy`·
+  `effectiveGovernanceMode`(config 모양이 아니라 정규화된 평평한 옵션을 받는다는 점까지)·
+  `governanceCapabilityMatrix`를 적습니다.
+- **`templates/git-hooks/README.md`가 검사 하나인 훅을 설명했습니다.** 스크립트는 2026-07-31부터
+  둘을 돌리고, 두 번째인 누락 게이트가 핵심입니다. 이제 둘 다 설명하고, 두 번째가 실제로 막을 수
+  있는지를 정하는 두 가지 — 거버넌스 모드와 프로젝트 설정 — 도 함께 적습니다.
+- **`GATE_REVIEW.md`가 다음 릴리스는 SemVer MAJOR라고 적고 있었습니다.** 2026-08-03에 쓴 문장이고,
+  그 변경은 5주 전에 MINOR인 1.28.0으로 나갔습니다. 원래 문단은 그때 결정된 것의 기록으로 남기고,
+  옆에 실제로 무슨 일이 있었는지와 그 근거가 어디에 있는지를 적은 정정을 붙였습니다.
+- **`docs/llm-wiki/RELEASE_FLOW.md`가 이 패키지의 배포 방식을 틀리게 적고 있었습니다.** 인증이
+  `npm-release` 환경 토큰에서 오고 OIDC 단독 Trusted Publishing은 "이 저장소에서 동작하지 않는다"고
+  기록해 뒀습니다. 레지스트리 메타데이터는 반대로 말합니다.
+  `npm view llm-wiki-governance@<version> --json`이 1.29.5·1.30.0·1.30.1 모두에 대해
+  `_npmUser.trustedPublisher.oidcConfigId`를 돌려줍니다 — 셋 다 OIDC가 인증했고, 사람 계정으로 올라간
+  버전은 1.16.0뿐입니다. v1.29.3·v1.29.4 실패의 더 그럴듯한 원인은 2026-09-03 저장소 교체입니다.
+  Trusted Publisher 등록은 저장소 **객체**에 묶이고 이름에 묶이지 않습니다. 거짓이었던 문장 4건을
+  Review Note에 이름으로 적었고, 여전히 모르는 것도 뭉개지 않고 적었습니다 — 재등록이 v1.29.4 시도
+  전인지 후인지, 그리고 `NODE_AUTH_TOKEN`을 없애도 배포가 성공하는지입니다. `npm publish --dry-run`은
+  레지스트리 PUT을 하지 않으므로 어떤 자격증명도 검증하지 못합니다. 토큰 env 제거는 미결 결정으로
+  기록했습니다.
+- **결정 4건이 기록 없이 출하돼 있었습니다.** 이 저장소의 결정 기록이 막으려는 바로 그 실패입니다.
+  1.29.2의 `delegationPolicy`(**음성** A/B 측정 결과 — 절감 미검출 — 까지 포함), 1.30.0의 거버넌스 모드,
+  `mode set`/`backfill`의 쓰기 범위, 그리고 위의 `npx` 해석 변경입니다. 네 건 모두 이제
+  `GATE_REVIEW.md`에 있습니다.
+
+### 영문·국문 짝 맞추기
+
+- **`SECURITY.ko.md`에 68줄짜리 절 하나가 통째로 빠져 있었습니다** — 민감정보 오탐 신고 경로이고,
+  영문에만 있었습니다.
+- **`ROADMAP.md`의 `last_updated`가 `2026-07-30`이었습니다.** 본문은 1.30.0 릴리스를 적고 있는데요.
+  그리고 23개 릴리스가 지난 뒤에도 `1.7.0`을 "(this release)"라고 부르고 있었습니다. 국문 짝은 이미
+  둘 다 정리돼 있었습니다.
+- **문서 안의 이스케이프가 겹쳐 있었습니다.** 소스에는 백슬래시 하나(`\u0000`)가 있는데 문서에는
+  `\\u0000`으로 적혀 있었습니다. `CHANGELOG.ko.md`와 `docs/llm-wiki/releases/v1.7.1.md`를 고쳤습니다.
+  `docs/llm-wiki/log.md`의 것은 그대로 뒀습니다 — 로그는 append-only이므로 정정을 새 항목에 적습니다.
+- **`ROADMAP.ko.md`가 잘못된 대상을 가리켰습니다.** "run 매니페스트"라고 적혀 있었는데, 신호는
+  `run.*` finding이고 매니페스트는 그것이 읽는 대상입니다.
+- **이 변경 이력의 1.30.1 항목이 스스로 과장했습니다.** 국문 README에 1.30.0 사실 3건을 채웠다고
+  적었는데, 둘은 맞고 세 번째 — 우선순위 사슬에서 모드 바닥값의 위치 — 는 같은 릴리스의 축약에서 다시
+  빠졌습니다. 두 언어 모두 고쳤습니다.
+- **국문이 없는 문서 2종이 그렇다고 말합니다.** 영문 README의 링크 목록에서
+  `BENCHMARK.md`·`EXAMPLES.md`를 국문 문서로 표시했습니다. 국문 README는 이미 영문 전용 링크를
+  표시하고 있었습니다.
+
+### 팀 발표 덱
+
+- 덱이 23장이 된 뒤에도 슬라이드 카운터가 `01 / 22`였고, 패키지 크기를 "약 150KB"로 적었는데 실제는
+  내려받기 510.9 kB·해제 1.6 MB(1.31.0에서 `npm pack --dry-run`)이고, 상단 라벨이 "15–20 MIN"을 약속하는데 대본은 17분이고,
+  발표자 노트의 슬라이드 상호참조 5곳이 재구성 전 번호를 가리키고 있었습니다. 낡은 벤치마크 요약
+  "(정확도 동률·토큰 ~10%↓)"은 벤치마크가 실제로 보고하는 3-arm 수치로 바꿨습니다.
+
+### 테스트
+
+568 → 579. `tests/anchor-semantics.test.js`(7건)가 넓은/정밀 계약, 좁히기 탈출구의 end-to-end, N-8을
+양방향으로(부분 경로 대조군 포함), 로그의 범위를 덮습니다. `tests/stamp-only-exclusion.test.js`(4건)가
+N-9 보고를 덮고, 그것이 exit code를 절대 움직이지 않는다는 것까지 고정합니다. RED는 파일 단위 실패가
+아니라 테스트별로 확인했습니다. 수정 3건을 되돌리면 앵커 테스트 7건 중 3건이 실패하고 4건이 통과하며,
+통과하는 4건은 일부러 바꾸지 않은 계약을 고정하는 것들입니다.
+
+**MINOR로 잡았고, 예외 2건을 밝힙니다.** 리포트 키 2개와 help 절 1개가 늘고, 새 명령도 없고 제거된
+옵션도 없습니다. `impact`의 디렉터리 앵커 수정과 config 어휘 검증은 각각 지금까지 통과하던 빌드를
+새로 실패시킬 수 있어서 엄격한 SemVer 독법으로는 MAJOR를 주장하지만, 1.28.0과 같은 방식으로 이름
+붙인 예외로 기록합니다. 둘 다 조용히 틀린 답을 소리 내어 맞는 답으로 바꾸는 변경이고, 둘 다 문서화된
+설정 전용 되돌리기 경로가 있기 때문입니다.
+
 ## 1.30.1 — 2026-09-08
 
 문서만 바꿨다. 런타임과 CLI, 공개 API는 그대로이고, 다시 쓴 README를 npm 패키지 페이지에 반영하려고
@@ -34,10 +260,11 @@
   비용을 다룬 68줄이 국문판에는 통째로 없었다. 영어를 읽는 사람만 볼 수 있던 내용이다. 함께 고친 것으로,
   `CONTRIBUTING.ko.md`가 국문판이 있는 문서 3건을 영문판으로 가리키고 있었고, `ROADMAP.ko.md`에는
   음차한 오역("브레드스")과 순서가 뒤바뀐 릴리스 항목 2건이 있었다.
-- **국문 README를 다시 쓰면서 빠져 있던 1.30.0 사실 3건을 채웠다.** 거버넌스 모드가
-  `impact.source_changed`의 기본 severity를 정한다는 것, 우선순위 사슬에서 모드 바닥값이
-  `rulesPreset`과 명시 `rules` 아래에 깔린다는 것, 그리고 `governance.mode`가 게이트를 완화하는
-  세 번째 방법이라는 것이다.
+- **국문 README를 다시 쓰면서 빠져 있던 1.30.0 사실을 채웠다.** 거버넌스 모드가
+  `impact.source_changed`의 기본 severity를 정한다는 것과, `governance.mode`가 게이트를 완화하는
+  세 번째 방법이라는 것이다. 우선순위 사슬에서 모드 바닥값이 `rulesPreset`·명시 `rules` 아래에
+  깔린다는 사실도 그때 넣었지만, 같은 릴리스의 README 축약에서 함께 빠졌다 — 그 사실은 이 변경
+  이력의 1.28.0·1.30.0 항목에 있다.
 - 이 저장소 자신의 게이트에 따른 위키 정리도 함께 했다. README를 줄이자 `impact.source_changed`가
   그것을 인용하는 `verified` 문서 3건(`EXAMPLES.md`·`index.md`·`docs/llm-wiki/README.md`)에서
   발화했다. 재스탬프로 덮지 않고 하나씩 다시 읽었으며, 세 문서 모두 본문이 그대로 유효했고 그중 둘에
@@ -703,11 +930,11 @@ config 스키마 확장(Gate 13)을 위한 준비 작업이다. 부가적이고 
 
 ### 수정
 
-- `src/commands.js`가 `wikiGraph` 엣지 중복 제거 키(`collectWikiGraph`에서 `addEdge`로 간다)의 구분자로 날것의 `U+0000`(NUL) 제어 바이트를 소스에 박아 두고 있었다. git의 `text=auto`가 이 파일을 바이너리로 분류하는 바람에, 저장소 `.gitattributes`의 `eol=lf` 정규화에서 이 파일만 빠져 CRLF로 저장됐다. 날것 바이트를 `\\u0000` 이스케이프로 바꾸고 파일을 LF로 다시 정규화해서, 이제 다른 소스 파일과 똑같은 줄바꿈 정책을 따른다.
+- `src/commands.js`가 `wikiGraph` 엣지 중복 제거 키(`collectWikiGraph`에서 `addEdge`로 간다)의 구분자로 날것의 `U+0000`(NUL) 제어 바이트를 소스에 박아 두고 있었다. git의 `text=auto`가 이 파일을 바이너리로 분류하는 바람에, 저장소 `.gitattributes`의 `eol=lf` 정규화에서 이 파일만 빠져 CRLF로 저장됐다. 날것 바이트를 `\u0000` 이스케이프로 바꾸고 파일을 LF로 다시 정규화해서, 이제 다른 소스 파일과 똑같은 줄바꿈 정책을 따른다.
 
 ### 참고
 
-- 기능은 바뀌지 않았다. 템플릿 리터럴 안의 `\\u0000`은 런타임에서 같은 NUL 코드포인트를 만들므로 엣지 중복 제거는 바이트 단위로 동일하다. 커밋 diff의 대부분은 `src/commands.js`를 한 번에 CRLF에서 LF로 다시 정규화한 것이다.
+- 기능은 바뀌지 않았다. 템플릿 리터럴 안의 `\u0000`은 런타임에서 같은 NUL 코드포인트를 만들므로 엣지 중복 제거는 바이트 단위로 동일하다. 커밋 diff의 대부분은 `src/commands.js`를 한 번에 CRLF에서 LF로 다시 정규화한 것이다.
 
 ## 1.7.0 — 2026-07-15
 

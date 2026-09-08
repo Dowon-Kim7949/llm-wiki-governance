@@ -9,6 +9,7 @@ import { startMcpServer } from "./mcp/server.js";
 import { SUPPORTED_LANGS } from "./i18n.js";
 import { SUPPORTED_TASK_PROMPTS } from "./task-prompts.js";
 import { GOVERNANCE_MODES } from "./governance.js";
+import { ALL_AGENTS, SUPPORTED_AGENTS } from "./config.js";
 
 const COMMANDS = new Map([
   ["doctor", doctor],
@@ -46,9 +47,7 @@ const COMMANDS = new Map([
 
 const SUPPORTED_FORMATS = new Set(["text", "json", "markdown", "html"]);
 const GRAPH_FORMATS = new Set(["text", "json", "mermaid", "dot"]);
-const SUPPORTED_AGENTS = new Set(["codex", "claude", "cursor", "copilot", "windsurf", "gemini", "jetbrains", "antigravity", "all"]);
 const SUPPORTED_EXISTING_POLICIES = new Set(["skip", "overwrite"]);
-const ALL_AGENTS = ["codex", "claude", "antigravity"];
 
 // Runs a full CLI invocation (parse -> dispatch -> render) and RETURNS the
 // numeric exit code (0 pass, 1 error/strict-warning, 2 blocked, 3 usage error),
@@ -711,6 +710,10 @@ Governance modes / 거버넌스 모드 (llm-wiki mode):
   strict   — full completeness, verification, and handoff readiness
   Day to day in lite; before a handoff switch to strict and run backfill.
   평소에는 lite, 인수인계 전에 strict로 올리고 backfill을 돌리세요.
+  The level is read from llm-wiki.config.json. '--mode <level>' overrides it for a
+  single run and is accepted by: validate, status, next, audit, stats, drift,
+  impact, init, quickstart, handoff, prompt, backfill, mode.
+  · 설정 파일의 값을 한 번만 덮어쓰려면 위 명령들에 '--mode <level>'을 줍니다.
 
 Why / 왜:
   Your agent grounds on a verified wiki instead of re-deriving from the code each time — fewer tokens, fewer errors.
@@ -784,6 +787,13 @@ Safety:
   prompt prints repeatable post-wiki agent workflows and does not write project files unless --out is used for the report.
   next is advisory: it reuses audit coverage and recommends follow-up actions without writing files.
   explain is advisory: it explains a finding rule and suggests safe remediation steps.
+
+Exit codes / 종료 코드:
+  0  pass — no blocking finding · 차단 findings 없음
+  1  error, or a warning under --strict · error, 또는 --strict에서의 warning
+  2  blocked — a safety refusal (e.g. sensitive-info detection) · 안전상 거부
+  3  usage error — unknown command/option, or an option this command rejects
+     · 사용법 오류(알 수 없는 명령/옵션, 또는 해당 명령이 거부하는 옵션)
 
 Use llm-wiki help <command> for command-specific guidance.
 `;
@@ -976,7 +986,10 @@ Changing the mode:
 Backward compatibility:
   A project with no 'governance' block resolves to strict, whose rule floor is
   empty — so an existing repository behaves exactly as it did before this feature.
-  New projects created by 'init --mode <level>' default to lite.
+  'init'/'quickstart' scaffold lite only for a repository that is genuinely new —
+  one with NO llm-wiki.config.json and NO wiki. A repository that already has
+  either keeps strict, so an existing project is never silently narrowed. An
+  explicit '--mode <level>' wins over both.
 
 JSON (--format json):
   Top-level keys: schemaVersion, command, result, mode, requestedMode, source, policy, capabilities[], transition[], configPath, written, planned, findings[].

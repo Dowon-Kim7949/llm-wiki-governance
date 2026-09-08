@@ -32,6 +32,12 @@ jobs:
           node-version: "24"
           package-manager-cache: false
 
+      # llm-wiki-governance must be a devDependency of the repository for the
+      # steps below: they run `npx --no-install llm-wiki`, which resolves the bin
+      # from node_modules and never downloads anything. Do not drop --no-install —
+      # this package's bin is named `llm-wiki`, but npm also hosts an UNRELATED
+      # package under that name, so a bare `npx llm-wiki` on a runner without the
+      # devDependency silently downloads and runs a stranger's code.
       - name: Install dependencies
         run: npm ci
 
@@ -39,10 +45,10 @@ jobs:
         run: npm test
 
       - name: Validate LLM-WIKI frontmatter
-        run: npx llm-wiki validate-frontmatter
+        run: npx --no-install llm-wiki validate-frontmatter
 
       - name: Validate LLM-WIKI strictly
-        run: npx llm-wiki validate --strict --agent codex
+        run: npx --no-install llm-wiki validate --strict --agent codex
 
       # The omission gate: fails when a source file a `verified` document is
       # grounded in changed in this diff and the document did not. validate and
@@ -57,5 +63,12 @@ jobs:
       # ("impact.source_changed": "warning"|"info"|"off") or rulesPreset:
       # "relaxed" — not by deleting the step. A package.json whose diff moves
       # nothing but the version value does not count as a source change.
+      #
+      # Governance mode gates this step too (1.30.0): under `lite`
+      # impact.source_changed is `off` and under `standard` it is a warning, so on
+      # a project in either mode this step PASSES while catching nothing. That is
+      # the intended meaning of those modes — but if you wired this workflow to get
+      # an omission gate, check `llm-wiki mode` and make sure the project is in
+      # `strict`, or set the rule explicitly in llm-wiki.config.json.
       - name: Gate on undocumented source changes
-        run: npx llm-wiki impact --since "origin/${{ github.base_ref || 'main' }}" --strict
+        run: npx --no-install llm-wiki impact --since "origin/${{ github.base_ref || 'main' }}" --strict

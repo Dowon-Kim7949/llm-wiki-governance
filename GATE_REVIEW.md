@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: gate_review
 project: llm-wiki-governance
-last_updated: 2026-07-21
+last_updated: 2026-09-08
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -2368,6 +2368,15 @@ that was recommended and then rejected on its own evidence is the more useful re
   first commit that changes source without touching a document that cites it.** That makes
   the next release a **SemVer MAJOR**. The version in `package.json` is **not** bumped in
   this change and **no tag is being cut**.
+  **Correction (2026-09-08): it shipped as 1.28.0, a MINOR, and this line said MAJOR for five
+  weeks after that stopped being true.** The reasoning for going MINOR is recorded in the
+  1.28.0 CHANGELOG entry — that release is an explicit, named exception to the SemVer reading
+  above rather than a quiet reclassification — but this sentence was never brought into line,
+  so the decision record contradicted the shipped version number and every release after it.
+  The paragraph above is left as written because it is what was decided on 2026-08-03. What
+  actually happened: 1.28.0 (2026-08-03) carried the change, and 1.30.0 (2026-09-07) later
+  made the same rule mode-dependent — `off` under `lite`, a warning under `standard` — which
+  is the softer adoption path this decision did not have available at the time.
 - **A bare `impact --since` step now counts as a gate in `doctor`.** The CI-governance line
   classified it as "NO omission gate" because it demanded `--strict`, which is exactly the
   flag decision 21 made unnecessary. `drift` and `check-run` still require `--strict`,
@@ -2673,6 +2682,278 @@ that forced 1.28.0 to be recorded as an exception to this policy.
 append-only log to `review --approve <path>` no longer stamps it (it never should have), and a
 project that wants documents under `docs/llm-wiki/templates/` freshness-checked cannot ask for it.
 Both are intended, and neither is a contract this repository published.
+
+## Delegation Policy Scope Decision (accepted for 1.29.2 — built, shipped, measured)
+
+The 1.27.1 `contextBudget` block told a generating agent **how much** to read back. It could
+not touch the path that actually costs the most: a read explosion — locating a convention
+across a dozen documents, scoping a change, confirming a blast radius — paid for by the
+expensive context that has to hold the whole conversation. `delegationPolicy` adds **who
+reads it**.
+
+**Decision: a neutral policy block, inserted at exactly three prompt sites** — after
+`contextBudget` in `implementationPrompt`, `docsSyncPrompt`, and
+`initialEnrichmentWorkflow`. It splits the work in one place: locating and scoping, and
+mechanical closing (format/lint/test runs, frontmatter and manifest updates, inserting text
+someone else already wrote) **may** be delegated; design judgement, regression calls, the
+actual edit, and the wiki/log prose **may not** — only the reasoning that produced a change
+can write it down. Three traps are named rather than implied: a delegation that returns raw
+material instead of a brief has bought nothing; **the session model stays fixed and only
+delegations go to a cheaper one** (switching the session model mid-run re-reads the whole
+conversation so far at the new model's input price, because the prompt cache is per-model);
+and delegation does not buy an unverified claim — if the delegate did not read the real
+source and report the evidence, read it yourself.
+
+**Harness-specific wording is deliberately out of scope.** These prompts ship to both Codex
+and Claude Code as one neutral document, so no branch on agent identity is possible here.
+Harness-specific phrasing belongs to `templates/adapters/*`.
+
+**Measured, and the result was negative.** The A/B run on 2026-08-19 (arms D0/D1, real
+driver task, n=1) found **no detectable saving — the difference sat inside the noise.** That
+is recorded here rather than dropped, because the block shipped on the strength of an
+argument, not a measurement, and the honest state of the evidence is "unfalsified reasoning,
+not a demonstrated win." The one remaining cheap check (a free blind re-grade of the stored
+answers, no API calls) has not been run.
+
+## Governance Modes Scope Decision (accepted for 1.30.0 — built, shipped 2026-09-07)
+
+The product enforced one policy: the completeness bar appropriate to a handoff. A team three
+weeks into a new service does not need that bar, and the honest observation is that the
+amount of documentation worth maintaining is a function of what the project needs **now**,
+not of the tool's opinion.
+
+**Decision: one engine, three policy levels — `lite` / `standard` / `strict` — switchable at
+any time in the same repository.** The level lives in one config key
+(`governance.mode`), contributes a **severity floor** to the rule map, and narrows the
+document set a mode *plans* — which is most of what makes `lite` light: `structure.required_doc`
+stops firing for profile docs because they were never expected, not because a finding was
+silenced. Precedence, lowest to highest: **mode floor → `rulesPreset` → explicit `rules`**.
+
+**Backward compatibility is the load-bearing part.** A project with no `governance` block
+resolves to `strict`, whose floor is empty — an existing repository behaves exactly as it
+did before this feature. `init`/`quickstart` scaffold `lite` only for a repository that is
+genuinely new (no config **and** no wiki); one that already has either keeps `strict`,
+because silently narrowing an existing project's document set would be a breaking change
+dressed up as a default. The discriminator is evidence, not a flag.
+
+**What a mode may never dial down, and why it is not configurable.** Malformed frontmatter, a
+dangling `source_files` path, a broken link, and the whole `sensitive.*` family fire in every
+mode. A structural check tells you the corpus is readable and a safety check tells you no
+secret leaked; neither is a completeness preference, so neither belongs on this dial.
+
+**Two commands, split on cost.** `mode set <level> --write` writes one config key and runs
+**no** scan — escalating to `strict` is instant. `backfill` is the expensive reconstruction,
+asked for explicitly, and it labels every recovered fact `verified` / `inferred` / `unknown`
+rather than inventing a rationale nobody recorded.
+
+**Dogfooding caught two defects that a fresh-repository fixture could not.** Running the
+feature against this repository's own corpus surfaced (1) a negative claim stated more
+broadly than its evidence supported, and (2) a readiness check that no repository could
+pass. Both are the same class: an assertion written from the intended behaviour rather than
+the observed one. Tests went 522 → 568.
+
+**Shipped as 1.30.0 — a MINOR.** Two new commands and one new config key, with no existing
+behaviour changed for a project that says nothing. Publish note for the record: npm took
+about 80 seconds to serve the new version after a successful publish, during which
+`npm view` and `npm install` reported the previous version and `E404`. That is registry
+propagation, not a failed publish — **do not re-tag.**
+
+## `mode set` / `backfill` Write Scope Decision (accepted for 1.30.0)
+
+Every prior write in this product landed inside `docs/llm-wiki/` or on an adapter file, and
+`SECURITY.md` said so. `mode set --write` breaks that shape: it writes
+`llm-wiki.config.json`.
+
+**Accepted scope, stated as a boundary rather than an intent.** `mode set --write` writes
+**exactly one key** — `governance.mode` — and preserves every other key in the file. It runs
+no audit, no scan, and no document generation as a side effect. `backfill --write` creates
+**only missing planned document stubs** at `status: needs_review`; it writes no prose,
+invents no history, and cannot promote anything. Neither command is reachable over MCP:
+`mode` is exposed as the read-only report only, and `backfill` is not exposed at all.
+
+**Consequence for the shipped threat model.** `SECURITY.md` and `SECURITY.ko.md` previously
+described the write surface as "wiki/adapter files under `--write`/`--apply`", which was
+already missing `review --approve` and `drift --downgrade` and is now also missing a
+non-wiki file. Both were corrected on 2026-09-08 to enumerate the complete surface —
+`--write`, `--apply`, `--approve`/`--approve-all --yes`, `--downgrade`, `--out` — and to name
+`llm-wiki.config.json` explicitly as the one non-wiki file any command writes.
+
+## Shipped-Template `npx` Resolution Decision (2026-09-08 — built)
+
+`templates/github-actions/llm-wiki-validate.yml` ran `npm ci` and then `npx llm-wiki …`
+three times, and never stated that `llm-wiki-governance` must be a devDependency. This
+package's bin is named `llm-wiki`, but **npm hosts an unrelated package under that name**, so
+on a runner without the devDependency those steps downloaded and executed a stranger's
+package — and, because that package has no such subcommands, in a way that reads as a
+configuration problem rather than as the supply-chain event it is.
+
+**Decision: the template now uses `npx --no-install llm-wiki`, matching this repository's own
+CI and the `pre-commit` hook template**, so a missing devDependency fails loudly instead of
+resolving to something else. The prerequisite is now stated in the template itself.
+`docs/llm-wiki/EXAMPLES.md`'s CI recipe was changed the same way; the two first-run surfaces
+(`outputs/distribution/reddit-post.md`, `launch-post.md`) and the MCP registry snippets
+(`registries.md`) name the real package instead, since there is nothing installed there to
+resolve against.
+
+**This is a behaviour change to a shipped artifact, stated as such.** An adopter who copied
+the template and never added the devDependency had a passing pipeline; after this change that
+pipeline fails. That is the correct direction — the passing pipeline was running an unrelated
+program — but it is a change, not a cleanup. `tests/verification.test.js` pinned the old
+strings and was updated in the same change, with an added assertion that **no** `npx` call in
+the template lacks `--no-install`, so the class cannot come back one line at a time.
+
+## Publish Credential Cleanup (open — recorded 2026-09-08, not decided)
+
+`.github/workflows/publish.yml` supplies `NODE_AUTH_TOKEN` from an `npm-release` environment
+secret. Registry metadata says that token is **not** what authenticates:
+`npm view llm-wiki-governance@<version> --json` reports
+`_npmUser.trustedPublisher.oidcConfigId` for 1.29.5, 1.30.0 and 1.30.1 — i.e. npm Trusted
+Publishing (OIDC). The only version published by a human account is 1.16.0.
+
+**What this repository believed, and why it was wrong.** `RELEASE_FLOW.md` recorded that
+OIDC-only authentication "does not work in this repository" after v1.29.3 and v1.29.4 failed
+(`E404`, then `ENEEDAUTH`). The likelier cause is the 2026-09-03 repository swap: a Trusted
+Publisher registration binds to the **repository object**, not its name, so replacing the
+repository invalidated it. The same YAML authenticated via OIDC before the swap and does so
+again under a new config id. **1.29.3 and 1.29.4 are npm gaps, deliberately not deleted.**
+
+**The open decision: remove the `NODE_AUTH_TOKEN` env, or keep it as a fallback.** Removing it
+retires a 2FA-bypass credential (a class npm is retiring for publishing in 2027-01 anyway) and
+makes the workflow say what it does. Keeping it costs a rotation obligation and one misleading
+line that now has a correction beside it.
+
+**What is not known, and cannot be settled without an actual publish.** Whether the
+re-registration happened before or after the v1.29.4 attempt, and whether a publish succeeds
+with the env removed. `npm publish --dry-run` issues no registry PUT and therefore verifies
+no credential. The cheap check after any future release is the `_npmUser` field above.
+
+## Gate-Consistency Batch Scope Decision (1.31.0, 2026-09-08 — built)
+
+1.30.0 shipped three policy levels and did not finish teaching the product about them. An audit of
+the shipped surfaces found the gap in three shapes at once, and this batch closes all three plus the
+four still-open measured defects from the harness-governance run.
+
+**Accepted: `drift` reads the effective rule map, like every other gate.** `audit` and `validate`
+have gated the drift scan on `ruleSuppressed` since 1.30.0; `drift` called `scanEvidenceDrift`
+directly and never passed the result through `applyRuleConfig`. So a project on `lite` — where
+`evidence.stale` is `off` — got warnings anyway, `drift --strict` could fail a build on a rule its
+own mode had switched off, and `drift --downgrade` would rewrite documents to `needs_review` for
+it. **Direction: fewer findings, exit 1 → 0 under `lite`.** Nothing moves under `strict`.
+
+**Accepted: reports name the policy instead of overloading the word.** `validate`, `impact`,
+`check-run` and `harness-health` printed `mode: strict` / `mode: standard` to mean "was
+`--strict` passed". Those are also two governance level names now, so the line read as the thing it
+was not — and the level is precisely what a reader needs to interpret a green result. Split into
+`strict:` and `governance_mode:`. **The source of the level is deliberately NOT printed on these
+four**: `tests/governance-modes.test.js` asserts that declaring `strict` explicitly produces
+byte-identical `validate` output to declaring nothing, which is the migration guarantee, and
+`governance_mode: strict (config)` vs `(default)` would have broken it. Where the value came from
+is the `mode` and `doctor` commands' job and they already print it. `impact`'s caveat does carry
+the source, because that sentence exists to tell a reader why a green run may not mean what they
+think, and `impact` is not part of the byte-identity invariant.
+
+**Accepted: N-8, a directory anchor now fires in `impact`.** `scanReverseImpact` compared exact
+strings while git only ever lists files, so a `verified` document anchored to `src/commands/` was
+never flagged when a file under it changed — while the date-anchored `drift` scan fired on the same
+edit via `git log -- <dir>`. The two scans now agree, on a `<anchor>/` prefix match.
+**Direction: MORE findings, and `impact.source_changed` is an error under `strict`, so a
+repository with directory anchors can get a red build on its first commit after upgrading.** Taken
+anyway, because it is a false negative in the one gate this product exists for, and because the
+ways back are unchanged and config-only. A file anchor cannot gain a false positive (no path begins
+with "<a file>/"), and a partial segment cannot match (`src/command` ≠ `src/commands/scans.js`) —
+both pinned by tests, the second as a control that fails if the matcher is ever built on a bare
+`startsWith`.
+
+**Rejected, after building it: reading a locator in `source_files` as a precise anchor (N-7).**
+N-7 recorded that line-range narrowing never fires when the same file also appears in
+`source_files`, measured 58 of 58 line-range anchors masked across five repositories, and proposed
+a one-line semantic change. Re-examined here, **the conclusion is different: that is the published
+contract.** `GLOSSARY.md` defines `source_files` as the broad anchor and `evidence` as the precise
+one, so a document listing a file in `source_files` has declared a whole-file dependency and the
+scan is doing what the vocabulary says. The way to ask for narrowing already exists — cite the file
+**only** in `evidence` with a line range — and it was verified on a fixture to narrow drift while
+raising no `evidence.ungrounded` or `source_files.missing` finding. The change was implemented,
+then reverted: no document in this repository writes a locator into `source_files`, so it had no
+local consumer, while for an adopter it would silently narrow anchors written as broad — a false
+negative in a freshness gate, which is the one direction a fix here must not move. What N-7 leaves
+is a discoverability gap, fixed in the docs and in the `source_files.missing` message.
+`tests/anchor-semantics.test.js` pins the contract in both directions, so a future change has to
+argue with a test rather than with a comment.
+
+**Accepted as a report, explicitly not as enforcement: N-9.** A document inside the diff is not
+flagged, on the reading "it was updated in this change". A review stamp satisfies that test without
+anyone re-reading anything, so one unrelated `review --approve-all` in a PR's range exempts every
+document it stamped for the whole PR — measured harm (case C-1): a stale contract description
+passed the gate that way. The new `stamp_only_exclusions` names those documents and **never moves
+the exit code.** Enforcing it was considered and refused: the same self-exclusion is how the
+documented remediation clears a finding (`drift --downgrade`, then `review --approve-all`), so
+enforcing it would leave real drift with no resolution path — defect N-11 pointing the other way.
+See the open decision below.
+
+**Accepted: `init --refresh` re-stamps a body-current artifact whose marker is behind.**
+`harness-health` reported nine findings, eight of which no command could clear: `--refresh`
+compared bodies only (`stripMarker()` on both sides), so an artifact matching the current generator
+was "already up to date" and its stale marker was never rewritten. Reported as `re-stamped` rather
+than `refreshed`, because the body did not change and a message that overstates what happened
+teaches a reader to discount the next one. Still confined to package-generated, unmodified
+artifacts, so the safety contract does not move. The ninth finding — this repository's own
+`AGENTS.md` stuck at adapter v1 while `CLAUDE.md` was at v2 — was real harm, not bookkeeping:
+Codex was being handed the pre-1.27.2 guidance, with no locate-before-reading discipline, out of the
+repository that shipped that discipline. Fixed by hand, which is the only supported path, because
+an existing adapter file is never overwritten; the finding's message now says so and names the two
+ways out. **A test that pinned the dead end was also wrong**: it asserted `--refresh` is blind to
+version-only drift by substring, so an untouched sibling artifact satisfied it and the test passed
+both with and without the defect it claimed to hold.
+
+**Accepted: the config surface gets the CLI's vocabulary.** `type` and `agents` in
+`llm-wiki.config.json` are validated against the same lists `--type` and `--agent` use, and `all`
+expands in the config path too. Before this, `{"type": "frontendd"}` was accepted and behaved as an
+unknown type, and `{"agents": ["all"]}` passed the literal string to the adapter scan while the CLI
+path had already expanded it to three names — one config resolving to two different answers, which
+contradicts the promise `PUBLIC_API.md` makes that CLI, programmatic API and MCP compute the same
+effective options. The vocabulary constants moved from a private const in `src/cli.js` to
+`src/config.js` (a leaf with no imports) so both surfaces read one list. **Direction: a config that
+was already wrong now fails loudly (exit 3).**
+
+**Accepted: the append-only change log leaves both freshness gates.** Same reasoning as N-14 for
+templates: `review` refuses to stamp `log.md`, so a flagged `log.md` would be a finding with no
+way to clear it. Today it is unreachable only because the log happens to sit at `needs_review`;
+making the skip explicit means the two enumerators cannot disagree if that ever changes.
+
+**Sized MINOR with two named exceptions**, the same treatment 1.28.0 got and for the same reason:
+the `impact` directory-anchor fix and the config vocabulary check can each fail a build that used
+to pass, which by a strict SemVer reading argues MAJOR, but both replace a silent wrong answer with
+a loud correct one and both have a documented config-only way back. Two new report keys, one new
+help section, no new command, no removed option. Tests 568 → 579, with RED confirmed per test: with
+the three fixes reverted, three of the seven anchor tests fail and four pass — the four that pass
+pin the contract, which was deliberately not changed.
+
+## Stamp-Only Exemption (open — recorded 2026-09-08, not decided)
+
+Defects N-9 and N-11 are one question wearing two faces, and neither can be closed without
+answering it: **what counts as re-affirming a document?**
+
+- **N-9.** `impact` exempts any document inside the diff. A review stamp puts a document inside the
+  diff. So a stamp exempts it, without anyone having re-read anything.
+- **N-11.** The remediation this repository documents is `drift --downgrade` then
+  `review --approve-all`. When `reviewed_at` is already today — which is always true for the second
+  batch of the day under self-approval — that round trip is byte-identical to the original, the
+  document is NOT in the diff, and the finding stays. So the standard resolution path is a no-op.
+
+Fixing either one alone makes the other worse. Enforce N-9 and the remediation stops working
+entirely. Work around N-11 by touching `last_updated` with no content change and you are forging a
+record to turn a gate green, which is the exact behaviour this roadmap exists to prevent.
+
+**The recommended resolution, not yet accepted: re-affirmation must be a recorded statement, not a
+timestamp.** Clearing a freshness finding would require adding a Review Note saying what was
+checked — which is a content change, so it lands in the diff honestly, N-11 disappears, and N-9 can
+be enforced. The machinery already exists in this repository: per-document Review Notes, the
+five-entry cap, and rotation into `REVIEW_HISTORY.md`. **The cost is real and is why this is not
+being taken unilaterally:** every adopter clearing a freshness finding would have to write a
+sentence, which is a workflow change, not a bug fix.
+
+Until it is decided, `impact` reports `stamp_only_exclusions` and changes no exit code, so the
+situation is visible rather than silent.
 
 ## Release Caveats
 

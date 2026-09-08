@@ -19,10 +19,11 @@ jobs:
         uses: actions/checkout@v6
 
       # `registry-url` makes setup-node write an .npmrc whose auth line reads
-      # `_authToken=${NODE_AUTH_TOKEN}`; the publish step below supplies that
-      # variable from the `npm-release` environment secret. Authentication is a
-      # package-scoped granular access token; provenance still comes from the
-      # GitHub OIDC token (id-token: write), as it did for every release so far.
+      # `_authToken=${NODE_AUTH_TOKEN}`. It does NOT disable Trusted Publishing:
+      # when npm matches a Trusted Publisher for this repo + workflow + environment
+      # it authenticates with the OIDC-exchanged token instead. Verified on
+      # 2026-09-08 — `npm view llm-wiki-governance@1.30.1 --json` reports
+      # `_npmUser.trustedPublisher.oidcConfigId`, i.e. OIDC, not the secret below.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -53,11 +54,13 @@ jobs:
       - name: Publish to npm
         run: npm publish --access public --provenance
         env:
-          # Package-scoped granular access token stored as an `npm-release`
-          # environment secret. OIDC-only Trusted Publishing was attempted for
-          # v1.29.3/v1.29.4 and did not complete the token exchange in this
-          # repository (see RELEASE_FLOW.md); auth therefore uses this token while
-          # --provenance keeps using the OIDC identity. Rotate before expiry.
+          # Kept as a fallback, NOT as the authenticating credential: every release
+          # since 1.29.5 is recorded by the registry as published via Trusted
+          # Publishing (OIDC). v1.29.3/v1.29.4 failed because the 2026-09-03
+          # repository swap invalidated the Trusted Publisher registration — the
+          # registration binds to the repository object, not its name — and not
+          # because OIDC is unavailable here. Removing this env is tracked as a
+          # separate decision; see RELEASE_FLOW.md Prerequisites.
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
   # GitHub Release on the same v* tag push (GATE_REVIEW.md Gate 12). Runs only

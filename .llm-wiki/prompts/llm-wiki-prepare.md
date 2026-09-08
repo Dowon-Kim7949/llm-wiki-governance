@@ -43,4 +43,4 @@ Expected final response:
 
 Read-only workflow: this skill investigates and explains — it does not change files, and it writes no run manifest. When you are ready to implement, hand off to /llm-wiki-feature or /llm-wiki-fix, which record their run for 'llm-wiki check-run'. Never promote a document to verified; that is human-approved only.
 
-<!-- llm-wiki-generated v4 133c892162f13962 -->
+<!-- llm-wiki-generated v5 133c892162f13962 -->

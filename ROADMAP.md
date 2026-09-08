@@ -8,7 +8,7 @@ tags:
 status: needs_review
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-07-30
+last_updated: 2026-09-08
 author: ai-generated
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -52,7 +52,7 @@ CI continuously checks quality.
 
 ## Shipped Through 1.7.0
 
-`1.7.0` (this release) is the CI/CD-adoption line — the lead slice of the split
+`1.7.0` is the CI/CD-adoption line — the lead slice of the split
 "Team & org scale" plan: a composite GitHub Action
 (`.github/actions/validate/action.yml`) wrapping the read-only `validate` via
 `npx` (pulls in no other actions, zero-dep, referenced by an exact `vX.Y.Z`
@@ -885,6 +885,65 @@ fire only in the new commands, and additive JSON fields — with no existing com
 findings, its exit code, or its document set for a project that has a config or a wiki. 43 tests
 added (**522 → 565**, `skipped 0`), including an end-to-end acceptance fixture that runs the whole
 lite → drift → strict → backfill → handoff scenario against a real git repository.
+
+## Release Plan (post-1.30.1) — make the gates, the reports, and the text agree — **shipped as 1.31.0 (2026-09-08)**
+
+1.30.0 gave the product three policy levels. It did not finish teaching the product about them,
+and an audit of the shipped surfaces found the gap in three places at once: a gate that ignored
+the level (`drift`), reports that used the word `mode` for something else, and prose that
+described the pre-modes behaviour. Alongside those, four measured defects from the harness
+governance run were still open, and one of them — nine `harness-health` findings with no
+resolution path — had been open long enough to be treated as scenery.
+
+The organising principle of this release is that a governance tool has no standing to report on
+someone else's documentation drift while its own is unfixed.
+
+- **The mode reaches the last gate that ignored it.** `drift` now consults the effective rule map
+  the way `audit` and `validate` have since 1.30.0, and passes its findings through
+  `applyRuleConfig`. Before this, a project on `lite` could have `drift --strict` fail a build on
+  a rule its own mode had switched off, and `drift --downgrade` would rewrite documents for it.
+- **Reports say which policy was in force.** `mode: strict` used to mean "`--strict` was passed",
+  which since 1.30.0 collides with a governance level of the same name. Four surfaces now print
+  `strict:` and `governance_mode:` separately, and `drift` states whether `evidence.stale` was
+  scanned at all — so a green run under `lite` cannot be read as freshness.
+- **N-8 closed: a directory anchor now fires in `impact`.** The reverse-impact scan compared exact
+  strings while git lists files, so a document anchored to a directory was never flagged — a false
+  negative in the gate this product exists for, while the date-anchored scan fired on the same
+  edit. **This makes the gate stricter and can newly fail a build**; the config-only ways back are
+  unchanged.
+- **N-9 reported rather than enforced, and the reason recorded.** A review stamp satisfies
+  `impact`'s self-exclusion, so one unrelated `review --approve-all` in a PR's range exempts
+  every document it stamped. The new `stamp_only_exclusions` names those documents and never moves
+  the exit code — because the same exclusion is how the documented remediation clears a finding, so
+  enforcing it would leave real drift unresolvable (N-11). Closing both needs a decision about what
+  re-affirmation *is*, and that decision is now open in `GATE_REVIEW.md` instead of implicit in a
+  scan.
+- **N-7 re-examined and the earlier conclusion overturned.** It was recorded as a broken narrowing
+  condition (58 of 58 line-range anchors masked). It is the published contract: `source_files` is
+  the broad anchor, `evidence` the precise one, and citing a file *only* in `evidence` with a line
+  range already narrows drift — verified on a fixture. Reading a locator in `source_files` as
+  precise was built and reverted, because for an adopter it would silently narrow anchors written
+  as broad, and a false negative is the one direction a freshness fix must not move. What is left
+  is a discoverability gap, fixed in the docs.
+- **Nine findings with no resolution path became zero.** `init --refresh` compared bodies only, so
+  an artifact whose body matched the current generator kept a stale marker forever and
+  `harness-health` reported it forever. `--refresh` now re-stamps that case (and says
+  "re-stamped", not "refreshed"). The remaining finding — this repository's own `AGENTS.md` stuck
+  at adapter v1 while `CLAUDE.md` was at v2 — was real: Codex was being handed the pre-1.27.2
+  guidance, with no locate-before-reading discipline, out of the same repository that shipped it.
+- **The config surface got the CLI's vocabulary.** `type` and `agents` in
+  `llm-wiki.config.json` are now validated against the same lists `--type` and `--agent` use, and
+  `all` expands in both paths. One config resolving to two different answers contradicts the
+  documented promise that CLI, programmatic API and MCP compute the same effective options.
+  **This also can newly fail a build**, on a config that was already wrong.
+- **Four decisions that had shipped with no record are now recorded**, including the *negative*
+  measurement for 1.29.2's `delegationPolicy` — the A/B run found no detectable saving. A decision
+  log that only holds the wins is a marketing document.
+
+Sized **MINOR with two named exceptions**, the same treatment 1.28.0 got: two new report keys, one
+new help section, no new command and no removed option, but two changes that replace a silent wrong
+answer with a loud correct one and can therefore fail a build that used to pass. Tests **568 →
+579**, with RED confirmed per test rather than as a file-level failure.
 
 ## Non-Goals (unchanged safety ethos)
 

@@ -89,10 +89,13 @@ node bin/llm-wiki.js validate --type library
 ## CI에서 검증
 
 ```bash
-npx llm-wiki validate-frontmatter
-npx llm-wiki validate --strict --agent codex
-npx llm-wiki impact --since origin/main     # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
-npx llm-wiki drift --strict                 # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
+# 이 저장소의 CI와 같은 형태다. `--no-install`이 load-bearing이다: 이 패키지의 bin 이름은
+# `llm-wiki`이지만 npm에는 무관한 `llm-wiki` 패키지가 따로 있어서, devDependency가 없는
+# 러너에서 맨 `npx llm-wiki`는 남의 패키지를 내려받아 실행한다. `--no-install`은 대신 실패한다.
+npx --no-install llm-wiki validate-frontmatter
+npx --no-install llm-wiki validate --strict --agent codex
+npx --no-install llm-wiki impact --since origin/main     # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx --no-install llm-wiki drift --strict                 # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
 
 `--strict`는 warning을 실패로 처리하므로 `related.missing`·`content.not_enriched`·`evidence.*`가 릴리스 게이트에서 CI를 실패시킬 수 있다.

@@ -2,6 +2,8 @@ import path from "node:path";
 import { pathExists } from "./files.js";
 import { readTextAuto } from "./encoding.js";
 import { RULE_PRESETS } from "./commands/findings.js";
+import { ALL_AGENTS, SUPPORTED_AGENTS } from "./config.js";
+import { KNOWN_TYPES } from "./detector.js";
 import { GOVERNANCE_MODES, LEGACY_GOVERNANCE_MODE, getGovernancePolicy, isGovernanceMode } from "./governance.js";
 
 export const CONFIG_FILENAME = "llm-wiki.config.json";
@@ -43,7 +45,9 @@ export async function loadProjectConfig(cwd) {
 
   if ("type" in parsed) {
     if (typeof parsed.type !== "string") errors.push(`${CONFIG_FILENAME}: "type" must be a string.`);
-    else config.type = parsed.type;
+    else if (!KNOWN_TYPES.includes(parsed.type)) {
+      errors.push(`${CONFIG_FILENAME}: "type" must be one of ${KNOWN_TYPES.join(", ")}.`);
+    } else config.type = parsed.type;
   }
 
   for (const field of ["profiles", "agents"]) {
@@ -54,6 +58,27 @@ export async function loadProjectConfig(cwd) {
         config[field] = parsed[field];
       }
     }
+  }
+
+  // `agents` gets the same vocabulary check --agent gets, and the same `all`
+  // expansion. Without the expansion the literal string "all" reached
+  // selectedAgents() from a config file while the CLI path had already turned it
+  // into three names, so one surface checked three adapters and the other checked
+  // an agent that does not exist. Rejected values are dropped rather than kept,
+  // because an unknown agent name silently disables an adapter check.
+  if (Array.isArray(config.agents)) {
+    const resolved = [];
+    for (const raw of config.agents) {
+      const value = raw.toLowerCase();
+      if (!SUPPORTED_AGENTS.has(value)) {
+        errors.push(`${CONFIG_FILENAME}: "agents" contains an unsupported agent: ${raw}.`);
+        continue;
+      }
+      for (const agent of value === "all" ? ALL_AGENTS : [value]) {
+        if (!resolved.includes(agent)) resolved.push(agent);
+      }
+    }
+    config.agents = resolved;
   }
 
   if ("strict" in parsed) {

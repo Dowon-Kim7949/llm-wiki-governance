@@ -313,10 +313,13 @@ export async function planSkillArtifacts(cwd, agents, detection, options) {
       }
       const current = await readUtf8(absolutePath);
       const next = withGeneratedMarker(target.render(entry, body));
+      const stampCurrent = inspectSkillArtifact(current).markerVersion;
       if (!isManagedUnmodified(current)) {
         skipped.push(`${target.path} was modified (or is not a managed artifact); would keep it (conflict).`);
-      } else if (stripMarker(current) === stripMarker(next)) {
+      } else if (stripMarker(current) === stripMarker(next) && stampCurrent === SKILL_ARTIFACT_VERSION) {
         skipped.push(`${target.path} is already up to date.`);
+      } else if (stripMarker(current) === stripMarker(next)) {
+        planned.push(`${target.path} would be re-stamped (body already current; marker v${stampCurrent} -> v${SKILL_ARTIFACT_VERSION}).`);
       } else {
         planned.push(`${target.path} would be refreshed (managed artifact; llm-wiki ${entry.task} skill; ${target.format}).`);
       }
@@ -355,12 +358,19 @@ export async function writeSkillArtifacts(cwd, agents, detection, options) {
           skipped.push(`${target.path} was modified (or is not a managed artifact); kept existing file (conflict — remove it and re-run to regenerate).`);
           continue;
         }
-        if (stripMarker(current) === stripMarker(content)) {
+        const stampCurrent = inspectSkillArtifact(current).markerVersion;
+        const bodyCurrent = stripMarker(current) === stripMarker(content);
+        if (bodyCurrent && stampCurrent === SKILL_ARTIFACT_VERSION) {
           skipped.push(`${target.path} is already up to date; left unchanged.`);
           continue;
         }
         await writeFile(absolutePath, content, { encoding: "utf8" });
-        created.push(`${target.path} refreshed (managed artifact; llm-wiki ${entry.task} skill; ${target.format}).`);
+        // Reported as a re-stamp, not a refresh: the body did not change, and
+        // saying "refreshed" about a file whose content is identical is the kind
+        // of message that makes a reader distrust the next one.
+        created.push(bodyCurrent
+          ? `${target.path} re-stamped (body already current; marker v${stampCurrent} -> v${SKILL_ARTIFACT_VERSION}).`
+          : `${target.path} refreshed (managed artifact; llm-wiki ${entry.task} skill; ${target.format}).`);
         continue;
       }
       await mkdir(path.dirname(absolutePath), { recursive: true });

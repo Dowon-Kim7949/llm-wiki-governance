@@ -40,7 +40,7 @@
 신고 범위를 잡으실 때 참고하실 만한 사실들입니다.
 
 - 이 CLI는 런타임 서드파티 의존성이 없습니다. Node.js 내장 모듈만 쓰기 때문에 의존성 쪽 공격면이 거의 없습니다.
-- 로컬 파일시스템에서만 동작합니다. 프로젝트 파일을 읽고, `--write`나 `--apply`를 직접 주었을 때만 위키와 adapter 파일을 씁니다. 프로젝트 내용을 밖으로 보내지 않습니다.
+- 로컬 파일시스템에서만 동작합니다. 프로젝트 파일을 읽고, 쓰기는 플래그를 직접 주었을 때만 일어납니다. 쓰기 표면 전체는 이렇습니다. `--write`(`init`·`quickstart`·`fix`는 위키와 adapter 파일, `mode set`은 `llm-wiki.config.json`의 `governance.mode` 키 하나 — 어떤 명령이든 건드리는 유일한 비위키 파일입니다, `backfill`은 빠진 계획 문서의 **스텁**을 `needs_review`로), `--apply`(`migrate`·`import-memory`), `--approve`와 `--approve-all --yes`(`review`의 검토 스탬프만), `--downgrade`(`drift`가 `verified`를 `needs_review`로), 그리고 `--out`(직접 지정하신 리포트 경로)입니다. 프로젝트 내용을 밖으로 보내지 않습니다.
 - 리포트에 비밀값으로 의심되는 것이 섞이면 표시하고 가려 주는 민감정보 스캔이 들어 있습니다.
 
 특히 듣고 싶은 신고는 이런 것들입니다. 의도한 범위를 벗어난 쓰기, 경로 탐색(path traversal), 조작된 프로젝트 파일을 통한 코드 실행, 리포트나 로그로 민감정보가 새어 나가는 경우입니다.
@@ -87,7 +87,7 @@
 
 - **전송 전제.** 개행으로 구분하는 JSON-RPC 2.0을 stdio로 주고받습니다. 신뢰하는 클라이언트가 로컬 서브프로세스로 띄우는 상황을 의도했습니다. Claude Code나 Cursor 같은 에디터·에이전트, 또는 CI 러너가 그런 클라이언트입니다. `stdout`은 프로토콜 채널이라 프로토콜 메시지만 나가고 로그는 `stderr`로 갑니다. 서버의 stdout에 다른 것을 흘려보내지 마세요.
 - **인증과 인가가 없습니다.** 인증 계층도, 세션도, 호출자별 접근 통제도 없습니다. 그 프로세스에 닿을 수 있는 사람은 노출된 툴을 전부 호출할 수 있습니다.
-- **읽기 전용 툴만 노출합니다.** `init`·`fix`·`migrate`·`drift`·`quickstart --write` 같은 쓰기 명령과 `review`의 승격 경로는 MCP로 내보내지 않습니다. 툴에는 `readOnlyHint`가 붙습니다. `verified` 승격은 사람이 CLI에서 직접 할 때만 일어나고, `review` MCP 툴은 읽기 전용 백로그 목록만 보여 줍니다.
+- **읽기 전용 툴만 노출합니다.** 노출되는 툴은 18개입니다. `validate`·`audit`·`next`·`status`·`doctor`·`stats`·`graph`·`explain`·`mode`·`handoff`·`prompt`·`list_docs`·`search_docs`·`get_doc`·`get_related`·`onboard`·`review`·`prepare`입니다. 쓰기 경로는 하나도 닿지 않습니다. `init`·`fix`·`migrate`·`quickstart --write`·`backfill`·`drift --downgrade`·`mode set --write`와 `review`의 승격 경로가 전부 빠져 있습니다. `mode`는 읽기 전용 리포트만이고 레벨을 바꾸지 못합니다. 툴에는 `readOnlyHint`가 붙습니다. `verified` 승격은 사람이 CLI에서 직접 할 때만 일어나고, `review` MCP 툴은 읽기 전용 백로그 목록만 보여 줍니다.
 - **네트워크에 노출하지 마세요.** 인증이 없으니 이 stdio 서버를 공개 브로커나 원격 브로커, 네트워크 전송 뒤에 그대로 두면 안 됩니다. 원격 접근이 꼭 필요하다면 인증과 접근 통제를 갖춘 프록시를 직접 앞에 두시고, 그 프록시에 닿는 사람은 위키 전체를 읽을 수 있다고 전제하세요.
 - **민감한 저장소라면.** CLI와 같은 보호가 그대로 적용됩니다. restricted 문서, `contains_sensitive_info` 문서, 민감 스캔에 걸린 문서는 기본적으로 `list_docs`와 `search_docs`에서 빠지고(`includeSensitive`로 켤 수 있습니다), 돌려주는 본문과 스니펫에서는 민감한 줄을 가립니다. 그래도 서버에 닿는 호출자는 제외되지 않은 문서를 전부 읽을 수 있다고 보셔야 합니다. 진짜 비밀은 `visibility: restricted`에 기대지 마시고 애초에 위키에 두지 마세요.
 

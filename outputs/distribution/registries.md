@@ -7,7 +7,7 @@ Verified facts used throughout (checked 2026-07-27 against `package.json` and so
 `llm-wiki-governance` v1.26.0 · MIT · Node ≥ 18.18.0 · 0 dependencies, 0 devDependencies ·
 27 CLI commands · **17 read-only MCP tools** · repo `Dowon-Kim7949/llm-wiki-governance`.
 
-The MCP server is started with `npx llm-wiki mcp` (stdio transport).
+The MCP server is started with `npx -y llm-wiki-governance mcp` (stdio transport).
 
 ---
 
@@ -76,7 +76,7 @@ Both take a short form: repo URL, name, one-line description, category, install 
 ```
 Name:        llm-wiki-governance
 Repo:        https://github.com/Dowon-Kim7949/llm-wiki-governance
-Install:     npx llm-wiki mcp
+Install:     npx -y llm-wiki-governance mcp
 Category:    Knowledge / Documentation
 Description: Read-only MCP server over a governed project wiki — search and read documents,
              inspect verification state and evidence links, detect drift against real source.

@@ -913,7 +913,8 @@ export async function validateCommand(options) {
         : "pass";
   const summary = [
     `result: ${result}`,
-    `mode: ${options.strict ? "strict" : "standard"}`,
+    `strict: ${options.strict ? "true" : "false"}`,
+    `governance_mode: ${effectiveGovernanceMode(options)}`,
     ...(options.changed ? [`scope: changed${options.since ? ` since ${options.since}` : ""} (${changedScope})`] : []),
     `project_type: ${auditResult.detection.projectType}`,
     `confidence: ${auditResult.detection.confidence}`,
@@ -1038,6 +1039,67 @@ export async function versionOnlyManifestChanges(cwd, sinceRef, changed) {
   return excluded;
 }
 
+
+// Fields a review stamp writes, and nothing else. `review --approve` writes
+// status/reviewed_by/reviewed_at (plus the tags: status entry), and
+// `drift --downgrade` writes status/last_updated (plus the same tag).
+const REVIEW_STAMP_FIELDS = new Set(["status", "reviewed_by", "reviewed_at", "last_updated", "last_edited_by"]);
+const STATUS_TAG_VALUES = new Set(["verified", "needs-review", "needs_review"]);
+
+// Everything about a wiki document EXCEPT its review stamp, as a comparable
+// string. Used to tell "this document was actually updated" apart from "this
+// document was re-stamped", which impact's self-exclusion cannot currently
+// distinguish (defect N-9).
+function documentSubstance(text) {
+  if (typeof text !== "string") return null;
+  const parsed = parseFrontmatter(text);
+  if (!parsed.frontmatter) return text;
+  const entries = Object.entries(parsed.frontmatter)
+    .filter(([key]) => !REVIEW_STAMP_FIELDS.has(key))
+    .map(([key, value]) => {
+      if (key !== "tags" || !Array.isArray(value)) return [key, value];
+      return [key, value.filter((tag) => !STATUS_TAG_VALUES.has(String(tag).trim()))];
+    })
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return JSON.stringify(entries) + "\u0000" + parsed.body;
+}
+
+// Wiki documents inside the change set whose ONLY change is a review stamp.
+//
+// impact excludes any document that appears in the diff, on the reading "the
+// document was updated in this change, so it is not an omission". A review stamp
+// satisfies that test without anyone re-reading anything, so one unrelated
+// `review --approve-all` in a PR's range exempts every document it stamped for the
+// whole PR — measured harm: a stale contract description passed the gate that way
+// (defect N-9, case C-1).
+//
+// This REPORTS the overlap and does not change the exclusion, deliberately. The
+// exclusion is also the only way the standard remediation clears a finding
+// (downgrade, then re-stamp), so enforcing it here would leave a real drift
+// finding with no resolution path — which is defect N-11 in the other direction.
+// Closing both needs a decision about what re-affirmation IS; see GATE_REVIEW.md
+// ("Stamp-Only Exemption"). Until then the reader gets told, and the exit code
+// does not move.
+async function stampOnlyDocExclusions(cwd, sinceRef, changed) {
+  const docs = changed.filter((relPath) => relPath.startsWith("docs/llm-wiki/") && relPath.endsWith(".md"));
+  const excluded = [];
+  for (const relPath of docs) {
+    let after = null;
+    try {
+      after = await readUtf8(path.join(cwd, ...relPath.split("/")));
+    } catch {
+      continue; // deleted in this change: nothing to re-affirm
+    }
+    const before = fileAtRef(cwd, sinceRef || "HEAD", relPath);
+    if (typeof before !== "string" || before.length === 0) continue; // added in this change
+    const beforeSubstance = documentSubstance(before);
+    const afterSubstance = documentSubstance(after);
+    if (beforeSubstance === null || afterSubstance === null) continue;
+    if (beforeSubstance === afterSubstance) excluded.push(relPath);
+  }
+  return excluded;
+}
+
 // Diff-anchored complement to the date-anchored drift: flags verified documents
 // whose referenced source changed in the current diff (working tree, or a
 // `--since <ref>` PR/CI baseline) while the document itself did not. Read-only;
@@ -1089,6 +1151,8 @@ export async function impactCommand(options) {
   const findings = ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)
     ? []
     : applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
+  // Reported, not enforced — see stampOnlyDocExclusions and GATE_REVIEW.md.
+  const stampOnlyExclusions = await stampOnlyDocExclusions(cwd, options.since, changed);
 
   const result = findings.some((finding) => finding.severity === "blocked")
     ? "blocked"
@@ -1100,12 +1164,14 @@ export async function impactCommand(options) {
   const findingSummary = summarizeFindings(findings);
   const summary = [
     `result: ${result}`,
-    `mode: ${options.strict ? "strict" : "standard"}`,
+    `strict: ${options.strict ? "true" : "false"}`,
+    `governance_mode: ${effectiveGovernanceMode(options)}`,
     `baseline: ${options.since ? `since ${options.since}` : "working tree"}`,
     `changed_files: ${changed.length}`,
     `anchoring_files: ${changedSet.size}${versionOnlyExcluded.length ? ` (version-only manifest excluded: ${versionOnlyExcluded.join(", ")})` : ""}`,
     `impacted_verified_docs: ${findings.filter((finding) => finding.rule === "impact.source_changed").length}`,
-    `findings: ${findings.length}`
+    `findings: ${findings.length}`,
+    `stamp_only_exclusions: ${stampOnlyExclusions.length}${stampOnlyExclusions.length ? ` (${stampOnlyExclusions.join(", ")})` : ""}`
   ];
 
   return withText({
@@ -1114,6 +1180,7 @@ export async function impactCommand(options) {
     since: options.since,
     changedFiles: changed.length,
     versionOnlyExcluded,
+    stampOnlyExclusions,
     findingSummary,
     findings
   }, "LLM-WIKI Reverse-Impact", [
@@ -1122,10 +1189,11 @@ export async function impactCommand(options) {
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: [
       "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (file-level, git-diff based). Run it from the repo root.",
-      "impact.source_changed is an error by default, so this command fails a build on its own; --strict does not change that. Dial it down per project with \"impact.source_changed\": \"warning\" (or \"info\"/\"off\") in llm-wiki.config.json rules, or rulesPreset: \"relaxed\". This complements the date-anchored evidence.stale (drift), it does not replace it.",
+      `impact.source_changed is an error by default under governance mode strict, a warning under standard, and off under lite; this run resolved to ${effectiveGovernanceMode(options)} (from ${governanceModeSource(options)}). Under strict it fails a build on its own and --strict does not change that. Dial it down per project with "impact.source_changed": "warning" (or "info"/"off") in llm-wiki.config.json rules, or rulesPreset: "relaxed" — the precedence is mode floor < rulesPreset < explicit rules. This complements the date-anchored evidence.stale (drift), it does not replace it.`,
       "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release.",
       "A package.json whose diff moves nothing but the version value is reported as changed but not used for anchoring (N-13, 2026-08-04): every release bumps it and no document's claims depend on the number. Any other key, an unparseable manifest, a version field added or removed, or a manifest with no baseline to compare against all still count. Version-only exclusion is package.json only, and never applies to pyproject.toml or Cargo.toml.",
-      "Documents under docs/llm-wiki/templates/ are out of scope (N-14, 2026-08-06): they are skeletons adopters copy, and review cannot promote or re-stamp them, so flagging them produced findings with no way to clear them."
+      "Documents under docs/llm-wiki/templates/ are out of scope (N-14, 2026-08-06): they are skeletons adopters copy, and review cannot promote or re-stamp them, so flagging them produced findings with no way to clear them. The append-only change log is out of scope for the same reason.",
+      "stamp_only_exclusions counts wiki documents inside this diff whose ONLY change is a review stamp (status / reviewed_by / reviewed_at / last_updated / the status tag). A document in the diff is not flagged, on the reading that it was updated in this change — and a stamp satisfies that test without anyone re-reading anything, so one unrelated 'review --approve-all' in a PR's range exempts every document it stamped for the whole PR (N-9; measured: a stale contract description passed the gate that way). This is REPORTED and not enforced, because the same exclusion is how the standard remediation clears a finding, so enforcing it would leave real drift with no resolution path (N-11). Treat a non-zero count as 'these documents were not actually checked by this run'."
     ] }
   ]);
 }
@@ -1427,7 +1495,8 @@ function finishCheckRun(options, relManifest, findings, extra = {}) {
   const findingSummary = summarizeFindings(findings);
   const summary = [
     `result: ${result}`,
-    `mode: ${options.strict ? "strict" : "standard"}`,
+    `strict: ${options.strict ? "true" : "false"}`,
+    `governance_mode: ${effectiveGovernanceMode(options)}`,
     `manifest: ${relManifest ?? "(none)"}`
   ];
   if (extra.task) summary.push(`task: ${extra.task}`);
@@ -2717,7 +2786,7 @@ async function inspectPackageReadiness(cwd) {
     `bin.llm-wiki: ${packageJson.bin["llm-wiki"]}`,
     `release_checklist: ${checklistExists ? "present" : "missing"}`,
     "recommended_release_level: stable",
-    "migrate_apply: keep blocked",
+    "migrate_apply: unblocked since 1.2 (previews by default; writes only with --apply)",
     "external_shells: verify in release CI before publish"
   ];
 }

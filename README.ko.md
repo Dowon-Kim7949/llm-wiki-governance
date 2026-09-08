@@ -13,12 +13,12 @@ LLM-WIKI 방식:    작업 -> index.md 확인 -> 관련 (검증된) wiki 문서 
 
 ```bash
 npm install -D llm-wiki-governance
-npx llm-wiki quickstart --write --type frontend --agent claude   # 또는 --agent codex
+npx llm-wiki-governance quickstart --write --type frontend --agent claude   # 또는 --agent codex
 ```
 
 `quickstart --write`는 프로젝트 종류를 알아낸 다음 위키와 adapter 파일을 만들고, 마지막에 handoff 프롬프트를 출력합니다. 그 프롬프트를 에이전트에 붙여넣으면 에이전트가 `docs/llm-wiki/index.md`부터 읽고 실제 소스를 근거로 문서를 채웁니다. 채워진 문서는 모두 `needs_review`로 남아 검토를 기다립니다. 무엇이 만들어지는지 먼저 보려면 `quickstart --dry-run`을 쓰세요.
 
-`--skills`를 더하거나 `--agent claude|codex|cursor`를 지정하면 `bootstrap`·`feature`·`fix`·`docs-sync` 작업용 자동화 프롬프트까지 만들어 줍니다. 이미 OKF나 평범한 마크다운으로 지식 폴더를 갖고 계시다면 형식을 바꿀 필요가 없습니다. 그 폴더에 그대로 CLI를 대면 `--profile okf-v0.1`이 검증과 드리프트 감지, CI만 얹어 줍니다.
+`--skills`를 더하거나 `--agent claude|codex|cursor`를 지정하면 `bootstrap`·`onboard`·`prepare`·`feature`·`fix`·`docs-sync`·`backfill` 작업용 자동화 프롬프트까지 만들어 줍니다. 이미 OKF나 평범한 마크다운으로 지식 폴더를 갖고 계시다면 형식을 바꿀 필요가 없습니다. 그 폴더에 그대로 CLI를 대면 `--profile okf-v0.1`이 검증과 드리프트 감지, CI만 얹어 줍니다.
 
 CLI를 돌리는 데는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단계 하나뿐이고 결과 품질도 거기서 갈리니, 처음 위키를 만들 때는 쓰시는 에이전트의 가장 강한 추론 모델을 쓰고 이후 `docs-sync` 같은 일상 작업은 값싼 모델로 돌리시면 됩니다.
 
@@ -47,9 +47,9 @@ CLI를 돌리는 데는 모델이 필요 없습니다. 모델이 쓰이는 곳�
 
 쓰기는 `--write`나 `--apply`, `--approve`를 직접 줬을 때만 일어나고 나머지는 전부 읽기 전용입니다. `--lang ko`를 붙이면 findings 메시지가 한국어로 나오고, `--doc-lang ko`를 붙이면 생성되는 위키 본문이 한국어가 됩니다. CLI를 spawn하는 대신 패키지를 import해서 쓸 수도 있습니다(`import { commands, run } from "llm-wiki-governance"`).
 
-명령과 옵션, exit code를 전부 보려면 `npx llm-wiki help <command>`를 오프라인으로 돌리거나 [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md)를 보세요.
+명령과 옵션, exit code를 전부 보려면 `npx llm-wiki-governance help <command>`를 오프라인으로 돌리거나 [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md)를 보세요.
 
-CI에서 돌리려면 [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 참조하되 태그를 정확히 고정하세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.30.1`. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)에 있습니다.
+CI에서 돌리려면 [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 참조하되 태그를 정확히 고정하세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.31.0`. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)에 있습니다.
 
 ## 거버넌스 모드
 

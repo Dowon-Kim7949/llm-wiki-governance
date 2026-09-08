@@ -120,6 +120,15 @@ test("nothing this command ships still tells the user impact is a warning", asyn
   const printed = (await impactCommand(normalizeOptions({ cwd }))).text;
   assert.doesNotMatch(printed, /[Dd]efault warning/, "the command's own caveats must not call this rule a warning");
   assert.match(printed, /error by default/i);
+  // 1.30.0 made the default mode-dependent, so "error by default" alone is no
+  // longer the whole truth: under lite the rule is off and under standard it is a
+  // warning, which means a green impact run can mean "nothing checked". The caveat
+  // must name all three levels AND which one this run resolved to, or a reader in
+  // lite reads a pass as freshness.
+  assert.match(printed, /warning under standard/i, "the caveat must say standard downgrades this rule");
+  assert.match(printed, /off under lite/i, "the caveat must say lite switches this rule off");
+  assert.match(printed, /this run resolved to (lite|standard|strict)/i, "the caveat must name the mode THIS run used");
+  assert.match(printed, /governance_mode: (lite|standard|strict)/, "the summary must state the effective level");
 
   // The census named three source files while calling itself a census over the
   // shipped surfaces. On 2026-08-04 a sweep found docs/OPERATIONS.md still telling

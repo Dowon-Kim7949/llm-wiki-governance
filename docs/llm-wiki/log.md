@@ -24,6 +24,75 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-08 - feat(governance): 게이트와 리포트와 출하 문서가 서로 다른 말을 하고 있었다 (1.31.0)
+
+- status: needs_review (에이전트 편집 — 배치 끝에 review --approve-all --yes)
+- actor: Claude Code (유지보수자 지시: "전부 해결작업을 진행하고, 오케스트레이션이 가능하면 그렇게 진행해")
+- scope: src (5파일) · tests (신규 2파일 + 수정 3) · docs (위키 4 + 루트 8 + 템플릿 3 + outputs 6)
+- 계기:
+  1.30.0이 정책 레벨 셋을 출하했는데 제품에게 그 레벨을 다 가르치지 못했다. 출하 지면을 훑어
+  보니 같은 공백이 세 형태로 나왔다 — 레벨을 무시하는 게이트(`drift`), `mode`를 다른 뜻으로 쓰는
+  리포트 4곳, 모드 이전 동작을 설명하는 문서. 여기에 하네스 거버넌스 실행에서 측정된 결함 4건이
+  아직 열려 있었고, 그중 `harness-health` finding 9건은 해소 경로가 없어 풍경처럼 취급되고 있었다.
+- 동작 변경(빌드를 새로 실패시킬 수 있는 것 2건):
+  `impact`가 디렉터리 앵커를 지목한다(N-8). 정확 문자열 비교였는데 git은 파일만 열거하므로
+  `src/commands/`를 인용한 문서가 한 번도 안 잡혔다 — 이 제품이 존재하는 이유인 게이트의 위음성.
+  `llm-wiki.config.json`의 `type`·`agents`가 CLI와 같은 목록으로 검증된다. `{"type":"frontendd"}`가
+  통과한 뒤 알 수 없는 유형으로 동작했고 `{"agents":["all"]}`은 문자열 그대로 넘어갔다(CLI 경로는
+  이미 펼친 뒤였다) — 설정 하나에 답이 둘.
+  반대 방향 1건: `drift`가 모드와 설정 severity를 따르므로 `lite`에서 exit 1 → 0이 된다.
+- 리포트:
+  `mode:`를 `strict:` + `governance_mode:`로 쪼갰다(validate·impact·check-run·harness-health).
+  레벨의 **출처**는 이 넷에 찍지 않았다 — governance-modes 테스트가 "strict를 명시하는 것과 아무
+  것도 안 쓰는 것이 byte-identical"을 마이그레이션 보증으로 단언하고, `(config)` 대 `(default)`가
+  그걸 깬다. `impact`의 caveat에는 출처를 남겼다(그 문장의 목적이 "초록이 뜻하는 바"를 말하는 것).
+  `drift` 요약은 `mode:` → `run:`, 신규 `evidence.stale: on|off`.
+  `impact`에 `stamp_only_exclusions` 추가(N-9) — 검토 스탬프만 바뀐 문서를 이름으로 보고하되
+  **exit code는 움직이지 않는다.** 강제하면 N-11과 부딪친다(같은 자기제외가 해소 경로다).
+- 되돌린 구현 1건:
+  N-7을 "좁히기 조건이 깨졌다"로 읽고 `source_files`의 로케이터를 정밀 앵커로 처리했다가
+  **되돌렸다.** GLOSSARY가 `source_files`를 넓은 앵커로 정의하고, 좁히기 경로는 이미 있다 —
+  파일을 `evidence`에만 라인 범위로 인용하면 된다(픽스처로 확인). 이 저장소엔 로케이터를
+  `source_files`에 쓴 문서가 0건이라 지역 소비자가 없고, 도입처에서는 넓게 쓴 앵커를 조용히
+  좁혀 위음성을 만든다. 로드맵의 N-7 결론을 정정했다.
+- 해소 경로가 없던 finding 9 → 0:
+  `init --refresh`가 본문만 비교해서(양쪽에 `stripMarker()`), 본문이 최신인 산출물은 낡은 마커를
+  영원히 갖고 `harness-health`는 영원히 보고했다. 이제 그 경우를 다시 스탬프하고 "refreshed"가
+  아니라 "re-stamped"로 보고한다. 이 막힌 길을 고정하던 테스트도 틀려 있었다 — 부분 문자열로
+  단언해서 손대지 않은 형제 산출물이 조건을 만족시켰고, 결함이 있든 없든 통과했다.
+  남은 1건은 실재 피해였다: 이 저장소 `AGENTS.md`가 adapter v1인데 `CLAUDE.md`는 v2여서,
+  1.27.2의 locate-before-reading 규율이 없는 이전 지침을 그 규율을 출하한 저장소가 Codex에게
+  건네고 있었다. 손으로 v2로 올렸다(기존 adapter는 절대 덮어쓰지 않으므로 그것이 유일한 경로다).
+- 출하 문서가 코드와 어긋난 자리(개수로 줄이지 않고 하나씩):
+  CI 템플릿이 `npm ci` 뒤에 맨 `npx llm-wiki`를 세 번 돌리면서 devDependency 전제를 적지 않았다 —
+  npm에 무관한 `llm-wiki` 패키지가 있으므로 러너에서 **남의 코드를 내려받아 실행**했다.
+  `--no-install`로 바꿨고(이 저장소 CI·pre-commit 훅과 동일), 템플릿의 어떤 `npx`도 그 플래그
+  없이는 안 된다는 단언을 테스트에 넣었다.
+  README가 `help`에 없는 exit code 레퍼런스를 약속했다 → help에 `Exit codes` 블록 추가.
+  `help`가 13개 명령이 받는 `--mode`를 언급하지 않았다. `help mode`가 init 기본값을 틀리게 적었다.
+  릴리스 준비도가 `migrate_apply: keep blocked`(1.2에 해금됨)를 찍었다.
+  README 2종이 생성 스킬 7종 중 4종만 적었다. SECURITY 2종이 쓰기 표면(`mode set --write`가
+  비위키 파일을 쓴다)과 MCP 툴 18종을 축소해 적었다. OPERATIONS가 거버넌스 모드를 언급하지 않아,
+  `lite`에서 아무것도 잡지 않는 초록 `impact` 스텝을 게이트로 오해할 수 있었다.
+  PUBLIC_API가 명령을 30개로 세고(실제 32) 1.30.0 export 4종을 빠뜨렸다.
+  git-hooks README가 검사 하나인 훅을 설명했다(실제 둘, 두 번째가 핵심).
+  GATE_REVIEW와 PUBLIC_API가 "다음 릴리스는 SemVer MAJOR"라고 5주간 적고 있었다(1.28.0 MINOR로 출하).
+  RELEASE_FLOW가 배포 인증을 토큰이라고 적었다 — 레지스트리 `_npmUser`는 1.29.5·1.30.0·1.30.1
+  전부 OIDC라고 말한다. 거짓 문장 4건을 Review Note에 이름으로 적고 모르는 것도 적었다.
+  결정 4건이 기록 없이 출하돼 있었다(1.29.2 `delegationPolicy`의 **음성** 측정 포함).
+- EN/KO 짝:
+  `SECURITY.ko.md`에 68줄 절 하나가 통째로 없었다. `ROADMAP.md`가 7월 날짜와 "(this release)"를
+  달고 있었다. 프로즈의 `\u0000` 이스케이프가 겹쳐 적혀 있었다(로그의 것은 append-only라 그대로
+  두고 여기 정정을 적는다 — 2026-07-15 v1.7.1 항목의 `\\u0000`는 소스가 `\u0000` 하나이므로
+  잘못이다). 이 로그의 1.30.1 대응 CHANGELOG 항목이 "사실 3건"이라고 과장했다(둘).
+- 게이트/테스트:
+  tests 568 → 579 (신규 `anchor-semantics` 7 · `stamp-only-exclusion` 4). RED는 파일 단위가 아니라
+  테스트별로 확인했다 — 수정 3건을 되돌리면 앵커 7건 중 3건 실패·4건 통과이고, 통과하는 4건은
+  일부러 바꾸지 않은 계약을 고정한다. `harness-health` 9 → 0 · validate --strict 0.
+  ⚠️ **N-8과 config 검증은 이 저장소에서 findings를 늘리지 않았다** — 디렉터리 앵커를 쓰는 문서가
+  0건이고 config도 유효하기 때문이다. 즉 두 변경의 도입처 영향은 이 저장소로는 관측되지 않으며,
+  근거는 외부 저장소 5곳 실측(디렉터리 앵커 19건)과 픽스처 테스트뿐이다.
+
 ## 2026-09-08 - fix(roadmap): 국문만 고쳐 둔 항목 순서를 영문에도 반영했다
 
 - status: verified (Review Note 후 review --approve-all --yes)

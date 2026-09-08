@@ -20,8 +20,9 @@ import { scanSensitiveInfo } from "../sensitive-info.js";
 import { hasRequiredField, parseFrontmatter } from "../frontmatter.js";
 import { schemaRequiredFields } from "../frontmatter-schema.js";
 import { renderWikiDocumentTemplate, todayIsoDate } from "../template-renderer.js";
-import { formatFinding, withText } from "./findings.js";
+import { applyRuleConfig, formatFinding, withText } from "./findings.js";
 import { scanEvidenceDrift } from "./scans.js";
+import { ruleSuppressed, SCAN_GATING_RULES } from "../governance.js";
 import { isAppendOnlyLog, listWikiContentDocs } from "./wiki-files.js";
 import {
   escapeRegex,
@@ -424,7 +425,17 @@ export async function driftCommand(options) {
     ]);
   }
 
-  const driftFindings = await scanEvidenceDrift(cwd, options);
+  // The same gate audit/validate apply, for the same two reasons. Correctness:
+  // this command must not report — or downgrade a document for — a rule the
+  // project's effective rule map has switched off, and it must not fail a build
+  // under --strict on one either. Cost: scanEvidenceDrift shells out to `git log`
+  // once per verified document, so when the rule is off that work buys nothing.
+  // Reads the EFFECTIVE map, so setting the rule off by hand behaves like lite.
+  // applyRuleConfig then honours a configured severity ("info"/"error"), which
+  // this command previously ignored because driftFinding hardcodes "warning".
+  const driftFindings = ruleSuppressed(options, SCAN_GATING_RULES.evidenceDrift)
+    ? []
+    : applyRuleConfig(await scanEvidenceDrift(cwd, options), options);
   const driftedDocs = [];
   const seen = new Set();
   for (const finding of driftFindings) {
@@ -495,8 +506,10 @@ export async function driftCommand(options) {
       : findings.some((finding) => finding.severity === "warning")
         ? "warning"
         : "pass";
+  const suppressed = ruleSuppressed(options, SCAN_GATING_RULES.evidenceDrift);
   const summary = [
-    `mode: ${downgrade ? "downgrade" : "report"}`,
+    `run: ${downgrade ? "downgrade" : "report"}`,
+    `evidence.stale: ${suppressed ? "off (scan skipped — governance mode or config)" : "on"}`,
     `drifted_verified_docs: ${driftedDocs.length}`,
     `${downgrade ? "downgraded" : "would_downgrade"}: ${changeList.length}`,
     `skipped: ${skipped.length}`,

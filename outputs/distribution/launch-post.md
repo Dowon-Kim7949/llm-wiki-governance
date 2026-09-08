@@ -54,7 +54,7 @@ headline number — one repo doesn't earn a headline.
 Method and full numbers, including the runs that went against me:
 https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md
 
-npm: llm-wiki-governance   ·   npx llm-wiki quickstart --write
+npm: llm-wiki-governance   ·   npx llm-wiki-governance quickstart --write
 ```
 
 **Notes for posting**

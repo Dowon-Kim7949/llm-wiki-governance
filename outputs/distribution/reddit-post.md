@@ -55,7 +55,7 @@ an independent re-grade). On one of the six tasks retrieval lost badly
 because the file was small enough to just read. The README states this with its conditions
 attached rather than as a headline — one repo doesn't earn a headline.
 
-npx llm-wiki quickstart --write
+npx llm-wiki-governance quickstart --write
 https://github.com/Dowon-Kim7949/llm-wiki-governance
 
 Happy to answer anything, including why you might not want this.
@@ -81,7 +81,7 @@ wiki cost 14% more than having no wiki at all. So it's the content that pays, no
 and an unenriched wiki is worse than none. One repo, one model, agent-graded, and it lost on one
 of the six tasks; full method in the repo.
 
-npx llm-wiki quickstart --write · https://github.com/Dowon-Kim7949/llm-wiki-governance
+npx llm-wiki-governance quickstart --write · https://github.com/Dowon-Kim7949/llm-wiki-governance
 ```
 
 ---

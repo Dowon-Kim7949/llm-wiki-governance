@@ -10,10 +10,14 @@
 // The two budget rules are inert until a number is supplied, on purpose: this
 // repo publishes no invented token thresholds and chars/4 is a proxy.
 //
-// The load-bearing test here is "version-only drift": `init --refresh` compares
-// bodies, not marker versions, so an artifact stamped v4 against a v5 generator
-// is reported "already up to date" forever. That false negative is reproducible
-// on this repo's own 24 artifacts, and it is the reason this command exists.
+// Version-only drift is what this command was built for: `init --refresh` used to
+// compare bodies only, so an artifact stamped v4 against a v5 generator was
+// reported "already up to date" forever and the finding had no resolution path at
+// all. Fixed 2026-09-08 — `--refresh` now re-stamps a body-current artifact whose
+// marker is behind, and the test below pins that direction instead of the blind
+// spot. The command keeps its reason to exist: it also reports artifacts `--refresh`
+// deliberately REFUSES to touch (hand-edited or foreign ones) and adapter blocks no
+// command regenerates, and it reports without writing anything.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -85,26 +89,37 @@ test("harness-health: a freshly generated harness produces zero findings", async
 
 // --- marker drift ---------------------------------------------------------
 
-test("harness-health: reports a skill artifact stamped behind the generator, which --refresh calls up to date", async () => {
+test("harness-health: reports a skill artifact stamped behind the generator, and --refresh re-stamps it", async () => {
   const cwd = await harnessFixture("hh-skilldrift-");
-  const target = path.join(cwd, ".claude/skills/llm-wiki-feature/SKILL.md");
+  const rel = ".claude/skills/llm-wiki-feature/SKILL.md";
+  const target = path.join(cwd, rel);
 
   // Re-stamp with an OLDER version but a self-consistent hash: body untouched,
-  // marker valid, only the version behind. This is exactly the shape of the 12
-  // v4 artifacts sitting in this repo today.
+  // marker valid, only the version behind. This was the shape of eight artifacts
+  // in this repository, and none of them could be cleared by any command.
   const original = await readFile(target, "utf8");
   const body = original.replace(MARKER_RE, "");
   await writeFile(target, `${body}\n<!-- llm-wiki-generated v1 ${hash(body)} -->\n`, { encoding: "utf8" });
 
-  // The shipped refresh path cannot see it — pin that, so the test fails loudly
-  // if refresh ever learns to compare versions and this command becomes redundant.
+  // --refresh must now plan a re-stamp for THIS artifact and leave its siblings
+  // alone. Both halves matter, and the exact path matters: the earlier version of
+  // this assertion matched by substring, so `.agents/skills/llm-wiki-feature/
+  // SKILL.md` — an untouched sibling that really is up to date — satisfied it, and
+  // the test passed both with and without the defect it claimed to pin.
   const refresh = await initCommand({
     cwd, minimal: true, withAdapters: true, skills: true, type: "backend",
     profiles: [], agents: ["claude"], existing: "skip", dryRun: true, refresh: true
   });
+  const planLine = refresh.planned.find((line) => line.startsWith(`${rel} `));
+  assert.ok(planLine, `expected --refresh to plan work for ${rel}, got: ${JSON.stringify(refresh.planned)}`);
+  assert.match(planLine, /would be re-stamped \(body already current; marker v1 -> v\d+\)/);
   assert.ok(
-    refresh.skipped.some((line) => line.includes("llm-wiki-feature/SKILL.md") && line.includes("up to date")),
-    `expected --refresh to be blind to version-only drift, got: ${JSON.stringify(refresh.skipped)}`
+    !refresh.skipped.some((line) => line.startsWith(`${rel} `)),
+    `${rel} must not be skipped any more: ${JSON.stringify(refresh.skipped)}`
+  );
+  assert.ok(
+    refresh.skipped.some((line) => line.startsWith(".agents/skills/llm-wiki-feature/SKILL.md ") && line.includes("up to date")),
+    "an untouched sibling must still be left alone — the re-stamp is per artifact, not per skill"
   );
 
   const result = await harnessHealthCommand(options(cwd));
@@ -114,6 +129,26 @@ test("harness-health: reports a skill artifact stamped behind the generator, whi
   assert.equal(drift[0].path, ".claude/skills/llm-wiki-feature/SKILL.md");
   assert.match(drift[0].message, /v1/);
   assert.equal(result.result, "warning");
+
+  // The finding must be clearable, which is the whole point: run the refresh for
+  // real and the command goes quiet. Before the fix this loop never terminated —
+  // harness-health reported drift, --refresh called the file up to date, and
+  // nothing else wrote it.
+  const written = await initCommand({
+    cwd, minimal: true, withAdapters: true, skills: true, type: "backend",
+    profiles: [], agents: ["claude"], existing: "skip", write: true, refresh: true
+  });
+  assert.ok(
+    written.created.some((line) => line.startsWith(`${rel} `) && line.includes("re-stamped")),
+    `expected ${rel} to be re-stamped, got: ${JSON.stringify(written.created)}`
+  );
+  const after = await harnessHealthCommand(options(cwd));
+  assert.deepEqual(rules(after, "harness.marker_drift"), [], "the finding must be gone after the refresh");
+  assert.equal(after.result, "pass");
+
+  // The body is untouched: only the marker line moved.
+  const refreshed = await readFile(target, "utf8");
+  assert.equal(refreshed.replace(MARKER_RE, ""), body, "a re-stamp must not rewrite the body");
 });
 
 test("harness-health: reports an adapter whose marker is behind the shipped template", async () => {

@@ -18,6 +18,37 @@ The same lifecycle applies everywhere; only the dial settings change:
 4. **Keep current** — as code changes, update the wiki in the same change (`prepare --task …` → `feature`/`fix`/`docs-sync` skills) and let `validate --changed`, `drift`, and `impact` catch what slips.
 5. **Gate CI** — run `validate` on every PR; add `--strict` when you want warnings to fail the build.
 
+### Check the governance mode before you size anything (1.30.0)
+
+Repo size decides how many documents you keep. The **governance mode** decides
+whether the gates below can fail a build at all, so read it first:
+
+```bash
+npx llm-wiki-governance mode        # read-only: effective level, where it came from, capability matrix
+```
+
+| | `lite` | `standard` | `strict` |
+| --- | --- | --- | --- |
+| `impact.source_changed` | `off` | warning | **error** |
+| `evidence.stale` (`drift`) | `off` | warning | warning |
+| Missing planned doc | `info` | warning | error |
+
+Two consequences worth stating plainly:
+
+- **A project in `lite` gets a green `impact` step that catches nothing.** That is
+  the intended meaning of `lite`, not a bug — but if you wired the gate in order
+  to have a gate, you want `strict`, or the rule set explicitly in
+  `llm-wiki.config.json`.
+- **An existing repository is already in `strict`.** A project with no
+  `governance` block resolves to `strict`, so everything below behaves exactly as
+  it did before modes existed. Only a genuinely new repository — no config, no
+  wiki — is scaffolded as `lite`.
+
+Precedence, lowest to highest: mode rule floor → `rulesPreset` → explicit
+`rules` in `llm-wiki.config.json`. Structure and safety checks are never dialed
+down by a mode: malformed frontmatter, a dangling `source_files` path, a broken
+link, and sensitive-info detection fire in every mode.
+
 ## Small repo (one package, a handful of docs)
 
 - **Setup:** `npx llm-wiki-governance@latest quickstart --write`.
@@ -62,6 +93,11 @@ The validate family checks the documents that **exist**. Only the `impact` /
 `drift` / `check-run` family can see the document that **should have been
 touched** — so a repo with a green `validate` step and no `impact` step has no
 omission gate at all. That is what `doctor` now says out loud.
+
+The mode is the other half of this. Under `lite` the rule is `off` and under
+`standard` it is a warning, so the recipes below block only in `strict` (where
+every pre-modes repository already sits) or with the rule set by hand — see
+[Check the governance mode](#check-the-governance-mode-before-you-size-anything-1300).
 
 `--strict` used to be load-bearing here. Since 1.28.0 it is not:
 `impact.source_changed` defaults to `error`, so `impact` fails a build on its own
@@ -126,7 +162,7 @@ added, are in
 - **CI cost** is dominated by document count and the `npx` cold-start, not by repo size — the tool reads the wiki, not the whole codebase. `--changed` narrows reporting further.
 - **Reproducibility:** pin the CLI version in CI. The composite action defaults its `version` input to a pinned minor; override it deliberately when you upgrade.
 - **Zero third-party dependencies** (runtime and dev): coverage uses Node's built-in `--experimental-test-coverage`, and the lint gate is a `node --check` syntax pass — nothing to audit in a lockfile.
-- **Everything is preview-first.** `init`/`quickstart`/`fix` write only under `--write`; `migrate` only under `--apply`; `review` promotes only under an explicit `--approve`/`--approve-all --yes`. `verified` is human-only in every command, and `docs/llm-wiki/log.md` and existing adapter files are never overwritten.
+- **Everything is preview-first.** `init`/`quickstart`/`fix`/`backfill` write only under `--write`; `migrate` and `import-memory` only under `--apply`; `review` promotes only under an explicit `--approve`/`--approve-all --yes`; `drift` demotes only under `--downgrade`. `mode set --write` is the one command that writes a non-wiki file, and it writes exactly one key (`governance.mode`) into `llm-wiki.config.json` — no audit, scan, or document generation as a side effect. `verified` is human-only in every command, and `docs/llm-wiki/log.md` and existing adapter files are never overwritten.
 
 ## See also
 

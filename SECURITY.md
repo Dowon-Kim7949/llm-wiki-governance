@@ -47,9 +47,15 @@ A few facts that help scope reports:
 
 - The CLI has **no third-party runtime dependencies** (Node.js built-ins only),
   which keeps the dependency attack surface minimal.
-- It operates on the **local filesystem** — reading project files and, only with
-  explicit `--write`/`--apply` flags, writing wiki/adapter files. It does not
-  transmit project contents anywhere.
+- It operates on the **local filesystem** — reading project files and writing
+  only under an explicit flag. The complete write surface: `--write`
+  (`init`/`quickstart`/`fix` → wiki and adapter files; `mode set` → the
+  `governance.mode` key of `llm-wiki.config.json`, the one non-wiki file any
+  command writes; `backfill` → missing planned document **stubs** at
+  `needs_review`), `--apply` (`migrate`, `import-memory`), `--approve` /
+  `--approve-all --yes` (`review` → the review stamp only), `--downgrade`
+  (`drift` → `verified` → `needs_review`), and `--out` (a report path you name).
+  It does not transmit project contents anywhere.
 - It includes a **sensitive-information scan** that flags suspected secrets and
   redacts suspected raw values in reports.
 
@@ -138,10 +144,15 @@ deployment. Understand its boundary before exposing it:
 - **No authentication or authorization.** The server has no auth layer, no
   sessions, and no per-caller access control. Anyone who can reach the process
   can call every exposed tool.
-- **Read-only tools only.** No write/mutating command (`init`/`fix`/`migrate`/
-  `drift`/`quickstart --write`, and the `review` **promotion** path) is exposed
-  over MCP. Tools carry `readOnlyHint`. Promotion to `verified` stays a human CLI
-  action; the `review` MCP tool exposes only the read-only backlog **list**.
+- **Read-only tools only.** 18 tools are exposed: `validate`, `audit`, `next`,
+  `status`, `doctor`, `stats`, `graph`, `explain`, `mode`, `handoff`, `prompt`,
+  `list_docs`, `search_docs`, `get_doc`, `get_related`, `onboard`, `review`,
+  `prepare`. No write path is reachable: `init`/`fix`/`migrate`/`quickstart --write`,
+  `backfill`, `drift --downgrade`, `mode set --write`, and the `review`
+  **promotion** path are all absent. `mode` is the read-only report only — it
+  cannot change the level. Tools carry `readOnlyHint`. Promotion to `verified`
+  stays a human CLI action; the `review` MCP tool exposes only the read-only
+  backlog **list**.
 - **Do not expose it over a network.** Because there is no auth, do **not** put
   the stdio server behind a public/remote broker or network transport as-is. If
   you must reach it remotely, front it with **your own** authenticated,

@@ -13,12 +13,12 @@ With:     task -> read index.md -> read the relevant (verified) wiki docs -> ins
 
 ```bash
 npm install -D llm-wiki-governance
-npx llm-wiki quickstart --write --type frontend --agent claude   # or --agent codex
+npx llm-wiki-governance quickstart --write --type frontend --agent claude   # or --agent codex
 ```
 
 `quickstart --write` detects the project, creates the wiki and adapter files, and prints a handoff prompt. Paste that prompt into your agent: it reads `docs/llm-wiki/index.md`, enriches the docs from real source files, and leaves everything `needs_review` for you to approve. Preview with `quickstart --dry-run`.
 
-Add `--skills` (or `--agent claude|codex|cursor`) to also generate invocable, wiki-grounded automation prompts for `bootstrap`, `feature`, `fix`, and `docs-sync`. Already have an OKF or plain-Markdown knowledge folder? Point the CLI at it and `--profile okf-v0.1` adds verification, drift detection, and CI without changing your format.
+Add `--skills` (or `--agent claude|codex|cursor`) to also generate invocable, wiki-grounded automation prompts: `bootstrap`, `onboard`, `prepare`, `feature`, `fix`, `docs-sync`, and `backfill`. Already have an OKF or plain-Markdown knowledge folder? Point the CLI at it and `--profile okf-v0.1` adds verification, drift detection, and CI without changing your format.
 
 The CLI itself needs no model. Only the enrichment step does, and that is where quality is decided — use your agent's strongest reasoning model for the first wiki build; routine `docs-sync` is fine on a cheaper one.
 
@@ -47,9 +47,9 @@ The CLI itself needs no model. Only the enrichment step does, and that is where 
 
 Writes happen only on an explicit `--write`, `--apply`, or `--approve`; everything else is read-only. Add `--lang ko` for Korean findings messages, or `--doc-lang ko` to generate the wiki content in Korean. You can also import the package instead of shelling out (`import { commands, run } from "llm-wiki-governance"`).
 
-Run `npx llm-wiki help <command>` for the full command, option, and exit-code reference offline, in English.
+Run `npx llm-wiki-governance help <command>` for the full command, option, and exit-code reference offline, in English.
 
-To run it in CI, copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or reference the composite action in one step with an exact tag: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.30.1`. Recipes sized to your repo are in [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
+To run it in CI, copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or reference the composite action in one step with an exact tag: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.31.0`. Recipes sized to your repo are in [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
 
 ## Governance modes
 
@@ -96,9 +96,9 @@ Only read-only tools are exposed, so an agent can query the wiki but never write
 ## Learn more
 
 - [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md) — running LLM-WIKI on a small repo, a medium repo, or a monorepo: flags, CI cost, doc-count strategy.
-- [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md) — what was measured and what was not, including the runs that went against us. One result worth knowing up front: a wiki that exists but was never enriched measured *worse* than no wiki at all, so the value is in the maintained content, not in the retrieval tooling.
+- [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md) (Korean prose) — what was measured and what was not, including the runs that went against us. One result worth knowing up front: a wiki that exists but was never enriched measured *worse* than no wiki at all, so the value is in the maintained content, not in the retrieval tooling.
 - [CHANGELOG.md](./CHANGELOG.md) · [ROADMAP.md](./ROADMAP.md) — shipped history and direction.
 - [GATE_REVIEW.md](./GATE_REVIEW.md) — accepted safety scopes (fix / migrate / drift / MCP / skills) and release gates.
-- [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) — the written command / configuration / programmatic-API / MCP reference. Its prose is Korean; `npx llm-wiki help <command>` is the English equivalent.
-- [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) — worked examples.
+- [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) — the written command / configuration / programmatic-API / MCP reference. Its prose is Korean; `npx llm-wiki-governance help <command>` is the English equivalent.
+- [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) (Korean prose) — worked examples.
 - Community: [CONTRIBUTING.md](./CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) · [SECURITY.md](./SECURITY.md).
