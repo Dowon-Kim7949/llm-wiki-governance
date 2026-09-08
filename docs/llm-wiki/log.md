@@ -24,6 +24,50 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-08 - docs(wiki): 1.31.0이 지목한 문서 11종 해소 — 9곳은 서술이 실제로 틀려 있었다
+
+- status: verified (Review Note 후 review --approve-all --yes)
+- actor: Claude Code (같은 지시의 2차 팬아웃)
+- scope: docs (위키 11문서 + 아카이브 회전 6건 + 발표 덱 재조정)
+- 계기:
+  1.31.0 커밋 직후 `impact --since HEAD~1 --strict`가 11건, `drift --strict`가 18건을 냈다.
+  릴리스 커밋의 정상적인 2차 팬아웃이지만, 이번에는 **재스탬프로 넘길 수 없는 것이 9곳**이었다.
+- 실제로 틀려 있던 서술 9곳(재확인이 아니라 내용 수정):
+  `ARCHITECTURE_CONVENTIONS` 5곳 — `src/config.js` 줄이 소유물 목록에서 새로 옮겨 온 에이전트
+  어휘를 빼고 있었고, `scans.js` 줄에 N-8 경로 prefix 매칭이 없었고, `config-file.js` 줄에 값
+  어휘 검증이 없었고, `skills.js` 줄의 "refresh 감지는 여전히 content hash"가 거짓이 됐고,
+  `fix-migrate.js` 줄에 `driftCommand`의 rule-map 게이트가 없었다.
+  `DOMAIN_FEATURES` 3곳 — 모드 절이 `lite`가 건너뛰는 스캔을 열거하면서 `drift` 명령 자체는
+  게이트 밖이라는 사실을 적지 않았고(그 공백이 곧 이번 결함이다), reverse-impact 절이 규칙
+  severity는 적고 **앵커 매칭 방식**은 적지 않았으며(N-8이 정확히 거기 있었다), 스킬 예산 줄이
+  refresh 판정을 content hash로만 적었다.
+  `GLOSSARY` 1곳 — `llm-wiki.config.json` 항목이 인식 키만 적고 **값 검증**을 적지 않았다.
+  ⚠️ **공통 패턴**: 이번에 고친 9곳 중 5곳은 "무엇을 하는가"는 맞고 "무엇을 하지 않는가"가
+  빠진 문장이었다. 게이트가 없다는 사실은 게이트가 생길 때까지 아무 finding도 내지 않는다.
+- 본문 불변 + Review Note로 넘긴 것:
+  `profiles/library.md`·`project-profile.md`(둘 다 `src/cli.js` 인용, `main()` 무변경) ·
+  `docs/llm-wiki/README.md`(루트 README 변경은 내용이고 이 문서는 구조 규약만 소유 — 쌍 유지가
+  실제로 지켜졌는지 EN/KO 양쪽에서 확인했다) · `VISIBILITY.md`(`config.js`는 바뀌었지만 인용
+  심볼 `VALID_VISIBILITIES`는 무변경) · `BENCHMARK.md`(인용 섹션 앵커가 가리키는
+  `Impact Measurement Scope Decision` 절은 글자 하나 안 바뀜 — **섹션 로케이터를 존중하지 않는
+  알려진 노이즈이고 1.31.0도 그것은 고치지 않았다**).
+  `index.md`는 Status에 1.31.0 항목 2개를 더했다(이 문서는 Review Notes 절이 없다).
+- 아카이브 회전 6건:
+  상한 5건에 걸린 문서(`ARCHITECTURE_CONVENTIONS`·`DOMAIN_FEATURES`·`GLOSSARY`·`00_overview`·
+  `project-profile`·`README`)에서 최고령 노트 1건씩을 `REVIEW_HISTORY.md`로 옮기고, 손으로
+  유지되는 세 숫자(아카이브 헤더 `N건`·원문서 포인터 `N entries`·실제 불릿 수)를 함께 갱신했다.
+  `tests/review-notes-cap.test.js` 3건이 그 등식을 고정하며 통과한다.
+- 발표 덱:
+  1.31 항목을 넣자 슬라이드 22가 화면을 넘겨 마지막 항목이 잘렸다 — **두 장으로 나눈 이유가
+  바로 그것이었으므로** 세 번째 장을 만드는 대신 경계를 한 칸 옮겼다(① 1.0→1.27, ② 1.28→1.31).
+  브라우저에서 698px 높이로 두 장 모두 한 화면에 들어가는 것을 눈으로 확인했다. 노트의 장 제목·
+  대본·시간 배분도 함께 맞췄다. ⚠️ 첫 시도에서 "1년 가까이 고칠 방법이 없던 경고"라고 썼는데
+  `harness-health`는 1.28.0(2026-08-03) 출하라 5주다 — 이 릴리스가 고치고 있는 바로 그 유형의
+  과장이라 발견 즉시 고쳤다.
+- 게이트:
+  validate --strict 0 · validate-frontmatter 0 · audit --strict 0 · drift --strict 0 ·
+  harness-health --strict 0 · **impact --since HEAD~1 0** · review 0 · tests 579/579.
+
 ## 2026-09-08 - feat(governance): 게이트와 리포트와 출하 문서가 서로 다른 말을 하고 있었다 (1.31.0)
 
 - status: needs_review (에이전트 편집 — 배치 끝에 review --approve-all --yes)

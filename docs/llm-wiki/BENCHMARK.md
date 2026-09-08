@@ -7,11 +7,11 @@ tags:
 status: verified
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-08-03
+last_updated: 2026-09-08
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-03
+reviewed_at: 2026-09-08
 wiki_block_version: v1
 source_files:
   - bench/run.js
@@ -396,9 +396,8 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 
 ## Review Notes
 
-Older review notes (7 entries, 2026-07-22 → 2026-07-27) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (8 entries, 2026-07-22 → 2026-07-30) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-07-30에 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 2026-07-27 통제군(B2_empty) 실측·비준 이후 벤치 사실관계 변경이 없고, 1.27.1(문맥 규율)·1.27.2(프롬프트 형태 규율)는 벤치를 재실행하지 않았으며 이 문서도 그렇게 주장하지 않음을 확인했다. README 헤드라인 금지 유지.
 - 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-22 → 2026-07-27)을 `REVIEW_HISTORY.md`의 신규 `Benchmark` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서는 인수인계의 위반 목록에 없었다** — 그 목록이 손으로 작성돼 `EXAMPLES.md`와 함께 빠졌고, 전 문서 계수를 돌려서야 드러났다. 형식 두 가지를 함께 처리했다: 이 문서의 노트는 여러 줄로 감겨 있어 이전기가 항목 경계를 `- ` 시작 줄로 잡아야 했고(원문 줄바꿈 보존), 워킹트리 줄바꿈이 이 문서만 CRLF 혼재라 `.gitattributes`의 `eol=lf`에 맞춰 LF로 정규화됐다(인덱스는 이미 LF여서 git이 보는 diff는 이번 이동뿐이다). 수치·규율 서술은 한 글자도 바뀌지 않았고, README 토큰·속도 헤드라인 금지 규율도 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 게이트가 지목한 `GATE_REVIEW.md` 변경을 재대조했다: 이번 커밋은 새 절(`Detection Defaults and Freshness Scope Decision`·`Doc-Only Decisions`)을 **덧붙였을 뿐**(162줄 추가·0줄 삭제)이고 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`(Gate 22, 2026-07-21 수용)과 `bench/**`는 한 글자도 바뀌지 않았으며, 새 절의 `impact.source_changed` 기본 error는 CLI 탐지 규칙이라 이 문서의 Gate 22 임팩트 측정 수치·규율과 무관하므로 **본문 불변**이다(`GATE_REVIEW.md` 스스로 기록해 둔 section-anchor 오탐 사례의 재발화).
 - 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를 재확인했다. 이번 변경이 그 파일에 더한 것은 "Version-Only Manifest Scope Decision" 절과 Gate 23 승인 행·불변식 2건·CI 배선 결정에 붙인 SUPERSEDED 표시뿐이고, 벤치 범위를 정한 Gate 22·24 항목과 통제군(B2_empty) 서술에는 손대지 않았다 — 이 문서의 수치·규율(모든 proxy 수치는 chars/4이고 README 헤드라인은 금지)은 **불변**이다. 재스탬프만으로는 해소되지 않아 이 노트를 남긴다: `reviewed_at`이 이미 오늘이면 강등→승격 왕복이 byte-identical이 되어 문서가 change set에 들어가지 않는다(결함 N-11).
@@ -410,3 +409,5 @@ Older review notes (7 entries, 2026-07-22 → 2026-07-27) are archived in [REVIE
   **불변**이다. 재스탬프로는 해소되지 않는다(`reviewed_at`이 이미 오늘이라 왕복이 byte-identical —
   결함 N-11), 그리고 이 문서는 노트 5건 상한이었으므로 **가장 오래된 1건을 `REVIEW_HISTORY.md`
   `Benchmark` 절 끝으로 원문 그대로 옮기고**(6건 → 7건, 포인터도 함께) 이 노트를 더했다.
+
+- 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 인용 앵커 `GATE_REVIEW.md#section:Impact Measurement Scope Decision`을 확인했다. 이번 커밋의 `GATE_REVIEW.md` diff는 (a) `Detection Defaults and Freshness Scope Decision` 절 안의 "SemVer MAJOR" 문단에 정정 문단을 붙인 것과 (b) 파일 끝에 신규 결정 절 7개를 더한 것뿐이며, **인용된 절은 글자 하나 바뀌지 않았다.** 이것은 N-7 계열의 알려진 노이즈다 — `scanReverseImpact`가 로케이터를 버리고 base path만 비교하므로 섹션 앵커가 판정에 쓰이지 않는다. 1.31.0이 N-8(디렉터리)은 고쳤지만 **섹션·심볼 로케이터 존중은 여전히 미구현**이고, 그 이유도 기록됐다: diff hunk를 심볼/헤딩 범위에 매핑하려면 해석기가 필요해서 서술된 노이즈를 조용한 위음성과 바꾸게 된다. 본문 **불변**.

@@ -711,7 +711,7 @@
   <!-- HISTORY 1 · 1.0 → 1.26 (two columns; short entries) -->
   <section class="slide">
     <div class="wrap">
-      <p class="eyebrow anim">발전 스토리 ① · 1.0 → 1.26</p>
+      <p class="eyebrow anim">발전 스토리 ① · 1.0 → 1.27</p>
       <h2 class="anim histhead">한 번에 하나씩, 순서대로 쌓아온 기능</h2>
       <div class="grid g2 anim" style="align-items:start;column-gap:2.4rem">
         <ul class="tl tl--compact">
@@ -730,6 +730,7 @@
           <li><span class="ver">1.24</span><span class="desc">가이드 온보딩 &amp; 문서 언어<small>신입 온보딩·작업 준비(<b>onboard</b>/<b>prepare</b>) · 생성 문서 영어 기본(<b>--doc-lang</b>)</small></span></li>
           <li><span class="ver">1.25</span><span class="desc">토큰 효율<small>가장 싼 안전한 경로 선택 · compact 조회(<b>--compact</b>/<b>--strict-section</b>) · 스킬 간소화 &amp; 안전한 <b>--refresh</b></small></span></li>
           <li><span class="ver">1.26</span><span class="desc">견고화 &amp; 도입<small>사람 검토 워크플로(<b>review</b>) · 공급망/CI 위생(무의존성 유지) · 도입 문서(운영 가이드 · 예제 · MCP 신뢰 모델)</small></span></li>
+          <li><span class="ver">1.27</span><span class="desc">감사 마감 &amp; 문맥 규율<small>감사 잔여 처리 · 명명 규칙 프리셋(<b>rulesPreset</b>) · <b>AI가 읽어들이는 양에 예산</b>을 매기고 프롬프트를 3블록으로 정리</small></span></li>
         </ul>
       </div>
     </div>
@@ -738,16 +739,15 @@
   <!-- HISTORY 2 · 1.27 → 1.30 (single column; detailed entries) -->
   <section class="slide">
     <div class="wrap">
-      <p class="eyebrow anim">발전 스토리 ② · 1.27 → 1.31 · 가장 최근</p>
+      <p class="eyebrow anim">발전 스토리 ② · 1.28 → 1.31 · 가장 최근</p>
       <h2 class="anim histhead">최근 릴리스는 조금 더 자세히</h2>
       <ul class="tl tl--compact anim">
-        <li><span class="ver">1.27</span><span class="desc">감사 마감 &amp; 문맥 규율<small>중복 키·MCP 인자 검증 등 감사 잔여 · 명명 규칙 프리셋(<b>rulesPreset</b>) · 테스트 증거 트레일 · 메모리 임포트(<b>import-memory</b>) · AI가 읽어들이는 양을 제한하는 문맥 예산 · 프롬프트를 목표/금지선/종료기준 3블록으로(선적재 축소, unhobbling)</small></span></li>
         <li><span class="ver">1.28</span><span class="desc">게이트를 실제로 켠 릴리스<small><b>문서를 안 고치면 빌드가 빨개진다</b>(<b>impact</b>가 이제 기본으로 차단 — 되돌리는 설정 2가지 제공) · 우리가 배포하는 4개 채널(훅·CI 템플릿·액션·우리 CI)이 드디어 그 게이트를 실행 · 어댑터 8종 전부 v2 형태로 · AI 작업환경 자체를 점검하는 <b>harness-health</b> · 릴리스 노트는 검사 면제</small></span></li>
         <li><span class="ver">1.29</span><span class="desc">켠 게이트가 우리 릴리스에서 울던 것을 고침<small>버전 숫자 <b>한 줄만</b> 바뀐 <b>package.json</b>은 이제 "바뀐 파일"로는 계속 보고하되 <b>문서 대조에는 쓰지 않는다</b> — 배포할 때마다 아무도 조치할 수 없는 경고가 쏟아지던 문제. <b>0이 되지는 않는다</b>(11건 → 4건, 남는 건 내용이 진짜 바뀐 파일들) · 첫 구현이 세 군데 틀렸고 <b>배포 전 교차검증</b>이 전부 잡아냈다</small></span></li>
-        <li><span class="ver">1.29.1</span><span class="desc">고칠 방법이 없는 경고를 없앰<small>도구가 <b>손댈 수 없는 문서</b>(도입처가 복사해 쓰는 <b>문서 템플릿</b>)를 두고 "낡았다"고 경고해서, <b>해결할 방법이 없는데 빌드가 빨개지는</b> 상황이 있었다 — 이제 그 문서들은 검사 대상에서 빠진다. 함께: 존재하는 파일을 "없다"고 답하던 메시지를 <b>범위 밖</b>이라고 정확히 말하게 고쳤다. <b>7건 → 5건</b>이고 여기서도 <b>0이 되지는 않는다</b></small></span></li>
+        <li><span class="ver">1.29.1</span><span class="desc">고칠 방법이 없는 경고를 없앰<small>도구가 <b>손댈 수 없는 문서</b>(도입처가 복사해 쓰는 템플릿)를 두고 "낡았다"고 경고해서 <b>해결할 방법이 없는데 빌드가 빨개졌다</b> — 검사 대상에서 뺐다. <b>7건 → 5건</b>, 여기서도 <b>0이 되지는 않는다</b></small></span></li>
         <li><span class="ver">1.29.2</span><span class="desc">AI에게 “누가 읽을지”까지 지시<small>지금까지는 AI가 <b>얼마나 읽을지</b>만 정해줬다. 이제 <b>훑어보고 찾는 일</b>은 값싼 보조 AI에게 맡기고 <b>요약만 받아오도록</b>, <b>판단·수정·문서 서술</b>은 맡기지 않도록 지시문에 적어 보낸다. <b>정직 포인트</b>: 지시문이 약 <b>30% 길어지는 비용</b>은 확실하고, 절감은 <b>측정하지 않았으므로 주장하지 않는다</b></small></span></li>
         <li><span class="ver">1.30</span><span class="desc">부담을 프로젝트에 맞게 고른다<small>지금까지는 이 도구를 쓰면 <b>모든 프로젝트가 같은 수준의 문서 관리</b>를 받았다. 이제 <b>lite · standard · strict</b> 세 단계 중에 고른다 — 개인 프로젝트나 빠르게 도는 작업은 <b>lite</b>로 두면 문서 때문에 빌드가 막히지 않고, <b>인수인계</b>를 앞두면 <b>strict</b>로 올린 뒤 <b>backfill</b>이 빠진 문서를 찾아 준다. 검사 엔진은 <b>하나 그대로</b>이고 같은 저장소에서 <b>언제든 오간다</b>. <b>기존 프로젝트는 손대기 전까지 아무것도 안 바뀐다</b>. <b>정직 포인트</b>: AI 지시문이 <b>15~21% 길어지는 비용</b>은 확실하고, 그게 문서 작업을 줄여 값을 하는지는 <b>측정하지 않았다</b></small></span></li>
-        <li class="now"><span class="ver">1.31</span><span class="desc">우리 도구가 자기 문서부터 못 지키고 있었다 &nbsp;—&nbsp; 가장 최근<small>세 단계를 만든 뒤 <b>제품에게 그 단계를 다 가르치지 못했다</b>. 검사 하나(<b>drift</b>)는 단계를 무시했고, 리포트 4곳은 "<b>mode</b>"라는 단어를 다른 뜻으로 쓰고 있었고, 문서는 단계가 생기기 전 동작을 설명하고 있었다. 함께 고친 것 중 <b>사용자에게 실제로 위험했던 것</b>: 우리가 배포하는 <b>CI 템플릿</b>이 상황에 따라 <b>이름만 같은 남의 패키지</b>를 내려받아 실행할 수 있었다. 그리고 <b>출하 이후 줄곧 고칠 방법이 없던 경고 9건</b>을 0으로 만들었다. <b>정직 포인트</b>: 이번에 고친 것 중 둘은 <b>지금까지 통과하던 빌드를 새로 실패시킬 수 있다</b> — 조용히 틀린 답을 소리 내어 맞는 답으로 바꾼 것이라 그대로 밝히고 되돌리는 설정을 함께 적었다</small></span></li>
+        <li class="now"><span class="ver">1.31</span><span class="desc">우리 도구가 자기 문서부터 못 지키고 있었다 &nbsp;—&nbsp; 가장 최근<small>세 단계를 만든 뒤 <b>제품에게 그 단계를 다 가르치지 못했다</b>. 검사 하나(<b>drift</b>)가 단계를 무시했고, 리포트 4곳이 "<b>mode</b>"를 다른 뜻으로 쓰고 있었고, 문서는 단계 이전 동작을 설명했다. <b>사용자에게 실제로 위험했던 것</b>도 하나 있었다 — 우리가 배포하는 <b>CI 템플릿</b>이 <b>이름만 같은 남의 패키지</b>를 내려받아 실행할 수 있었다. <b>출하 이후 줄곧 고칠 방법이 없던 경고 9건 → 0</b>. <b>정직 포인트</b>: 이번 수정 둘은 <b>통과하던 빌드를 새로 실패시킬 수 있다</b> — 그대로 밝히고 되돌리는 설정을 함께 적었다</small></span></li>
       </ul>
     </div>
   </section>

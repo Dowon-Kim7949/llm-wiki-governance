@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: policy
 project: llm-wiki-governance
-last_updated: 2026-09-03
+last_updated: 2026-09-08
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-03
+reviewed_at: 2026-09-08
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -80,3 +80,5 @@ Question("팀/조직 도입 시 visibility 경계 정책 문서가 필요하다"
 
 - 2026-07-15에 `1.9` 준비(Gate 14 초안)의 설계 입력으로 생성했다. 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 Gate 14 수락과 함께 `verified`로 승인했다.
 - 2026-07-16에 1.12.0에서 `src/config.js`가 변경되어(mobile 문서셋 `PROFILE_DOCS.mobile` 추가) `evidence.stale`이 발생했다. 이 문서 내용(visibility 정책)은 무관하며 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 baseline을 refresh해 `verified`로 재승인했다(내용 불변).
+
+- 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 인용 소스 `src/config.js`(앵커 `#symbol:VALID_VISIBILITIES`)를 재확인했다. 파일은 바뀌었지만 변경 내용은 에이전트 어휘 2종(`SUPPORTED_AGENTS`·`ALL_AGENTS`)을 `src/cli.js`에서 이 leaf 모듈로 **옮겨 온 신규 export**뿐이고, `VALID_VISIBILITIES`와 이 문서가 서술하는 visibility 계약은 무변경이다. 본문 **불변**.

@@ -67,11 +67,12 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (1 entries, 2026-07-14 → 2026-07-14) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (2 entries, 2026-07-14 → 2026-07-15) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-07-15에 1.7 CI/CD 도입을 반영했다: 배포 절차에 `v*` 태그 push 시 GitHub Release 잡(gh CLI·`release-notes --body-only` 본문)이 추가됐다(Gate 12). 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-21에 1.16.0 rename+reposition을 반영했다: 패키지명을 `@dowonk-7949/llm-wiki-standard`→`llm-wiki-governance`(unscoped)로 개명하고, 저장소를 `Dowon-Kim7949/llm-wiki-governance`로 rename(제자리)했으며, 포지셔닝을 거버넌스(OKF-compatible)로 옮겼다. CLI 명령은 `llm-wiki` 그대로다. 옛 스코프드 패키지는 deprecate. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
 - 2026-08-03에 `impact.source_changed`를 error로 올린 HEAD 변경분에 대해 인용 소스 3건(`package.json`, `bin/llm-wiki.js`, `src/cli.js#symbol:main`)을 재확인했다: `src/cli.js` 변경은 `defaultOptions`/`parseArgs`/`COMMAND_OPTION_RULES`의 `--watch-needs-review` 추가와 impact 도움말 문구뿐이라 `main()`은 무변경이고, `package.json`은 이번 커밋에서 바뀌지 않아 런타임·진입점·무의존성(신규 import는 내부 `./git.js`뿐)·배포 절차 서술이 전부 유효 — 본문 불변.
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `package.json`, `src/cli.js#symbol:main`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. `package.json` 변경은 version 한 줄이고 이 문서는 “`version`이 단일 소스다(이 문서는 특정 버전 숫자를 고정하지 않는다)”라고 스스로 밝히고 있으므로 서술이 그대로 유효하며, 런타임·진입점·무의존성·배포 절차 서술도 이번 diff와 무관하다. `main()`은 무변경(바뀐 것은 `COMMAND_HELP.drift`와 usage 문자열) — 본문 **불변**.
 
 - 2026-09-07(1.30.0)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `package.json`, `src/cli.js#symbol:main`. `package.json` 변경은 version 한 줄(1.29.5 → 1.30.0)이고 이 문서는 스스로 “`version`이 단일 소스다(이 문서는 특정 버전 숫자를 고정하지 않는다)”라고 밝히므로 서술이 그대로 유효하다. `src/cli.js`에서 바뀐 것은 `COMMANDS` 맵의 `mode`·`backfill` 등록, `defaultOptions`의 `mode`/`modeAction`, `parseArgs`의 `--mode`와 `mode set <레벨>` 위치 인자, `COMMAND_OPTION_RULES`·`helpText`·`COMMAND_HELP`이며 **`main()`은 무변경**이다(파싱 → 디스패치 → 리포트 → exit code 계약이 그대로다). 런타임(Node `>=18.18.0`)·진입점·무의존성(신규 import는 내부 `./governance.js`뿐)·배포 절차 서술도 이번 diff와 무관하다 — 본문 **불변**.
+
+- 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 인용 소스 3건(`package.json`·`bin/llm-wiki.js`·`src/cli.js#symbol:main`)을 재확인했다. `package.json`은 version 한 줄만 바뀌었고 이 문서는 스스로 "`version`이 단일 소스다"라고 밝히고 있으므로 유효하다. `bin/llm-wiki.js`는 무변경이다. `src/cli.js`의 변경은 `helpText()`·`COMMAND_HELP.mode`·import 정리뿐이라 **`main()`은 무변경**이고, 런타임·진입점·무의존성 서술도 이번 diff와 무관하다(새 import는 내부 `./config.js`뿐이다). 본문 **불변**.

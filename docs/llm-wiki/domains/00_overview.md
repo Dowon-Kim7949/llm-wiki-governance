@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
-last_updated: 2026-09-07
+last_updated: 2026-09-08
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-07
+reviewed_at: 2026-09-08
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -80,7 +80,7 @@ contains_sensitive_info: false
 - `src/cli.js#symbol:COMMANDS` — 전체 명령 표면(도메인 지도가 이를 반영해야 한다). 이 지도의 완전성은 이 맵과의 대조로만 확인할 수 있다.
 - `src/commands/harness-health.js#symbol:harnessHealthCommand` — Harness 도메인의 진입점. 위키 문서가 아니라 하네스 파일 자신을 읽는 유일한 명령.
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — Agent-native(MCP) 도메인이 노출하는 읽기 전용 툴의 단일 소스(현재 17종).
-- `src/commands.js#symbol:impactCommand` — Change tracking의 diff 앵커 역영향. `impact.source_changed`는 2026-08-03(결정 21)부터 기본 error라 `--strict` 없이 빌드를 실패시킨다(그 규칙에 한해 `--strict`는 no-op).
+- `src/commands.js#symbol:impactCommand` — Change tracking의 diff 앵커 역영향. `impact.source_changed`는 2026-08-03(결정 21)부터 기본 error라 `--strict` 없이 빌드를 실패시킨다(그 규칙에 한해 `--strict`는 no-op). 1.31.0부터 앵커 매칭이 경로 prefix라 디렉터리 앵커도 발화하고(N-8), 요약·JSON에 additive `stamp_only_exclusions`가 붙어 검토 스탬프만으로 자기제외된 문서를 이름으로 보고한다(N-9; 보고 전용이라 exit code 불변).
 - `src/commands.js#symbol:checkRunCommand` — Change tracking의 intent 앵커(run manifest 파이프라인 검증). 매니페스트 선택은 git 추적본 우선(결정 22/N-6)이고, 신규 `run.manifest_untracked`(info)·`run.change_set_undeclared`(warning)를 낸다.
 - `src/git.js#symbol:trackedPaths`·`modifiedTrackedFiles` — `check-run`이 쓰는 git seam 2종: 디렉터리별 추적 경로 집합(레포가 아니면 빈 집합이 아니라 `null`=미상이라 "추적 안 함"과 혼동되지 않는다)과 HEAD 대비 추적 수정분(untracked 미포함).
 - `src/commands/scans.js#symbol:FRESHNESS_EXEMPT_DOC_TYPES` — release note를 `evidence.stale`·`impact.source_changed` 양쪽에서 빼는 하드코딩 면제(결정 28).
@@ -92,11 +92,12 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (8 entries, 2026-07-14 → 2026-08-03) are archived in [REVIEW_HISTORY.md](../REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](../log.md).
+Older review notes (9 entries, 2026-07-14 → 2026-08-03) are archived in [REVIEW_HISTORY.md](../REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](../log.md).
 
-- 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-14 → 2026-07-16)을 `REVIEW_HISTORY.md`의 신규 `Domain Overview` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **직전 노트가 위반 문서를 열거했는데 그 목록이 불완전했다** — 자신을 8건, `PUBLIC_API.md`를 38건, 로드맵을 9건으로 적었지만 `BENCHMARK.md`·`EXAMPLES.md`도 8건이었고 로드맵은 이미 10건이었다. 이것은 이 저장소가 기준선 오탐률 라벨링에서 **가장 강한 참 양성**으로 분류한 형태와 정확히 같다(문서가 명시적으로 열거한 목록이 불완전해짐). 열거의 위험을 지적한 문서가 같은 날 스스로 그 함정에 빠진 셈이고, 그래서 이번에는 계수를 `tests/review-notes-cap.test.js`에 넘겼다. 도메인 지도·명령 귀속·Evidence는 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 **`impact` 게이트가 다시 옳았고, 이번에는 재스탬프로 넘길 뻔한 것을 잡았다.** `harness-health`(Phase 1 R0)를 추가한 커밋이 이 문서를 `impact.source_changed`로 지목했는데, 정책상 드리프트는 소스 대조 없이 `reviewed_at` 재스탬프로 해소해도 되는 상태다. 그런데 이 문서는 본문 Evidence에 **"도메인 지도가 `src/cli.js#symbol:COMMANDS`를 반영해야 한다"** 고 스스로 적어 두었고, 2026-07-31에 명령 11개(표면의 38%)를 놓친 전력이 있다 — 즉 여기서 재스탬프는 그 이력을 그대로 반복하는 선택이었다. 신규 도메인 **Harness (하네스 자체)** 를 추가했다: 위키 문서가 아니라 어댑터·스킬 산출물·선적재 표면을 보는 유일한 명령군이며, 규칙 4종·예산 2종의 opt-in 성격·어댑터 `userModified: null` 결정·MCP 미노출 선례를 함께 적었다. MCP 노출은 17종 그대로다(이 명령은 노출하지 않는다). **교훈: 자동 해소가 허용되는 드리프트와 실제로 갱신해야 하는 드리프트를 가르는 것은 게이트가 아니라 문서가 스스로 선언한 완전성 계약이다.**
 - 2026-08-03에 도메인 지도의 **거짓이 된 문장 하나**를 고쳤다. Change tracking 항목이 `impact`와 `check-run`을 묶어 "둘 다 기본 warning이며 `--strict`로 CI를 실패시킨다"고 적고 있었는데, 결정 21 이후 앞의 절반만 참이다. 두 명령을 갈라 적었다. 함께: `check-run`의 추적분 우선 선택과 신규 교차검증, Migrate & Repair의 `--watch-needs-review` 옵트인, `release_notes` 면제. **이 문서가 같은 배치에서 두 번째로 옳았다** — 지도가 자기 완전성 계약을 스스로 선언해 둔 덕분에 재스탬프로 넘길 뻔한 갱신을 잡았고, 이번에는 게이트가 아니라 문장 자체가 낡았다.
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`(기본 error)가 이 문서를 지목해 인용 소스를 재확인했다: `src/cli.js`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서가 `src/cli.js`에서 취하는 것은 **명령 디스패치 목록**인데 이번 diff는 `drift` 한 명령의 도움말 문자열만 건드렸고 명령 집합·분류·개수(30)는 그대로다 — 명령어군 지도 **불변**. 본문 변경 없음.
 
 - 2026-09-07(1.30.0)에 거버넌스 모드를 반영해 **Domains 지도에 항목 하나를 추가하고 MCP 툴 수를 고쳤다**(`Governance level` — `mode`·`backfill`; 17종 → 18종). `impact.source_changed`가 지목한 인용 소스 3건(`src/commands.js`·`src/cli.js`·`src/mcp/tools.js`)의 변경은 새 명령 2종 등록·`--mode` 옵션·읽기 전용 `mode` MCP 툴 추가이고, 기존 12개 도메인 항목의 서술은 어느 것도 거짓이 되지 않았다 — **지도에 없는 명령군이 생긴 것**과 이 문서가 직접 나열하는 툴 수가 낡은 것이 실제 공백이었다. **(이어서)** 같은 배치의 도그푸딩이 `backfill`의 결함 2건을 드러내 `src/commands.js`가 다시 바뀌었다. 이 지도의 `Governance level` 항목이 적은 계약(“아무도 기록하지 않은 근거는 발명하지 않는다”)은 그대로 유효하고, 수정은 그 계약을 **더 정확히** 만든 것이다 — 못 찾았을 때 “저장소에 없다”가 아니라 “내가 뒤진 곳에 없다”고 말하게 했다. 항목 본문 **불변**.
+
+- 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 `impactCommand` 근거 줄에 1.31.0 변경 2건을 더했다: 앵커 매칭이 경로 prefix가 돼 디렉터리 앵커도 발화하고(N-8), 요약·JSON에 additive `stamp_only_exclusions`가 붙어 검토 스탬프만으로 자기제외된 문서를 이름으로 보고한다(N-9, exit code 불변). 같은 커밋이 `validateCommand`·`checkRunCommand`·`harnessHealthCommand`의 요약 키를 `mode:` → `strict:` + `governance_mode:`로 쪼갰지만, 이 문서는 그 세 명령을 **역할 수준**으로만 서술하고 요약 필드명을 박아 두지 않았으므로 해당 줄들은 **불변**이다 — 필드 계약은 `PUBLIC_API.md`가 소유한다.
