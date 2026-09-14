@@ -1,3 +1,37 @@
+# LLM-WIKI governance gates for a pull request.
+#
+# ## Runner minutes
+#
+# On a PUBLIC repository GitHub-hosted runners are free and nothing below costs
+# anything. On a PRIVATE repository every minute here is billed against the
+# account's Actions allowance, and that allowance is shared by the whole
+# organization — one busy repository can exhaust it for every other one.
+#
+# The gates themselves are cheap: `validate-frontmatter`, `validate` and
+# `impact` read Markdown and finish in seconds. What costs minutes is the
+# machinery around them — full-history checkout, Node setup, `npm ci`.
+#
+# Two ways to pay nothing, in the order worth considering:
+#
+# 1. **Run the gates locally instead.** `templates/git-hooks/pre-commit` runs
+#    the same checks against the working tree before a commit exists. No
+#    runner, no minutes, no workflow at all. The cost is that a hook can be
+#    bypassed (`--no-verify`), so it governs a cooperating team rather than an
+#    enforced branch.
+#
+# 2. **Point this workflow at a self-hosted runner.** Minutes on a self-hosted
+#    runner are not billed, and the strength of a required status check is
+#    preserved. Set a repository or organization variable `LLM_WIKI_RUNNER` to
+#    the runner's label (e.g. `wiki-linux`); `runs-on` below follows it, so no
+#    edit to this file is needed. Leave it unset and this stays on
+#    `ubuntu-latest`.
+#
+#    Do not set that variable before a runner carrying the label is online: a
+#    job with no matching runner does not fail, it sits queued (GitHub drops it
+#    after 24h), and a required check that never reports blocks the PR in a way
+#    that reads like nothing is happening. Self-hosted runners are also unsafe
+#    on a public repository, where a fork's PR can run arbitrary code on the
+#    machine.
 name: LLM-WIKI Validate
 
 on:
@@ -15,7 +49,10 @@ permissions:
 jobs:
   llm-wiki:
     name: Validate LLM-WIKI
-    runs-on: ubuntu-latest
+    # Set the LLM_WIKI_RUNNER variable to a self-hosted runner's label to stop
+    # spending billed minutes; unset, this is the GitHub-hosted default. See the
+    # runner-minutes note at the top of this file before setting it.
+    runs-on: ${{ vars.LLM_WIKI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -41,8 +78,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run project tests
-        run: npm test
+      # Your test suite is deliberately NOT run here. None of the gates below
+      # depend on it, and on a private repository a full suite is usually the
+      # single most expensive thing in this file — paid for twice when the
+      # repository's own CI already runs it. Add a step back only if this
+      # workflow is the only CI the repository has:
+      #
+      #   - name: Run project tests
+      #     run: npm test
 
       - name: Validate LLM-WIKI frontmatter
         run: npx --no-install llm-wiki validate-frontmatter

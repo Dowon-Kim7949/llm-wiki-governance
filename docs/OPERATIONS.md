@@ -134,6 +134,48 @@ the directory it runs in, so a step validating a scratch directory (a packaging
 smoke test, say) still counts. It names the files it matched so you can check;
 read the counts as an upper bound.
 
+### Running the gates without spending Actions minutes
+
+On a public repository GitHub-hosted runners are free and this section does not
+apply. On a **private** repository every minute of the PR CI channel is billed
+against the account's Actions allowance, and on an organization that allowance
+is **shared by every repository in it** — so the cost of adopting this project
+lands on a budget other teams are also drawing from.
+
+Size it before you wire it. The gates are cheap on their own: `validate`,
+`validate-frontmatter` and `impact` read Markdown and finish in seconds. The
+minutes go to the machinery around them — a full-history checkout, Node setup,
+`npm ci`. That is why the shipped template no longer runs your test suite: it
+is usually the most expensive step in the file and no gate depends on it.
+
+Two channels cost nothing, and they are not equivalent:
+
+- **pre-commit (no runner at all).** `templates/git-hooks/pre-commit` runs the
+  same two checks against the working tree. Zero minutes, zero setup, and the
+  feedback arrives before a commit exists. What you give up is enforcement: a
+  hook lives in each clone, is bypassable with `--no-verify`, and cannot be a
+  required status check. Right for a cooperating team; not enough on its own
+  when the wiki's state has to be provable on the branch.
+- **self-hosted runner.** Minutes on a self-hosted runner are not billed, and a
+  required status check still blocks the PR. The shipped workflow template
+  reads `runs-on` from a `LLM_WIKI_RUNNER` repository or organization variable,
+  so moving to one is a variable, not a fork of the file:
+
+  ```
+  gh variable set LLM_WIKI_RUNNER --body wiki-linux --repo <owner>/<repo>
+  ```
+
+  Register the runner first. A job whose label matches nothing does not fail —
+  it queues until GitHub drops it 24 hours later, and a required check that
+  never reports blocks the PR while looking like nothing is wrong. Two further
+  constraints: the runner needs Node available (`actions/setup-node` works
+  there, but the machine has to reach the network to fetch a toolchain), and a
+  self-hosted runner must not be attached to a **public** repository, where a
+  fork's pull request can execute arbitrary code on it.
+
+The composite-action channel has no runner setting of its own — it is one step
+inside a workflow you own, so it runs wherever that workflow's `runs-on` points.
+
 ## When the sensitive-info scan blocks you
 
 Every other rule in this guide has a dial. `sensitive.*` does not: the category

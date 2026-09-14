@@ -24,6 +24,31 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-14 - ci(templates): 도입처가 러너 분을 쓰지 않고도 게이트를 돌릴 수 있게 한다
+
+- status: verified (재스탬프로 해소, review --approve-all --yes)
+- actor: Claude Code (유지보수자 지시)
+- scope: templates, docs
+- changed:
+  - templates/github-actions/llm-wiki-validate.yml
+  - docs/OPERATIONS.md
+  - README.md
+  - README.ko.md
+- summary:
+  - **이 프로젝트가 도입처에 권하는 CI 채널은 GitHub-hosted 러너를 기본으로 쓰고, 그 비용을 어디에도 적지 않았다.** 공개 저장소에서는 무료라 보이지 않던 문제인데, 비공개 저장소에서는 매 분이 과금되고 조직 계정에서는 그 한도를 **조직의 모든 저장소가 공유**한다 — 즉 이 도구를 도입하는 비용이 다른 팀이 쓰던 예산에서 나간다.
+  - 워크플로 템플릿의 `runs-on`을 `${{ vars.LLM_WIKI_RUNNER || 'ubuntu-latest' }}`로 바꿨다. 도입처가 **파일을 포크하지 않고 변수 하나로** self-hosted 러너에 붙일 수 있고, 변수를 안 두면 기존 동작 그대로다. self-hosted 러너의 분은 과금되지 않으면서 required status check의 강제력은 유지된다.
+  - 같은 템플릿에서 `npm test` 스텝을 **삭제**했다. 어떤 게이트도 그 결과에 의존하지 않는데 비공개 저장소에서는 보통 이 파일에서 가장 비싼 스텝이고, 도입처 자신의 CI가 이미 테스트를 돌린다면 같은 값을 두 번 낸다. 되살리는 방법을 주석으로 남겼다 — 이 워크플로가 그 저장소의 유일한 CI인 경우다.
+  - 파일 상단과 `docs/OPERATIONS.md`에 비용 구조와 **요금 0인 두 채널**을 적었다: 러너가 아예 필요 없는 `templates/git-hooks/pre-commit`, 그리고 self-hosted 러너. 둘은 등가가 아니다 — 훅은 각 클론에 살고 `--no-verify`로 우회되며 required check가 될 수 없다. 협조하는 팀에는 충분하지만 위키 상태를 브랜치에서 증명해야 하면 부족하다는 것을 그대로 적었다.
+  - self-hosted 전환의 함정 셋을 문서에 못박았다: 레이블에 맞는 러너가 **온라인이기 전에** 변수를 두면 잡이 실패하지 않고 24시간 큐에 머물러 required check가 조용히 PR을 막는다 · 러너에 Node가 필요하다 · **공개 저장소에는 self-hosted 러너를 붙이면 안 된다**(포크 PR이 그 머신에서 임의 코드를 실행한다).
+- evidence:
+  - templates/github-actions/llm-wiki-validate.yml — `runs-on`의 변수 폴백, 삭제된 테스트 스텝 자리의 주석, 상단 러너 분 설명.
+  - docs/OPERATIONS.md#section:Running the gates without spending Actions minutes — 두 채널의 비등가성과 `gh variable set` 절차.
+  - templates/git-hooks/pre-commit — 러너 없이 같은 두 검사를 working tree에 돌리는 기존 채널(이번에 신설한 것이 아니라 요금 0 경로로 승격해 문서화한 것).
+- caveats:
+  - **`impact`가 지목한 `verified` 5종(EXAMPLES · index · README · HARNESS_GOVERNANCE_ROADMAP · RELEASE_FLOW)은 본문을 고치지 않고 재스탬프로 해소했다.** 대조 결과 서술이 틀린 곳이 없었다: 템플릿을 인용하는 두 문서는 `npm test`도 `runs-on`도 서술하지 않고(로드맵 190~197줄 표가 적는 "실제 실행 명령"은 `validate-frontmatter`·`validate --strict`로 불변), README를 인용하는 세 문서는 CI 문단의 내용을 재서술하지 않는다.
+  - Review Note를 추가하지 않았다. 다섯 중 넷이 이미 5건 상한이라 문서마다 아카이브 회전(항목 이동 + 포인터와 헤더 숫자 갱신)이 필요한데, 그렇게 얻는 것은 이 항목과 중복되는 기록이다. 이 결정으로 **해당 문서들의 Review Notes만 읽어서는 이번 변경을 알 수 없다** — 경위는 이 로그가 정본이다.
+  - 도입처의 Actions 분을 실제로 얼마나 줄이는지는 **측정하지 않았다.** `npm test` 제거분은 도입처 테스트 스위트 길이에 달렸고, 나머지는 도입처가 self-hosted로 옮기는지에 달렸다. 이 항목의 어떤 숫자도 절감 주장으로 읽으면 안 된다.
+
 ## 2026-09-08 - docs(wiki): 1.31.0이 지목한 문서 11종 해소 — 9곳은 서술이 실제로 틀려 있었다
 
 - status: verified (Review Note 후 review --approve-all --yes)
