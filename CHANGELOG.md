@@ -6,6 +6,55 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.32.0 — 2026-09-14
+
+A cost release. The CI channel this project hands adopters ran on GitHub-hosted
+runners and said nothing anywhere about what that costs. On a public repository
+those minutes are free, which is exactly why the gap stayed invisible here — but
+on a private repository every minute is billed, and on an organization account
+that allowance is shared by every repository in it. So the price of adopting a
+governance tool was being drawn from a budget other teams were also spending.
+
+No CLI behaviour changed. The shipped workflow template did, and it is now
+trimmed to the cheapest shape that still gates.
+
+### Behavior changes worth reading before you upgrade
+
+- **The template no longer installs your dependencies.** The gates need exactly
+  one package — this one, which has no runtime dependencies — so installing a
+  whole dependency tree bought them nothing while usually being the longest step
+  in the file. Each step now runs `npx -y llm-wiki-governance@1.32 <command>`
+  instead of `npm ci` plus `npx --no-install llm-wiki <command>`. **Direction of
+  change:** llm-wiki-governance no longer has to be a devDependency for the
+  workflow to work, and the version is pinned in the workflow rather than your
+  lockfile. If you prefer the lockfile, the old shape still works and is written
+  out in the template's comments.
+- **The template no longer runs your test suite.** No gate depended on it, and
+  on a private repository a full suite is usually the single most expensive step
+  — paid for twice when your own CI already runs it. Add it back if this
+  workflow is the only CI the repository has.
+- **`runs-on` follows an `LLM_WIKI_RUNNER` variable.** Set that repository or
+  organization variable to a self-hosted runner's label and the workflow moves
+  there without editing the file; leave it unset and it stays on
+  `ubuntu-latest`. Self-hosted minutes are not billed while a required status
+  check keeps its blocking power. Two cautions, both in the template: do not set
+  the variable before a runner with that label is online (the job does not fail,
+  it queues for 24h, and a required check that never reports blocks the PR
+  silently), and never attach a self-hosted runner to a public repository.
+- **`timeout-minutes: 10` and `concurrency` with `cancel-in-progress`.** The
+  gates finish in seconds, but without a cap a hung step ran to GitHub's 6-hour
+  default; and a superseded run used to keep going — and keep billing — after a
+  newer commit made its verdict worthless.
+
+These apply to a **fresh copy** of the template. A workflow you already copied is
+your file and does not change on upgrade: re-copy it, or apply those edits by
+hand. `docs/OPERATIONS.md` gains a section on running the gates with no billed
+minutes at all, including why the two free channels — the pre-commit hook and a
+self-hosted runner — are not equivalent.
+
+How much this saves was **not measured**: the test-suite step depends on your
+suite, and the rest depends on whether you move to a self-hosted runner.
+
 ## 1.31.0 — 2026-09-08
 
 A consistency release: the gates, the reports, and the shipped text were each

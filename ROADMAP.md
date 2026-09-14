@@ -945,6 +945,49 @@ new help section, no new command and no removed option, but two changes that rep
 answer with a loud correct one and can therefore fail a build that used to pass. Tests **568 →
 579**, with RED confirmed per test rather than as a file-level failure.
 
+## Release Plan (post-1.31.0) — the gate should not bill someone else's budget — **shipped as 1.32.0 (2026-09-14)**
+
+This project ships a CI channel and had never priced it. The workflow template ran on
+GitHub-hosted runners, installed the adopter's full dependency tree, ran the adopter's test
+suite, had no timeout and no concurrency cancellation — and not one line anywhere said what any
+of that costs. On a public repository it costs nothing, which is precisely why the gap survived:
+this repository is public, so the dogfood never felt it.
+
+It is not nothing elsewhere. On a private repository every minute is billed, and on an
+organization account the allowance is shared by every repository in it — so adopting a
+governance tool draws down a budget other teams are also spending. A tool whose entire argument
+is "an unpriced cost accumulates until someone is surprised by it" had shipped exactly that.
+
+The organising principle: a gate has to be cheap enough that nobody has to choose between
+governance and their CI budget.
+
+- **The template stops installing dependencies.** The gates need one package — this one, with no
+  runtime dependencies — so `npm ci` plus `npx --no-install` became `npx -y
+  llm-wiki-governance@<pin>`. A side effect worth naming: the package no longer has to be a
+  devDependency for the workflow to run, which also lowers the adoption step. The lockfile-pinned
+  shape is kept in the comments for anyone who prefers it.
+- **The template stops running the adopter's test suite.** No gate depended on it, and it is
+  usually the most expensive step in the file — paid twice when the repository's own CI runs it.
+- **`runs-on` became a variable.** `LLM_WIKI_RUNNER` moves the workflow to a self-hosted runner
+  without forking the file: unbilled minutes, with a required status check keeping its blocking
+  power. The template names the two ways this bites — a label with no runner online queues for
+  24h while a required check silently blocks the PR, and a self-hosted runner must never be
+  attached to a public repository.
+- **A 10-minute cap and `cancel-in-progress`.** The gates finish in seconds; without a cap a hung
+  step ran to GitHub's 6-hour default, and a run made worthless by a newer commit kept billing.
+- **`docs/OPERATIONS.md` gained the section that should have existed first.** What the channels
+  cost, and why the two free ones — the pre-commit hook and a self-hosted runner — are not
+  equivalent: a hook lives in each clone, is bypassable with `--no-verify`, and cannot be a
+  required check.
+
+**MINOR, with the CLI untouched.** Not one line of `src/` changed; what changed is a shipped
+template's contract and the composite action's pinned default. That is more than a PATCH because
+a fresh copy of the template behaves differently — no dependency install, no test suite — and
+less than a MAJOR because a template already copied is the adopter's own file and does not move
+on upgrade. **The saving was not measured**, and nothing in this release claims a number: the
+test-suite share depends on the adopter's suite, and the rest depends on whether they move to a
+self-hosted runner.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

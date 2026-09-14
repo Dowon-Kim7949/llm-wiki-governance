@@ -144,9 +144,29 @@ lands on a budget other teams are also drawing from.
 
 Size it before you wire it. The gates are cheap on their own: `validate`,
 `validate-frontmatter` and `impact` read Markdown and finish in seconds. The
-minutes go to the machinery around them — a full-history checkout, Node setup,
-`npm ci`. That is why the shipped template no longer runs your test suite: it
-is usually the most expensive step in the file and no gate depends on it.
+minutes go to the machinery around them, so the shipped template is trimmed to
+the cheapest shape that still gates:
+
+- **No dependency install.** The gates need exactly one package — this one,
+  which has no runtime dependencies — so each step fetches the pinned CLI with
+  `npx -y llm-wiki-governance@<pin>` instead of installing your dependency
+  tree. A side effect worth knowing: the package no longer has to be a
+  devDependency for the workflow to run. If you would rather pin through your
+  own lockfile, add `npm ci` back and use `npx --no-install llm-wiki <command>`
+  — that trades runner minutes for a lockfile-pinned version.
+- **No test suite.** No gate depends on it, and a full suite is usually the
+  most expensive step in a workflow — paid for twice when your own CI already
+  runs it.
+- **`timeout-minutes: 10`.** Without a cap a hung step runs to GitHub's 6-hour
+  default, which on a private repository is a day's allowance spent on a job
+  nobody is waiting for.
+- **`concurrency` with `cancel-in-progress`.** Push twice and the first run is
+  worthless the moment the second starts, but it keeps running and keeps
+  billing. Only the newest commit's verdict matters for a gate.
+
+What stays expensive is `fetch-depth: 0`, and it has to: `impact --since`
+compares against the PR base, and a shallow checkout makes that gate degrade
+quietly instead of failing loudly.
 
 Two channels cost nothing, and they are not equivalent:
 

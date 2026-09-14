@@ -24,6 +24,32 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-09-14 - release: 1.32.0 — 게이트를 가장 값싼 형태로 깎고 배포한다
+
+- status: verified (재스탬프로 해소, review --approve-all --yes)
+- actor: Claude Code (유지보수자 지시)
+- scope: templates, docs, release
+- changed:
+  - templates/github-actions/llm-wiki-validate.yml
+  - docs/OPERATIONS.md
+  - package.json · .github/actions/validate/action.yml · tests/verification.test.js · README.md · README.ko.md (버전 1.31.0 → 1.32.0)
+  - CHANGELOG.md · CHANGELOG.ko.md · ROADMAP.md · ROADMAP.ko.md (1.32.0 절 신설)
+  - outputs/team-briefing/ (대상 버전 라벨만)
+- summary:
+  - 같은 날 앞 항목이 러너 선택과 `npm test` 스텝을 다뤘다면, 이번은 **템플릿에 남아 있던 나머지 비용을 마저 깎고 실제로 배포**한다. 앞 항목의 변경은 커밋만 돼 있어서 **npm 경로로 도입하는 곳에는 닿지 않았다** — `templates/`는 npm tarball에 실려 나가므로 배포해야 전달된다.
+  - **의존성 설치를 없앴다.** 게이트에 필요한 패키지는 런타임 의존성이 없는 이 패키지 하나뿐인데 도입처의 트리 전체를 설치하고 있었다. `npm ci` + `npx --no-install llm-wiki`가 `npx -y llm-wiki-governance@1.32`가 됐다. 부수 효과로 **이 패키지를 devDependency로 둘 필요가 없어졌다.** 패키지 이름을 전체로 적는 것이 중요하다 — 짧은 `npx llm-wiki`는 이 패키지의 bin 이름과 같은 **무관한 npm 패키지**를 받아 실행한다.
+  - **`timeout-minutes: 10`과 `concurrency`의 `cancel-in-progress`를 넣었다.** 둘 다 템플릿에 아예 없었다. 상한이 없으면 멈춘 스텝이 GitHub 기본값 6시간까지 돌고, 더 새 커밋이 올라와 판정이 무의미해진 run도 끝까지 돌며 계속 과금됐다.
+  - **MINOR로 판정했다. `src/`는 한 줄도 바뀌지 않았다.** PATCH보다 큰 이유는 템플릿을 새로 복사하면 동작이 다르기 때문이고(의존성 설치 없음, 테스트 없음), MAJOR보다 작은 이유는 이미 복사해 간 템플릿은 그쪽 저장소의 파일이라 버전을 올려도 움직이지 않기 때문이다.
+- evidence:
+  - templates/github-actions/llm-wiki-validate.yml — 실행부가 스텝 5개로 줄었다(checkout · setup-node · 게이트 3). `npm ci`도 `npm test`도 없다.
+  - docs/OPERATIONS.md#section:Running the gates without spending Actions minutes — 깎은 항목 4종과 `fetch-depth: 0`이 남는 이유.
+  - .github/actions/validate/action.yml — `version` 입력 기본값 `1.32`(X.Y 형식). RELEASE_CHECKLIST가 1.27.0–1.27.2에 이것이 낡았던 사고를 근거로 명시 지목하는 항목이다.
+- caveats:
+  - **절감은 측정하지 않았다.** 테스트 스텝 제거분은 도입처 스위트 길이에, 나머지는 도입처가 self-hosted로 옮기는지에 달려 있다. CHANGELOG·ROADMAP의 어떤 문장도 숫자를 주장하지 않는다.
+  - **이미 템플릿을 복사해 간 도입처는 이 릴리스로 아무것도 얻지 못한다.** 그들의 워크플로는 그들의 파일이다 — 다시 복사하거나 네 가지를 직접 반영해야 한다. 이 사실을 CHANGELOG 2종에 명시했다.
+  - 팀 브리핑 덱은 **라벨만** 1.32.0으로 맞추고 본문은 건드리지 않았다. RELEASE_CHECKLIST의 조건은 "사용자 노출 동작(명령·옵션·usage·MCP 표면) 변경 시"인데 이번 릴리스는 CLI를 바꾸지 않았기 때문이다.
+  - `impact`가 지목한 문서는 이번에도 본문 대조 후 재스탬프로 해소했고, `stamp_only_exclusions`가 그만큼 남는다 — 제품 자신이 "이 문서들은 이번 실행에서 실제로 검사되지 않았다"고 말하는 상태다(N-9).
+
 ## 2026-09-14 - ci(templates): 도입처가 러너 분을 쓰지 않고도 게이트를 돌릴 수 있게 한다
 
 - status: verified (재스탬프로 해소, review --approve-all --yes)

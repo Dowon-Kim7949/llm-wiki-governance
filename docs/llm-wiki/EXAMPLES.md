@@ -89,14 +89,23 @@ node bin/llm-wiki.js validate --type library
 ## CI에서 검증
 
 ```bash
-# 이 저장소의 CI와 같은 형태다. `--no-install`이 load-bearing이다: 이 패키지의 bin 이름은
-# `llm-wiki`이지만 npm에는 무관한 `llm-wiki` 패키지가 따로 있어서, devDependency가 없는
-# 러너에서 맨 `npx llm-wiki`는 남의 패키지를 내려받아 실행한다. `--no-install`은 대신 실패한다.
-npx --no-install llm-wiki validate-frontmatter
-npx --no-install llm-wiki validate --strict --agent codex
-npx --no-install llm-wiki impact --since origin/main     # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
-npx --no-install llm-wiki drift --strict                 # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
+# 1.32.0부터 출하 템플릿이 쓰는 형태다. 패키지 이름을 전체로 적고 버전을 핀한다 — 그러면
+# `npm ci`가 필요 없고(게이트가 쓰는 패키지는 런타임 의존성이 없는 이것 하나뿐이다) 이
+# 패키지를 devDependency로 둘 필요도 없다. 비공개 저장소에서 러너 분이 과금되는 쪽이라면
+# 그 의존성 설치가 보통 워크플로에서 가장 긴 스텝이다.
+npx -y llm-wiki-governance@1.32 validate-frontmatter
+npx -y llm-wiki-governance@1.32 validate --strict --agent codex
+npx -y llm-wiki-governance@1.32 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx -y llm-wiki-governance@1.32 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
+
+🚨 **패키지 이름을 줄여 `npx llm-wiki`라고 쓰면 안 된다.** 이 패키지의 bin 이름이 `llm-wiki`인데
+npm에는 **무관한** `llm-wiki` 패키지가 따로 있어서, 짧은 형태는 남의 코드를 내려받아 실행한다.
+`tests/verification.test.js`가 출하 템플릿에 대해 이 형태를 금지 가드로 고정한다.
+
+이미 이 패키지를 devDependency로 두고 lockfile로 버전을 고정하고 싶다면 옛 형태도 그대로
+유효하다 — `npm ci` 뒤에 `npx --no-install llm-wiki <명령>`이다. 러너 분과 lockfile 고정을
+맞바꾸는 선택이고, `--no-install`은 위 함정을 다른 방식으로 막는다(받아오는 대신 실패한다).
 
 `--strict`는 warning을 실패로 처리하므로 `related.missing`·`content.not_enriched`·`evidence.*`가 릴리스 게이트에서 CI를 실패시킬 수 있다.
 

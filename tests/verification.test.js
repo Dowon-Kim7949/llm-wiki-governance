@@ -3561,7 +3561,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.31.0");
+  assert.equal(packageJson.version, "1.32.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");
@@ -3571,14 +3571,70 @@ test("package metadata targets npmjs public publish without committed tokens", a
 
 test("GitHub Actions validation example includes strict LLM-WIKI checks", async () => {
   const workflow = await readFile(path.join(process.cwd(), "templates", "github-actions", "llm-wiki-validate.yml"), { encoding: "utf8" });
+  const manifest = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
+  const pin = manifest.version.split(".").slice(0, 2).join(".");
 
-  assert.ok(workflow.includes("run: npm test"));
-  // --no-install is load-bearing, not cosmetic: this package's bin is `llm-wiki`
-  // and npm hosts an unrelated package under that name, so a bare `npx llm-wiki`
-  // on a runner without the devDependency runs a stranger's package.
-  assert.ok(workflow.includes("run: npx --no-install llm-wiki validate-frontmatter"));
-  assert.ok(workflow.includes("run: npx --no-install llm-wiki validate --strict --agent codex"));
-  assert.doesNotMatch(workflow, /npx (?!--no-install)llm-wiki /, "every npx call in the template must be --no-install");
+  // The three gates this template exists to run, at the pin this release ships.
+  // Checking the pin against package.json rather than a literal is deliberate:
+  // the composite action's `version` default went stale across 1.27.0-1.27.2
+  // because it was maintained by hand, and this file holds the same kind of
+  // number. A release that forgets to move it fails here.
+  assert.ok(
+    workflow.includes(`run: npx -y llm-wiki-governance@${pin} validate-frontmatter`),
+    `template must run validate-frontmatter at the current pin (${pin})`,
+  );
+  assert.ok(
+    workflow.includes(`run: npx -y llm-wiki-governance@${pin} validate --strict --agent codex`),
+    `template must run validate --strict at the current pin (${pin})`,
+  );
+  assert.ok(
+    workflow.includes(`run: npx -y llm-wiki-governance@${pin} impact --since `),
+    `template must run the omission gate at the current pin (${pin})`,
+  );
+
+  // The full package name is load-bearing, not cosmetic: this package's bin is
+  // named `llm-wiki` and npm hosts an UNRELATED package under that name, so a
+  // bare `npx llm-wiki` downloads and runs a stranger's code. Since 1.32.0 the
+  // template fetches the CLI instead of resolving it from node_modules, which
+  // makes this the difference between a pinned package and an arbitrary one.
+  // The `(?:- )?` is load-bearing too: `- run: ...` is a valid step with no
+  // `name:`, so an anchor that only allows leading whitespace would let the
+  // shorthand form through the guard it exists to enforce.
+  assert.doesNotMatch(
+    workflow,
+    /^\s*(?:- )?run: npx (?:-y )?llm-wiki[ @]/m,
+    "every npx call must name llm-wiki-governance in full, never the bare `llm-wiki` bin",
+  );
+
+  // Cost guards (1.32.0). The gates read Markdown and finish in seconds; what
+  // used to cost an adopter minutes was the machinery around them. On a private
+  // repository those minutes are billed against an allowance the whole
+  // organization shares, so each of these is a contract, not a preference.
+  assert.doesNotMatch(workflow, /^\s*(?:- )?run: npm ci\s*$/m, "template must not install the adopter's dependency tree");
+  assert.doesNotMatch(workflow, /^\s*(?:- )?run: npm test\s*$/m, "template must not run the adopter's test suite; no gate depends on it");
+  assert.match(workflow, /^\s*timeout-minutes: \d+$/m, "template must cap the job; GitHub's default is 6 hours");
+  assert.match(workflow, /^\s*cancel-in-progress: true$/m, "a superseded run must not keep billing");
+});
+
+test("composite action pins the CLI version it runs to this release", async () => {
+  const action = await readFile(path.join(process.cwd(), ".github", "actions", "validate", "action.yml"), { encoding: "utf8" });
+  const manifest = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
+  const pin = manifest.version.split(".").slice(0, 2).join(".");
+
+  // Every adopter using the composite action runs whatever this default says.
+  // It is a number maintained by hand next to the thing it describes, which is
+  // the shape this repository has already been bitten by: the default went
+  // stale across 1.27.0-1.27.2 and shipped an old CLI to anyone who took the
+  // default. RELEASE_CHECKLIST names the item; this makes forgetting it fail.
+  const lines = action.split(String.fromCharCode(10));
+  const declared = lines.findIndex((line) => line.trimEnd() === "  version:");
+  assert.ok(declared >= 0, "action.yml must declare a `version` input");
+  const defaultLine = lines.slice(declared + 1, declared + 8).find((line) => /^\s*default:/.test(line));
+  assert.equal(
+    (defaultLine ?? "").trim(),
+    `default: "${pin}"`,
+    `the composite action's version default must track package.json (expected ${pin})`,
+  );
 });
 
 test("parseArgs reports missing option values and unknown options", () => {
