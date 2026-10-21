@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-21 - docs(deck): 1.34.0 배포 이후 정렬 — 덱이 줄인 패키지를 예전 크기로 말하고 있었다
+
+- status: needs_review (편집 시점)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: `outputs/team-briefing/llm-wiki-briefing.html` · `SPEAKER_NOTES.md` · `README.md`
+- summary: 1.34.0 배포(npm, 2026-10-21) 뒤 발표 덱을 맞췄다. 표기 3곳을 `v1.34.0`으로 바꾸고 타임라인 ②에 1.34 행을 넣었으며, "가장 최근" 표시를 옮겼다. 이번 릴리스가 덱의 사실 하나를 직접 틀리게 만들었다 — "내려받기 0.5MB 남짓, 풀면 1.7MB"를 실측(packed 278,450 B, unpacked 938,856 B)에 맞춰 "0.3MB 정도, 풀면 0.9MB"로 고쳤다. 1.29.2 행은 그 기능이 1.34에서 빠졌다는 표시를 달았다. 행이 하나 늘어난 만큼 1.29–1.29.1 행을 줄여 ①장으로 옮기고, 1366×768에서 넘치던 줄을 정리했다(1.25·1.26·1.27·1.28 부연, 1.30 한 문장, 1.34 행을 두 줄로). 스피커 노트에는 21·22장 범위와 대본, 1.34 한 줄 설명을 넣었다.
+- evidence: Chrome에서 UTF-8로 서빙해 실측했다. 1920×1080·1440×900·1366×768에서 넘치는 슬라이드 0장. 21·22장 높이는 757·747px로 개선 전과 같다. 1280×720에서는 개선 전 덱도 두 장이 넘친다(이번에 생긴 문제가 아니다). `impact --since HEAD` pass, `validate --strict` 0.
+- caveats: 공유 Artifact 링크는 아직 이전 판(v1.33.0)이다. 조직 공유라 재게시는 유지보수자 확인 뒤에 한다.
+
 ## 2026-10-21 - release: 1.34.0 — 받기도, 돌리기도, 읽기도 가볍게
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
