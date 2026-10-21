@@ -154,7 +154,7 @@ export const TOOL_DEFS = [
   {
     name: "prompt",
     title: "Repeatable task prompt",
-    description: "Produce a repeatable agent workflow prompt for a task (bootstrap for first-time wiki enrichment; onboard/prepare for the guided read-only workflows; or feature, fix, refactor, docs-sync, okf-extract).",
+    description: "Produce a repeatable agent workflow prompt for a task (bootstrap for first-time wiki enrichment; onboard/prepare for the guided read-only workflows; backfill for handoff reconstruction; issue for a read-only GitHub issue draft; or feature, fix, refactor, docs-sync, okf-extract). Rendered in the project's llm-wiki.config.json promptProfile (full by default, or slim).",
     command: "prompt",
     inputSchema: schema({
       task: { type: "string", enum: [...SUPPORTED_TASK_PROMPTS], description: "The task workflow to generate a prompt for." },

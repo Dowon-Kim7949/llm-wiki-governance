@@ -1,3 +1,16 @@
+// The ONE definition of a well-formed `evidence` reference. The published schema
+// below carries it, and parseEvidenceReference (commands/references.js) refuses
+// anything it does not match before extracting a locator, so the schema an
+// editor validates against and the runtime cannot disagree about shape. The
+// runtime only adds what a pattern cannot say (a line range must not run
+// backwards). Before 1.33 the two were written separately and had drifted: the
+// schema rejected `#l10` and `#route:/` (an adopter's real root-route anchor)
+// that the runtime accepted, and the runtime accepted a bare `#anchor` — which
+// grounded a verified document while pointing at no source — that the schema
+// rejected.
+export const EVIDENCE_REFERENCE_PATTERN =
+  "^(https?:\\/\\/[^\\s]+|[^#\\s][^#]*(#([Ll][1-9][0-9]*(-[Ll]?[1-9][0-9]*)?|(symbol|section):\\s*\\S.*|route:\\s*\\/.*))?)$";
+
 export const FRONTMATTER_SCHEMA = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://llm-wiki-governance.local/schemas/frontmatter.schema.json",
@@ -40,7 +53,7 @@ export const FRONTMATTER_SCHEMA = {
       type: "array",
       items: {
         type: "string",
-        pattern: "^(https?:\\/\\/[^\\s]+|[^#\\s][^#]*(#(L[1-9][0-9]*(-L?[1-9][0-9]*)?|symbol:.+|section:.+|route:\\/.+))?)$"
+        pattern: EVIDENCE_REFERENCE_PATTERN
       }
     }
   },

@@ -189,7 +189,7 @@ const EXPLANATION_CATALOG = {
     "evidence.shape": {
       meaning: "evidence 항목이 지원되는 참조 형태와 일치하지 않습니다.",
       whyItMatters: "evidence 참조는 파일·라인 범위·심볼·섹션·라우트를 가리킬 수 있게 작고 기계 검증 가능해야 합니다.",
-      remediation: ["file, file#L10, file#L10-L20, file#symbol:Name, file#section:Heading, file#route:/path 형식을 사용하세요.", "더 풍부한 프로즈는 frontmatter 항목이 아니라 문서 본문에 두세요.", "validate를 다시 실행하세요."]
+      remediation: ["file, file#L10, file#L10-L20, file:10-20, file#symbol:Name, file#section:Heading, file#route:/path 형식이나 전체 https:// URL을 사용하세요.", "파일 없이 #anchor만 쓰면 아무 소스도 가리키지 않으므로 evidence가 아닙니다. locator 앞에 파일 경로를 쓰세요.", "더 풍부한 프로즈는 frontmatter 항목이 아니라 문서 본문에 두세요.", "validate를 다시 실행하세요."]
     },
     "evidence.missing": {
       meaning: "evidence 항목이 존재하지 않는 로컬 파일을 가리킵니다.",

@@ -104,7 +104,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(https?:\\/\\/[^\\s]+|[^#\\s][^#]*(#(L[1-9][0-9]*(-L?[1-9][0-9]*)?|symbol:.+|section:.+|route:\\/.+))?)$"
+        "pattern": "^(https?:\\/\\/[^\\s]+|[^#\\s][^#]*(#([Ll][1-9][0-9]*(-[Ll]?[1-9][0-9]*)?|(symbol|section):\\s*\\S.*|route:\\s*\\/.*))?)$"
       }
     }
   },

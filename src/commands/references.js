@@ -3,10 +3,13 @@
 // building blocks that recognize and normalize the different reference shapes the
 // wiki understands: evidence references (file#L10, file#symbol:Name, ...),
 // external/cross-repo references, Markdown links, and [[wiki links]]. Self-
-// contained: depends only on the Node stdlib and encoding.js; no back-dependency
-// on commands.js.
+// contained: depends only on the Node stdlib, encoding.js and the frontmatter
+// schema's evidence pattern; no back-dependency on commands.js.
 import path from "node:path";
 import { readUtf8 } from "../encoding.js";
+import { EVIDENCE_REFERENCE_PATTERN } from "../frontmatter-schema.js";
+
+const EVIDENCE_REFERENCE_SHAPE = new RegExp(EVIDENCE_REFERENCE_PATTERN);
 
 export function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -35,6 +38,9 @@ export function extractMarkdownSection(markdown, title) {
 
 export function parseEvidenceReference(reference) {
   if (!reference) return null;
+  // Shape is the schema pattern's call alone (see EVIDENCE_REFERENCE_PATTERN);
+  // everything below only extracts the locator and checks what a pattern can't.
+  if (!EVIDENCE_REFERENCE_SHAPE.test(String(reference).trim())) return null;
   if (isExternalSourceReference(reference)) return { source: reference, locator: null, external: true };
 
   const hashIndex = reference.indexOf("#");

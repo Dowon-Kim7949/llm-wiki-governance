@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: review_history
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-21
 author: Claude Code
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -19,6 +19,7 @@ source_files:
   - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md
   - docs/llm-wiki/PUBLIC_API.md
   - docs/llm-wiki/README.md
+  - docs/llm-wiki/RELEASE_FLOW.md
   - docs/llm-wiki/domains/00_overview.md
   - docs/llm-wiki/project-profile.md
 related:
@@ -30,12 +31,13 @@ related:
   - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md
   - docs/llm-wiki/PUBLIC_API.md
   - docs/llm-wiki/README.md
+  - docs/llm-wiki/RELEASE_FLOW.md
   - docs/llm-wiki/domains/00_overview.md
   - docs/llm-wiki/project-profile.md
 visibility: internal
 contains_sensitive_info: false
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-14
+reviewed_at: 2026-10-21
 ---
 
 # Review History
@@ -274,7 +276,7 @@ reviewed_at: 2026-09-14
 
 ## Public API
 
-원문서: [PUBLIC_API.md](PUBLIC_API.md) — 39건(2026-07-14 → 2026-08-03), 2026-08-03 이전분.
+원문서: [PUBLIC_API.md](PUBLIC_API.md) — 40건(2026-07-14 → 2026-08-03), 2026-08-03 · 2026-10-01에 1건 추가 이관(5건 상한) 이전분.
 
 - 2026-07-14에 1.3.0 CLI 명령·옵션 계약(migrate --apply, drift, 신규 --agent, OKF type alias 포함)을 기준으로 재검토하고 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.4.0의 새 명령(`graph`, `stats`)과 graph 전용 `--format mermaid|dot`을 반영하고, stale했던 "migrate --apply 차단" 서술을 정정한 뒤, 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
@@ -315,6 +317,7 @@ reviewed_at: 2026-09-14
 - 2026-07-31(측정 결함 배치)에 도입 저장소 4곳 실측에서 나온 결함 2건을 반영했다. **(1) `validate-frontmatter`의 `result`가 다른 모든 명령과 같은 4단계 사다리**(`blocked`/`fail`/`warning`/`pass`)를 쓰고 JSON 페이로드에 `result` 필드가 additive로 실린다 — 그 전에는 이 명령만 2단계라 warning만 있는 실행이 본문에 `result: pass`를 찍으면서 `--strict` exit는 1이었고, CI 로그를 읽는 사람에게 "통과인데 실패"로 보였다. 이것은 **보고 값의 변경**이라 계약 변경으로 기록한다(exit code 의미는 불변). **(2) `review --approve`와 `drift --downgrade`가 `status`와 함께 `tags`의 상태 태그도 맞춘다** — 그 전에는 `status`만 바뀌어 문서가 `status: verified`인 채 `needs-review` 태그를 유지했고, 어느 경로로 강등했느냐에 따라 결과가 갈렸다(도입 저장소 한 곳에서 22개 중 12개가 불일치). 이미 있는 상태 태그만 고치고 없으면 만들지 않으므로, 태그로 상태를 추적하지 않는 문서는 그대로다. 신규 명령·옵션 0건, 동결 `commands` 맵·exit code 의미 불변. 부수로, 새 헬퍼의 인라인 리스트 정규식이 2차 백트래킹(`js/polynomial-redos`, CodeQL이 PR #1에서 검출)이라 선형으로 고쳤다 — 계약 표면 영향 없음. 438 tests(신규 9)·validate --strict 0·validate-frontmatter 0. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 **도구가 인쇄하는 텍스트가 자기 쓰기 범위를 거짓으로 말하던 것을 고쳤다**(N-10, N-4의 네 번째 여진). `review --approve`의 caveat·help는 "ONLY status + reviewed_by + reviewed_at", `drift --downgrade`의 caveat·help는 "status + last_updated only"라고 단정했지만, 2026-07-31 N-4 수정 이후 두 명령은 공유 `syncStatusTag`로 `tags`의 상태 태그도 쓴다. 발견 경로가 중요하다 — **유지보수자의 실제 승인 실행**에서 리포트의 주장과 diff(문서당 3줄)가 어긋났고, 배포된 어떤 검증 명령도 이것을 보지 못했다. 소스 8곳(`src/commands.js` 3 · `src/cli.js` 4 · `src/commands/fix-migrate.js` 1)을 고쳤고 신규 테스트 4건이 수정 전 소스에서 전건 RED임을 확인했다(list caveat · approve caveat · drift caveat · help 4표면). 442 tests(신규 4)·lint OK(61 files)·`validate --strict` 0. 명령 표(2026-07-31에 갱신됨)는 이미 정확했지만 **같은 문서의 `## Evidence` 재서술이 거짓**이었다 — 같은 계약이 한 문서 안에 두 번 서술돼 있고 수정이 표에만 닿았다. 함께 고치고 seam 목록에 `syncStatusTag`를 추가했다. 별건으로 기록한다: 이 문서의 Review Notes는 37건으로 무거운 문서 5건 상한(`ARCHITECTURE_CONVENTIONS.md` 규칙)을 이미 크게 넘겨 있으며 이 노트로 38건이 된다 — 아카이브 이전은 이 배치 범위 밖이라 별도 배치가 필요하다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 **Review Notes 5건 상한을 실제로 집행했다**(직전 노트가 "별도 배치가 필요하다"고 예고한 그 배치다). 이 문서는 38건으로 최대 위반자였고, 오래된 34건(2026-07-14 → 2026-07-31)을 `REVIEW_HISTORY.md`의 신규 `Public API` 절로 원문 그대로 옮겨 4건 + 이 노트 = 5건이 됐다. **재고 조사가 인수인계보다 나쁜 상태를 냈다**: 위반은 지목된 3건이 아니라 5건이었고(`BENCHMARK.md`·`EXAMPLES.md`가 목록에서 빠져 있었다), 아카이브의 `Domain Features` 헤더는 실제 51건을 48건이라고 주장하고 있었다. 신규 가드 `tests/review-notes-cap.test.js` 3건이 수정 전 상태에서 전건 RED임을 확인했고(5건 상한 · 아카이브 헤더 건수 · 원문서 포인터 대조), 이전 후 176건 항목 전수가 커밋 전 상태와 byte-identical함을 대조 검증했다. 명령 표·옵션·`--format json` shape·동결 `commands` 맵은 건드리지 않았다 — 본문 이력의 이동뿐이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
+- 2026-08-03에 **자기승격 정책이 거짓으로 만든 배포 텍스트 5곳을 완화했다**(유지보수자 승인; N-10과 같은 계열의 다섯 번째). `review`가 인쇄하는 caveat 2곳(`Promotion to verified is human-only` · `verified is a human decision`), `--help` 요약 1곳, `help review` 토픽 1곳, **MCP `review` 툴 설명 1곳**(`promotion to verified stays a human CLI action`)이 "사람이 결정한다"를 도구의 보장처럼 단정하고 있었는데, 같은 날 에이전트가 40건을 승격한 직후에는 전부 거짓으로 읽힌다. **도구는 키보드 앞에 누가 있는지 알 수 없으므로 알 수 있는 것만 말하도록 고쳤다**: 스스로 승격하는 경로는 없고 명시적 `--approve`만이 스탬프하며 `reviewed_by`가 실행자를 기록한다(사람 검토가 기본값이고, 승인 실행을 위임하는 프로젝트는 config `reviewer`를 실제 승인자 이름으로 두라는 안내를 함께 넣었다). **census를 넓은 패턴으로 다시 돌려서 5곳을 찾았다** — 처음 좁은 패턴으로는 4곳이었고 MCP 표면이 빠졌다(N-10의 "3곳 예상 → 8곳"과 같은 실패). 명령·옵션·`--format json` shape·exit code·동결 `commands` 맵은 불변이고 표의 서술(`자동 승격 절대 없음`, reviewed_by 해소 순서)은 이미 정확해 손대지 않았다. 신규 가드 `tests/self-approval-policy.test.js` 2건이 금지 문구 재유입과 완화 문구 삭제를 양방향으로 막는다(과잉 주장 재주입으로 RED 확인). **바꾸지 않은 것**: `src/task-prompts.js`의 "verified is human-approved only"는 도입처 에이전트가 읽는 지시문이라 그대로 두고, 이 저장소에서는 `AGENTS.md`가 우선한다는 선후관계를 그 파일에 명시했다. 451 tests(신규 2)·lint OK(64 files). 에이전트(Claude Code) 편집이며 새 정책에 따라 같은 작업 안에서 승격했다 — `reviewed_by`는 에이전트다.
 
 ## Project Profile
 
@@ -331,3 +334,9 @@ reviewed_at: 2026-09-14
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `package.json`, `README.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서가 소유한 것은 위키 운영 규칙(상태 전이·근거 규약·로그)이고 루트 README의 Upgrading 절·액션 핀은 그 규칙과 무관하며, `package.json`의 version 한 줄도 마찬가지다 — 본문 **불변**.
 - 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README에서 바뀐 것은 `impact` 행과 드리프트 불릿의 **버전만 올린 매니페스트 제외** 서술(그리고 그것이 `impact` 한정임을 명시한 범위 문장)이다. 이 문서가 소유한 것은 위키 운영 규칙이고 게이트별 계약 서술은 `PUBLIC_API.md`가 소유하므로 옮겨 적을 것이 없다 — 본문 **불변**. 재스탬프가 no-op이 되는 N-11 때문에 노트로 남긴다.
 - 2026-08-06(1.29.1 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README에서 바뀐 것은 `drift`·`impact`·`review` 행과 Upgrading 절에 붙은 **템플릿 문서 제외**(N-14) 서술과 액션 핀(`@v1.29.0` → `@v1.29.1`)이다. 이 문서가 소유한 것은 위키 운영 규칙(상태 전이·근거 규약·로그)이고 게이트별 계약 서술은 `PUBLIC_API.md`가 소유하므로 옮겨 적을 것이 없다 — 본문 **불변**. 이 문서는 `docs/llm-wiki/templates/`에 대해 아무 주장도 하지 않으므로 새 경계 서술과 충돌하지도 않는다.
+
+## Release Flow
+
+원문서: [RELEASE_FLOW.md](RELEASE_FLOW.md) — 1건(2026-07-14 → 2026-07-14), 2026-10-21 이전분.
+
+- 2026-07-14에 1.3.0 릴리스 설정과 체크리스트를 기준으로 재검토했다.

@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: wiki_index
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-14
+reviewed_at: 2026-10-21
 wiki_block_version: v1
 source_files:
   - package.json
@@ -35,22 +35,12 @@ contains_sensitive_info: false
 
 - 이 문서 집합은 `llm-wiki init --write --type library`로 생성한 뒤 실제 소스 근거로 보강되었습니다.
 - **2026-08-03부터 이 저장소는 자기 문서를 스스로 승격합니다**(유지보수자 결정). 이 저장소는 전체가 바이브코딩 산출물이자 제품의 dogfood이므로, 사람이 문서를 큐레이션하는 코드베이스를 전제한 규칙을 자기 자신에게는 적용하지 않습니다. `reviewed_by`는 config `reviewer`에서 오며 **에이전트를 이름으로 지목**합니다 — 스탬프가 사람 검토를 주장하지 않습니다.
-- 따라서 이 wiki의 `verified`와 `stats`의 `human_verified` 수치는 **"에이전트 승인"으로 읽어야 합니다.** 2026-08-03 이전 승인분(reviewed_by: Dowon-Kim)만 실제 사람 검토입니다.
+- **누가 승인했는지는 `stats`가 갈라 셉니다.** `llm-wiki.config.json`의 `agentReviewers`에 그 `reviewer` 값을 등록해 두었으므로, 에이전트가 승인한 `verified` 문서는 `evidenceTiers.agentVerified`로, 2026-08-03 이전 승인분(reviewed_by: Dowon-Kim)만 `humanVerified`로 셉니다(2026-10-21 기준 사람 4 / 에이전트 47). `verified` 수 자체는 두 주체를 합친 값입니다.
 - 이 완화는 **이 저장소 한정**입니다. 제품이 도입처로 내보내는 규칙(`templates/adapters/*`)은 여전히 사람 검토를 요구하고, `docs/llm-wiki/` 밖의 어떤 파일도 `verified`를 씨앗으로 삼을 수 없습니다. 전체 계약은 `AGENTS.md`의 "Wiki discipline"이 소유합니다.
-- **1.28.0(2026-08-03)부터 `impact --since <ref>`가 플래그 없이 빌드를 실패시킵니다**(`impact.source_changed` 기본 `error`). 소스를 바꾸면서 그 소스를 인용하는 `verified` 문서를 같은 변경에서 안 고치면 CI가 빨개집니다 — 이 저장소의 CI `governance` 잡이 `--since HEAD~1 --strict`로 실행합니다. 릴리스 노트(`doc_type: release_notes`)는 면제입니다. 완화는 `llm-wiki.config.json`의 `rules`/`rulesPreset`으로만 하고, 인용을 지워서 우회하지 않습니다.
-- **1.29.0(2026-08-05, N-13)부터 `version` 값만 바뀐 `package.json`은 `impact`의 앵커 대조에서 빠집니다**(변경된 것으로는 계속 보고, `impact` 한정 — 날짜 앵커 `drift`는 계속 지목합니다). 릴리스 커밋은 정의상 매니페스트를 바꾸고 이 저장소 비면제 `verified` 문서 10건이 그 파일을 인용해서, 매 릴리스마다 조치 불가능한 finding이 나왔습니다. **0이 되지는 않습니다** — 버전 담지 파일 8종 기준 11 → 4이고, 남는 4건은 내용이 실제로 바뀐 `README.md`·`ROADMAP.md`·action.yml을 인용합니다.
-- **1.29.1(2026-08-06, N-14)부터 `docs/llm-wiki/templates/` 하위 문서는 `drift`·`impact` 양쪽에서 빠집니다**(`review`가 열거하지 못하는 문서라 지목당해도 강등도 재스탬프도 불가능했습니다 — 해소 경로가 없는 finding). 같은 배치에서 `review`가 범위 밖 경로를 "not found"라고 답하던 거짓말을 고쳤고, append-only 로그를 명시 지정하면 `verified`로 스탬프하던 결함도 함께 막았습니다. 실측 `evidence.stale` 7 → 5이며 **0이 되지는 않습니다.**
-- **1.29.2(2026-08-19)부터 생성 프롬프트가 "얼마나 읽을지"에 더해 "누가 읽을지"까지 정합니다**(`delegationPolicy`). 1.27.1의 `contextBudget`은 CLI가 돌려주는 양만 통제해서, 여러 문서를 훑는 읽기 폭발을 비싼 문맥이 그대로 치르는 경로가 남아 있었습니다. 새 블록은 **위치 파악·스코핑과 기계적 마감은 위임 가능**, **설계 판단·회귀 판정·실제 수정·위키/로그 서술은 위임 불가**로 가르고 함정 셋을 못박습니다 — 브리프 대신 원자료를 돌려받는 위임은 아무것도 사지 못한다 · **세션 모델은 고정하고 위임만 싼 모델로 보낸다**(중간에 세션 모델을 바꾸면 그때까지의 대화를 새 모델 가격으로 다시 읽습니다) · 위임이 검증되지 않은 주장을 사 주지는 않는다(대리인이 실소스를 읽고 근거를 보고하지 않으면 직접 읽습니다). 삽입 위치는 `contextBudget` 직후 3곳(`implementationPrompt`·`docsSyncPrompt`·`initialEnrichmentWorkflow`)입니다. 🚨 **에이전트별 분기는 불가능합니다** — 프롬프트는 codex·claude 공용 중립 문서로 나가므로 하네스 특정 문구는 `templates/adapters/*`의 몫입니다.
-
-- **1.30.0(2026-09-07)부터 거버넌스가 세 레벨을 갖습니다**(`governance.mode`: `lite`/`standard`/`strict`). 관측된 문제는 이렇습니다 — 세 줄 수정이 `impact.source_changed`(기본 error)를 발화시키고 doc-sync 패스를 부르고 `verified` 문서마다 `git log`를 부르는 드리프트 스캔을 다시 엽니다. 개인 프로젝트에서 그 값은 아무것도 사지 못하고, 인수인계에서는 그게 전부입니다. 세 개의 템플릿이 아니라 **하나의 엔진 위의 정책 레벨**이며 같은 저장소에서 제자리로 옮깁니다. 🚨 **기존 프로젝트는 영향받지 않습니다** — `governance` 블록이 없으면 `strict`로 해소되고 `strict`의 rule floor는 **비어 있어서**(레지스트리 기본 severity가 이미 strict 베이스라인) 1.29.5와 바이트 단위로 같습니다. 새 프로젝트 기본값 `lite`는 **의도적으로 다른 질문**입니다: 기존 프로젝트의 게이트를 조용히 완화하는 것은 기본값의 옷을 입은 breaking change입니다. 승격(`mode set strict --write`)은 스캔을 유발하지 않고, 비싼 재구성은 `backfill`로 분리했습니다 — 그 명령은 저장소가 증명할 수 있는 것을 복구하고 나머지에 *verified*/*inferred*/*unknown* 라벨을 달며, **아무도 기록하지 않은 근거는 발명하지 않습니다**(`unknown`은 산출물이지 부족함이 아닙니다). 프롬프트의 세 번째 레버 `governanceBudget`은 ~1130 토큰 프롬프트에 추정 **173–234 토큰**을 더하고(chars/4 프록시) 그 대가로 무엇을 절감하는지는 **측정하지 않았습니다** — 이 저장소는 미측정 절감을 주장하지 않습니다. **이 저장소는 `llm-wiki.config.json`에 `governance.mode: strict`를 명시합니다**(같은 배치의 도그푸딩) — 블록이 없어도 `strict`로 해소되지만, CI를 게이트하는 레벨을 *기본값*에 맡기는 것은 `doctor`의 `source:` 필드가 드러내라고 있는 바로 그 애매함이라서입니다.
-
-- **1.30.0의 도그푸딩이 자기 결함 2건을 잡았습니다**(같은 배치에서 수정). ① `backfill`이 `docs/llm-wiki/` 안만 뒤지고 "이 저장소에서 근거 복구 불가"라고 **증거보다 넓은 부정을 단언**했습니다 — 정작 이 저장소 루트에는 자기 `project-profile.md`가 의사결정 기록으로 지목하는 196 KB `GATE_REVIEW.md`가 있습니다. 이제 관례적 위치(`docs/adr/`·`docs/decisions/`·`DECISIONS.md`·`ADR-*.md`)까지 git에서 찾고, 그래도 못 찾으면 **자기가 뒤진 범위를 문장 안에 적습니다**(`GATE_REVIEW.md`처럼 관례 밖 이름은 여전히 못 잡으므로, 그 파일을 인수인계에서 지목하라고 말합니다). ② `review_backlog` 준비도 체크가 **구조적으로 통과 불가**였습니다 — append-only `log.md`는 관례상 영구 `needs_review`이고 `review`가 의도적으로 건너뛰므로(N-14), 로그를 쓰는 모든 저장소에서 `backfill --strict`가 영원히 실패했을 것입니다. 커버리지 집계에서 로그를 제외했습니다. 둘 다 이 제품이 이미 두 번 고친 **"해소 경로가 없는 finding"** 계열이고, 회귀 테스트 3건으로 고정했습니다.
-
-- **1.31.0(2026-09-08)부터 게이트 셋과 리포트 넷이 거버넌스 레벨을 같은 방식으로 말합니다.** 1.30.0이 레벨을 만들었지만 제품에게 다 가르치지 못한 자리가 셋 있었습니다. ① `drift`만 실효 rule map을 보지 않아서 `lite`에서도 경고가 나오고 `drift --strict`가 **자기 모드가 꺼 둔 규칙으로 빌드를 실패시킬 수 있었습니다**(이제 스캔을 건너뛰고 `applyRuleConfig`를 통과시킵니다 — `lite`에서 exit 1 → 0). ② `validate`·`impact`·`check-run`·`harness-health`가 "`--strict`를 줬는가"를 `mode: strict|standard`로 찍고 있었는데 1.30.0부터 그 둘은 레벨 이름이기도 해서, `strict:`와 `governance_mode:`로 쪼갰습니다. ③ 문서 여러 곳이 레벨 이전 동작을 설명하고 있었습니다. 🚨 **이 릴리스에는 지금까지 통과하던 빌드를 새로 실패시킬 수 있는 변경이 둘 있습니다**(1.28.0과 같은 방식으로 이름 붙인 예외): `impact`가 디렉터리 앵커를 지목하게 된 것(결함 N-8 — 그 전에는 정확 문자열 비교라 위음성이었습니다)과, `llm-wiki.config.json`의 `type`·`agents`가 CLI와 같은 어휘로 검증되는 것입니다. 되돌리는 길은 둘 다 설정뿐입니다. ⚠️ **두 변경의 효과는 이 저장소에서 관측되지 않았습니다** — 디렉터리 앵커를 쓰는 문서가 0건이고 config도 유효합니다. 근거는 외부 저장소 5곳 실측과 픽스처 테스트뿐입니다.
-- **1.31.0이 "해소 경로가 없는 finding"을 세 번째로 고쳤습니다.** `init --refresh`가 본문만 비교해서, 본문이 이미 최신인 스킬 아티팩트는 낡은 마커를 영원히 갖고 `harness-health`가 그것을 영원히 보고했습니다(실측 8건, 어떤 명령으로도 해소 불가). 이제 본문이 최신이고 스탬프만 뒤처졌으면 다시 쓰고 `re-stamped`로 보고합니다. 남은 1건은 실재 피해였습니다 — 이 저장소 `AGENTS.md`가 adapter v1인데 `CLAUDE.md`는 v2여서, **1.27.2의 locate-before-reading 규율이 없는 이전 지침을 그 규율을 출하한 저장소가 Codex에게 건네고 있었습니다.** `harness-health` 9 → 0. 그리고 결함 N-9(검토 스탬프만으로 `impact`의 자기제외가 성립하는 것)는 **강제하지 않고 `stamp_only_exclusions`로 보고만 합니다** — 강제하면 N-11과 부딪쳐(같은 자기제외가 문서화된 해소 경로입니다) 실제 드리프트에 해소 경로가 없어지므로, 두 결함을 함께 닫는 결정은 `GATE_REVIEW.md`의 "Stamp-Only Exemption"에 **미결로** 기록했습니다. 결함 N-7도 다시 검토해 **결론을 뒤집었습니다**: 버그가 아니라 공표된 계약이고(`source_files`=넓은 앵커, `evidence`=정밀 앵커), 좁히기 경로는 파일을 `evidence`에만 라인 범위로 인용하는 것으로 이미 존재합니다.
-- **1.32.0(2026-09-14)부터 출하되는 워크플로 템플릿이 도입처의 러너 분을 최소로 씁니다.** 이 프로젝트는 CI 채널을 출하하면서 그 값을 한 번도 매기지 않았습니다 — 템플릿이 GitHub-hosted 러너에서 돌고, 도입처의 의존성 트리 전체를 설치하고, 도입처의 테스트 스위트를 돌리고, 타임아웃도 중복 실행 취소도 없었는데 그 비용을 적은 줄이 없었습니다. 🚨 **이 저장소가 public이라 도그푸딩이 그것을 느끼지 못한 계열의 공백입니다** — 공개 저장소에서는 그 분이 무료이고, 비공개 저장소에서만 과금되며 조직 계정에서는 그 한도를 **조직의 모든 저장소가 함께** 씁니다. 바뀐 것 넷: `npm ci` + `npx --no-install`이 `npx -y llm-wiki-governance@<핀>`이 되어 **의존성 설치가 사라졌고**(부수 효과로 이 패키지를 devDependency로 둘 필요가 없어졌습니다), `npm test` 스텝이 빠졌고, `runs-on`이 `LLM_WIKI_RUNNER` 변수를 따라 self-hosted 러너로 옮겨갈 수 있게 됐고, `timeout-minutes: 10`과 `concurrency`의 `cancel-in-progress`가 생겼습니다. ⚠️ **`src/`는 한 줄도 바뀌지 않았고**(MINOR로 판정한 이유는 템플릿을 새로 복사하면 동작이 다르기 때문입니다), **이미 복사해 간 도입처는 이 릴리스로 아무것도 얻지 못합니다** — 그쪽 워크플로는 그쪽 파일입니다. 절감은 **측정하지 않았습니다.**
-
-- **2026-09-03부터 `bench/`의 외부 대상 실측 산출물은 익명화본입니다.** 그 실행의 대상은 제3자 소유 비공개 Vue/Quasar SPA였으므로, 프로젝트·저장소·브랜치명·모듈 경로·심볼·API 경로·세션/MFA/토큰 갱신 규칙·스토리지 키·업무 필드명·상태 코드·타이머 임계값·백엔드 호스트를 **안정적 가명**(`<login-page>` 같은 역할명)으로 치환하고 원시 결과의 모델 답변 프로즈를 **보류**했습니다(`answerRedacted: true`). **측정값·arm·표본 수·모델명·날짜·채점 절차·기록된 한계는 원본 그대로**이고 대응표는 이 저장소에 없습니다 — 따라서 **동일 대상의 완전한 재실행은 이 저장소만으로 불가능합니다.** 전체 계약은 [`docs/BENCHMARK_DISCLOSURE.md`](../BENCHMARK_DISCLOSURE.md)가 소유합니다. `bench/tasks.json`(대상 = 이 저장소 자신)은 별개의 **완전 공개 harness fixture**이며 역사적 수치의 출처가 아닙니다.
+- **`impact --since <ref>`는 플래그 없이 빌드를 실패시킵니다**(1.28.0부터 `impact.source_changed` 기본 `error`). 소스를 바꾸면서 그 소스를 인용하는 `verified` 문서를 같은 변경에서 안 고치면 CI가 빨개집니다 — 이 저장소의 CI `governance` 잡이 `--since HEAD~1 --strict`로 실행합니다. 릴리스 노트(`doc_type: release_notes`)는 면제이고, `version` 한 줄만 바뀐 `package.json`(N-13)과 `docs/llm-wiki/templates/` 하위(N-14)도 대조에서 빠지지만 **릴리스 커밋의 finding이 0이 되지는 않습니다.** 완화는 `rules`/`rulesPreset`으로만 하고, 인용을 지워서 우회하지 않습니다.
+- **이 저장소는 config에 `governance.mode: strict`를 명시합니다.** 블록이 없어도 `strict`로 해소되지만, CI를 게이트하는 레벨을 기본값에 맡기면 `doctor`의 `source:` 필드가 드러내라고 있는 바로 그 애매함이 생깁니다.
+- 릴리스별로 무엇이 왜 바뀌었는지(1.29.2 `delegationPolicy`, 1.30.0 거버넌스 모드와 그 도그푸딩 결함, 1.31.0 레벨 정합, 1.32.0 CI 템플릿 비용 등)는 [CHANGELOG](../../CHANGELOG.md)와 [log.md](log.md)(및 그 월별 권)가 소유하고, 현재 기능 서술은 [Domain Features](DOMAIN_FEATURES.md)에 있습니다. 이 절에는 이 저장소를 읽는 방법만 둡니다.
+- **`bench/`의 외부 대상 실측 산출물은 익명화본입니다**(2026-09-03부터). 측정값·표본 수·채점 절차는 원본 그대로지만 대응표가 이 저장소에 없어 동일 대상의 완전한 재실행은 불가능합니다. 계약은 [`docs/BENCHMARK_DISCLOSURE.md`](../BENCHMARK_DISCLOSURE.md)가 소유하고, `bench/tasks.json`은 별개의 완전 공개 harness fixture입니다.
 
 ## Recommended Read Order
 
@@ -65,6 +55,6 @@ contains_sensitive_info: false
 ## Operating Rules
 
 - CLI 또는 에이전트가 생성/수정한 문서는 편집 시점에 `needs_review`로 두고, 작업 끝에 `review --approve-all --yes`로 승격합니다(위 Status 참조). 드리프트(`evidence.stale`/`impact`)도 `reviewed_at` 재스탬프로 해소하며 소스 대조를 전제하지 않습니다 — 그 대가로 **이 저장소에서 두 게이트는 관측 도구가 아닙니다.**
-- 변경 기록은 [log.md](log.md)에 append-only로 남깁니다.
+- 변경 기록은 [log.md](log.md)에 append-only로 남깁니다. 항목은 고치지 않습니다. 1.33.0부터는 오래된 항목을 `archive-log`로 월별 권(`log-YYYY-MM.md`)에 원문 그대로 옮길 수 있습니다. 이 저장소는 2026-10-21에 실행해 2026-07·08 항목을 [log-2026-07.md](log-2026-07.md)·[log-2026-08.md](log-2026-08.md)로 옮겼습니다.
 - 민감정보 raw value는 wiki에 기록하지 않습니다.
 - Markdown은 UTF-8로 읽고 씁니다.

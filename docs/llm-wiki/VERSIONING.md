@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: versioning
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-08
+reviewed_at: 2026-10-21
 wiki_block_version: v1
 source_files:
   - package.json
@@ -67,3 +67,4 @@ contains_sensitive_info: false
 - 2026-07-15에 1.7.0 릴리스 준비로 인용 소스(`package.json` 버전 bump·`RELEASE_CHECKLIST.md` version-agnostic 갱신)가 바뀌어 evidence.stale이 떴으나, version-agnostic 정책 내용은 그대로 정확함을 확인하고 검토 기준일을 갱신해 해소했다(사람 검토 reviewed_by: Dowon-Kim). 내용 변경 없음.
 - 2026-07-31에 **CI 게이트가 처음으로 이 문서를 잡았다**. `0b56a56`이 `RELEASE_CHECKLIST.md`에 2줄(액션 `version` 입력값과 README 액션 태그 참조를 Release Metadata 점검 대상에 추가)을 더했는데 이 문서는 그대로였다. 내용 대조 결과 **version-agnostic 정책 서술은 그대로 정확하다** — 위 2026-07-15 항목과 같은 상황이다(내용 변경 불필요, 재기준선만 필요). 다만 이번에는 `drift`가 아니라 `impact`가 잡았다: `drift`는 날짜 앵커라 같은 날(2026-07-30) 변경을 검토가 "덮은" 것으로 보지만, `impact`는 diff 앵커라 pre-merge에서 본다 — 두 명령이 상보적이라는 설계가 실제로 작동한 사례다. `verified`→`needs_review`로 강등해 게이트를 해소했다(주장을 **제거**하는 안전한 방향). 사람이 `review --approve`로 재승인할 대상이다.
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `package.json`을 재확인했다. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서의 SemVer 계약 서술은 유효하지만, **이번 배포가 그 계약의 예외라는 사실을 본문에 명시했다**: exit code 계약을 바꾸는 `impact.source_changed` 기본값 변경은 MAJOR에 해당하는데 유지보수자 결정으로 MINOR(1.28.0)로 나간다. 계약을 조용히 어기고 넘어가지 않도록 문서에 남긴다.
+- 2026-10-21(1.33.0 준비)에 `evidence.stale`이 이 문서를 지목했다. 2026-09-08 이후 `package.json` 변경은 `cd2cbfe`(→1.30.1)·`3c7d6fd`(→1.31.0)·`17f2dec`(→1.32.0) 3건이고 전부 `version` 한 줄이라 version-agnostic 서술은 그대로 맞다. 같은 자리에서 1.33.0의 MINOR 판정을 이 문서의 정의에 대조했다: 빌드를 새로 실패시킬 수 있는 유일한 변경은 bare `#anchor` evidence의 `evidence.shape`(error)인데, **1.32.0의 공개 스키마(`rules/frontmatter.schema.json`의 evidence `pattern`)는 이미 그것을 거부하고 있었고**(HEAD 스키마로 직접 확인) 런타임만 받아 주던 불일치를 공개 계약 쪽으로 맞춘 것이다. 그래서 "필수 frontmatter 계약 변경"(major)이 아니라 결함 수정으로 보고, 1.28.0식 예외로 기록하지 않는다(실측 도입처 위키 11곳 evidence 1,292건 중 영향 0).

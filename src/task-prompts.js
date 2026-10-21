@@ -1,7 +1,35 @@
 import { normalizeLang } from "./i18n.js";
 import { LEGACY_GOVERNANCE_MODE, getGovernancePolicy } from "./governance.js";
 
-export const SUPPORTED_TASK_PROMPTS = new Set(["bootstrap", "onboard", "prepare", "feature", "fix", "refactor", "docs-sync", "okf-extract", "backfill"]);
+export const SUPPORTED_TASK_PROMPTS = new Set(["bootstrap", "onboard", "prepare", "feature", "fix", "refactor", "docs-sync", "okf-extract", "backfill", "issue"]);
+
+// Prompt profiles (1.33.0). `full` is the shipped text and stays byte-identical;
+// `slim` is an OPT-IN rendering that keeps only what a frontier model cannot
+// supply on its own:
+//   - instructions that name this tool's commands, paths, files, and config keys
+//     (locate with 'llm-wiki prepare ... --compact', read with 'get-doc --section');
+//   - the contracts the tool enforces (needs_review, verified is human-only, the
+//     append-only log, no sensitive values, the doc language, the run manifest, and
+//     the governance mode's decision rule);
+//   - the stop conditions and the exit criteria;
+//   - the interpolated project facts (project type, profiles, evidence focus).
+// What it drops is generic engineering know-how, rationale, and the whole
+// delegation budget — the 1.29.2 A/B run found no saving from that block, but no
+// measurement says the shorter text is better either. That is why the default is
+// still `full`: the default changes only on a measurement, not on this comment.
+export const PROMPT_PROFILES = Object.freeze(["full", "slim"]);
+export const DEFAULT_PROMPT_PROFILE = "full";
+
+export function isPromptProfile(value) {
+  return typeof value === "string" && PROMPT_PROFILES.includes(value);
+}
+
+// Unknown input renders the default rather than throwing inside a prompt builder:
+// a bad value from the CLI or the config file is already a usage/config error
+// (exit 3) before any builder runs, so a second, louder failure here helps nobody.
+function resolvePromptProfile(value) {
+  return isPromptProfile(value) ? value : DEFAULT_PROMPT_PROFILE;
+}
 
 // The single instruction that tells an agent which language to WRITE generated
 // LLM-WIKI content in (prose only). Driven by the resolved documentation language
@@ -114,7 +142,7 @@ export function governanceBudget(mode = LEGACY_GOVERNANCE_MODE) {
   ];
 }
 
-export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents = [], docLang = null, governanceMode = LEGACY_GOVERNANCE_MODE }) {
+export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents = [], docLang = null, governanceMode = LEGACY_GOVERNANCE_MODE, promptProfile = DEFAULT_PROMPT_PROFILE }) {
   if (!SUPPORTED_TASK_PROMPTS.has(task)) {
     return {
       task,
@@ -138,19 +166,24 @@ export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents 
     governanceMode: getGovernancePolicy(governanceMode).mode
   };
 
-  const prompt = task === "bootstrap"
-    ? bootstrapPrompt(context)
-    : task === "onboard"
-      ? onboardPrompt(context)
-      : task === "prepare"
-        ? preparePrompt(context)
-        : task === "docs-sync"
-          ? docsSyncPrompt(context)
-          : task === "okf-extract"
-            ? okfExtractPrompt(context)
-            : task === "backfill"
-              ? backfillPrompt(context)
-              : implementationPrompt(task, context);
+  const profile = resolvePromptProfile(promptProfile);
+  const prompt = profile === "slim"
+    ? slimTaskPrompt(task, context)
+    : task === "bootstrap"
+      ? bootstrapPrompt(context)
+      : task === "onboard"
+        ? onboardPrompt(context)
+        : task === "prepare"
+          ? preparePrompt(context)
+          : task === "docs-sync"
+            ? docsSyncPrompt(context)
+            : task === "okf-extract"
+              ? okfExtractPrompt(context)
+              : task === "backfill"
+                ? backfillPrompt(context)
+                : task === "issue"
+                  ? issuePrompt(context)
+                  : implementationPrompt(task, context);
 
   return {
     task,
@@ -159,6 +192,9 @@ export function buildTaskPrompt({ task, cwd, projectType, profiles = [], agents 
     profiles: context.profiles,
     agents: context.agents,
     governanceMode: context.governanceMode,
+    // Named only when it is not the default, so a `full` result — and every JSON
+    // report that embeds one — stays byte-identical to the pre-profile output.
+    ...(profile === DEFAULT_PROMPT_PROFILE ? {} : { promptProfile: profile }),
     prompt,
     findings: []
   };
@@ -235,8 +271,11 @@ export function evidenceFocus(projectType) {
 // `entrypoints` names what to read first (handoff passes the selected adapter
 // file(s); bootstrap passes a generic instruction). `projectType` selects the
 // evidence focus. Callers pass repo-relative text only — no machine-absolute paths.
-export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints, docLang = null, governanceMode = LEGACY_GOVERNANCE_MODE } = {}) {
+export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints, docLang = null, governanceMode = LEGACY_GOVERNANCE_MODE, promptProfile = DEFAULT_PROMPT_PROFILE } = {}) {
   const entry = entrypoints || "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md";
+  if (resolvePromptProfile(promptProfile) === "slim") {
+    return slimEnrichmentWorkflow({ projectType, entry, docLang, governanceMode });
+  }
   return [
     documentLanguageDirective(docLang),
     `1. Read ${entry} first.`,
@@ -549,6 +588,275 @@ Expected final response:
 - What stayed INFERRED, and on what basis.
 - What stayed UNKNOWN, as questions for the outgoing maintainer.
 - The readiness checks still incomplete, and why each one cannot be closed by writing text.`;
+}
+
+// llm-wiki issue: draft a GitHub issue body from the conversation and the wiki.
+// Read-only like onboard/prepare — it writes text for a human to file, and it
+// changes neither the wiki nor the code. The point of the preset is the reader:
+// an issue is handed to an agent that was NOT in the conversation, so every rule
+// below is about making the text mean one thing to that reader. Work-unit history
+// (who decided what, what was tried) belongs in the issue and never in the wiki —
+// the wiki records what is true of the project, not how one task went.
+//
+// Deliberately NOT a generated skill (SKILL_TASKS): skills are an always-loaded
+// surface, and this preset is invoked on demand through `prompt --task issue`.
+function issuePrompt(context) {
+  return `You are a senior engineer drafting a GitHub issue body from this conversation and the project's LLM-WIKI.
+
+Workspace:
+${context.cwd}
+
+Task:
+Write the body of a GitHub issue for the work agreed in this conversation (project type: ${context.projectType}; active profiles: ${formatList(context.profiles)}). Target agent context: ${formatList(context.agents)}.
+This is a read-only workflow: draft text only. Do not modify the wiki, the code, or any other file; filing the issue is the user's call.
+
+Required workflow:
+1. Restate the agreed work in one sentence. If the conversation has not settled what the work is, ask before drafting.
+2. Run 'llm-wiki prepare --task "<the task>" --compact' to find the wiki documents and source files that govern this work, and read only what the issue has to point at.
+3. Check every fact you will state against those documents or the actual source. Leave out what you cannot confirm, or list it under Open questions.
+4. Draft the issue body with exactly these sections, in this order:
+   - Background / why: the reason this work is being done.
+   - Goal: the contract, written as an observable end state (what is true when the work is done), not as a list of steps.
+   - Out of scope / must not change: what this work must not do, and the areas, contracts, or behaviors that must stay as they are.
+   - Done when: verifiable completion criteria — for each one, the command, test, or observable behavior that proves it.
+   - Related wiki docs and evidence: links to the documents and source paths 'llm-wiki prepare' found (repo-relative paths, with #section or line anchors where useful). Link them; do not restate their content.
+   - Risks / invariants: what could break, and the invariants the wiki records for this area.
+   - Open questions: what is still undecided or unconfirmed.
+
+Writing rules:
+- Write only confirmed facts and the scope that was agreed. Do not add scope, solutions, or estimates nobody agreed to.
+- Avoid wording that can be read more than one way: name the exact file, command, field, or behavior; write "must" / "must not" rather than "should" / "ideally"; give numbers instead of "fast" or "small".
+- Write for an agent that was not in this conversation: it must understand the same task from the issue alone. Spell out every term and reference the conversation used implicitly.
+- The history of this unit of work (who decided what, what was tried) belongs in the issue, not in the wiki: do not edit any wiki document or append docs/llm-wiki/log.md for it.
+- Do not treat a needs_review or stale document as settled fact — link it and say its status.
+- Never write sensitive raw values into the issue; describe them only in redacted form when necessary.
+${contextBudget().join("\n")}
+
+Expected final response:
+- A one-line issue title and the issue body in Markdown, ready to paste.
+- What you left out as unconfirmed, and why.`;
+}
+
+// --- slim prompt profile ---------------------------------------------------
+// One renderer per task, built from the shared pieces below. Every line either
+// names this tool (a command, a path, a file, a config key), states a contract
+// the tool enforces, says when to stop, says when the work is done, or carries
+// an interpolated project fact. Anything a capable model already knows — how to
+// plan, how to read code, why evidence matters — is left to the model.
+
+// The part of contextBudget() that names this tool: locate first, then read a
+// section, and never let narrowing replace the source a claim rests on.
+function slimLocateLine() {
+  return "- Locate, then read: 'llm-wiki prepare --task \"<the task>\" --compact', then 'llm-wiki get-doc <path> --section \"<heading>\" --strict-section --max-chars <n>'. Never skip the source a claim depends on.";
+}
+
+const SLIM_REVIEW_LINE = "- Wiki documents you create or edit stay at status: needs_review; verified is human-approved only.";
+const SLIM_SENSITIVE_LINE = "- Never write sensitive raw values into documents, logs, or reports.";
+// A pointer to the checklist the generated domain-doc template already carries
+// (apiServiceInventoryChecklist), not a second copy of it.
+const SLIM_API_LINE = "- When a domain document mentions API usage, fill the API Services inventory its template lists (endpoint, method, params, response, auth/session dependency, errors, retry/timeout, cache/state, source evidence).";
+
+// The governance mode's decision rule, without the reasoning. The mode name, the
+// complete-without-docs outcome of lite, and the regeneration command all stay:
+// they are what makes a stale generated workflow recognizable as stale.
+function slimGovernanceBudget(mode) {
+  const policy = getGovernancePolicy(mode);
+  const rule = {
+    lite: "- Governance budget (lite): Do NOT touch the wiki for an ordinary change — only for a new domain concept, an architectural decision, a constraint a future agent must know, or a critical document now demonstrably wrong (knowledge an agent cannot re-derive from the code). Otherwise finish at code and tests and report \"no wiki change needed (lite)\", without a log append. No repository-wide audit, drift scan, or document generation.",
+    standard: "- Governance budget (standard): update the wiki only when the change moves a domain concept, an architectural boundary, a public contract, or a recorded constraint; otherwise skip the doc work and say so. Scope the documents with 'llm-wiki impact --since <ref>' (no repository-wide audit) and keep their source_files and evidence anchors accurate.",
+    strict: "- Governance budget (strict): update every affected document in the same task and refresh its source_files and evidence anchors; verify each claim against the actual source and name any you could not; before finishing run 'llm-wiki validate' and 'llm-wiki impact --since <ref>' and report what they said."
+  }[policy.mode];
+  return [
+    rule,
+    `- Generated for governance mode ${policy.mode} ('llm-wiki mode' shows the current one; 'llm-wiki init --write --skills --refresh' regenerates this workflow).`
+  ];
+}
+
+// Shared header. Keeps the "\n\nWorkspace:\n<cwd>\n" block and the
+// " Target agent context: <agents>." clause in the exact shapes skills.js
+// forArtifact() strips from a committed artifact.
+function slimHeader(title, context, extra = "") {
+  return `${title}
+
+Workspace:
+${context.cwd}
+
+Project type: ${context.projectType}. Active profiles: ${formatList(context.profiles)}. Target agent context: ${formatList(context.agents)}.${extra}`;
+}
+
+function slimTaskPrompt(task, context) {
+  if (task === "bootstrap") return slimBootstrapPrompt(context);
+  if (task === "onboard") return slimOnboardPrompt(context);
+  if (task === "prepare") return slimPreparePrompt(context);
+  if (task === "docs-sync") return slimDocsSyncPrompt(context);
+  if (task === "okf-extract") return slimOkfExtractPrompt(context);
+  if (task === "backfill") return slimBackfillPrompt(context);
+  if (task === "issue") return slimIssuePrompt(context);
+  return slimImplementationPrompt(task, context);
+}
+
+function slimEnrichmentWorkflow({ projectType, entry, docLang, governanceMode }) {
+  return [
+    documentLanguageDirective(docLang),
+    `1. Read ${entry} first, then the init-generated documents and their source_files.`,
+    "2. Ground every claim in the actual code; leave anything unconfirmed as an explicit review item instead of guessing.",
+    ...evidenceFocus(projectType),
+    slimLocateLine(),
+    ...slimGovernanceBudget(governanceMode),
+    "3. Replace placeholder content with source-backed descriptions; for backend/fullstack projects also enrich docs/llm-wiki/domains/*.md.",
+    SLIM_API_LINE,
+    "4. Broad evidence goes in source_files, precise evidence in the frontmatter evidence entries, mirrored in the body ## Evidence section; keep related frontmatter and local Markdown links tidy.",
+    "5. Never write sensitive raw values. Keep every created or edited wiki document at status: needs_review; verified is human-approved only.",
+    "6. Append docs/llm-wiki/log.md (append-only) with changed files, evidence, caveats, and remaining review items.",
+    "7. Finish with 'llm-wiki validate' (plus audit / stats where the governance budget allows), summarize the results, and name the thin-evidence areas and the items a human must review before verified."
+  ].join("\n");
+}
+
+function slimBootstrapPrompt(context) {
+  return `${slimHeader("LLM-WIKI bootstrap workflow: back every document 'llm-wiki init --write' generated with real code.", context)}
+
+${slimEnrichmentWorkflow({ projectType: context.projectType, entry: "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md", docLang: context.docLang, governanceMode: context.governanceMode })}
+
+Report: docs changed, source evidence, check results, review items.`;
+}
+
+function slimImplementationPrompt(task, context) {
+  const title = { feature: "feature development", fix: "bug fix", refactor: "refactor" }[task];
+  return `${slimHeader(`LLM-WIKI ${task} workflow (post-wiki ${title}).`, context)}
+
+Goal: make the requested change in the smallest safe scope, verified against the actual source, and leave the LLM-WIKI true to the code within the governance budget below.
+
+Hard lines:
+${documentLanguageDirective(context.docLang)}
+- Read docs/llm-wiki/index.md first, and inspect actual source files before making claims or code changes.
+${slimLocateLine()}
+- If the docs conflict with the code, or the scope grows beyond what was asked, STOP and confirm with a human.
+${SLIM_REVIEW_LINE}
+${SLIM_SENSITIVE_LINE}
+${slimGovernanceBudget(context.governanceMode).join("\n")}
+
+Exit criteria:
+- The change is implemented and verified against the actual source.
+- The wiki updates the governance budget calls for are made and logged in docs/llm-wiki/log.md (append-only) with changed files, evidence, and review notes.
+- Relevant tests ran, or the reason they did not is stated.
+
+${SLIM_API_LINE}
+
+Report: changed files, source evidence, tests and results, wiki docs updated, open review items.`;
+}
+
+function slimDocsSyncPrompt(context) {
+  return `${slimHeader("LLM-WIKI docs-sync workflow.", context)}
+
+Goal: find the LLM-WIKI documents that recent code changes made stale (git status, git diff, then the source) and bring each back in line with what the code does.
+
+Hard lines:
+${documentLanguageDirective(context.docLang)}
+- Read docs/llm-wiki/index.md first, and inspect actual source files before deciding a document is stale.
+${slimLocateLine()}
+- Update stale LLM-WIKI documents only; avoid unrelated code edits. If the code itself looks wrong, report it instead of changing it.
+${SLIM_REVIEW_LINE}
+${SLIM_SENSITIVE_LINE}
+${slimGovernanceBudget(context.governanceMode).join("\n")}
+
+Exit criteria:
+- Every stale document found is updated, or reported as still stale with the reason.
+- docs/llm-wiki/log.md is appended (append-only) with changed docs, evidence, and review notes.
+- Relevant validation ('llm-wiki validate') ran, or the reason it did not is stated.
+
+${SLIM_API_LINE}
+
+Report: changed wiki docs, source evidence, validation results, remaining stale areas or review items.`;
+}
+
+// Read-only guided rules (onboard/prepare), slim form of guidedGroundingRules().
+function slimGuidedRules() {
+  return [
+    "- Read-only: do not modify files. Start from the CLI result, then confirm against the actual source; cite a doc or source for every claim and mark anything unconfirmed \"needs confirmation\".",
+    "- A needs_review or stale document is not trusted fact — say its status. Never write sensitive raw values.",
+    slimLocateLine()
+  ].join("\n");
+}
+
+function slimOnboardPrompt(context) {
+  return `${slimHeader("LLM-WIKI onboard workflow (read-only): help a newcomer understand this project and one work area from real code evidence.", context)}
+
+1. Read the project instructions (AGENTS.md / CLAUDE.md / your agent's instruction file) and docs/llm-wiki/index.md, then run 'llm-wiki onboard' (add --domain <name> for a work area) as the starting map.
+2. Explain the purpose, the work areas and their terms, one representative flow end to end, and the invariants, risky areas, and the tests that cover them.
+3. Ask 3–5 comprehension questions grounded in the docs/source, and answer the newcomer's replies with doc/source pointers.
+${slimGuidedRules()}
+
+Report: orientation, the area's key docs / source entrypoints / tests, one flow end to end, invariants / risks / freshness warnings, and 3–5 comprehension checks.`;
+}
+
+function slimPreparePrompt(context) {
+  return `${slimHeader("LLM-WIKI prepare workflow (read-only): scope a requested change before any code is written.", context)}
+
+1. Restate the task in one sentence, then run 'llm-wiki prepare --task "<the task>"' and use its candidates as the starting map.
+2. Explain the current behavior with evidence. Present impact as candidates, never as "you must edit X"; name the areas that must not change and the tests a change would need.
+3. If the docs conflict with the code, report the conflict and do NOT implement. If evidence is missing, ask confirmation questions instead of guessing.
+4. To implement, hand off to the /llm-wiki-feature or /llm-wiki-fix skill.
+${slimGuidedRules()}
+
+Report: the restated task; candidate docs, source, and tests; current behavior; areas not to touch, invariants / risks, freshness warnings; open questions and the next skill.`;
+}
+
+function slimOkfExtractPrompt(context) {
+  return `${slimHeader("LLM-WIKI OKF v0.1 extraction workflow (prompt-assisted, not automatic).", context)}
+
+${documentLanguageDirective(context.docLang)}
+1. Read docs/llm-wiki/index.md first when storing results in an LLM-WIKI project, and inspect the raw text or source before extracting.
+2. Write each durable concept, project, API, meeting note, or event as Markdown with OKF v0.1 frontmatter (required type; optional aliases and tags), clear headings, and [[Concept Name]] wiki links.
+3. Under docs/llm-wiki: broad evidence in source_files, precise references in evidence entries mirrored in the body ## Evidence section; keep documents at status: needs_review — verified is human-approved only.
+4. List unresolved concepts, aliases to review, and extraction caveats.
+${slimLocateLine()}
+
+Report: extracted documents, source evidence, unresolved links or ambiguous concepts, and review items.`;
+}
+
+// Keeps everything that makes backfill safe — the evidence ladder, the three
+// labels, the no-fabrication rule, the unknown list, the readiness re-run — and
+// drops only the narration around it.
+function slimBackfillPrompt(context) {
+  return `${slimHeader("LLM-WIKI backfill workflow: recover the evidence-backed facts about this project for a handoff, and name what cannot be recovered.", context, ` Governance mode: ${context.governanceMode}.`)}
+Preconditions: run 'llm-wiki backfill' first and work from its inventory, coverage, evidence ledger, and readiness report; 'llm-wiki backfill --write' creates the missing document stubs this workflow fills.
+
+Evidence ladder (a lower source never contradicts a higher one): current source code > tests > configuration and manifests > existing wiki documents > ADRs / decision records (the only source for WHY) > commit messages > git diff / history > local issue/PR metadata.
+Label every claim, and keep the labels apart:
+- verified: read from the current source, tests, or configuration — cite it in source_files / evidence.
+- inferred: derived from directory boundaries, naming, or history — say "inferred" in the sentence itself.
+- unknown: the repository cannot answer it — say so and leave an open review item.
+
+${documentLanguageDirective(context.docLang)}
+1. Read docs/llm-wiki/index.md and the 'llm-wiki backfill' report first, then work the gaps it names.
+2. Establish CURRENT behavior before history: entrypoints, architecture, data flow, integrations, public contracts, configuration, enforced business rules. Rebuild the source mapping as you go (source_files, plus frontmatter evidence mirrored in ## Evidence); a document without one is not finished.
+3. For a source boundary with no document, describe what its code does; its business meaning stays inferred unless a test, contract, or document confirms it.
+4. Only then attempt history. Cite the ADR, decision record, or commit that recorded a rationale; where none exists write "Decision reason: unknown" — do NOT reconstruct a rationale from layout, naming, dependencies, or commit subjects. Absence of evidence is not evidence.
+5. Cover the handoff areas the report names only where evidence exists; keep an unevidenced section and mark it unknown.
+6. Produce an "Unknown / needs human confirmation" list for the outgoing maintainer.
+7. Never write sensitive raw values. Keep every created or edited wiki document at status: needs_review; verified is human-approved only.
+8. Append docs/llm-wiki/log.md (append-only) with the documents touched, the evidence used, and what stayed inferred or unknown.
+9. Finish by re-running 'llm-wiki backfill' (--strict for the pre-handoff gate) and report which readiness checks are complete.
+${slimLocateLine()}
+
+Report: documents created or filled with the label distribution; source mappings rebuilt; what stayed INFERRED and why; what stayed UNKNOWN, as questions; the readiness checks still incomplete and why.`;
+}
+
+function slimIssuePrompt(context) {
+  return `${slimHeader("LLM-WIKI issue workflow (read-only): draft a GitHub issue body for the work agreed in this conversation.", context)}
+
+1. Restate the agreed work in one sentence; if it is not settled, ask before drafting.
+2. Run 'llm-wiki prepare --task "<the task>" --compact' to find the wiki docs and source that govern it, and check every fact you state against them.
+3. Draft these sections, in order: Background / why; Goal (an observable end state, not steps); Out of scope / must not change; Done when (verifiable criteria); Related wiki docs and evidence (link the docs and source paths prepare found — do not restate them); Risks / invariants; Open questions.
+
+Rules:
+- Confirmed facts and agreed scope only; anything unconfirmed goes under Open questions.
+- No wording that reads more than one way: exact files, commands, fields, and behaviors; "must" / "must not"; numbers instead of adjectives.
+- Write for an agent that was not in this conversation.
+- Work-unit history belongs in the issue, not the wiki: do not edit wiki documents, docs/llm-wiki/log.md, or any other file.
+- A needs_review or stale document is not settled fact — say its status. Never write sensitive raw values.
+
+Report: a one-line issue title and the Markdown body, ready to paste, plus what you left out as unconfirmed.`;
 }
 
 function formatList(values) {

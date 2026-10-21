@@ -4,6 +4,33 @@
 
 `llm-wiki-governance`(옛 이름 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. [유의적 버전](https://semver.org/)을 따르며, 항목은 최신 릴리스가 위로 옵니다.
 
+## 1.33.0 — 2026-10-21
+
+읽기 비용 릴리스입니다. 오래 쓴 위키는 아무도 예산을 매기지 않는 두 곳에서 비싸집니다. 늘어나기만 하는 변경 로그, 그리고 "어떻게 찾았나" 경위가 조금씩 쌓이는 지식 문서입니다. 2026-09·10월에 도입 프로젝트 두 곳이 같은 비용을 손으로 줄였는데, 결과를 정반대 위치에 두었습니다 — 한 곳은 `log.md` 끝에 전부 덧붙였고(append-only는 지켰지만 log가 약 1MB), 다른 곳은 `docs/llm-wiki/` 밖으로 옮겼습니다(log는 작아졌지만 모든 스캔과 쓰기 경계 밖). 이 릴리스는 두 경우에 지원되는 경로를 줍니다.
+
+- **새 명령 `archive-log`(기본 미리보기, `--write`로 적용).** 보존 기간(`--keep-months <n>`, 기본 2 — 오늘이 아니라 가장 최신의 유효한 날짜 항목에서 거꾸로 셈)보다 오래된 변경 로그 항목을 `docs/llm-wiki/log.md`에서 그 옆의 월별 권 `docs/llm-wiki/log-YYYY-MM.md`로 옮깁니다. 항목은 통째로 옮기고 고치지 않습니다. 새 권에는 바이트 그대로 들어가고, 기존 권에 덧붙일 때는 그 권의 줄끝을 따릅니다. 쓰기 전에 계획한 파일을 다시 파싱해 원래 항목이 정확히 한 번씩 나오지 않으면 거부합니다(`archive.integrity`, blocked, exit 2). 각 파일은 임시 파일에 쓴 뒤 rename하며(권 먼저, `log.md` 마지막), 중단 뒤 다시 실행하면 권에 이미 있는 항목을 `log.md`에서만 지웁니다(`alreadyArchived[]`). 닫히지 않은 코드 펜스(줄 번호 포함), 깨끗이 디코딩되지 않는 `log.md`나 권(`encoding.mojibake`), 계획한 권과 대소문자만 다른 파일(신규 규칙 `archive.volume_conflict`)도 쓰기 전에 거부합니다. 내일(UTC)보다 뒤 날짜나 달력에 없는 날짜는 제자리에 두고 `future-dated`·`invalid-date`로 보고합니다. 오타 하나가 로그 전체를 옮기지 못하게 하기 위해서입니다. 월별 권을 `log.md` 옆에 두는 이유는 항목 안 상대 링크가 고쳐 쓰지 않아도 그대로 유효하기 때문입니다. MCP에는 노출하지 않으며, 프로그램 API `archiveLogCommand`는 무효한 `keepMonths`를 `RangeError`로 거부합니다.
+- **append-only 원칙은 버리지 않고 다시 정의했습니다:** 항목은 고치지 않는다, 항목 전체를 원문 그대로 월별 권으로 옮기는 것만 허용한다. GATE_REVIEW "Change-Log Volume Scope Decision" 참조.
+- **월별 권은 `log.md`가 이미 받던 대우를 그대로 받습니다:** `isAppendOnlyLog`가 이제 월별 권도 맞추므로 `fix`·`migrate`·`init`은 다시 쓰지 않고, `review`·`drift`·`impact`·`backfill`은 빼며, 검색은 후순위로 둡니다. 민감정보·링크 스캔은 계속 읽습니다. `stats`와 orphan 집계는 기록을 `log.md` 하나로 셉니다(`isLogVolume`). 보관해도 퍼센트가 움직이지 않습니다.
+- **기본 꺼진 규칙 4종 — 켜지 않으면 아무것도 내지 않습니다:** `markdown_link.anchor_missing`·`content.dated_heading`은 config `rules`로, `budget.log_over`·`budget.doc_over`는 새 config 블록 `"wikiBudget": { "logTokens": <n>, "docTokens": <n> }`(양의 정수, chars/4 근사, 기본 임계값 없음)로 켭니다. 빈 블록이나 모르는 키는 config 오류입니다. 오타 난 예산이 켜진 척 남아 있지 못하게 하기 위해서입니다. `markdown_link.missing`은 계속 `#fragment`를 버리며, 앵커 검사를 별도 규칙으로 둔 것은 켜는 것을 선택으로 남기기 위해서입니다. 앵커 검사는 GitHub slug 규칙(중복 접미사, setext 제목, 강조 표시, `#user-content-`)을 따르고, `content.dated_heading`은 변경 로그·릴리스 노트·의사결정 기록을 면제합니다. 네 규칙 모두 `strict` 프리셋이나 모드에 넣지 않았습니다.
+- **주장이 아니라 실측입니다:** 도입 프로젝트 두 곳의 log 사본에 돌린 결과 120항목 중 37개, 263항목 중 226개를 옮겼고, 별도 재파싱으로 원래 항목이 모두 정확히 한 번, 바이트 그대로 있음을 확인했습니다.
+
+**이 릴리스에 함께 들어간 것 — 덜 읽게 하기, 그리고 누가 승인했는지 보이게 하기.** 2026-10에 나온 외부 실무자 글이 계기입니다. 그 팀은 긴 에이전트 절차가 새 모델에서 오히려 방해가 되고, 문서가 돌려주는 것보다 유지 비용이 더 크며, 규칙은 겉모양만으로 통과된다는 것을 겪었습니다.
+
+- **`--prompt-profile slim`(config `promptProfile`).** 생성 프롬프트와 `init --skills` 스킬에 이 도구의 명령·경로, 프롬프트가 정한 계약, 멈춤 조건, 완료 기준만 남깁니다. 위임 예산과 일반적인 작업 요령은 뺍니다(문자 수로 `full`의 약 44–50%). `prompt`·`handoff`·`backfill`·`init`·`quickstart`가 받습니다. **기본값은 `full`이며 바이트 그대로입니다**(프롬프트·스킬·출력 8,520건을 비교). 짧은 쪽 텍스트는 아직 측정하지 않았고, 기본값은 측정 결과로만 바꿉니다.
+- **`prompt --task issue`.** 대화와 위키로 GitHub 이슈 본문 초안을 쓰게 하는 읽기 전용 프리셋입니다. 배경, 목표, 범위 밖, 완료 기준, 관련 위키 문서 링크, 위험, 열린 질문을 담고, 대화에 없었던 에이전트가 읽는다는 전제로 씁니다. 작업 단위 경위는 위키가 아니라 이슈에 둡니다. 생성 스킬로 만들지 않아서 항상 로드되는 표면이 늘지 않습니다. 출하하는 어댑터 템플릿에도 같은 뜻의 규칙 한 줄을 넣었습니다.
+- **`agentReviewers`(config).** `reviewed_by`가 목록에 있는 에이전트 이름인 verified 문서를 `stats`가 `humanVerified`가 아니라 `evidenceTiers.agentVerified`로 셉니다. 목록이 없으면 `agentVerified`는 `null`(구분 불가)이고, `0`으로 적지 않습니다.
+- **`impact.stamp_only`(opt-in 규칙).** 기존 `stamp_only_exclusions` 보고를 verified이면서 로컬 앵커가 있는 문서마다 finding 하나로 냅니다. 스탬프만 바꾼 강등은 보고하지 않습니다. 이 규칙을 `error`로 올리거나, warning인 채 `--strict`로 돌리면 N-11이 되살아나므로 그때는 `info`를 쓰십시오. GATE_REVIEW "Stamp-Only Exemption"은 미결로 남습니다.
+- **evidence 형식 정의를 하나로 합쳤습니다.** 공개 스키마의 evidence 패턴(`EVIDENCE_REFERENCE_PATTERN`)을 이제 런타임도 그대로 씁니다. 그 전에는 스키마가 CLI가 받는 `#l10`과 `#route:/`(한 도입처가 실제로 쓰는 루트 경로 앵커)를 거부했고, CLI는 스키마가 거부하는 파일 없는 `#anchor`를 받았습니다.
+
+**이름을 붙인 동작 변경:**
+
+- `prompt`가 이제 받은 거버넌스 모드대로 렌더링합니다. 그 전에는 `--mode`를 받기만 하고 넘기지 않아서, `lite`·`standard` 프로젝트도 strict 예산을 받았습니다. 모드도 config도 없으면 지금처럼 strict입니다.
+- `evidence`에 파일 없이 `#anchor`만 적으면 이제 `evidence.shape`(error)입니다. 그런 참조는 아무 소스도 가리키지 않으면서 verified 문서를 근거 있는 것으로 통과시켰습니다. 로컬 도입 위키 11곳의 evidence 1,292항목 중 해당은 0건입니다.
+- `stats` 텍스트 요약 줄 끝에 `agent_verified …`가 붙고, JSON에 `evidenceTiers.agentVerified`가 더해집니다.
+- 이미 `docs/llm-wiki/log-YYYY-MM.md`(월 01–12) 이름을 가진 문서는 이제 변경 로그 권으로 취급합니다. review·drift·impact·fix가 건너뛰고, stats와 orphan 집계에서 빠집니다.
+
+MINOR로 판정합니다. 새 명령 하나, 새 config 키, 새 task 프리셋 하나, 새 opt-in 규칙 둘이 들어가며, 위에 이름 붙인 변경 말고는 모두 추가분입니다. 고정된 `commands` 맵에 `archive-log`가 더해집니다. 테스트 580 → 669건.
+
 ## 1.32.0 — 2026-09-14
 
 비용에 관한 릴리스입니다. 이 프로젝트가 도입처에 건네던 CI 채널은 GitHub-hosted 러너에서

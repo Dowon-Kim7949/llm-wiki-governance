@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: project_profile
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-20
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-08
+reviewed_at: 2026-10-20
 wiki_block_version: v1
 source_files:
   - package.json
@@ -40,7 +40,7 @@ contains_sensitive_info: false
 
 - `llm-wiki-governance`는 Codex·Claude Code·CI·로컬 터미널에서 **AI가 쓴 프로젝트 문서를 검증·드리프트 감지·CI 강제**하는 거버넌스 CLI다(초기 문서 생성도 함께 제공). 1.16.0에서 포지셔닝을 "공통 표준"에서 **거버넌스 레이어(OKF-compatible)**로 옮겼다.
 - 특정 도구 전용이 아니라 여러 adapter(`AGENTS.md`, `CLAUDE.md`, 후보 `ANTIGRAVITY.md`)에서 함께 쓰는 도구-중립 거버넌스를 지향한다.
-- 보수적 쓰기 정책이 핵심이다: 기본은 미리보기, 실제 쓰기는 명시적 `--write`/`--apply` 시에만(예: `init --write`, `migrate --apply`). 모든 쓰기는 `verified` 문서 내용을 보존하고 결과를 `needs_review`로 남긴다.
+- 보수적 쓰기 정책이 핵심이다: 기본은 미리보기, 실제 쓰기는 명시적 `--write`/`--apply` 시에만(예: `init --write`, `migrate --apply`, `archive-log --write`). 모든 쓰기는 `verified` 문서 내용을 보존하고 결과를 `needs_review`로 남긴다.
 
 ## Runtime & Packaging
 

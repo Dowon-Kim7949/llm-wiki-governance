@@ -5,6 +5,7 @@ import { RULE_PRESETS } from "./commands/findings.js";
 import { ALL_AGENTS, SUPPORTED_AGENTS } from "./config.js";
 import { KNOWN_TYPES } from "./detector.js";
 import { GOVERNANCE_MODES, LEGACY_GOVERNANCE_MODE, getGovernancePolicy, isGovernanceMode } from "./governance.js";
+import { PROMPT_PROFILES, isPromptProfile } from "./task-prompts.js";
 
 export const CONFIG_FILENAME = "llm-wiki.config.json";
 
@@ -199,6 +200,67 @@ export async function loadProjectConfig(cwd) {
     }
   }
 
+  // Wiki read-cost budgets (1.33.0): budget.log_over / budget.doc_over stay silent
+  // until a number is supplied, for the same reason as harnessHealth — the figure
+  // is a chars/4 proxy and no default threshold ships. Config-only on purpose: no
+  // CLI flag, so the command surface does not grow for a project setting.
+  //
+  // Stricter than the top level, where unknown keys are ignored: this block exists
+  // only to arm two checks, so a block that arms nothing — empty, or holding only a
+  // misspelled key such as "logToken" — would leave the project believing a budget
+  // is enforced while every check stays silent. Both are config errors.
+  if ("wikiBudget" in parsed) {
+    const wiki = parsed.wikiBudget;
+    const known = ["logTokens", "docTokens"];
+    if (wiki === null || typeof wiki !== "object" || Array.isArray(wiki)) {
+      errors.push(`${CONFIG_FILENAME}: "wikiBudget" must be an object.`);
+    } else if (Object.keys(wiki).length === 0) {
+      errors.push(`${CONFIG_FILENAME}: "wikiBudget" must set at least one of ${known.join(", ")}.`);
+    } else {
+      const unknown = Object.keys(wiki).filter((key) => !known.includes(key));
+      if (unknown.length > 0) {
+        errors.push(`${CONFIG_FILENAME}: "wikiBudget" accepts only ${known.join(", ")} (unknown: ${unknown.join(", ")}).`);
+      }
+      const budgets = {};
+      for (const field of known) {
+        if (!(field in wiki)) continue;
+        if (!Number.isInteger(wiki[field]) || wiki[field] <= 0) {
+          errors.push(`${CONFIG_FILENAME}: "wikiBudget.${field}" must be a positive integer.`);
+        } else {
+          budgets[field] = wiki[field];
+        }
+      }
+      if (Object.keys(budgets).length > 0) config.wikiBudget = budgets;
+    }
+  }
+
+  // Reviewer names that belong to agents, not people. `stats` reports a verified
+  // document whose reviewed_by matches one (trimmed, case-insensitive) as
+  // agent_verified instead of human_verified; without the list it cannot tell the
+  // two apart and says so (agent_verified: null). Config-only, like wikiBudget.
+  // Validated strictly — an empty list or a blank name would silently mean "no
+  // agents", which is the one wrong answer this key exists to prevent.
+  if ("agentReviewers" in parsed) {
+    const names = parsed.agentReviewers;
+    if (!Array.isArray(names) || names.length === 0 || names.some((name) => typeof name !== "string" || name.trim() === "")) {
+      errors.push(`${CONFIG_FILENAME}: "agentReviewers" must be a non-empty array of non-empty reviewer name strings.`);
+    } else {
+      config.agentReviewers = [...names];
+    }
+  }
+
+  // Prompt profile (1.33.0): which rendering of the generated agent prompts and
+  // skills this project wants. An unknown value is a config error, never a silent
+  // fallback to `full` — a project that asked for the short text and quietly got
+  // the long one would have no way to notice.
+  if ("promptProfile" in parsed) {
+    if (!isPromptProfile(parsed.promptProfile)) {
+      errors.push(`${CONFIG_FILENAME}: "promptProfile" must be one of ${PROMPT_PROFILES.join(", ")}.`);
+    } else {
+      config.promptProfile = parsed.promptProfile;
+    }
+  }
+
   return { found: true, config, errors };
 }
 
@@ -273,6 +335,16 @@ export function mergeConfigIntoOptions(options, config) {
     if (options.skillTokenCap == null && Number.isInteger(config.harnessHealth.skillTokenCap)) {
       options.skillTokenCap = config.harnessHealth.skillTokenCap;
     }
+  }
+  if (config.wikiBudget && options.wikiBudget == null) {
+    options.wikiBudget = { ...config.wikiBudget };
+  }
+  if (Array.isArray(config.agentReviewers) && options.agentReviewers == null) {
+    options.agentReviewers = [...config.agentReviewers];
+  }
+  // CLI --prompt-profile wins; config promptProfile only fills an unset value.
+  if (options.promptProfile == null && isPromptProfile(config.promptProfile)) {
+    options.promptProfile = config.promptProfile;
   }
   if (options.reviewer == null && typeof config.reviewer === "string") {
     options.reviewer = config.reviewer;

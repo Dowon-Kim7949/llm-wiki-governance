@@ -11,7 +11,7 @@ import { schemaRequiredFields } from "./frontmatter-schema.js";
 import { renderTextReport } from "./report.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
-import { buildTaskPrompt, evidenceFocus, initialEnrichmentWorkflow } from "./task-prompts.js";
+import { DEFAULT_PROMPT_PROFILE, buildTaskPrompt, evidenceFocus, initialEnrichmentWorkflow, isPromptProfile } from "./task-prompts.js";
 import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
 import { fileChangedSince, fileAtRef, lineRangeChangedSince, changedFiles, gitUserName, isPathIgnored, trackedPaths, modifiedTrackedFiles } from "./git.js";
 import { localizeExplanation, normalizeLang } from "./i18n.js";
@@ -53,7 +53,7 @@ import {
   renderGraphDot,
   renderGraphMermaid
 } from "./commands/wiki-graph.js";
-import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown } from "./commands/wiki-files.js";
+import { isAppendOnlyLog, isLogVolume, isTemplateDoc, listTargetMarkdown } from "./commands/wiki-files.js";
 import {
   ADAPTER_TARGETS,
   planAdapterSuggestions,
@@ -63,8 +63,11 @@ import {
   writeAdapterFiles
 } from "./commands/adapters.js";
 import {
+  agentReviewerSet,
+  changedAnchorMatcher,
   EVIDENCE_REFERENCE_RULES,
   evidenceTier,
+  isAgentReviewer,
   scanEncoding,
   scanEnrichment,
   scanEvidenceDrift,
@@ -78,8 +81,10 @@ import {
   scanSourceFiles,
   scanThinBody,
   scanUngroundedVerified,
-  scanVisibilityConsistency
+  scanVisibilityConsistency,
+  verifiedSourceAnchors
 } from "./commands/scans.js";
+import { scanAnchorLinks, scanDatedHeadings, scanWikiBudget } from "./commands/wiki-hygiene.js";
 import {
   analyzeBlockVersions,
   blockVersionGapDocs,
@@ -124,6 +129,7 @@ export { getDocCommand, getRelatedCommand, listDocsCommand, searchDocsCommand } 
 export { onboardCommand, prepareCommand } from "./commands/guided.js";
 export { importMemoryCommand } from "./commands/import-memory.js";
 export { harnessHealthCommand } from "./commands/harness-health.js";
+export { archiveLogCommand } from "./commands/archive-log.js";
 export { modeCommand } from "./commands/governance-mode.js";
 
 export async function doctor(options) {
@@ -475,11 +481,19 @@ export async function statusCommand(options) {
   ];
   const adapterFindings = await scanAdapters(options.cwd, agents);
   const thinBodyFindings = await scanThinBody(options.cwd, options);
+  // Opt-in wiki hygiene (1.33.0): every scan below returns [] unless the project
+  // enabled its rule or configured wikiBudget, so default output is unchanged.
+  const hygieneFindings = [
+    ...(await scanAnchorLinks(options.cwd, options)),
+    ...(await scanDatedHeadings(options.cwd, options)),
+    ...(await scanWikiBudget(options.cwd, options))
+  ];
   const visibilityFindings = await scanVisibilityConsistency(options.cwd, options);
   const findings = applyRuleConfig([
     ...detectionFindings,
     ...documentStatus.findings,
     ...thinBodyFindings,
+    ...hygieneFindings,
     ...visibilityFindings,
     ...structureFindings,
     ...sourceFileFindings,
@@ -658,6 +672,13 @@ export async function audit(options) {
   ];
   const adapterFindings = await scanAdapters(options.cwd, agents);
   const thinBodyFindings = await scanThinBody(options.cwd, options);
+  // Opt-in wiki hygiene (1.33.0): every scan below returns [] unless the project
+  // enabled its rule or configured wikiBudget, so default output is unchanged.
+  const hygieneFindings = [
+    ...(await scanAnchorLinks(options.cwd, options)),
+    ...(await scanDatedHeadings(options.cwd, options)),
+    ...(await scanWikiBudget(options.cwd, options))
+  ];
   const visibilityFindings = await scanVisibilityConsistency(options.cwd, options);
 
   const findings = applyRuleConfig([
@@ -665,6 +686,7 @@ export async function audit(options) {
     ...structureFindings,
     ...frontmatter.findings,
     ...thinBodyFindings,
+    ...hygieneFindings,
     ...visibilityFindings,
     ...encodingFindings,
     ...sensitiveFindings,
@@ -1100,6 +1122,57 @@ async function stampOnlyDocExclusions(cwd, sinceRef, changed) {
   return excluded;
 }
 
+// Opt-in `impact.stamp_only`: the stamp_only_exclusions report above, as findings.
+// OFF unless a project names the rule in config `rules`, so a default run's
+// findings, output, and exit code are exactly what they were. When on, it is a
+// warning by default: GATE_REVIEW.md "Stamp-Only Exemption" (N-9/N-11) is still
+// open, and until it is decided a stamp-only resolution is made VISIBLE on request
+// rather than refused, because a re-stamp is also how the documented remediation
+// clears a real finding. Raising it to error closes that path again (N-11);
+// `explain` says so.
+const STAMP_ONLY_RULE = "impact.stamp_only";
+
+function stampOnlyRuleEnabled(options) {
+  const setting = options && options.rules && options.rules[STAMP_ONLY_RULE];
+  return Boolean(setting) && setting !== "off";
+}
+
+// One finding per stamp-only document that impact actually watches: verified,
+// grounded in at least one local anchor, and not a release note, template, or
+// change-log record (verifiedSourceAnchors + the same two path skips
+// scanReverseImpact applies). A stamp-only DOWNGRADE is deliberately not reported:
+// a needs_review document is never an impact target, and `drift --downgrade` is the
+// remediation this product recommends, so flagging it would punish the honest move.
+// The changed anchors are named with the matcher scanReverseImpact uses, so the two
+// cannot disagree about what "depends on a changed source" means.
+async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet) {
+  const anchorMatches = changedAnchorMatcher(changedSet);
+  const findings = [];
+  for (const relPath of stampOnlyDocs) {
+    if (isTemplateDoc(relPath) || isAppendOnlyLog(relPath)) continue;
+    let text;
+    try {
+      text = await readUtf8(path.join(cwd, ...relPath.split("/")));
+    } catch {
+      continue;
+    }
+    const anchors = verifiedSourceAnchors(parseFrontmatter(text).frontmatter);
+    if (!anchors || anchors.files.length === 0) continue;
+    const changedSources = anchors.files.filter(anchorMatches);
+    const stampOnly = "Only the review stamp changed in this diff (status / reviewed_by / reviewed_at / last_updated / status tag; no body or other frontmatter change), so impact counted this verified document as updated and excluded it from impact.source_changed";
+    findings.push({
+      severity: "warning",
+      rule: STAMP_ONLY_RULE,
+      path: relPath,
+      message: changedSources.length > 0
+        ? `${stampOnly}, although it depends on ${changedSources.join(", ")}, which changed in this diff. Nothing in this run re-checked it against that source.`
+        : `${stampOnly}. A stamp that moves reviewed_at also resets the drift (evidence.stale) baseline; nothing in this run shows the document was re-read.`,
+      params: { sources: changedSources.join(", ") }
+    });
+  }
+  return findings;
+}
+
 // Diff-anchored complement to the date-anchored drift: flags verified documents
 // whose referenced source changed in the current diff (working tree, or a
 // `--since <ref>` PR/CI baseline) while the document itself did not. Read-only;
@@ -1153,6 +1226,15 @@ export async function impactCommand(options) {
     : applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
   // Reported, not enforced — see stampOnlyDocExclusions and GATE_REVIEW.md.
   const stampOnlyExclusions = await stampOnlyDocExclusions(cwd, options.since, changed);
+  // ...unless the project opted into impact.stamp_only. Skipped while
+  // impact.source_changed itself is off (lite, or an explicit "off"): with that
+  // rule off nothing is excluded from a check that never runs, so the message
+  // would be false.
+  if (stampOnlyExclusions.length > 0
+    && stampOnlyRuleEnabled(options)
+    && !ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)) {
+    findings.push(...applyRuleConfig(await stampOnlyFindings(cwd, stampOnlyExclusions, changedSet), options));
+  }
 
   const result = findings.some((finding) => finding.severity === "blocked")
     ? "blocked"
@@ -1992,7 +2074,8 @@ export async function backfillCommand(options) {
     profiles: detection.activeProfiles,
     agents: selectedAgents(options),
     docLang: normalizeLang(options.docLang),
-    governanceMode: mode
+    governanceMode: mode,
+    promptProfile: options.promptProfile
   });
 
   const result = findings.some((finding) => finding.severity === "blocked")
@@ -2171,7 +2254,12 @@ export async function promptCommand(options) {
     projectType: detection.projectType,
     profiles: detection.activeProfiles,
     agents: selectedAgents(options),
-    docLang: normalizeLang(options.docLang)
+    docLang: normalizeLang(options.docLang),
+    // Until 1.33 this was not passed, so `prompt --mode lite` (or a lite config)
+    // printed the strict budget — "update every affected document" — to a project
+    // that chose lite precisely so ordinary changes would not carry doc work.
+    governanceMode: effectiveGovernanceMode(options),
+    promptProfile: options.promptProfile
   });
 
   if (taskPrompt.result === "blocked") {
@@ -2193,7 +2281,9 @@ export async function promptCommand(options) {
     taskPrompt,
     findings: taskPrompt.findings
   }, "LLM-WIKI Task Prompt", [
-    { title: "Task", body: [`task: ${taskPrompt.task}`, `project_type: ${taskPrompt.projectType}`, `active_profiles: ${taskPrompt.profiles.join(", ") || "none"}`, `selected_agents: ${taskPrompt.agents.join(", ")}`] },
+    // prompt_profile is printed only for a non-default profile, so the `full`
+    // report stays byte-identical to the pre-profile output.
+    { title: "Task", body: [`task: ${taskPrompt.task}`, `project_type: ${taskPrompt.projectType}`, `active_profiles: ${taskPrompt.profiles.join(", ") || "none"}`, `selected_agents: ${taskPrompt.agents.join(", ")}`, ...(taskPrompt.promptProfile ? [`prompt_profile: ${taskPrompt.promptProfile}`] : [])] },
     { title: "Prompt", body: `\`\`\`text\n${taskPrompt.prompt}\n\`\`\`` },
     { title: "Caveats", body: ["Run this prompt in the selected agent after the initial LLM-WIKI is created and enriched. AI-edited wiki documents remain needs_review until human review."] }
   ]);
@@ -2589,7 +2679,9 @@ export async function graphCommand(options) {
 // findings (content.not_enriched, evidence.stale) and the wiki graph.
 export async function statsCommand(options) {
   const cwd = options.cwd;
-  const files = await listTargetMarkdown(cwd);
+  // The change-log record counts once, as log.md: monthly volumes written by
+  // archive-log are left out so archiving moves no percentage (isLogVolume).
+  const files = (await listTargetMarkdown(cwd)).filter((file) => !isLogVolume(toPosix(path.relative(cwd, file))));
   const total = files.length;
 
   const statusCounts = {};
@@ -2609,6 +2701,7 @@ export async function statsCommand(options) {
       status,
       hasGrounding,
       reviewedBy: typeof frontmatter.reviewed_by === "string" && frontmatter.reviewed_by.trim() !== "",
+      reviewedByName: typeof frontmatter.reviewed_by === "string" ? frontmatter.reviewed_by : null,
       reviewedAt: typeof frontmatter.reviewed_at === "string" && frontmatter.reviewed_at.trim() !== ""
     });
   }
@@ -2623,9 +2716,18 @@ export async function statsCommand(options) {
   // Gate 25: computed evidence tiers (additive, report-only). A doc is
   // reference_checked when it has grounding and no unresolved-reference finding;
   // human_verified when verified with reviewer metadata. Orthogonal axes.
+  //
+  // human_verified never checked WHO the reviewer was, so an agent's approval run
+  // counted as human review. When the project names its agent reviewers (config
+  // `agentReviewers`), a verified doc whose reviewed_by matches one is moved out of
+  // human_verified into agent_verified. Without that list the split is not
+  // decidable: human_verified keeps its old value and agent_verified is null —
+  // never 0, which would claim that no agent approved anything.
+  const agentSet = agentReviewerSet(options.agentReviewers);
   const unresolvedRefPaths = new Set(findings.filter((finding) => EVIDENCE_REFERENCE_RULES.has(finding.rule)).map((finding) => finding.path));
   let referenceChecked = 0;
   let humanVerified = 0;
+  let agentVerified = agentSet ? 0 : null;
   let bothTiers = 0;
   for (const doc of docMeta) {
     const tier = evidenceTier({
@@ -2635,9 +2737,12 @@ export async function statsCommand(options) {
       hasGrounding: doc.hasGrounding,
       hasUnresolvedRefs: unresolvedRefPaths.has(doc.rel)
     });
+    const agentApproved = tier.humanVerified && isAgentReviewer(doc.reviewedByName, agentSet);
+    const human = tier.humanVerified && !agentApproved;
     if (tier.referenceChecked) referenceChecked += 1;
-    if (tier.humanVerified) humanVerified += 1;
-    if (tier.referenceChecked && tier.humanVerified) bothTiers += 1;
+    if (human) humanVerified += 1;
+    if (agentApproved) agentVerified += 1;
+    if (tier.referenceChecked && human) bothTiers += 1;
   }
 
   const verified = statusCounts.verified ?? 0;
@@ -2654,7 +2759,7 @@ export async function statsCommand(options) {
     `verified: ${verified} (${verifiedPct}%)`,
     `enriched: ${enriched} (${enrichedPct}%)`,
     `evidence_coverage: ${evidenceBacked} (${evidencePct}%)`,
-    `evidence_tiers: reference_checked ${referenceChecked}, human_verified ${humanVerified} (both ${bothTiers})`,
+    `evidence_tiers: reference_checked ${referenceChecked}, human_verified ${humanVerified} (both ${bothTiers}), agent_verified ${agentVerified === null ? "unknown (agentReviewers not set)" : agentVerified}`,
     `stale_verified: ${staleVerified}`,
     `orphan_documents: ${orphanDocuments}`
   ];
@@ -2678,7 +2783,8 @@ export async function statsCommand(options) {
       evidenceTiers: {
         referenceChecked,
         humanVerified,
-        both: bothTiers
+        both: bothTiers,
+        agentVerified
       },
       staleVerified,
       orphanDocuments
@@ -2687,7 +2793,9 @@ export async function statsCommand(options) {
   }, "LLM-WIKI Stats", [
     { title: "Summary", body: summaryLines },
     { title: "Document Status", body: statusLines.length ? statusLines : ["none"] },
-    { title: "Caveats", body: ["Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata."] }
+    { title: "Caveats", body: ["Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata. " + (agentVerified === null
+      ? "Who the reviewer was is not checked: an agent's approval counts toward human_verified here. Name your agent reviewers in llm-wiki.config.json \"agentReviewers\" to report them as agent_verified instead; until then agent_verified is unknown (null in JSON), not 0."
+      : "Documents whose reviewed_by matches llm-wiki.config.json \"agentReviewers\" (trimmed, case-insensitive) are counted as agent_verified instead of human_verified; a reviewer name not on that list still counts as human, so the split is only as accurate as the list.")] }
   ]);
 }
 
@@ -3155,7 +3263,8 @@ function buildHandoff(options, detection = null) {
   // The handoff prompt IS the initial-enrichment workflow, sourced from the single
   // shared builder so it never drifts from the `bootstrap` task/skill. Handoff names
   // the selected adapter file(s) as the entrypoint; the workflow itself is identical.
-  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints, docLang: normalizeLang(options.docLang), governanceMode: effectiveGovernanceMode(options) });
+  const promptProfile = isPromptProfile(options.promptProfile) ? options.promptProfile : DEFAULT_PROMPT_PROFILE;
+  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints, docLang: normalizeLang(options.docLang), governanceMode: effectiveGovernanceMode(options), promptProfile });
 
   return {
     agents,
@@ -3170,6 +3279,9 @@ function buildHandoff(options, detection = null) {
     // in effect, so the payload names which one it was rather than leaving the
     // receiving agent's instructions unattributable.
     governanceMode: effectiveGovernanceMode(options),
+    // Named only for a non-default profile, like the prompt command's result, so
+    // the `full` handoff payload stays byte-identical.
+    ...(promptProfile === DEFAULT_PROMPT_PROFILE ? {} : { promptProfile }),
     prompt,
     findings
   };

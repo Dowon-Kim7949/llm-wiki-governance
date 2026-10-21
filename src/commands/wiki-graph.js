@@ -4,7 +4,7 @@
 // Markdown links into a document graph (with orphan and unresolved-concept
 // detection); buildWikiLinkTargetIndex builds the title/alias/path lookup; the
 // render* helpers emit Mermaid and DOT. Depends only on the Node stdlib,
-// files.js, encoding.js, frontmatter.js, and references.js; no back-dependency
+// files.js, encoding.js, frontmatter.js, references.js, and wiki-files.js; no back-dependency
 // on commands.js. The exported graph/stats COMMANDS stay in commands.js and
 // import these helpers.
 import path from "node:path";
@@ -22,6 +22,7 @@ import {
   normalizeWikiLinkTarget,
   resolveMarkdownLinkTarget
 } from "./references.js";
+import { isLogVolume } from "./wiki-files.js";
 
 export async function collectWikiGraph(cwd) {
   const wikiRoot = path.join(cwd, "docs", "llm-wiki");
@@ -127,8 +128,11 @@ export async function collectWikiGraph(cwd) {
   const orphanDocuments = docs
     // Generated scaffolds under templates/ are expected-unlinked; excluding them
     // keeps a freshly-created wiki from reporting them as false-positive orphans.
+    // Monthly change-log volumes are log.md's older entries moved next to it: the
+    // record is reached through log.md, and an archive run must not mint orphans.
     .filter((doc) => doc.path !== "docs/llm-wiki/index.md"
       && !doc.path.includes("/templates/")
+      && !isLogVolume(doc.path)
       && !connectedPaths.has(doc.path))
     .map((doc) => doc.path)
     .sort();

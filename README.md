@@ -43,13 +43,13 @@ The CLI itself needs no model. Only the enrichment step does, and that is where 
 | `list-docs` · `search-docs` · `get-doc` · `get-related` | Read-only retrieval that returns document content, with sensitive lines redacted. |
 | `graph` · `stats` | Knowledge graph (text/JSON/Mermaid/DOT) · health snapshot. |
 | `mcp` | Run the read-only MCP server. |
-| `fix` · `migrate` · `handoff` · `prompt` · `check-run` · `harness-health` · `import-memory` | Scoped autofix, contract upgrade, agent prompts, and harness checks. |
+| `fix` · `migrate` · `archive-log` · `handoff` · `prompt` · `check-run` · `harness-health` · `import-memory` | Scoped autofix, contract upgrade, change-log volumes, agent prompts, and harness checks. |
 
 Writes happen only on an explicit `--write`, `--apply`, or `--approve`; everything else is read-only. Add `--lang ko` for Korean findings messages, or `--doc-lang ko` to generate the wiki content in Korean. You can also import the package instead of shelling out (`import { commands, run } from "llm-wiki-governance"`).
 
 Run `npx llm-wiki-governance help <command>` for the full command, option, and exit-code reference offline, in English.
 
-To run it in CI, copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or reference the composite action in one step with an exact tag: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.32.0`. Recipes sized to your repo are in [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md). On a private repository, where runner minutes are billed against an allowance the whole organization shares, two channels cost nothing: `templates/git-hooks/pre-commit` needs no runner at all, and the workflow template takes its `runs-on` from a `LLM_WIKI_RUNNER` variable so it can point at a self-hosted runner without editing the file. OPERATIONS.md covers what each one gives up.
+To run it in CI, copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or reference the composite action in one step with an exact tag: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.33.0`. Recipes sized to your repo are in [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md). On a private repository, where runner minutes are billed against an allowance the whole organization shares, two channels cost nothing: `templates/git-hooks/pre-commit` needs no runner at all, and the workflow template takes its `runs-on` from a `LLM_WIKI_RUNNER` variable so it can point at a self-hosted runner without editing the file. OPERATIONS.md covers what each one gives up.
 
 ## Governance modes
 

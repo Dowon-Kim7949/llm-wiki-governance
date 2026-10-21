@@ -1,13 +1,13 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { audit, backfillCommand, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, harnessHealthCommand, impactCommand, importMemoryCommand, initCommand, listDocsCommand, migrateCommand, modeCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
+import { archiveLogCommand, audit, backfillCommand, checkRunCommand, doctor, driftCommand, explainCommand, fixCommand, getDocCommand, getRelatedCommand, graphCommand, handoffCommand, harnessHealthCommand, impactCommand, importMemoryCommand, initCommand, listDocsCommand, migrateCommand, modeCommand, monorepoCommand, nextCommand, onboardCommand, prepareCommand, promptCommand, quickstartCommand, releaseNotesCommand, reviewCommand, searchDocsCommand, statsCommand, statusCommand, validateCommand, validateFrontmatterCommand } from "./commands.js";
 import { printResult } from "./report.js";
 import { loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { KNOWN_TYPES } from "./detector.js";
 import { startMcpServer } from "./mcp/server.js";
 import { SUPPORTED_LANGS } from "./i18n.js";
-import { SUPPORTED_TASK_PROMPTS } from "./task-prompts.js";
+import { PROMPT_PROFILES, SUPPORTED_TASK_PROMPTS, isPromptProfile } from "./task-prompts.js";
 import { GOVERNANCE_MODES } from "./governance.js";
 import { ALL_AGENTS, SUPPORTED_AGENTS } from "./config.js";
 
@@ -29,6 +29,7 @@ const COMMANDS = new Map([
   ["migrate", migrateCommand],
   ["import-memory", importMemoryCommand],
   ["fix", fixCommand],
+  ["archive-log", archiveLogCommand],
   ["drift", driftCommand],
   ["impact", impactCommand],
   ["check-run", checkRunCommand],
@@ -172,6 +173,10 @@ export function defaultOptions() {
     format: "text",
     lang: null,
     docLang: null,
+    // Prompt profile (1.33.0): "full" | "slim", or null to resolve from the config
+    // `promptProfile` key. The builders treat null as "full", so a caller that
+    // never heard of profiles gets the shipped text.
+    promptProfile: null,
     dryRun: false,
     write: false,
     apply: false,
@@ -187,6 +192,7 @@ export function defaultOptions() {
     preloadBudget: null,
     watchNeedsReview: false,
     skillTokenCap: null,
+    keepMonths: null,
     minimal: false,
     withAdapters: false,
     noAdapters: false,
@@ -354,6 +360,15 @@ export function parseArgs(argv) {
         else errors.push(`--preload-budget must be a positive integer: ${value}`);
         index += 1;
       }
+    } else if (arg === "--keep-months") {
+      usedOptions.add("keep-months");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isInteger(parsed) && parsed > 0 && String(parsed) === value.trim()) options.keepMonths = parsed;
+        else errors.push(`--keep-months must be a positive integer: ${value}`);
+        index += 1;
+      }
     } else if (arg === "--skill-token-cap") {
       usedOptions.add("skill-token-cap");
       const value = readOptionValue(rest, index, arg, errors);
@@ -405,6 +420,16 @@ export function parseArgs(argv) {
       if (value) {
         if (SUPPORTED_LANGS.includes(value)) options.docLang = value;
         else errors.push(`Unsupported documentation language: ${value} (supported: ${SUPPORTED_LANGS.join(", ")}).`);
+        index += 1;
+      }
+    } else if (arg === "--prompt-profile") {
+      usedOptions.add("prompt-profile");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        // Validated at parse time like --mode: a typo is a usage error (exit 3),
+        // never a silent fallback to the other profile.
+        if (isPromptProfile(value)) options.promptProfile = value;
+        else errors.push(`Unsupported prompt profile: ${value} (supported: ${PROMPT_PROFILES.join(", ")}).`);
         index += 1;
       }
     } else if (arg === "--out") {
@@ -559,11 +584,15 @@ const COMMAND_OPTION_RULES = {
   // backfill is the Lite -> Strict escalation path. --write creates the missing
   // planned document STUBS (needs_review, no prose claims); without it the command
   // is a read-only plan. `strict` grades the readiness report as a gate.
-  backfill: new Set(["cwd", "type", "profile", "agent", "mode", "strict", "dry-run", "write", "existing", "format", "out"]),
-  quickstart: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "mode", "dry-run", "write", "format", "out"]),
-  handoff: new Set(["cwd", "type", "profile", "agent", "mode", "format", "out"]),
-  prompt: new Set(["cwd", "task", "type", "profile", "agent", "mode", "format", "out"]),
-  init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "mode", "dry-run", "write", "format", "out", "with-adapters", "no-adapters"]),
+  // `prompt-profile` (1.33.0) is accepted exactly where an agent prompt is
+  // rendered: prompt and handoff print one, backfill prints its reconstruction
+  // prompt, quickstart prints the handoff, and init/quickstart write the generated
+  // skills from the same builders.
+  backfill: new Set(["cwd", "type", "profile", "agent", "mode", "strict", "dry-run", "write", "existing", "prompt-profile", "format", "out"]),
+  quickstart: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "mode", "dry-run", "write", "prompt-profile", "format", "out"]),
+  handoff: new Set(["cwd", "type", "profile", "agent", "mode", "prompt-profile", "format", "out"]),
+  prompt: new Set(["cwd", "task", "type", "profile", "agent", "mode", "prompt-profile", "format", "out"]),
+  init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "mode", "dry-run", "write", "prompt-profile", "format", "out", "with-adapters", "no-adapters"]),
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
   "import-memory": new Set(["cwd", "dry-run", "apply", "format", "out"]),
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
@@ -578,6 +607,10 @@ const COMMAND_OPTION_RULES = {
   drift: new Set(["cwd", "dry-run", "downgrade", "strict", "watch-needs-review", "mode", "format", "out"]),
   impact: new Set(["cwd", "since", "strict", "mode", "format", "out"]),
   "check-run": new Set(["cwd", "run", "strict", "format", "out"]),
+  // Preview by default like fix; --write applies. `keep-months` is the only knob:
+  // the retention window counts back from the newest valid dated entry, not from
+  // today; the clock only holds back entries dated after tomorrow (UTC).
+  "archive-log": new Set(["cwd", "keep-months", "write", "format", "out"]),
   // `agent` is earned: the command inspects the adapters of the SELECTED agents,
   // so pointing it at one agent is a real narrowing. The two budget options are
   // the only way to arm harness.preload_budget / harness.skill_too_long from the
@@ -738,18 +771,19 @@ Usage:
   llm-wiki audit [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki mode [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki mode set <lite|standard|strict> [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki backfill [--write] [--mode <lite|standard|strict>] [--strict] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki prompt --task <${PROMPT_TASK_CHOICES}> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki backfill [--write] [--mode <lite|standard|strict>] [--strict] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--prompt-profile full|slim] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prompt --task <${PROMPT_TASK_CHOICES}> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki import-memory [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki import-memory --apply [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki archive-log [--keep-months <n>] [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki drift [--downgrade] [--watch-needs-review] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki impact [--since <git-ref>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki check-run [--run <path>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
@@ -774,6 +808,7 @@ Safety:
   migrate previews by default and writes only with --apply, reusing the fix scope plus wiki_block_version upgrades; it never edits verified documents' content.
   import-memory previews by default and writes only with --apply. It converts portable ecc.memory.v1 memory files (ECC Memory Vault; defaults to .ecc/memory) into needs_review drafts under docs/llm-wiki/imported/, never overwrites existing files, never touches log.md, and skips memories with sensitive-looking values (reported as counts only — no force flag).
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
+  archive-log previews by default and writes only with --write. It moves whole dated entries older than the retention window from docs/llm-wiki/log.md into monthly volumes next to it (log-YYYY-MM.md) without editing them, writes nothing unless re-parsing the planned files gives every entry back exactly once, refuses files it cannot read cleanly, renames each file into place from a temporary sibling (volumes first, log.md last), and never writes outside docs/llm-wiki.
   drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated, plus the tags: status tag when the document already carries one). It never promotes to verified.
   review is read-only by default: it risk-ranks the needs_review backlog for human spot-checking. --approve <path> (or --approve-all --yes) stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it refuses docs with blocking/structural findings and never auto-verifies — promotion happens only on an explicit --approve, and reviewed_by records who ran it.
   graph is read-only: it emits the wiki knowledge graph (documents + resolved doc-to-doc links) as text, JSON, Mermaid, or Graphviz DOT.
@@ -878,8 +913,8 @@ JSON (--format json):
   quickstart: `llm-wiki quickstart
 
 Usage:
-  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Runs doctor, init, optional frontmatter validation, and prints the Codex/Claude Code handoff prompt.
@@ -887,7 +922,7 @@ Purpose:
   handoff: `llm-wiki handoff
 
 Usage:
-  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Prints the next prompt to run in Codex or Claude Code after CLI setup, with project-type-specific source evidence guidance. Antigravity handoff remains blocked until the adapter contract is confirmed.
@@ -895,16 +930,21 @@ Purpose:
   prompt: `llm-wiki prompt
 
 Usage:
-  llm-wiki prompt --task <${PROMPT_TASK_CHOICES}> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki prompt --task <${PROMPT_TASK_CHOICES}> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Prints a repeatable agent workflow prompt. Use bootstrap for the first-time enrichment of an init-generated wiki (shares its rules with handoff), feature, fix, or refactor for code-and-doc tasks, docs-sync for stale wiki updates without unrelated code edits, and okf-extract for prompt-assisted OKF v0.1 extraction.
+  onboard and prepare are the read-only guided workflows, backfill reconstructs an incomplete wiki for a handoff, and issue drafts a GitHub issue body from the conversation and the wiki (read-only: it links the wiki docs 'llm-wiki prepare' finds and changes no file).
+
+Prompt profile:
+  --prompt-profile full|slim (or "promptProfile" in llm-wiki.config.json; the flag wins). full, the default, is the shipped text.
+  slim keeps only this tool's commands and paths, the contracts the prompts state (needs_review, no self-promotion to verified, the append-only log, no sensitive values, the doc language, the governance mode's rule), the stop conditions, and the exit criteria; it drops the delegation budget and general engineering advice. The same option applies to handoff, backfill, quickstart, and the skills init --skills generates.
 `,
   init: `llm-wiki init
 
 Usage:
-  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Previews or creates missing LLM-WIKI documents and selected adapter files. Existing adapter files are never overwritten.
@@ -997,7 +1037,7 @@ JSON (--format json):
   backfill: `llm-wiki backfill
 
 Usage:
-  llm-wiki backfill [--write] [--mode <lite|standard|strict>] [--strict] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--existing skip|overwrite] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki backfill [--write] [--mode <lite|standard|strict>] [--strict] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--existing skip|overwrite] [--prompt-profile full|slim] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   The escalation path: a repository that sat in lite for months, then needs a real
@@ -1104,6 +1144,27 @@ Scope (see GATE_REVIEW.md "Autofix (--fix) Scope Decision"):
 
   It never edits verified documents' content, never invents title/doc_type/project/author or source_files/evidence values, never enriches placeholder content, and never writes outside docs/llm-wiki. Mojibake and sensitive-looking results are skipped.
 `,
+  "archive-log": `llm-wiki archive-log
+
+Usage:
+  llm-wiki archive-log [--keep-months <n>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki archive-log --write [--keep-months <n>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+
+Purpose:
+  Keeps docs/llm-wiki/log.md readable by moving entries older than a retention window into monthly volumes next to it (docs/llm-wiki/log-YYYY-MM.md). Without --write it previews the move and writes nothing; --write applies it.
+
+Scope (see GATE_REVIEW.md "Change-Log Volume Scope Decision"):
+  - An entry is a "## " block outside frontmatter and fenced code (CommonMark fences). Entries whose heading starts with a real calendar date (YYYY-MM-DD) are dated. Undated entries, impossible dates (invalid-date), and dates after tomorrow in UTC (future-dated) stay in log.md and are listed under skipped.
+  - --keep-months <n> (default 2) keeps the newest n months, counted back from the newest valid dated entry rather than from today.
+  - Entries move whole without editing. A new volume takes them byte for byte; entries added to an existing volume go above its entries and take its line endings. Before writing, the planned files are re-parsed and every original entry must come back exactly once, or nothing is written (archive.integrity, blocked).
+  - Blocked before anything is written: log.md or an existing volume that ends inside an unterminated code fence (archive.integrity, with the line), a file that does not decode cleanly (encoding.mojibake), or a file whose name differs from a planned volume only by letter case (archive.volume_conflict).
+  - Each file is written to a temporary sibling and renamed into place, volumes first and log.md last. An interrupted run leaves an entry in both places, never in neither; the next run finds it already in its volume and only removes it from log.md (alreadyArchived).
+
+  It never edits an entry and never writes outside docs/llm-wiki. Volumes are immutable records like log.md: review, drift, impact, and fix skip them; sensitive-info and link scans still read them; stats and orphan detection count the record once, as log.md. New volumes start at status needs_review.
+
+Output:
+  Top-level keys: schemaVersion, command, write, dryRun, result, keepMonths, cutoffMonth, planned[], applied[], alreadyArchived[], skipped[], findings[]. planned[]/applied[] items are { month, file, entries, existing } and list only volumes that receive entries; alreadyArchived[] items are { month, file, heading }.
+`,
   drift: `llm-wiki drift
 
 Usage:
@@ -1162,6 +1223,12 @@ Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
     2026-08-04) — every release bumps it and no document's claims depend on the
     number. Any other key, an added/removed version field, an unparseable
     manifest, or a manifest with no baseline to compare against still count.
+  - stamp_only_exclusions names documents in the diff whose only change is a
+    review stamp; impact does not check them. Reported, never enforced, by
+    default. Opt in to one finding per such verified document with
+    "impact.stamp_only": "warning" (or "info") in rules. Raising it to "error",
+    or running with --strict while it is a warning, removes the re-stamp
+    resolution path (N-11); see llm-wiki explain impact.stamp_only.
 `,
   "check-run": `llm-wiki check-run
 
@@ -1295,8 +1362,15 @@ Purpose:
   verified %, enrichment %, and evidence coverage %), the document status mix,
   and stale-verified / orphan document counts. Reuses audit coverage.
 
+Evidence tiers:
+  human_verified counts verified documents with reviewer metadata; it does not
+  check who the reviewer was. List the reviewer names that are agents in
+  llm-wiki.config.json "agentReviewers" (matched trimmed, case-insensitive) to
+  count their approvals as agent_verified instead. Without that list
+  agent_verified is unknown (null in JSON), never 0.
+
 JSON (--format json):
-  Top-level keys: schemaVersion, command, result, stats, findings[]. stats carries documents, healthScore, status, verified/verifiedPct, enriched/enrichedPct, evidenceBacked/evidencePct, staleVerified, orphanDocuments.
+  Top-level keys: schemaVersion, command, result, stats, findings[]. stats carries documents, healthScore, status, verified/verifiedPct, enriched/enrichedPct, evidenceBacked/evidencePct, evidenceTiers { referenceChecked, humanVerified, both, agentVerified }, staleVerified, orphanDocuments.
 `,
   "list-docs": `llm-wiki list-docs
 

@@ -23,5 +23,6 @@ Required rules:
 - Keep LLM-created or LLM-edited wiki docs as `needs_review`.
 - Use `verified` only after human review.
 - If code or docs change, update related wiki docs and append `docs/llm-wiki/log.md`.
+- Keep why a change was made and how it was found in the issue or PR, not in wiki docs; the wiki keeps the durable conclusion and may link the issue or PR.
 - Do not record sensitive information in wiki docs, logs, reports, or prompts.
 - Read and write Markdown as UTF-8.

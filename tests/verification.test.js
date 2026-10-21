@@ -3561,7 +3561,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.32.0");
+  assert.equal(packageJson.version, "1.33.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");
@@ -3794,7 +3794,7 @@ test("programmatic API exposes a frozen command map mirroring the CLI surface", 
   const expected = [
     "doctor", "validate", "validate-frontmatter", "monorepo", "status", "next", "explain",
     "audit", "mode", "backfill", "quickstart", "handoff", "prompt", "init", "migrate", "import-memory", "fix",
-    "drift", "impact", "check-run", "harness-health", "review", "graph", "stats", "list-docs", "search-docs", "get-doc",
+    "archive-log", "drift", "impact", "check-run", "harness-health", "review", "graph", "stats", "list-docs", "search-docs", "get-doc",
     "get-related", "onboard", "prepare", "release-notes"
   ];
 
@@ -3807,6 +3807,7 @@ test("programmatic API exposes a frozen command map mirroring the CLI surface", 
   assert.equal(api.commands.audit, api.audit);
   assert.equal(api.commands.doctor, api.doctor);
   assert.equal(api.commands.fix, api.fixCommand);
+  assert.equal(api.commands["archive-log"], api.archiveLogCommand);
   assert.equal(api.commands["release-notes"], api.releaseNotesCommand);
   assert.equal(api.commands.monorepo, api.monorepoCommand);
   assert.equal(typeof api.parseArgs, "function");

@@ -85,7 +85,7 @@ Conservative-write guarantees are unchanged: `init` / `quickstart` / `fix` write
 | Distribution path | Publish through the public npm registry. | npm, npx, and yarn consumers can install without GitHub Packages authentication. |
 | Existing docs | Keep by default; rewrite only with `--existing overwrite`. | Existing project knowledge should not be erased accidentally. |
 | Uninitialized wiki | Report one confirmation-oriented warning when `docs/llm-wiki/index.md` is missing. | Agents should ask whether to proceed or initialize LLM-WIKI instead of flooding the user with document-level warnings. |
-| Append-only log | Never overwrite `docs/llm-wiki/log.md`. | The log is historical evidence. |
+| Append-only log | Never overwrite `docs/llm-wiki/log.md`. (Restated in 1.33.0: entries are never edited; whole entries may move verbatim into monthly volumes — see "Change-Log Volume Scope Decision".) | The log is historical evidence. |
 | Adapter files | Never overwrite existing adapter files. | Teams often keep local tool policy there. |
 | Antigravity | Keep `ANTIGRAVITY.md` as an info-level candidate. | The loading contract is still tool-dependent. |
 | Migration apply | Keep blocked. | Automatic migration writes need a separate accepted scope. |
@@ -2715,6 +2715,16 @@ argument, not a measurement, and the honest state of the evidence is "unfalsifie
 not a demonstrated win." The one remaining cheap check (a free blind re-grade of the stored
 answers, no API calls) has not been run.
 
+**1.33.0 (2026-10-20): an off switch, not a verdict.** `--prompt-profile slim` (config
+`promptProfile`) renders every generated prompt and skill without this block and without generic
+engineering advice, keeping only this tool's commands and paths, the contracts the prompts state, the
+stop conditions, and the exit criteria (about 44–50% of `full` by characters). The default stays
+`full`, byte for byte (8,520 rendered prompts, skills, and CLI outputs compared before and after).
+An outside practitioner's write-up (2026-10) reports the opposite of this block's premise for
+frontier models — detailed procedure that helped an older model got in a newer one's way, and
+trimming the skills improved results. That is an anecdote, not a measurement, which is why the
+shorter text ships opt-in and the default moves only on a measured A/B.
+
 ## Governance Modes Scope Decision (accepted for 1.30.0 — built, shipped 2026-09-07)
 
 The product enforced one policy: the completeness bar appropriate to a handoff. A team three
@@ -2954,6 +2964,108 @@ sentence, which is a workflow change, not a bug fix.
 
 Until it is decided, `impact` reports `stamp_only_exclusions` and changes no exit code, so the
 situation is visible rather than silent.
+
+**Added in 1.33.0 (2026-10-20): visibility on request — not a decision.** Two opt-in pieces; neither
+changes a default finding, output line, or exit code, and the question above stays open.
+
+- **`impact.stamp_only`** (rule, off unless named in `rules`). The `stamp_only_exclusions` report as
+  one finding per document impact actually watches — verified, grounded in a local anchor, not a
+  release note, template, or change-log record. A stamp-only *downgrade* is not reported: it is the
+  remediation this product recommends, and flagging it would punish the honest move. Silent while
+  `impact.source_changed` itself is off. Raising it to `error`, or running `--strict` while it is a
+  `warning`, reopens N-11; `explain impact.stamp_only` and `help impact` say so and point at `info`.
+- **`agentReviewers`** (config). `stats` moves a verified document whose `reviewed_by` names a listed
+  agent (trimmed, case-insensitive, exact) out of `human_verified` into a new `agent_verified`.
+  Without the list `agent_verified` is `null` — "not distinguishable here", never `0`. Measured on
+  this repository with its configured reviewer as the only entry: `human_verified` 51 → human 4 /
+  agent 47, which matches this wiki's own statement that only pre-2026-08-03 approvals were a
+  person's. This repository's config was not changed in the batch.
+
+**Why the batch did not take the recommended resolution.** An outside practitioner's write-up
+(2026-10) of an AI-native team adds an argument against it: rules added to stop form-only output
+produced code that passed the rules on the surface and hid the problem behind them. A mandatory
+"what was checked" Review Note has the same shape — the gate would be satisfied by a boilerplate
+sentence instead of a timestamp, and this repository's own Review Notes already show that sentence
+("re-checked, body unchanged") many times over. That does not settle N-9/N-11. It is why the cheaper
+step came first: make the stamp visible, see how often it fires, then decide.
+
+## Change-Log Volume Scope Decision (1.33.0, 2026-10-01 — built, unreleased)
+
+**The problem, measured in two adopting projects.** A change log that is never
+pruned becomes the most expensive file in the wiki: ~400K characters in one
+project, ~1M in the other. Both cut their read cost by hand on 2026-09-30/10-01
+and filed what they removed in opposite places. One appended it to the tail of
+`log.md` (the principle held, the file kept growing). The other moved it out of
+`docs/llm-wiki/` (the file shrank, but the moved text left every scan, and a
+write outside the wiki is a boundary this tool has never crossed). Neither is a
+path this tool can recommend as it stood.
+
+**Accepted: `archive-log`, a scoped write command (preview by default, `--write`
+applies).** It moves whole `## ` entries older than a retention window out of
+`log.md` into monthly volumes `docs/llm-wiki/log-YYYY-MM.md`.
+
+- **The append-only principle is restated, not abandoned.** What made the log
+  untouchable is that it is evidence; evidence survives as long as no entry is
+  edited. So: entries are never edited, and whole entries may move verbatim into
+  a volume. The command proves this before writing — it re-parses every planned
+  file and refuses (`archive.integrity`, blocked) unless the original entries
+  come back exactly once each. A new volume takes entries byte for byte; an
+  entry added to an existing volume takes that volume's line endings, which is
+  the only byte that may differ. Each file is written to a temporary sibling and
+  renamed into place, volumes before `log.md`, so an interruption leaves an entry
+  in both places and never in neither — and the next run finds it already in its
+  volume and only removes it from `log.md` (`alreadyArchived`), so a resumed run
+  does not duplicate it either. (The first build wrote in place and appended
+  again on a rerun; a pre-release review reproduced both, 2026-10-20.)
+- **Volumes sit next to `log.md`, not in an archive directory.** Entries carry
+  relative links; one directory deeper they would all have to be rewritten,
+  which is editing the evidence. The cost is one file per month in the wiki
+  root, accepted.
+- **Volumes inherit everything `log.md` already had** through one predicate,
+  `isAppendOnlyLog`, so the enumerators cannot disagree (the N-14 lesson):
+  never rewritten by fix/migrate/init, outside review/drift/impact/backfill,
+  deprioritized in retrieval, still read by sensitive-info and link scans.
+  New volumes are seeded `needs_review`; like `log.md` their status is set by
+  hand because review does not cover change-log records.
+- **The window counts back from the newest valid dated entry, not from today**,
+  so a run is reproducible. The clock is consulted for one thing only: an entry
+  dated after tomorrow (UTC) is held back as `future-dated`, because a single
+  typo (`2062` for `2026`) otherwise became "the newest entry" and archived every
+  real one. Impossible dates (`2026-13-01`) are held back as `invalid-date`.
+- **Undated `## ` sections stay where they are** and are reported, because the
+  tool cannot tell an entry from an appended archive section without a date.
+- **Refused before anything is written:** a file ending inside an unterminated
+  code fence (past it a renderer shows code, so entries cannot be told apart), a
+  `log.md` or existing volume that does not decode cleanly (`encoding.mojibake`),
+  and a file whose name differs from a planned volume only by letter case
+  (`archive.volume_conflict`, because the outcome would depend on the
+  filesystem).
+- **Aggregates count the record once.** `stats` and orphan detection leave
+  volumes out (`isLogVolume`) so archiving moves no percentage; `log.md` itself is
+  counted exactly as before.
+
+**Accepted: four opt-in rules, all silent by default.** `markdown_link.anchor_missing`
+and `content.dated_heading` through `rules`; `budget.log_over` and
+`budget.doc_over` through a new `wikiBudget` config block (positive integers,
+chars/4 proxy, no shipped threshold — the same posture as `harnessHealth`).
+**Direction: no new findings unless asked for.** `markdown_link.missing` keeps
+dropping the fragment; turning anchors into a default would have been a
+MORE-findings change for every adopter. For the same reason none of the four is
+in the `strict` rule preset or the `strict` governance mode: adding a warning
+there would newly fail every strict-preset adopter that runs with `--strict`.
+
+**Rejected: rewriting compaction in the CLI.** Shortening a document's history
+into a statement of the present is judgment. The CLI measures and reports; the
+writing stays with an agent and a reviewer (the `backfill` principle: the CLI
+assembles no prose).
+
+**Deferred:** heading-rename propagation (updating inbound links when a heading
+changes) would widen `fix`'s write scope, which this document says stays closed
+until separately accepted.
+
+**Sized MINOR.** One command, one config block, additive JSON. The frozen
+`commands` map gains a key, which is a contract change approved by the
+maintainer for this release.
 
 ## Release Caveats
 

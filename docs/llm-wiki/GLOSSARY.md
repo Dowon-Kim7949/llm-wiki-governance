@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: glossary
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-20
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-08
+reviewed_at: 2026-10-20
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -36,14 +36,15 @@ contains_sensitive_info: false
 - **Frontmatter** — 각 wiki 문서 상단의 YAML 블록. 필수 필드/enum은 `src/frontmatter-schema.js`가 정의한다.
 - **status** — 문서 검토 상태. 허용값: `draft`, `needs_review`, `verified`, `deprecated`(`src/config.js` `VALID_STATUSES`). CLI/에이전트 **생성 시점** 산출물은 항상 `needs_review`(생성기에는 `verified` 경로가 없다).
 - **verified** — 검토가 끝난 문서에만 부여하며, 누가 검토했는지는 `reviewed_by`가 말한다. `--strict`에서는 `reviewed_by`/`reviewed_at`가 없으면 실패. 도구는 스스로 승격하지 않고 명시적 `review --approve`/`--approve-all --yes`만이 스탬프한다 — **누가 그 명령을 실행하는지는 저장소 정책이다.** 이 저장소는 2026-08-03부터 에이전트 승인을 허용하고 `reviewed_by`에 에이전트를 적는다([index.md](index.md) Status). 도입처 기본값은 사람 검토다.
-- **human_verified** (evidence tier) — `stats`가 계산하는 report-only 값이며 정의는 "`verified` + reviewer 메타 존재"다. **reviewer가 사람인지 검사하지 않으므로**, 이 저장소에서는 에이전트 승인분도 여기에 포함된다. 이름과 실제 의미가 어긋나 있고, 이 저장소의 수치를 인용할 때 그 사실을 함께 적어야 한다.
+- **human_verified** (evidence tier) — `stats`가 계산하는 report-only 값이며 정의는 "`verified` + reviewer 메타 존재"다. **reviewer가 사람인지 검사하지 않으므로**, 이 저장소에서는 에이전트 승인분도 여기에 포함된다. 이름과 실제 의미가 어긋나 있고, 이 저장소의 수치를 인용할 때 그 사실을 함께 적어야 한다. 1.33.0(미출시)부터 config `agentReviewers`에 에이전트 검토자 이름을 적으면 그 승인은 **agent_verified**로 분리된다(목록이 없으면 `null` = 구분 불가). 이 저장소에 적용하면 51 → 사람 4 / 에이전트 47이지만 config는 아직 바꾸지 않았다.
 - **source_files** — 문서 주장이 근거로 삼는 파일 목록(넓은 범위 근거).
-- **evidence** — 파일/라인/심볼/섹션/라우트 단위의 정밀 근거 참조. 예: `src/cli.js#symbol:main`, `file#L10-L20`, `file#route:/users`. 본문 `## Evidence` 섹션과 정렬되어야 한다.
+- **evidence** — 파일/라인/심볼/섹션/라우트 단위의 정밀 근거 참조. 예: `src/cli.js#symbol:main`, `file#L10-L20`, `file#route:/users`. 본문 `## Evidence` 섹션과 정렬되어야 한다. 형식의 정의는 `src/frontmatter-schema.js#symbol:EVIDENCE_REFERENCE_PATTERN` 하나다(1.33.0). 파일 없는 `#anchor`는 아무 소스도 가리키지 않으므로 evidence가 아니다.
 - **related** — 연결된 다른 wiki 문서 경로. 존재하지 않으면 `related.missing` 경고(P0-2에서 추가).
 - **wikiGraph** — 위키 링크(이중 대괄호 표기) 기반 문서 그래프. 미해결 개념(unresolved concepts)·별칭(aliases)·고아 문서(orphans)를 집계한다.
 - **adapter** — 에이전트에게 wiki 진입점을 알리는 파일. `AGENTS.md`(Codex), `CLAUDE.md`(Claude Code), `.cursor/rules/llm-wiki.mdc`(Cursor), `.github/copilot-instructions.md`(GitHub Copilot), 후보 `ANTIGRAVITY.md`.
 - **profile** — 프로젝트 유형별 추가 문서 집합(`frontend`/`backend`/`fullstack`/`library`/`okf-v0.1`). `src/config.js` `PROFILE_DOCS`.
-- **llm-wiki.config.json** — 프로젝트 루트의 선택적 설정 파일. 인식하는 키는 `type`·`profiles`·`agents`·`strict`·`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage`·`harnessHealth`·`governance`(1.30.0, `{ "mode": "lite"|"standard"|"strict" }`)이며, unknown 키는 무시돼 옛 파일이 계속 동작한다. **1.31.0부터 값 어휘도 검증한다**: `type`은 `KNOWN_TYPES`에, `agents`는 `SUPPORTED_AGENTS`에 대조하고 위반은 config 오류(exit 3), `agents`의 `all`은 CLI와 같이 세 이름으로 펼쳐진다 — 그 전에는 타입만 봐서 `{"type": "frontendd"}`가 조용히 통과했다. 적용 우선순위는 CLI 플래그 > config > 자동감지(`strict`는 additive라 config가 켤 수만 있다). `src/config-file.js`. 키별 의미는 [PUBLIC_API](PUBLIC_API.md)의 Configuration 절이 소유한다.
+- **llm-wiki.config.json** — 프로젝트 루트의 선택적 설정 파일. 인식하는 키는 `type`·`profiles`·`agents`·`strict`·`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage`·`harnessHealth`·`wikiBudget`(1.33.0, `{ "logTokens", "docTokens" }`)·`agentReviewers`(1.33.0, 이름 배열)·`promptProfile`(1.33.0, `"full"|"slim"`)·`governance`(1.30.0, `{ "mode": "lite"|"standard"|"strict" }`)이며, unknown 키는 무시돼 옛 파일이 계속 동작한다. **1.31.0부터 값 어휘도 검증한다**: `type`은 `KNOWN_TYPES`에, `agents`는 `SUPPORTED_AGENTS`에 대조하고 위반은 config 오류(exit 3), `agents`의 `all`은 CLI와 같이 세 이름으로 펼쳐진다 — 그 전에는 타입만 봐서 `{"type": "frontendd"}`가 조용히 통과했다. 적용 우선순위는 CLI 플래그 > config > 자동감지(`strict`는 additive라 config가 켤 수만 있다). `src/config-file.js`. 키별 의미는 [PUBLIC_API](PUBLIC_API.md)의 Configuration 절이 소유한다.
+- **월별 권(log volume)** — `docs/llm-wiki/log-YYYY-MM.md`. `archive-log`(1.33.0)가 `log.md`에서 보존 기간을 넘긴 항목을 고치지 않고 통째로 옮겨 두는 파일이다(기존 권에 덧붙일 때는 줄끝만 그 권을 따른다). 집계(`stats`·orphan)에서는 `log.md` 하나로 센다. `log.md`와 같은 변경 로그 기록으로 취급된다(`isAppendOnlyLog`): 다시 쓰이지 않고 review·drift·impact 대상이 아니며, 민감정보·링크 스캔은 받는다.
 - **rules / rulesPreset** — finding 규칙의 severity를 프로젝트 단위로 조정하는 수단. `rules`는 규칙 id → `off`/`blocked`/`error`/`warning`/`info` 맵이고, `rulesPreset`은 `relaxed`/`standard`/`strict` 명명 번들(`src/commands/findings.js` `RULE_PRESETS`)을 바닥값으로 깐다 — 명시적 `rules` 항목이 항상 프리셋을 이긴다. `sensitive.*`는 어느 쪽으로도 끌 수 없다. 둘 다 finding severity만 바꾸며 `--strict`(exit code 의미론)와는 별개다.
 - **OKF v0.1** — 외부 지식 포맷 호환 프로필. `type`/`aliases`/`tags`와 위키 링크를 검증한다.
 - **not_enriched** — 생성 후 아직 실제 내용으로 보강되지 않은 문서 신호(`content.not_enriched`, P0-3에서 추가).

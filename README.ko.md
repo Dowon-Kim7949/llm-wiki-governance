@@ -43,13 +43,13 @@ CLI를 돌리는 데는 모델이 필요 없습니다. 모델이 쓰이는 곳�
 | `list-docs` · `search-docs` · `get-doc` · `get-related` | 문서 본문을 돌려주는 읽기 전용 조회입니다. 민감한 줄은 가려서 나옵니다. |
 | `graph` · `stats` | 지식 그래프(text/JSON/Mermaid/DOT) · 헬스 스냅샷. |
 | `mcp` | 읽기 전용 MCP 서버를 띄웁니다. |
-| `fix` · `migrate` · `handoff` · `prompt` · `check-run` · `harness-health` · `import-memory` | 범위를 한정한 자동 수정, 문서 계약 업그레이드, 에이전트 프롬프트, 하네스 점검입니다. |
+| `fix` · `migrate` · `archive-log` · `handoff` · `prompt` · `check-run` · `harness-health` · `import-memory` | 범위를 한정한 자동 수정, 문서 계약 업그레이드, 변경 로그 월별 보관, 에이전트 프롬프트, 하네스 점검입니다. |
 
 쓰기는 `--write`나 `--apply`, `--approve`를 직접 줬을 때만 일어나고 나머지는 전부 읽기 전용입니다. `--lang ko`를 붙이면 findings 메시지가 한국어로 나오고, `--doc-lang ko`를 붙이면 생성되는 위키 본문이 한국어가 됩니다. CLI를 spawn하는 대신 패키지를 import해서 쓸 수도 있습니다(`import { commands, run } from "llm-wiki-governance"`).
 
 명령과 옵션, exit code를 전부 보려면 `npx llm-wiki-governance help <command>`를 오프라인으로 돌리거나 [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md)를 보세요.
 
-CI에서 돌리려면 [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 참조하되 태그를 정확히 고정하세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.32.0`. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)에 있습니다. 비공개 저장소라 Actions 분을 쓰고 싶지 않다면 두 가지 경로가 있습니다 — 러너 없이 도는 `templates/git-hooks/pre-commit`, 또는 `LLM_WIKI_RUNNER` 변수로 워크플로를 self-hosted 러너에 붙이는 것(둘의 차이와 함정은 OPERATIONS.md).
+CI에서 돌리려면 [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 참조하되 태그를 정확히 고정하세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.33.0`. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)에 있습니다. 비공개 저장소라 Actions 분을 쓰고 싶지 않다면 두 가지 경로가 있습니다 — 러너 없이 도는 `templates/git-hooks/pre-commit`, 또는 `LLM_WIKI_RUNNER` 변수로 워크플로를 self-hosted 러너에 붙이는 것(둘의 차이와 함정은 OPERATIONS.md).
 
 ## 거버넌스 모드
 

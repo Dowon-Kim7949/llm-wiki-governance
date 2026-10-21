@@ -988,6 +988,39 @@ on upgrade. **The saving was not measured**, and nothing in this release claims 
 test-suite share depends on the adopter's suite, and the rest depends on whether they move to a
 self-hosted runner.
 
+## Release Plan (post-1.32.0) — what a wiki costs to read — **shipped as 1.33.0 (2026-10-21)**
+
+A wiki that lives long enough gets expensive in two places nobody budgets for: the change log,
+which only grows, and knowledge documents that slowly accrete "how we found it" history. Two
+adopting projects cut the same costs by hand and filed the result in opposite places — one kept
+append-only and let `log.md` reach about 1 MB, the other moved history outside `docs/llm-wiki/`,
+outside every scan and against the write boundary. Neither was wrong about the cost; both lacked
+a supported path.
+
+The organising principle: reading the wiki should cost what the current work needs, and the
+record of who approved what should say so plainly.
+
+- **`archive-log` moves old change-log entries into monthly volumes, whole and unedited.**
+  Append-only is restated, not dropped: entries are never edited, and a move must be provable
+  before it is written (every original entry re-parsed back exactly once, or nothing is written).
+  This repository ran it on itself: `log.md` went from 515 KB to 68 KB, with 213 entries in two
+  volumes and 18 kept.
+- **Four wiki-hygiene rules, all opt-in** (anchors, dated headings, log and document budgets).
+  None is in the `strict` preset; a rule that fires on day one is a rule people learn to ignore.
+- **Less prompt, on request.** `--prompt-profile slim` renders only this tool's contracts, stop
+  conditions, and exit criteria. The default stays `full`, byte for byte, because the shorter text
+  has not been measured.
+- **Who approved what.** `agentReviewers` lets `stats` count agent approvals apart from human
+  ones. This repository lists its own agent reviewer, so its `verified` count now reads as
+  4 human and 47 agent approvals instead of one number that had to be footnoted.
+- **One evidence shape.** The runtime now uses the published schema's pattern. The one place this
+  can fail a build that used to pass — a bare `#anchor` in `evidence` — was already outside
+  the published contract, and affected 0 of 1,292 entries across 11 local adopting wikis.
+
+**MINOR.** One new command, new config keys, one new task preset, opt-in rules; the behaviour
+changes are named in the CHANGELOG. The read-cost saving of `slim` is unmeasured and is not
+claimed; the `archive-log` numbers above are measured byte counts, not token estimates.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

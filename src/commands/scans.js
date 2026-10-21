@@ -558,6 +558,32 @@ export function evidenceTier({ status, reviewedBy, reviewedAt, hasGrounding, has
   };
 }
 
+// The configured agent reviewer names (config `agentReviewers`), normalized for
+// matching, or null when the project has not named any. null is load-bearing: it
+// means "who approved is not distinguishable here", which is a different fact from
+// "no agent approved anything" — stats reports agent_verified as null, never 0, in
+// that case.
+export function agentReviewerSet(agentReviewers) {
+  if (!Array.isArray(agentReviewers)) return null;
+  const names = agentReviewers
+    .filter((name) => typeof name === "string" && name.trim() !== "")
+    .map(normalizeReviewerName);
+  return names.length > 0 ? new Set(names) : null;
+}
+
+// True when a document's reviewed_by names one of the configured agent reviewers.
+// Leading/trailing whitespace is ignored and the match is case-insensitive, so
+// "Claude Code" in the config matches "claude code " in a stamp; nothing else is
+// fuzzy (no substring or prefix matching — "Claude" does not match "Claude Code").
+export function isAgentReviewer(reviewedBy, agentSet) {
+  if (!agentSet || typeof reviewedBy !== "string") return false;
+  return agentSet.has(normalizeReviewerName(reviewedBy));
+}
+
+function normalizeReviewerName(name) {
+  return name.trim().toLowerCase();
+}
+
 // Which local files a verified document's freshness depends on, and the
 // review baseline to compare against. Pure so it can be tested without git.
 // Pure: the local source-file anchors a verified document depends on, or null
@@ -759,6 +785,22 @@ export function driftFinding(rel, reference, baseline) {
   };
 }
 
+// Whether a document anchor (a file or a directory) is touched by the change set.
+// A directory anchor matched NOTHING when this compared exact strings, because git
+// only ever lists files (defect N-8): a verified document anchored to
+// `src/commands/` was never flagged when a file under it changed, even though the
+// date-anchored drift scan fires on the same edit via `git log -- <dir>`. That is
+// a false negative in the one gate that catches what this product exists for, so
+// the two scans now agree. A file anchor cannot gain a false positive from this:
+// no path can start with "<a file>/". Exported so impactCommand's opt-in
+// impact.stamp_only names the same changed anchors this scan would have named —
+// two matchers would be two answers to one question (the N-14 lesson).
+export function changedAnchorMatcher(changedSet) {
+  const changedPaths = [...changedSet];
+  return (base) => changedSet.has(base)
+    || changedPaths.some((changed) => changed.startsWith(`${base.replace(/\/+$/, "")}/`));
+}
+
 // Gate 23 reverse-impact (diff-anchored). Given a set of repo-relative changed
 // paths (from git.js#changedFiles: the working tree, or a `--since <ref>` PR/CI
 // diff), flag each verified document whose referenced source files are IN the
@@ -775,16 +817,7 @@ export function driftFinding(rel, reference, baseline) {
 export async function scanReverseImpact(cwd, changedSet) {
   const findings = [];
   if (!changedSet || changedSet.size === 0) return findings;
-  const changedPaths = [...changedSet];
-  // A directory anchor matched NOTHING here, because this scan compared exact
-  // strings while git only ever lists files (defect N-8): a verified document
-  // anchored to `src/commands/` was never flagged when a file under it changed,
-  // even though the date-anchored drift scan fires on the same edit via
-  // `git log -- <dir>`. That is a false negative in the one gate that catches what
-  // this product exists for, so the two scans now agree. A file anchor cannot
-  // gain a false positive from this: no path can start with "<a file>/".
-  const anchorMatches = (base) => changedSet.has(base)
-    || changedPaths.some((changed) => changed.startsWith(`${base.replace(/\/+$/, "")}/`));
+  const anchorMatches = changedAnchorMatcher(changedSet);
   for (const file of await listTargetMarkdown(cwd)) {
     const rel = toPosix(path.relative(cwd, file));
     if (isTemplateDoc(rel)) continue;

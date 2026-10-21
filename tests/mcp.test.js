@@ -270,10 +270,26 @@ test("get_doc --compact keeps the body only in structuredContent (avoids content
   assert.ok("estimatedTokens" in compact.result.structuredContent.document, "compact carries the diagnostic estimatedTokens");
 });
 
+// A one-document wiki for the stdio tests. `--cwd repoRoot` made `stats` scan
+// the whole repository (14–21s), racing the 20s timeout; this keeps the
+// round-trip about the protocol, not the size of this repo's wiki.
+async function makeMcpFixture() {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "mcp-stdio-"));
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await writeFile(
+    path.join(cwd, "docs", "llm-wiki", "index.md"),
+    "---\ntitle: Index\nstatus: needs_review\n---\n\n# Index\n",
+    { encoding: "utf8" }
+  );
+  return cwd;
+}
+
 // Spawn the MCP server, stream newline-delimited JSON-RPC, and collect messages.
 // `until(byId, nullIdReplies)` resolves the wait; the caller ends stdin after.
+// The spawn cwd stays repoRoot because `bin/llm-wiki.js` is a relative path.
 async function driveMcpServer(lines, until) {
-  const child = spawn(process.execPath, ["bin/llm-wiki.js", "mcp", "--cwd", repoRoot], { cwd: repoRoot });
+  const fixture = await makeMcpFixture();
+  const child = spawn(process.execPath, ["bin/llm-wiki.js", "mcp", "--cwd", fixture], { cwd: repoRoot });
   const byId = new Map();
   const nullIdReplies = [];
   let buf = "";
@@ -330,7 +346,8 @@ test("mcp stdio server: real JSON-RPC round-trip, and no reply to the notificati
 });
 
 test("mcp stdio server: recovers from a malformed line and keeps serving", async () => {
-  const child = spawn(process.execPath, ["bin/llm-wiki.js", "mcp", "--cwd", repoRoot], { cwd: repoRoot });
+  const fixture = await makeMcpFixture();
+  const child = spawn(process.execPath, ["bin/llm-wiki.js", "mcp", "--cwd", fixture], { cwd: repoRoot });
   const messages = [];
   let buf = "";
   const done = new Promise((resolve, reject) => {

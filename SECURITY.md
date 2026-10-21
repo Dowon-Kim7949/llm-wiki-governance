@@ -52,7 +52,8 @@ A few facts that help scope reports:
   (`init`/`quickstart`/`fix` → wiki and adapter files; `mode set` → the
   `governance.mode` key of `llm-wiki.config.json`, the one non-wiki file any
   command writes; `backfill` → missing planned document **stubs** at
-  `needs_review`), `--apply` (`migrate`, `import-memory`), `--approve` /
+  `needs_review`; `archive-log` → older change-log entries moved verbatim
+  into monthly volumes next to `log.md`), `--apply` (`migrate`, `import-memory`), `--approve` /
   `--approve-all --yes` (`review` → the review stamp only), `--downgrade`
   (`drift` → `verified` → `needs_review`), and `--out` (a report path you name).
   It does not transmit project contents anywhere.
@@ -148,7 +149,7 @@ deployment. Understand its boundary before exposing it:
   `status`, `doctor`, `stats`, `graph`, `explain`, `mode`, `handoff`, `prompt`,
   `list_docs`, `search_docs`, `get_doc`, `get_related`, `onboard`, `review`,
   `prepare`. No write path is reachable: `init`/`fix`/`migrate`/`quickstart --write`,
-  `backfill`, `drift --downgrade`, `mode set --write`, and the `review`
+  `backfill`, `archive-log --write`, `drift --downgrade`, `mode set --write`, and the `review`
   **promotion** path are all absent. `mode` is the read-only report only — it
   cannot change the level. Tools carry `readOnlyHint`. Promotion to `verified`
   stays a human CLI action; the `review` MCP tool exposes only the read-only

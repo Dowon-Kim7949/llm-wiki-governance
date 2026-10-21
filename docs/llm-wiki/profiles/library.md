@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: profile
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-20
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-08
+reviewed_at: 2026-10-20
 wiki_block_version: v1
 source_files:
   - package.json
@@ -31,6 +31,7 @@ contains_sensitive_info: false
 
 - 이 프로젝트는 `library` 프로필로 관리한다: 공개 계약(CLI 명령 표면), 버전 정책, 예시, 릴리스 흐름이 핵심 문서다.
 - 라이브러리형 문서 세트: [Public Api](../PUBLIC_API.md), [Versioning](../VERSIONING.md), [Examples](../EXAMPLES.md), [Release Flow](../RELEASE_FLOW.md).
+- 공개 계약은 CLI 명령 표면과 **프로그래매틱 import API** 두 가지다. 후자는 [Public Api](../PUBLIC_API.md)가 안정 계약으로 문서화한다. `commands`는 `src/cli.js`의 `COMMANDS`와 1:1인 동결 맵이라, 명령을 더하면 그 키 집합도 바뀐다. 1.33.0의 `archive-log`가 그런 경우이고, 유지보수자 승인을 받은 계약 변경으로 기록돼 있다(`GATE_REVIEW.md` "Change-Log Volume Scope Decision").
 
 ## Why library
 
@@ -42,7 +43,7 @@ contains_sensitive_info: false
 
 ## Open Questions
 
-- 추후 프로그래매틱 import API(예: `src/commands.js` 핸들러 직접 호출)를 공개 계약으로 문서화할지 결정 필요.
+- 현재 없음. 이전 질문("프로그래매틱 import API를 공개 계약으로 문서화할지")은 `PUBLIC_API.md`의 프로그래매틱 API 절로 해소됐다. 2026-10-20에 확인했다.
 
 ## Review Notes
 

@@ -19,7 +19,7 @@ import path from "node:path";
 import { pathExists, toPosix } from "../files.js";
 import { readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
-import { buildTaskPrompt } from "../task-prompts.js";
+import { DEFAULT_PROMPT_PROFILE, buildTaskPrompt, isPromptProfile } from "../task-prompts.js";
 import { normalizeLang } from "../i18n.js";
 import { effectiveGovernanceMode } from "../governance.js";
 import { estimateTokens } from "./retrieval.js";
@@ -30,6 +30,9 @@ import { estimateTokens } from "./retrieval.js";
 const SKILL_ARTIFACT_VERSION = "5";
 
 // The workflows exposed as skills, and their invocable slug/description.
+// `okf-extract`, `refactor`, and `issue` (1.33.0) are prompt presets only: a skill
+// is part of the always-loaded surface, and an on-demand preset ('llm-wiki prompt
+// --task issue') should not grow it.
 export const SKILL_TASKS = [
   { task: "bootstrap", slug: "llm-wiki-bootstrap", description: "Enrich a newly initialized LLM-WIKI from actual source evidence while keeping documents needs_review." },
   { task: "onboard", slug: "llm-wiki-onboard", description: "Guide a newcomer through a work area from real code evidence, using the project's LLM-WIKI (read-only)." },
@@ -181,7 +184,8 @@ export function skillArtifactPaths(slug) {
 // bootstrap; the live run-time map for the rest), the reusable wiki-grounded
 // workflow from task-prompts.js, then the Gate 26 completion contract (a run
 // manifest the agent writes so `llm-wiki check-run` can verify the pipeline).
-async function artifactBody(cwd, task, detection, docLang = "en", governanceMode = undefined) {
+async function artifactBody(cwd, task, detection, docLang = "en", governanceMode = undefined, promptProfile = DEFAULT_PROMPT_PROFILE) {
+  const slim = isPromptProfile(promptProfile) && promptProfile !== DEFAULT_PROMPT_PROFILE;
   const built = buildTaskPrompt({
     // The artifact is committed to the repo and invoked from its root, so the body
     // must not bake in the generating machine's absolute path (non-portable, and it
@@ -192,18 +196,36 @@ async function artifactBody(cwd, task, detection, docLang = "en", governanceMode
     profiles: detection?.activeProfiles ?? [],
     agents: [],
     docLang,
-    governanceMode
+    governanceMode,
+    promptProfile
   });
   const mapSection = task === "bootstrap"
     ? domainMapSection(await readDomainMap(cwd))
     : liveWikiMapSection(task);
-  const closing = READ_ONLY_TASKS.has(task) ? readOnlyNote() : manifestContractSection(task);
+  const closing = READ_ONLY_TASKS.has(task)
+    ? (slim ? slimReadOnlyNote() : readOnlyNote())
+    : (slim ? slimManifestContractSection(task) : manifestContractSection(task));
   return `${mapSection}\n\n${forArtifact(built.prompt)}\n\n${closing}\n`;
 }
 
 // Closing note for read-only skills (onboard/prepare): no run manifest, no writes.
 function readOnlyNote() {
   return `Read-only workflow: this skill investigates and explains — it does not change files, and it writes no run manifest. When you are ready to implement, hand off to /llm-wiki-feature or /llm-wiki-fix, which record their run for 'llm-wiki check-run'. Never promote a document to verified; that is human-approved only.`;
+}
+
+// slim prompt profile (1.33.0): the same two closings, with the contract intact
+// and the explanation dropped. The manifest keeps every field name check-run
+// reads, the "reads no other" field-set statement, the two-sentence cap, and the
+// no-payload rule — the parts agent-token-discipline.test.js pins for `full`.
+function slimReadOnlyNote() {
+  return "Read-only: change no files and write no run manifest. To implement, hand off to /llm-wiki-feature or /llm-wiki-fix. Never promote a document to verified.";
+}
+
+function slimManifestContractSection(task) {
+  const testEvidence = task === "feature" || task === "fix"
+    ? ", testEvidence {red, green} (the test failing before your change and passing after; no secrets)"
+    : "";
+  return `Completion contract (enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-${task}-<timestamp>.json with task="${task}", changedSource[], touchedDocs[], logAppended (bool), validated {ran, result}${testEvidence}; check-run reads no other field. An optional summary is two sentences at most; never paste diffs, file contents, logs, or test output. Then run 'llm-wiki check-run'. The manifest never replaces human review and never promotes a document to verified.`;
 }
 
 // Gate 26 completion contract embedded in each skill body: after the run, the agent
@@ -299,8 +321,9 @@ export async function planSkillArtifacts(cwd, agents, detection, options) {
   const refresh = Boolean(options && options.refresh);
   const docLang = normalizeLang(options && options.docLang);
   const governanceMode = effectiveGovernanceMode(options);
+  const promptProfile = options && options.promptProfile;
   for (const entry of SKILL_TASKS) {
-    const body = await artifactBody(cwd, entry.task, detection, docLang, governanceMode);
+    const body = await artifactBody(cwd, entry.task, detection, docLang, governanceMode, promptProfile);
     for (const target of artifactTargets(formats, entry)) {
       const absolutePath = path.join(cwd, target.path);
       if (!(await pathExists(absolutePath))) {
@@ -343,8 +366,9 @@ export async function writeSkillArtifacts(cwd, agents, detection, options) {
   const refresh = Boolean(options && options.refresh);
   const docLang = normalizeLang(options && options.docLang);
   const governanceMode = effectiveGovernanceMode(options);
+  const promptProfile = options && options.promptProfile;
   for (const entry of SKILL_TASKS) {
-    const body = await artifactBody(cwd, entry.task, detection, docLang, governanceMode);
+    const body = await artifactBody(cwd, entry.task, detection, docLang, governanceMode, promptProfile);
     for (const target of artifactTargets(formats, entry)) {
       const absolutePath = path.join(cwd, target.path);
       const content = withGeneratedMarker(target.render(entry, body));

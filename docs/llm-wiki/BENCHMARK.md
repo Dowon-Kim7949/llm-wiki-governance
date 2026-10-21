@@ -7,11 +7,11 @@ tags:
 status: verified
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-20
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-08
+reviewed_at: 2026-10-20
 wiki_block_version: v1
 source_files:
   - bench/run.js
@@ -337,6 +337,11 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   **인과 주장 자체는 스코프 안에서 성립**하므로, 각주에는 "retrieval 툴이 아니라 **보강된 내용**이
   절감을 만든다(통제 arm으로 확인, 이 픽스처 한정)"까지 쓸 수 있다. 함께 쓸 수 있는 더 강한
   문장은 효율이 아니라 거버넌스 쪽이다: **"미보강 위키는 없느니만 못하다(+14%)."**
+- **1.33.0 `--prompt-profile slim`의 크기 수치에도 같은 규율을 적용한다.** `GATE_REVIEW.md`
+  "Delegation Policy Scope Decision"이 적은 "`full`의 약 44–50%"는 렌더된 프롬프트의 **문자 수
+  비교**다. 토큰이나 답변 품질을 잰 것이 아니다. 같은 절은 1.29.2 `delegationPolicy` A/B를 "반증되지
+  않았을 뿐 입증된 이득이 아니다"로 판정한다. 그래서 slim은 opt-in으로 출하하고, 기본값은 측정된 A/B
+  뒤에만 바꾼다. README·런치 카피에 "프롬프트 절반" 같은 헤드라인을 쓰지 않는다.
 - 이 문서는 에이전트(Claude Code)가 작성했으므로 `needs_review`다 — 사람 검토 후 `verified`.
 
 ## 토큰-효율 벤치 확장 (proxy 실행됨 · real 하네스는 executed:false)

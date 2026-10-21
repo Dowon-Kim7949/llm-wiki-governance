@@ -410,9 +410,13 @@ export async function collectWikiCoverage(cwd, plannedDocs) {
 // A decision record is identified by its declared doc_type or by the naming
 // conventions this package ships (DECISION_LOG / ADR / decisions/). Template
 // skeletons are already excluded by the caller — a blank template is not history.
+// DECISION_DOC_TYPES is shared with content.dated_heading (wiki-hygiene.js), which
+// exempts the same records: a decision log is dated history by design.
+export const DECISION_DOC_TYPES = new Set(["decision_log", "decision", "adr"]);
+
 function isDecisionDoc(rel, frontmatter) {
   const docType = String(frontmatter.doc_type ?? frontmatter.type ?? "").toLowerCase();
-  if (docType === "decision_log" || docType === "decision" || docType === "adr") return true;
+  if (DECISION_DOC_TYPES.has(docType)) return true;
   return DECISION_PATH_RE.test(toPosix(rel).toLowerCase());
 }
 

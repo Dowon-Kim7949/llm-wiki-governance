@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-20
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-14
+reviewed_at: 2026-10-20
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -53,7 +53,7 @@ llm-wiki init --write --type backend --doc-lang ko        # 도메인 문서까�
 #   --agent codex  -> .agents/skills/llm-wiki-<task>/SKILL.md
 #   --agent claude -> .claude/skills/llm-wiki-<task>/SKILL.md
 #   --skills       -> 모든 네이티브 형식(claude·codex·cursor·중립 프롬프트)
-llm-wiki init --write --type backend --agent codex        # Codex 스킬 4개(bootstrap/feature/fix/docs-sync)
+llm-wiki init --write --type backend --agent codex        # Codex 스킬 7개(bootstrap/feature/fix/docs-sync/onboard/prepare/backfill)
 llm-wiki init --write --type backend --skills             # 모든 형식
 
 # 최초 보강 워크플로를 프롬프트로도 받을 수 있다(스킬과 동일 규칙, handoff와 단일 소스 공유):
@@ -93,10 +93,10 @@ node bin/llm-wiki.js validate --type library
 # `npm ci`가 필요 없고(게이트가 쓰는 패키지는 런타임 의존성이 없는 이것 하나뿐이다) 이
 # 패키지를 devDependency로 둘 필요도 없다. 비공개 저장소에서 러너 분이 과금되는 쪽이라면
 # 그 의존성 설치가 보통 워크플로에서 가장 긴 스텝이다.
-npx -y llm-wiki-governance@1.32 validate-frontmatter
-npx -y llm-wiki-governance@1.32 validate --strict --agent codex
-npx -y llm-wiki-governance@1.32 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
-npx -y llm-wiki-governance@1.32 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
+npx -y llm-wiki-governance@1.33 validate-frontmatter
+npx -y llm-wiki-governance@1.33 validate --strict --agent codex
+npx -y llm-wiki-governance@1.33 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx -y llm-wiki-governance@1.33 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
 
 🚨 **패키지 이름을 줄여 `npx llm-wiki`라고 쓰면 안 된다.** 이 패키지의 bin 이름이 `llm-wiki`인데
@@ -140,6 +140,19 @@ llm-wiki handoff --agent claude
 승격과 감사를 일부러 분리했다: `mode set`은 저장소 전체 스캔을 유발하지 않으므로 `strict` 전환이 즉시 끝나고, 비싼 재구성은 명시적인 `backfill`로 남는다. `--mode <레벨>`은 config를 고치지 않고 그 실행에만 적용되므로 승격 전에 `llm-wiki backfill --mode strict`로 미리 볼 수 있다.
 
 `backfill`이 인쇄하는 근거 장부는 세 라벨을 섞지 않는다 — *verified*(현재 소스·테스트·설정에서 읽음) / *inferred*(디렉터리 경계·네이밍·git 이력에서 도출했고 도출이라고 말한다) / *unknown*(저장소가 답할 수 없다). ADR도 없고 스스로 설명한 커밋도 없으면 "왜 이걸 골랐나"는 `unknown`으로 남고, `decision_history` 준비도 체크가 자기 문장으로 **텍스트를 생성해서는 닫을 수 없다**고 말한다. 그것을 그럴듯한 이야기로 채우지 않는 것이 이 명령의 목적이다.
+
+## 변경 로그 나누기 · 짧은 프롬프트 · 이슈 초안 (1.33.0)
+
+```bash
+llm-wiki archive-log                               # 미리보기: 어느 항목이 어느 월별 권으로 가는가
+llm-wiki archive-log --keep-months 3 --write       # 최근 3개월만 log.md에 남기고 나머지는 log-YYYY-MM.md로
+llm-wiki prompt --task fix --prompt-profile slim   # 위임 예산·일반 조언을 뺀 짧은 프롬프트
+llm-wiki prompt --task issue                       # 대화와 위키로 GitHub 이슈 본문 초안(읽기 전용)
+```
+
+`archive-log`의 보존 기간은 오늘이 아니라 **가장 최근의 유효한 날짜 항목**부터 거꾸로 센다. 그래서 같은 log.md에 다시 돌려도 결과가 같다. 항목은 고치지 않고 통째로 옮기며, 날짜가 없는 절이나 불가능한 날짜, 내일 이후 날짜는 log.md에 남기고 `skipped`로 보고한다. 중간에 끊긴 실행을 다시 돌려도 항목이 중복되지 않는다. 이 저장소에서 미리보기를 돌리면 213개 항목이 2개 권으로 가고 17개가 남는다(2026-10-20 기준, 아직 `--write`는 하지 않았다).
+
+`--prompt-profile`의 기본값은 `full`이고 출하 텍스트와 바이트 단위로 같다. config의 `promptProfile`로도 기본값을 정할 수 있고, 플래그가 config보다 우선한다. `slim`은 같은 계약(needs_review, 스스로 verified로 올리지 않기, append-only 로그, 민감정보 금지)과 중단 조건, 종료 조건을 유지한다. 위 `fix` 프롬프트 기준으로 `full`의 48%(문자 수)다. 이 수치는 크기이지 효과가 아니므로, 기본값은 측정된 A/B 뒤에만 바꾼다.
 
 ## 다음 조치 추천 / 규칙 설명
 

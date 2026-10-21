@@ -6,6 +6,112 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.33.0 — 2026-10-21
+
+A read-cost release. A wiki that lives long enough gets expensive to read in two
+places nobody budgets for: the change log, which only grows, and knowledge
+documents that slowly accrete "how we found it" history. Two adopting projects
+cut the same costs by hand in 2026-09/10 and filed the result in opposite places
+— one appended everything to the tail of `log.md` (append-only kept, log at ~1 MB),
+the other moved it outside `docs/llm-wiki/` (log kept small, but outside every
+scan and against the write boundary). This release gives both a supported path.
+
+- **New command `archive-log` (preview by default, `--write` applies).** Moves
+  change-log entries older than a retention window (`--keep-months <n>`, default
+  2, counted back from the newest valid dated entry rather than from today) out
+  of `docs/llm-wiki/log.md` into monthly volumes next to it,
+  `docs/llm-wiki/log-YYYY-MM.md`. Entries move whole and are never edited: a new
+  volume takes them byte for byte, and an entry added to an existing volume takes
+  that volume's line endings. Before anything is written the planned files are
+  re-parsed and every original entry must come back exactly once, or the command
+  refuses (`archive.integrity`, blocked, exit 2). Each file is written to a
+  temporary sibling and renamed into place, volumes first and `log.md` last; a
+  rerun after an interruption finds entries already in their volume and only
+  removes them from `log.md` (`alreadyArchived[]`). Also refused before writing:
+  an unterminated code fence (with its line), a `log.md` or volume that does not
+  decode cleanly (`encoding.mojibake`), and a file differing from a planned volume
+  only by letter case (new rule `archive.volume_conflict`). Entries dated after
+  tomorrow (UTC) or on impossible dates stay put and are reported as
+  `future-dated` / `invalid-date`, so one typo cannot archive the whole log.
+  Volumes sit next to `log.md` so the relative links inside entries keep working
+  without being rewritten. Not exposed over MCP; the programmatic
+  `archiveLogCommand` rejects an invalid `keepMonths` with a `RangeError`.
+- **The append-only principle is restated, not dropped:** entries are never
+  edited; whole entries may move verbatim into a volume. See GATE_REVIEW
+  "Change-Log Volume Scope Decision".
+- **Monthly volumes are change-log records** everywhere `log.md` already was:
+  `isAppendOnlyLog` now matches them, so `fix`/`migrate`/`init` never rewrite
+  them, `review`/`drift`/`impact`/`backfill` leave them out, and retrieval
+  deprioritizes them. Sensitive-info and link scans still read them. `stats` and
+  orphan detection count the record once, as `log.md` (`isLogVolume`), so
+  archiving moves no percentage.
+- **Four opt-in rules — silent unless you turn them on:**
+  `markdown_link.anchor_missing` and `content.dated_heading` via config `rules`;
+  `budget.log_over` and `budget.doc_over` via a new config block
+  `"wikiBudget": { "logTokens": <n>, "docTokens": <n> }` (positive integers,
+  chars/4 proxy, no default threshold; an empty block or an unknown key is a
+  config error, so a misspelled budget cannot sit there looking armed).
+  `markdown_link.missing` keeps dropping the `#fragment`; the anchor check is a
+  separate rule so enabling it is a choice. The anchor check follows GitHub's
+  slugs (duplicate suffixes, setext headings, emphasis markers,
+  `#user-content-`), and `content.dated_heading` exempts change logs, release
+  notes, and decision records. None of the four is in the `strict` preset or
+  mode.
+- **Measured on real logs, not claimed:** dry runs on copies of the two adopting
+  projects' logs moved 37 of 120 and 226 of 263 entries; an independent
+  re-parse found every original entry exactly once, byte for byte.
+
+**Also in this release — less to read, and who approved what.** Prompted by an
+outside practitioner's account (2026-10) of a team that found long agent
+procedures hurting newer models, docs costing more to maintain than they
+returned, and rules being satisfied on the surface:
+
+- **`--prompt-profile slim` (config `promptProfile`).** Renders every generated
+  prompt and `init --skills` skill with only this tool's commands and paths, the
+  contracts the prompts state, the stop conditions, and the exit criteria — no
+  delegation budget, no generic engineering advice (about 44–50% of `full` by
+  characters). Accepted by `prompt`, `handoff`, `backfill`, `init`, and
+  `quickstart`. **The default stays `full`, byte for byte** (8,520 rendered
+  prompts, skills, and outputs compared): the shorter text is unmeasured, and the
+  default moves only on a measurement.
+- **`prompt --task issue`.** A read-only preset that drafts a GitHub issue body
+  from the conversation and the wiki — background, goal, out of scope, done-when,
+  linked wiki docs, risks, open questions — written for an agent that was not in
+  the conversation. Work-unit history goes in the issue, not the wiki. Not a
+  generated skill, so the always-loaded surface does not grow. The shipped
+  adapter templates gain one rule line saying the same.
+- **`agentReviewers` (config).** `stats` counts a verified document whose
+  `reviewed_by` names a listed agent as `evidenceTiers.agentVerified` instead of
+  `humanVerified`; without the list `agentVerified` is `null` (not
+  distinguishable), never `0`.
+- **`impact.stamp_only` (opt-in rule).** The existing `stamp_only_exclusions`
+  report as one finding per verified, locally anchored document; a stamp-only
+  downgrade is not reported. Raising it to `error`, or `--strict` while it is a
+  warning, reopens N-11 — use `info` there. GATE_REVIEW "Stamp-Only Exemption"
+  stays open.
+- **One definition of evidence shape.** The published schema's evidence pattern
+  (`EVIDENCE_REFERENCE_PATTERN`) is now the runtime's too. Before, the schema
+  rejected `#l10` and `#route:/` (an adopter's real root-route anchor) that the
+  CLI accepted, and the CLI accepted a bare `#anchor` that the schema rejected.
+
+**Behaviour changes, named:**
+
+- `prompt` now renders the governance mode it is given. It accepted `--mode` but
+  never passed it on, so `lite` and `standard` projects were handed the strict
+  budget. No mode and no config still render strict.
+- A bare `#anchor` in `evidence` is now `evidence.shape` (error). It grounded a
+  verified document while pointing at no source. 0 of 1,292 evidence entries
+  across 11 local adopting wikis are affected.
+- The `stats` text summary line gains an `agent_verified …` tail; JSON gains
+  `evidenceTiers.agentVerified`.
+- A document already named `docs/llm-wiki/log-YYYY-MM.md` (month 01–12) is now a
+  change-log volume: review, drift, impact, and fix skip it, and stats and
+  orphan detection leave it out.
+
+Sized as a MINOR: one new command, new config keys, one new task preset, two new
+opt-in rules, all additive apart from the named changes above; the frozen
+`commands` map gains `archive-log`. Tests: 580 → 669.
+
 ## 1.32.0 — 2026-09-14
 
 A cost release. The CI channel this project hands adopters ran on GitHub-hosted

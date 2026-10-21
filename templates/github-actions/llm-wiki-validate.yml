@@ -108,10 +108,10 @@ jobs:
       # is the only CI the repository has.
 
       - name: Validate LLM-WIKI frontmatter
-        run: npx -y llm-wiki-governance@1.32 validate-frontmatter
+        run: npx -y llm-wiki-governance@1.33 validate-frontmatter
 
       - name: Validate LLM-WIKI strictly
-        run: npx -y llm-wiki-governance@1.32 validate --strict --agent codex
+        run: npx -y llm-wiki-governance@1.33 validate --strict --agent codex
 
       # The omission gate: fails when a source file a `verified` document is
       # grounded in changed in this diff and the document did not. validate and
@@ -134,4 +134,4 @@ jobs:
       # an omission gate, check `llm-wiki mode` and make sure the project is in
       # `strict`, or set the rule explicitly in llm-wiki.config.json.
       - name: Gate on undocumented source changes
-        run: npx -y llm-wiki-governance@1.32 impact --since "origin/${{ github.base_ref || 'main' }}" --strict
+        run: npx -y llm-wiki-governance@1.33 impact --since "origin/${{ github.base_ref || 'main' }}" --strict

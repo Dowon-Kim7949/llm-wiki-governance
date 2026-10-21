@@ -17,6 +17,7 @@
 
 import path from "node:path";
 import {
+  archiveLogCommand,
   audit,
   backfillCommand,
   checkRunCommand,
@@ -72,6 +73,7 @@ import { TOOL_DEFS as MCP_TOOLS } from "./mcp/tools.js";
  * @property {string} format         "text"|"json"|"markdown"|"html" ("text"|"json"|"mermaid"|"dot" for graph).
  * @property {string|null} lang      Human-facing findings/explain prose language ("en"|"ko"; default en).
  * @property {string|null} docLang   Generated wiki document + agent doc-writing language ("en"|"ko"; default en).
+ * @property {string|null} promptProfile Rendering of generated agent prompts/skills ("full"|"slim"), or null to resolve from config (default full).
  * @property {string|null} type      Forced project type, or null to auto-detect.
  * @property {string[]} profiles     Extra profiles to activate.
  * @property {string[]} agents       Selected adapter agents.
@@ -83,6 +85,7 @@ import { TOOL_DEFS as MCP_TOOLS } from "./mcp/tools.js";
  * @property {boolean} approveAll    review: promote every approvable needs_review doc (requires `yes`).
  * @property {boolean} yes           review: explicit confirmation for `--approve-all`.
  * @property {string|null} reviewer  review: reviewer name for `reviewed_by` (else config / git user.name).
+ * @property {string[]} [agentReviewers] stats: reviewed_by names that are agents (config `agentReviewers`); verified docs they approved count as agent_verified, not human_verified.
  * @property {boolean} dryRun        Explicit preview toggle.
  * @property {boolean} minimal       Minimal doc set for init/quickstart.
  * @property {boolean} changed       validate --changed scope.
@@ -152,6 +155,7 @@ export const commands = Object.freeze({
   migrate: migrateCommand,
   "import-memory": importMemoryCommand,
   fix: fixCommand,
+  "archive-log": archiveLogCommand,
   drift: driftCommand,
   impact: impactCommand,
   "check-run": checkRunCommand,
@@ -213,6 +217,7 @@ export async function resolveOptions(overrides = {}) {
 // Individual command functions, exported under their source names for direct
 // import (e.g. `import { audit } from "llm-wiki-governance"`).
 export {
+  archiveLogCommand,
   audit,
   backfillCommand,
   checkRunCommand,

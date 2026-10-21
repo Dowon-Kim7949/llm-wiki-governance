@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: wiki_readme
 project: llm-wiki-governance
-last_updated: 2026-09-08
+last_updated: 2026-10-20
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-09-14
+reviewed_at: 2026-10-20
 wiki_block_version: v1
 source_files:
   - package.json
@@ -41,7 +41,7 @@ contains_sensitive_info: false
 - 모든 wiki 문서는 YAML frontmatter를 가집니다.
 - CLI 또는 에이전트가 생성/수정한 문서는 편집 시점에 `needs_review`로 둡니다. **이 저장소에서는 그 뒤 에이전트가 `review --approve-all --yes`로 스스로 승격합니다**(2026-08-03 유지보수자 결정; `reviewed_by`는 config `reviewer`가 지목하는 에이전트 이름). 도입처로 나가는 규칙은 불변이며 계약 전문은 `AGENTS.md` "Wiki discipline"에 있습니다 — [index.md](index.md) Status 절도 함께 보세요.
 - 민감정보 raw value는 기록하지 않습니다.
-- 변경 기록은 [log.md](log.md)에 append-only로 남깁니다.
+- 변경 기록은 [log.md](log.md)에 append-only로 남깁니다. 1.33.0에서 이 원칙을 다시 정의했습니다. 항목은 절대 고치지 않지만, 오래된 항목을 통째로 월별 권(`log-YYYY-MM.md`, log.md와 같은 디렉터리)에 원문 그대로 옮기는 것은 허용합니다. 옮기는 도구는 `archive-log`이고 기본은 미리보기, `--write`일 때만 씁니다. 월별 권도 log.md와 같은 불변 기록이라 `review`·`drift`·`impact`·`fix`가 건너뛰고, 새 권은 `needs_review`로 시작합니다. 이 저장소에서는 아직 실행하지 않았습니다.
 - 문서가 아직 보강되지 않으면 `llm-wiki validate`가 `content.not_enriched`로 표시합니다.
 
 ## Review Notes
