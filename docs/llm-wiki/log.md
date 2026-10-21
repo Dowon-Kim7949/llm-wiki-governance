@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-21 - docs+test: N-15 기록 — drift는 머지가 메인에 들어온 날짜를 보지 못한다(고치지 않기로 결정)
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: test, docs
+- changed: `tests/known-gaps.test.js`(GAP 5 추가) · 위키 `HARNESS_GOVERNANCE_ROADMAP.md`(결함 등록부 47번 N-15) · `PUBLIC_API.md`(`drift` 행 알려진 한계) · `REVIEW_HISTORY.md`(2차 팬아웃 기록) · `docs/OPERATIONS.md`(도입처용: 머지 전략별로 `drift`가 보는 것)
+- summary: 1.34.0에서 찾은 늦은 머지 위음성을 고치려고 git 동작부터 재현했다. 시나리오 다섯 × 방식 셋이다. `--full-history`는 다른 쪽 부모와 다르기만 하면 머지를 보고해서 탈락했다. `--first-parent`는 위음성을 정확히 닫지만, **PR 안에서 소스를 고치고 문서를 재검토한 흐름**을 새 오탐으로 만든다. PR CI는 실행마다 새로 만든 머지 커밋 위에서 돌고, 그 날짜가 재검토 다음 날이면 출하 템플릿의 `validate --strict`가 실패한다. 그래서 흔한 오탐을 드문 위음성과 바꾸는 거래로 판단해 유지보수자에게 선택지 셋(문서화·커밋 기준 재설계·opt-in)을 냈고, **문서화**로 결정했다. 같은 원인의 반대쪽 결과(squash·rebase 머지에서는 PR 안 재검토 문서가 머지 직후 stale)도 함께 적었다. 근본 해법인 커밋 기준 비교는 drift의 의미를 바꾸므로 별도 설계 결정으로 남겼다.
+- evidence: `--first-parent` 사본과 현재 코드의 `drift`를 로컬 저장소 11곳에서 비교한 결과 **추가 0 / 제거 0**이었다(이력상 머지 커밋 182개, 2026-07 이후 메인라인 머지 16개). 위음성도 노이즈도 실측되지 않았다는 뜻이다. GAP 5 테스트는 현재 동작에서 통과하고, `--first-parent` 변이를 넣으면 실패한다(한계가 닫히면 실제로 알린다). 변이 뒤 `src/git.js` 무변경 확인.
+- caveats: 제품 코드는 바꾸지 않았다. 버전 범프 없음(문서·테스트만). push 안 함.
+
 ## 2026-10-21 - docs(deck): 1.34.0 배포 이후 정렬 — 덱이 줄인 패키지를 예전 크기로 말하고 있었다
 
 - status: needs_review (편집 시점)

@@ -89,6 +89,17 @@ The distinction that matters:
 | `drift --strict` | a `verified` doc whose source moved after its review date | only with `--strict` |
 | `check-run --strict` | a skill run that claimed a pipeline it did not complete | only with `--strict` |
 
+**What `drift` can and cannot see.** Its freshness check compares a document's review
+**date** with the commit **dates** that touched its sources, so the merge strategy shows
+through. With **squash or rebase merges**, a PR that edited a source and re-reviewed its
+document on day D lands as a commit dated the merge day; if that is later than D, the
+document reads as stale right after the merge — re-stamp it (`review --approve`) on the
+merge day, or, if `impact` is your freshness gate, lower `evidence.stale` in the config
+`rules` so `validate --strict` stops failing on it. With **merge
+commits**, the opposite gap: a branch whose own commit predates a review, merged after it,
+changes the source without `drift` saying so. `impact --since <base>` is diff-based and has
+neither problem, which is one more reason it is the gate to wire first.
+
 The validate family checks the documents that **exist**. Only the `impact` /
 `drift` / `check-run` family can see the document that **should have been
 touched** — so a repo with a green `validate` step and no `impact` step has no

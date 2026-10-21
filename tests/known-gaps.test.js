@@ -2,7 +2,8 @@
 // last Phase 0 item).
 //
 // READ THIS BEFORE "FIXING" A FAILURE HERE. These tests assert the CURRENT,
-// UNDESIRED behavior of three known structural gaps. They exist so the gaps are
+// UNDESIRED behavior of known structural gaps (three in the original casebook;
+// gap 5 was added 2026-10-21). They exist so the gaps are
 // reproducible facts rather than prose in a roadmap, and so the day someone
 // closes one, a test goes RED and says exactly what changed.
 //
@@ -254,5 +255,60 @@ test("KNOWN GAP: testEvidence is checked for presence, never for truth", async (
     result.findings.filter((finding) => finding.rule === "run.test_evidence_missing").length,
     0,
     "GAP CLOSED? test evidence is now validated beyond presence — flip this test."
+  );
+});
+
+// --- GAP 5: drift is date-anchored, and a merge's landing date is invisible ---
+
+// Found 2026-10-21 while proving the 1.34.0 batched listing byte-identical. A
+// branch whose own commit predates the review, merged into main AFTER it, changes
+// main's copy of the source after the review — and drift never says so: `git log
+// -- <path>` simplifies history by following the parent the merge is identical to
+// for that path, and that parent's commit is older than the baseline.
+//
+// Deliberately NOT fixed (maintainer decision, 2026-10-21). `--first-parent`
+// closes it, but turns a common, correct workflow into a false positive: a PR
+// that edits a source and restamps its doc on day D, re-run in CI on day D+1, is
+// checked out as a merge commit dated D+1 and would fail `validate --strict`. The
+// gap measured 0 occurrences across eleven local repositories with wikis (182
+// merge commits in their histories), so the trade was a common false positive for a rare
+// false negative. The real fix is a commit-anchored comparison ("does the source
+// differ now from when the doc was last committed?"), which changes what drift
+// means and needs its own design decision.
+test("KNOWN GAP: a change that lands through a late merge of an older branch is not drift", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "llm-wiki-gap-late-"));
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  await mkdir(path.join(cwd, "src"), { recursive: true });
+  await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture", version: "0.0.0" }), "utf8");
+  await writeFile(path.join(cwd, "src", "app.js"), "export const a = 1;\n", "utf8");
+  await writeFile(
+    path.join(cwd, "docs", "llm-wiki", "index.md"),
+    doc({ status: "verified", reviewedBy: "Fixture Human", reviewedAt: "2026-02-01" }),
+    "utf8"
+  );
+  // `--since` filters on the committer date, so both dates are set.
+  const git = (at, ...args) => execFileSync("git", ["-C", cwd, "-c", "commit.gpgsign=false", ...args], {
+    stdio: "ignore",
+    env: { ...process.env, GIT_AUTHOR_NAME: "F", GIT_AUTHOR_EMAIL: "f@e", GIT_COMMITTER_NAME: "F", GIT_COMMITTER_EMAIL: "f@e", GIT_AUTHOR_DATE: at, GIT_COMMITTER_DATE: at }
+  });
+  git("2026-01-01T00:00:00+0000", "init", "-q", "-b", "main");
+  git("2026-01-01T00:00:00+0000", "add", ".");
+  git("2026-01-01T00:00:00+0000", "commit", "-q", "-m", "initial");
+  // The branch is cut and edited BEFORE the review (2026-02-01)…
+  git("2026-01-02T00:00:00+0000", "switch", "-q", "-c", "old-branch");
+  await writeFile(path.join(cwd, "src", "app.js"), "export const a = 2;\n", "utf8");
+  git("2026-01-02T00:00:00+0000", "commit", "-q", "-am", "edit on a branch");
+  // …and lands on main only AFTER it.
+  git("2026-01-02T00:00:00+0000", "switch", "-q", "main");
+  git("2026-03-01T00:00:00+0000", "merge", "-q", "--no-ff", "-m", "late merge", "old-branch");
+
+  const landed = execFileSync("git", ["-C", cwd, "log", "--first-parent", "--since=2026-02-01 23:59:59", "--pretty=%h", "--", "src/app.js"], { encoding: "utf8" });
+  assert.ok(landed.trim().length > 0, "guard: main's copy of the source really changed after the review");
+
+  const result = await driftCommand(normalizeOptions({ cwd }));
+  assert.equal(
+    result.driftFindings.length,
+    0,
+    "GAP CLOSED? drift now sees a change that landed through a late merge — flip this test."
   );
 });
