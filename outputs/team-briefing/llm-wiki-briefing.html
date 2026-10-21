@@ -1,4 +1,4 @@
-<title>llm-wiki-governance 팀 발표 (v1.0 → v1.32.0)</title>
+<title>llm-wiki-governance 팀 발표 (v1.0 → v1.33.0)</title>
 <style>
   :root{
     --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Segoe UI",system-ui,sans-serif;
@@ -271,7 +271,7 @@
       <h1 class="anim">AI를 위한<br>회사 지식 관리 도구</h1>
       <p class="lead anim" style="color:var(--muted)">우리가 만들고 써 온 <strong>llm-wiki-governance</strong> 이야기 —<br>왜 필요하고, 어떻게 발전했고, 어떻게 잘 쓰는가.</p>
       <div class="titlemeta anim">
-        <span class="versionpill">v1.0.0 &nbsp;→&nbsp; v1.32.0</span>
+        <span class="versionpill">v1.0.0 &nbsp;→&nbsp; v1.33.0</span>
         <span class="metachip">방향키 ← → 로 넘기세요</span>
       </div>
     </div>
@@ -469,7 +469,7 @@
         <div class="card">
           <div class="idx">설치 파일</div>
           <h3>npm (인터넷)</h3>
-          <p>프로그램 <b>설치본</b>이 올라가 있는 곳. 여기서 한 번 내려받는다(내려받기 0.5MB 남짓, 풀면 1.6MB).</p>
+          <p>프로그램 <b>설치본</b>이 올라가 있는 곳. 여기서 한 번 내려받는다(내려받기 0.5MB 남짓, 풀면 1.7MB).</p>
         </div>
         <div class="card">
           <div class="idx">실행 중 서버</div>
@@ -534,11 +534,11 @@
   <section class="slide">
     <div class="wrap">
       <p class="eyebrow anim">우리가 지켜온 것 · PRINCIPLES</p>
-      <h2 class="anim">1.0 이후 한 번도 어기지 않은 5가지 원칙</h2>
+      <h2 class="anim">1.0 이후 지켜온 5가지 원칙</h2>
       <div class="plist anim">
         <div class="p"><div class="n">01</div><div><h3>안전 제일</h3><p>함부로 파일을 안 쓰고, 비밀정보 탐지는 <b>절대 못 끈다.</b></p></div></div>
         <div class="p"><div class="n">02</div><div><h3>무(無)의존성</h3><p>외부 라이브러리 0개 → 가볍고 보안 위험이 적다.</p></div></div>
-        <div class="p"><div class="n">03</div><div><h3>하위 호환</h3><p>새 기능은 늘 ‘추가만’ — 기존 사용법을 안 깨뜨린다.</p></div></div>
+        <div class="p"><div class="n">03</div><div><h3>하위 호환</h3><p>새 기능은 ‘추가만’이 원칙 — 어긴 한 번(1.28)은 숨기지 않고 기록하고, 되돌리는 설정을 함께 냈다.</p></div></div>
         <div class="p"><div class="n">04</div><div><h3>자기 적용</h3><p>이 도구로 우리 문서를 관리한다(만든 사람이 먼저 쓴다).</p></div></div>
         <div class="p" style="grid-column:1/-1"><div class="n">05</div><div><h3>게이트 리뷰</h3><p>큰 변경은 사람이 먼저 범위를 승인하고 진행한다.</p></div></div>
       </div>
@@ -708,10 +708,10 @@
     </div>
   </section>
 
-  <!-- HISTORY 1 · 1.0 → 1.26 (two columns; short entries) -->
+  <!-- HISTORY 1 · 1.0 → 1.28 (two columns; short entries) -->
   <section class="slide">
     <div class="wrap">
-      <p class="eyebrow anim">발전 스토리 ① · 1.0 → 1.27</p>
+      <p class="eyebrow anim">발전 스토리 ① · 1.0 → 1.28</p>
       <h2 class="anim histhead">한 번에 하나씩, 순서대로 쌓아온 기능</h2>
       <div class="grid g2 anim" style="align-items:start;column-gap:2.4rem">
         <ul class="tl tl--compact">
@@ -722,32 +722,33 @@
           <li><span class="ver">1.12 – 1.14</span><span class="desc">더 넓은 지원<small>모바일 · 인프라(도커/쿠버네티스) · 표준 서버 자동 인식</small></span></li>
           <li><span class="ver">1.15</span><span class="desc">스킬 생성<small>AI가 ‘우리 방식’ 워크플로를 직접 실행하도록 자동화 프롬프트 생성</small></span></li>
           <li><span class="ver">1.16</span><span class="desc">표준 → 거버넌스 &amp; 새 이름<small>포지셔닝을 ‘거버넌스 도구’로 · 패키지명 <b>llm-wiki-governance</b></small></span></li>
+          <li><span class="ver">1.17 – 1.19</span><span class="desc">측정 · 검색 · 감사<small>영향도 점검 · AI가 위키를 검색 · 근거 단계화 · 작업 실행 감사</small></span></li>
         </ul>
         <ul class="tl tl--compact">
-          <li><span class="ver">1.17 – 1.19</span><span class="desc">측정 · 검색 · 감사<small>영향도 점검 · AI가 위키를 검색 · 근거 단계화 · 작업 실행 감사</small></span></li>
           <li><span class="ver">1.20 – 1.22</span><span class="desc">현장 피드백 &amp; 한국어화<small>프론트엔드 화면 자동 인식 · 근거/체크리스트 사용성 · 한국어 메시지(<b>--lang ko</b>)</small></span></li>
           <li><span class="ver">1.23</span><span class="desc">스킬 심화<small>최초 위키 작성 스킬(<b>bootstrap</b>) · Codex 네이티브 스킬(<b>.agents/skills/</b>)</small></span></li>
           <li><span class="ver">1.24</span><span class="desc">가이드 온보딩 &amp; 문서 언어<small>신입 온보딩·작업 준비(<b>onboard</b>/<b>prepare</b>) · 생성 문서 영어 기본(<b>--doc-lang</b>)</small></span></li>
           <li><span class="ver">1.25</span><span class="desc">토큰 효율<small>가장 싼 안전한 경로 선택 · compact 조회(<b>--compact</b>/<b>--strict-section</b>) · 스킬 간소화 &amp; 안전한 <b>--refresh</b></small></span></li>
           <li><span class="ver">1.26</span><span class="desc">견고화 &amp; 도입<small>사람 검토 워크플로(<b>review</b>) · 공급망/CI 위생(무의존성 유지) · 도입 문서(운영 가이드 · 예제 · MCP 신뢰 모델)</small></span></li>
           <li><span class="ver">1.27</span><span class="desc">감사 마감 &amp; 문맥 규율<small>감사 잔여 처리 · 명명 규칙 프리셋(<b>rulesPreset</b>) · <b>AI가 읽어들이는 양에 예산</b>을 매기고 프롬프트를 3블록으로 정리</small></span></li>
+          <li><span class="ver">1.28</span><span class="desc">게이트를 실제로 켬<small><b>문서를 안 고치면 빌드가 빨개진다</b>(<b>impact</b> 기본 차단 · 되돌리는 설정 2가지) · 배포 채널 4개가 그 게이트를 실행 · AI 작업환경 점검(<b>harness-health</b>)</small></span></li>
         </ul>
       </div>
     </div>
   </section>
 
-  <!-- HISTORY 2 · 1.27 → 1.30 (single column; detailed entries) -->
+  <!-- HISTORY 2 · 1.29 → 1.33 (single column; detailed entries) -->
   <section class="slide">
     <div class="wrap">
-      <p class="eyebrow anim">발전 스토리 ② · 1.28 → 1.31 · 가장 최근</p>
+      <p class="eyebrow anim">발전 스토리 ② · 1.29 → 1.33 · 가장 최근</p>
       <h2 class="anim histhead">최근 릴리스는 조금 더 자세히</h2>
       <ul class="tl tl--compact anim">
-        <li><span class="ver">1.28</span><span class="desc">게이트를 실제로 켠 릴리스<small><b>문서를 안 고치면 빌드가 빨개진다</b>(<b>impact</b>가 이제 기본으로 차단 — 되돌리는 설정 2가지 제공) · 우리가 배포하는 4개 채널(훅·CI 템플릿·액션·우리 CI)이 드디어 그 게이트를 실행 · 어댑터 8종 전부 v2 형태로 · AI 작업환경 자체를 점검하는 <b>harness-health</b> · 릴리스 노트는 검사 면제</small></span></li>
-        <li><span class="ver">1.29</span><span class="desc">켠 게이트가 우리 릴리스에서 울던 것을 고침<small>버전 숫자 <b>한 줄만</b> 바뀐 <b>package.json</b>은 이제 "바뀐 파일"로는 계속 보고하되 <b>문서 대조에는 쓰지 않는다</b> — 배포할 때마다 아무도 조치할 수 없는 경고가 쏟아지던 문제. <b>0이 되지는 않는다</b>(11건 → 4건, 남는 건 내용이 진짜 바뀐 파일들) · 첫 구현이 세 군데 틀렸고 <b>배포 전 교차검증</b>이 전부 잡아냈다</small></span></li>
-        <li><span class="ver">1.29.1</span><span class="desc">고칠 방법이 없는 경고를 없앰<small>도구가 <b>손댈 수 없는 문서</b>(도입처가 복사해 쓰는 템플릿)를 두고 "낡았다"고 경고해서 <b>해결할 방법이 없는데 빌드가 빨개졌다</b> — 검사 대상에서 뺐다. <b>7건 → 5건</b>, 여기서도 <b>0이 되지는 않는다</b></small></span></li>
+        <li><span class="ver">1.29 – 1.29.1</span><span class="desc">켠 게이트가 우리 릴리스에서 울던 것을 고침<small>아무도 조치할 수 없는 경고 두 종류를 뺐다 — 버전 숫자 <b>한 줄만</b> 바뀐 <b>package.json</b>(11건 → 4건)과, 도구가 <b>손댈 수 없는 템플릿 문서</b>(7건 → 5건). 둘 다 <b>0이 되지는 않는다</b>(남는 건 내용이 진짜 바뀐 파일들) · 첫 구현이 세 군데 틀렸고 <b>배포 전 교차검증</b>이 전부 잡아냈다</small></span></li>
         <li><span class="ver">1.29.2</span><span class="desc">AI에게 “누가 읽을지”까지 지시<small>지금까지는 AI가 <b>얼마나 읽을지</b>만 정해줬다. 이제 <b>훑어보고 찾는 일</b>은 값싼 보조 AI에게 맡기고 <b>요약만 받아오도록</b>, <b>판단·수정·문서 서술</b>은 맡기지 않도록 지시문에 적어 보낸다. <b>정직 포인트</b>: 지시문이 약 <b>30% 길어지는 비용</b>은 확실하고, 절감은 <b>측정하지 않았으므로 주장하지 않는다</b></small></span></li>
         <li><span class="ver">1.30</span><span class="desc">부담을 프로젝트에 맞게 고른다<small>지금까지는 이 도구를 쓰면 <b>모든 프로젝트가 같은 수준의 문서 관리</b>를 받았다. 이제 <b>lite · standard · strict</b> 세 단계 중에 고른다 — 개인 프로젝트나 빠르게 도는 작업은 <b>lite</b>로 두면 문서 때문에 빌드가 막히지 않고, <b>인수인계</b>를 앞두면 <b>strict</b>로 올린 뒤 <b>backfill</b>이 빠진 문서를 찾아 준다. 검사 엔진은 <b>하나 그대로</b>이고 같은 저장소에서 <b>언제든 오간다</b>. <b>기존 프로젝트는 손대기 전까지 아무것도 안 바뀐다</b>. <b>정직 포인트</b>: AI 지시문이 <b>15~21% 길어지는 비용</b>은 확실하고, 그게 문서 작업을 줄여 값을 하는지는 <b>측정하지 않았다</b></small></span></li>
-        <li class="now"><span class="ver">1.31</span><span class="desc">우리 도구가 자기 문서부터 못 지키고 있었다 &nbsp;—&nbsp; 가장 최근<small>세 단계를 만든 뒤 <b>제품에게 그 단계를 다 가르치지 못했다</b>. 검사 하나(<b>drift</b>)가 단계를 무시했고, 리포트 4곳이 "<b>mode</b>"를 다른 뜻으로 쓰고 있었고, 문서는 단계 이전 동작을 설명했다. <b>사용자에게 실제로 위험했던 것</b>도 하나 있었다 — 우리가 배포하는 <b>CI 템플릿</b>이 <b>이름만 같은 남의 패키지</b>를 내려받아 실행할 수 있었다. <b>출하 이후 줄곧 고칠 방법이 없던 경고 9건 → 0</b>. <b>정직 포인트</b>: 이번 수정 둘은 <b>통과하던 빌드를 새로 실패시킬 수 있다</b> — 그대로 밝히고 되돌리는 설정을 함께 적었다</small></span></li>
+        <li><span class="ver">1.31</span><span class="desc">우리 도구가 자기 문서부터 못 지키고 있었다<small>세 단계를 만든 뒤 <b>제품에게 그 단계를 다 가르치지 못했다</b>. 검사 하나(<b>drift</b>)가 단계를 무시했고, 리포트 4곳이 "<b>mode</b>"를 다른 뜻으로 쓰고 있었고, 문서는 단계 이전 동작을 설명했다. <b>사용자에게 실제로 위험했던 것</b>도 하나 있었다 — 우리가 배포하는 <b>CI 템플릿</b>이 <b>이름만 같은 남의 패키지</b>를 내려받아 실행할 수 있었다. <b>출하 이후 줄곧 고칠 방법이 없던 경고 9건 → 0</b>. <b>정직 포인트</b>: 이번 수정 둘은 <b>통과하던 빌드를 새로 실패시킬 수 있다</b> — 그대로 밝히고 되돌리는 설정을 함께 적었다</small></span></li>
+        <li><span class="ver">1.32</span><span class="desc">CI 비용을 도입처 예산에서 덜어냄<small>우리가 배포하는 <b>CI 템플릿</b>이 도입처의 의존성을 전부 설치하고 테스트까지 돌렸고, 시간 제한도 없었다 — <b>비공개 저장소에서는 그게 다 돈</b>이고 조직 전체가 한도를 나눠 쓴다. 설치·테스트를 빼고 <b>10분 상한</b>과 중복 실행 취소를 넣었고, 변수 하나로 <b>자체 러너</b>로 옮길 수 있다. <b>정직 포인트</b>: 절감은 <b>측정하지 않았고</b>, 이미 템플릿을 복사해 간 곳은 그대로다</small></span></li>
+        <li class="now"><span class="ver">1.33</span><span class="desc">위키를 읽는 비용 &nbsp;—&nbsp; 가장 최근<small>오래 쓴 위키는 <b>늘어나기만 하는 변경 로그</b>가 비싸진다. 새 명령 <b>archive-log</b>가 오래된 기록을 <b>한 글자도 안 고치고</b> 월별 권으로 옮긴다 — 옮기기 전에 원본이 그대로 다시 읽히는지 증명하고, 아니면 아무것도 쓰지 않는다. 우리 저장소에 먼저 적용해 로그를 <b>515KB → 68KB</b>로 줄였다. 누가 승인했는지도 갈라 센다 — 우리 문서 51건 중 <b>사람 승인 4건, AI 승인 47건</b>. <b>정직 포인트</b>: 더 짧은 AI 지시문(<b>slim</b>)은 측정 전이라 <b>기본값으로 켜지 않았다</b></small></span></li>
       </ul>
     </div>
   </section>
@@ -759,7 +760,7 @@
       <p class="big anim">AI는 단순한 도구가 아니라,<br><em>일하는 방식</em>을 바꾸는 것입니다.</p>
       <p class="closeline anim">정답을 찾기보다 <strong>계속 배우고 시도하며</strong> 현장에서 임팩트를 만든다.<br>우리는 이미 그 길 위에 있습니다 — <strong>안전하게, 한 걸음씩.</strong></p>
       <div class="titlemeta anim">
-        <span class="versionpill">감사합니다 · v1.32.0</span>
+        <span class="versionpill">감사합니다 · v1.33.0</span>
       </div>
     </div>
   </section>

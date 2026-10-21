@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-21 - docs: 1.33.0 배포 이후 정렬 — 발표 덱이 1.31에서 멈춰 있었고, 커밋이 드리프트 12건을 만들었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: `outputs/team-briefing/llm-wiki-briefing.html` · `SPEAKER_NOTES.md` · `README.md` · 위키 12종 재스탬프(`ARCHITECTURE_CONVENTIONS`·`BENCHMARK`·`DOMAIN_FEATURES`·`domains/00_overview`·`EXAMPLES`·`GLOSSARY`·`HARNESS_GOVERNANCE_ROADMAP`·`profiles/library`·`project-profile`·`PUBLIC_API`·`README`·`VISIBILITY`) · `REVIEW_HISTORY.md`
+- summary: 1.33.0 배포(npm, 2026-10-21) 뒤 버전을 담은 산출물을 맞췄다. 덱은 표지가 `v1.32.0`인데 타임라인이 **1.31에서 멈춘 채 "가장 최근"**이라고 적고 있었다 — 1.32.0 정렬이 표기 5곳만 바꾸고 행을 넣지 않았다. 1.32·1.33 행을 넣고, 화면을 넘지 않게 1.28을 짧게 줄여 ①장으로 옮기고 1.29·1.29.1을 한 행으로 합쳤다. 덱의 사실 주장도 소스에 대조했다: 원칙 슬라이드의 "1.0 이후 **한 번도 어기지 않은** … 하위 호환"은 VERSIONING의 1.28.0 "규칙을 어긴 기록"과, 같은 덱의 1.31 행과도 모순이라 "지켜온"으로 고치고 1.28을 명시했다. 압축 해제 크기 1.6MB → 1.7MB(레지스트리 `unpackedSize` 1,704,003). MCP 18개는 맞았다. 스피커 노트의 21·22장 범위와 대본, 1.32·1.33 한 줄 설명을 맞췄다. 그리고 범프 커밋이 날짜 앵커 드리프트를 만들었다 — 10-20에 미커밋 diff에 대조해 고친 문서 12종이, 같은 소스가 10-21에 커밋되면서 `evidence.stale`(63건)이 됐다. 재스탬프로 해소했고, 그 재스탬프가 `REVIEW_HISTORY.md`를 2차로 지목해 1.30.1 선례대로 머리말에 기록 한 줄을 남겼다.
+- evidence: 덱 렌더 실측(Chrome, UTF-8로 서빙): 1920×1080·1440×900·1366×768 모두 뷰포트를 넘는 슬라이드 0장. 21장 737 → 757px, 22장 728 → 747px(1366×768 뷰포트 764px). `validate --strict` 63 → 0, `drift --strict` exit 0, `impact --since HEAD` pass.
+- caveats: 공유 Artifact 링크(조직 공유, 즉시 반영)는 이 시점에 아직 **`v1.31.0`**이다 — 1.32.0 때 재게시가 빠졌다. 재게시는 유지보수자 확인 뒤에 한다. `drift`가 릴리스 커밋마다 이렇게 뜨는 것(미커밋 상태에서 검토 → 커밋 날짜가 검토일 이후)은 이 저장소 작업 방식의 구조적 결과이고, 이번에도 재스탬프 말고 해소 경로는 없다.
+
 ## 2026-10-21 - release: 1.33.0 범프 — 이 저장소가 자기 로그를 보관하고, 승인 주체를 갈라 세고, 선적재 index를 줄였다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
