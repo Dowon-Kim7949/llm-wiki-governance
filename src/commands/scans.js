@@ -11,7 +11,7 @@ import { listMarkdownFiles, pathExists, toPosix } from "../files.js";
 import { findMojibakeIndicators, hasUtf8Bom, readTextAuto, readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
-import { fileChangedSince, lineRangeChangedSince } from "../git.js";
+import { fileChangedSince, lineRangeChangedSince, pathsChangedSince } from "../git.js";
 import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
@@ -706,10 +706,15 @@ export async function scanEvidenceDrift(cwd, options = {}) {
   // was re-spawned many times per run. Pure memoization of a read-only query
   // inside a single scan — no behavior change.
   const fileChangedCache = new Map();
+  // Even memoized, that was one spawn per distinct (file, baseline) — 72 on this
+  // repository, ~90% of a 4 s validate. One `git log` per baseline now answers
+  // every anchor git did not touch; only anchors it did touch still get their own
+  // query, so the answers and the findings are unchanged.
+  const mayHaveChanged = changeFilter(cwd);
   const fileChangedMemo = (base, baseline) => {
     const key = `${base}\u0000${baseline}`;
     if (fileChangedCache.has(key)) return fileChangedCache.get(key);
-    const answer = fileChangedSinceSafe(cwd, base, baseline);
+    const answer = mayHaveChanged(base, baseline) ? fileChangedSinceSafe(cwd, base, baseline) : false;
     fileChangedCache.set(key, answer);
     return answer;
   };
@@ -738,6 +743,10 @@ export async function scanEvidenceDrift(cwd, options = {}) {
       const ranges = lineRangesByFile.get(base);
       const lineOnly = !broadFiles.has(base) && Array.isArray(ranges) && ranges.length > 0;
 
+      // No commit touched the file, so no line range of it changed either, and the
+      // file-level fallback below would answer false too.
+      if (!mayHaveChanged(base, targets.baseline)) continue;
+
       if (lineOnly) {
         let staleRange = null;
         let fallbackFileLevel = false;
@@ -765,6 +774,42 @@ export async function scanEvidenceDrift(cwd, options = {}) {
     }
   }
   return findings;
+}
+
+// A negative filter over pathsChangedSince: false only when no commit after the
+// baseline can have touched <base>, true when the per-file query must decide.
+// Anything the filter cannot judge exactly answers true — git pathspec magic or
+// glob characters (git would expand them, a string match would not), a path that
+// cannot survive the newline-split listing, one that climbs out of the repository,
+// or a failed listing — so the worst case is the old cost, never a new answer.
+function changeFilter(cwd) {
+  const listings = new Map();
+  const listingFor = (baseline) => {
+    if (!listings.has(baseline)) {
+      let listing = null;
+      try {
+        listing = pathsChangedSince(cwd, baseline);
+      } catch {
+        listing = null;
+      }
+      listings.set(baseline, listing);
+    }
+    return listings.get(baseline);
+  };
+  return (base, baseline) => {
+    if (/[*?[\]:\\\n]/.test(base)) return true;
+    const listing = listingFor(baseline);
+    if (!listing) return true;
+    const anchor = path.posix.normalize(`${listing.prefix}${base}`).replace(/\/+$/, "");
+    if (anchor === "." || anchor === "") return listing.paths.size > 0;
+    if (anchor === ".." || anchor.startsWith("../")) return true;
+    if (listing.paths.has(anchor)) return true;
+    const dir = `${anchor}/`;
+    for (const changed of listing.paths) {
+      if (changed.startsWith(dir)) return true;
+    }
+    return false;
+  };
 }
 
 export function fileChangedSinceSafe(cwd, base, baseline) {

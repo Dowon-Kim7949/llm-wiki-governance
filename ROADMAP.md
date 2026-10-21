@@ -1021,6 +1021,27 @@ record of who approved what should say so plainly.
 changes are named in the CHANGELOG. The read-cost saving of `slim` is unmeasured and is not
 claimed; the `archive-log` numbers above are measured byte counts, not token estimates.
 
+## Release Plan (post-1.33.0) — lighter to fetch, to run, and to read — **shipped as 1.34.0 (2026-10-21)**
+
+A governance tool is paid for on every commit, in every CI run, and in every agent prompt.
+1.34.0 looked for weight in those three places and removed it only where a measurement said
+the weight bought nothing.
+
+- **Run time.** Six everyday commands spent 80–90% of their time spawning one `git log` per
+  cited file. One listing per review date now answers every file git did not touch; only the
+  rest still get their own query, so the findings do not move. 4 s → 0.7 s here, 17.9 s →
+  0.7 s on the largest local wiki.
+- **Download.** Half the tarball was project documents nothing at runtime reads. They stay on
+  GitHub; the package halves.
+- **Prompt.** The delegation budget was measured twice and found to change neither cost nor
+  accuracy, while it was a quarter of every write prompt. It is gone. `contextBudget` and
+  `governanceBudget` were never measured, which is a different state from measured-and-empty;
+  they stay until a measurement says otherwise.
+
+**Not done, on purpose:** shrinking `src/` itself. Commands that do not scan the wiki already
+finish in 0.2–0.3 s, so code size is not where the time goes, and a refactor would buy risk
+without a felt gain.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

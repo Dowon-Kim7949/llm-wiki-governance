@@ -70,6 +70,7 @@ contains_sensitive_info: false
   - `templates/github-actions/llm-wiki-validate.yml`의 `npx -y llm-wiki-governance@<X.Y>` — **1.32.0부터 `tests/verification.test.js`가 `package.json` 버전에서 X.Y를 계산해 대조하므로, 안 올리면 테스트가 실패한다.** 1.32.0에서 템플릿이 `npm ci` + `npx --no-install` 대신 이 형태를 쓰게 되면서 생긴 자리다.
   - `.github/actions/validate/action.yml`의 `version` 입력 기본값(patch 없는 `X.Y` 형식) — 같은 배치에서 같은 방식의 테스트를 붙였다. 이 값은 1.27.0–1.27.2에 걸쳐 실제로 낡은 적이 있고, 그래서 `RELEASE_CHECKLIST.md`가 그 사고를 근거로 이 항목을 명시 지목한다.
 - 태그 버전과 `package.json` 일치는 publish 워크플로가 확인하지만(위 Pipeline 4), 위 두 핀은 **태그를 밀기 전 로컬 테스트에서만** 걸린다.
+- **tarball 구성도 확인한다(1.34.0).** `npm pack --dry-run`에는 `bin/`·`src/`·`templates/`·`rules/`·`adapters/`·`profiles/`와 README 2종·`LICENSE`만 나와야 한다. 프로젝트 문서를 `files`에 다시 넣으면 `tests/verification.test.js`가 실패한다.
 
 ## Evidence
 

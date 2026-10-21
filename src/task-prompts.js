@@ -13,10 +13,10 @@ export const SUPPORTED_TASK_PROMPTS = new Set(["bootstrap", "onboard", "prepare"
 //     the governance mode's decision rule);
 //   - the stop conditions and the exit criteria;
 //   - the interpolated project facts (project type, profiles, evidence focus).
-// What it drops is generic engineering know-how, rationale, and the whole
-// delegation budget — the 1.29.2 A/B run found no saving from that block, but no
-// measurement says the shorter text is better either. That is why the default is
-// still `full`: the default changes only on a measurement, not on this comment.
+// What it drops is generic engineering know-how and rationale. (It also dropped
+// the delegation budget, which `full` no longer carries either since 1.34.0.) No
+// measurement says the shorter text is better, which is why the default is still
+// `full`: the default changes only on a measurement, not on this comment.
 export const PROMPT_PROFILES = Object.freeze(["full", "slim"]);
 export const DEFAULT_PROMPT_PROFILE = "full";
 
@@ -63,34 +63,12 @@ export function contextBudget() {
   ];
 }
 
-// The delegation budget: the cost lever context narrowing cannot reach. contextBudget()
-// decides HOW MUCH gets read; this decides WHO reads it. A sweep across many documents
-// belongs in a cheap, disposable context that hands back a brief, while the judgment and
-// the prose stay with the agent holding the reasoning. Stated as a budget rather than a
-// procedure, so it composes with the "how you work between those lines is your call"
-// contract instead of re-introducing the micro-steps 1.27.2 removed.
-//
-// Deliberately agent-NEUTRAL, for two reasons. The generated artifact body is a single
-// shared text rendered into every skill format (Claude/Codex/Cursor/neutral) and is built
-// with agents: [] so it cannot vary by harness; and initialEnrichmentWorkflow() embeds
-// this block in the canonical text that verification.test.js pins as a verbatim substring
-// of both `bootstrap` and `handoff`. Naming a specific harness belongs in that harness's
-// adapter (templates/adapters/*), not here.
-export function delegationPolicy() {
-  return [
-    "Delegation budget (spend the expensive context on judgment, not on reading):",
-    "- Locating and scoping is dispatchable: when an answer needs a sweep across many documents or files, send a read-only subagent on a cheaper model and take back a brief — findings, file:line evidence, and what stayed unconfirmed — instead of pulling the raw material into this context.",
-    "- Judgment is not dispatchable: the design decision, the regression call, the edit itself, and the wiki/log prose stay here. A cheaper agent can apply text you already wrote; it cannot write the sentence that explains why the change was made.",
-    "- Mechanical finishing is dispatchable: running the checks, writing the run manifest, and applying edits you have already decided on.",
-    "- Dispatch only when it pays: a brief plus its dispatch costs more than reading one file, and a delegate that hands back the raw material has bought nothing. When the harness can choose a model per dispatch, send the dispatch to the cheaper one and keep the session's own model fixed — switching the session model mid-task re-reads the conversation so far at the new model's price.",
-    "- Delegation never buys an unverified claim: either the delegate reads the actual source and reports the evidence, or you read it yourself — never skip the source because a dispatch felt expensive."
-  ];
-}
-
-// The governance budget: the third lever, next to contextBudget (how much gets
-// read) and delegationPolicy (who reads it). This one decides WHETHER the
-// documentation work happens at all — the cost the other two cannot reach, because
-// the cheapest doc-sync pass is the one a mode says is not needed.
+// The governance budget: the lever next to contextBudget (how much gets read).
+// This one decides WHETHER the documentation work happens at all — the cost
+// contextBudget cannot reach, because the cheapest doc-sync pass is the one a mode
+// says is not needed. (A third block, delegationPolicy — who reads — was removed
+// in 1.34.0: its paid A/B and a blind accuracy grading found no effect, and it
+// was a quarter of every write prompt.)
 //
 // It is the load-bearing half of the feature in practice. The rule floor keeps a
 // build from failing; this text is what an agent actually obeys after a three-line
@@ -100,8 +78,8 @@ export function delegationPolicy() {
 // Bullets, never a numbered list: the recurring write workflows are pinned as
 // goal / hard lines / exit criteria (1.27.2 prompt-shape discipline) and a numbered
 // step here would re-introduce exactly the micro-step narration that removed.
-// Mode-parameterized but otherwise static, and agent-neutral for the same reason
-// delegationPolicy is: one shared body renders into every skill format.
+// Mode-parameterized but otherwise static, and agent-neutral: one shared body
+// renders into every skill format, so it cannot name a harness.
 export function governanceBudget(mode = LEGACY_GOVERNANCE_MODE) {
   const policy = getGovernancePolicy(mode);
   // Kept deliberately tight. The block costs 187-273 estimated tokens (chars/4
@@ -283,7 +261,6 @@ export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints
     "3. Investigate the actual code, config, routing, public APIs, data models, and key workflows before making any claim.",
     ...evidenceFocus(projectType),
     ...contextBudget(),
-    ...delegationPolicy(),
     ...governanceBudget(governanceMode),
     "4. Replace placeholder content with descriptions backed by real source evidence. Do not guess — leave anything uncertain as an explicit review item instead of inventing detail.",
     "5. For backend/fullstack projects, also enrich the related docs/llm-wiki/domains/*.md documents.",
@@ -435,7 +412,6 @@ ${documentLanguageDirective(context.docLang)}
 - Keep CLI-created or agent-edited wiki documents as status: needs_review; do not promote any document to verified — verified is human-approved only.
 - Never write sensitive raw values into documents, logs, or reports.
 ${contextBudget().join("\n")}
-${delegationPolicy().join("\n")}
 ${governanceBudget(context.governanceMode).join("\n")}
 
 Exit criteria (done means all of these):
@@ -475,7 +451,6 @@ ${documentLanguageDirective(context.docLang)}
 - Keep CLI-created or agent-edited wiki documents as status: needs_review; do not promote any document to verified — verified is human-approved only.
 - Never write sensitive raw values into documents, logs, or reports.
 ${contextBudget().join("\n")}
-${delegationPolicy().join("\n")}
 ${governanceBudget(context.governanceMode).join("\n")}
 
 Exit criteria (done means all of these):
@@ -580,7 +555,6 @@ ${documentLanguageDirective(context.docLang)}
 12. Append docs/llm-wiki/log.md in append-only style with the documents touched, the evidence used, what stayed inferred, and what stayed unknown.
 13. Finish by running 'llm-wiki backfill' again (add --strict for the pre-handoff gate) and report which readiness checks are now complete and which are not.
 ${contextBudget().join("\n")}
-${delegationPolicy().join("\n")}
 
 Expected final response:
 - Documents created or filled, with the confidence label distribution.

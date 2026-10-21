@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: wiki_readme
 project: llm-wiki-governance
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -33,7 +33,7 @@ contains_sensitive_info: false
 - 시작점은 [index.md](index.md)이며 권장 읽기 순서를 안내합니다.
 - 사용자 대상 설치/사용 안내는 저장소 루트 `README.md`를, 릴리스 게이트는 `GATE_REVIEW.md`를, 방향성은 `ROADMAP.md`를 참조하세요.
 - 초급자와 팀원을 위한 설명 자료는 [LLM-WIKI 팀 브리핑 덱](../../outputs/team-briefing/llm-wiki-briefing.html)을 참조하세요(옛 `v1.5.1.pptx`는 이 HTML 덱으로 대체됨).
-- 루트의 외부 공개 문서는 영문 `.md`(정본)와 국문 `.ko.md`를 쌍으로 유지합니다: `README`, `CHANGELOG`, `ROADMAP`. 두 파일 상단에 `> Language:` 상호링크를 두고, 새 `.ko.md`는 `package.json` `files`에 등록하며, 한쪽을 고치면 짝도 함께 갱신합니다.
+- 루트의 외부 공개 문서는 영문 `.md`(정본)와 국문 `.ko.md`를 쌍으로 유지합니다: `README`, `CHANGELOG`, `ROADMAP`. 두 파일 상단에 `> Language:` 상호링크를 두고, 한쪽을 고치면 짝도 함께 갱신합니다. `package.json` `files`에는 README 쌍만 등록합니다 — 1.34.0부터 `CHANGELOG`·`ROADMAP`·`GATE_REVIEW` 같은 프로젝트 문서는 런타임이 읽지 않으므로 npm tarball에 싣지 않고 GitHub에만 둡니다.
 - 루트 `README.md`/`README.ko.md`는 사용자용이라 LLM-WIKI frontmatter를 두지 않고, `ROADMAP`은 frontmatter를 두며 국문본이 이를 미러링합니다. 이들 루트 문서는 `docs/llm-wiki/` 밖이라 `validate`/`validate-frontmatter` 스캔 대상이 아닙니다.
 
 ## Operating Rules

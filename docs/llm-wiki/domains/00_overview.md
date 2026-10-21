@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -80,7 +80,7 @@ contains_sensitive_info: false
 - `src/cli.js#symbol:COMMANDS` — 전체 명령 표면(도메인 지도가 이를 반영해야 한다). 이 지도의 완전성은 이 맵과의 대조로만 확인할 수 있다.
 - `src/commands/harness-health.js#symbol:harnessHealthCommand` — Harness 도메인의 진입점. 위키 문서가 아니라 하네스 파일 자신을 읽는 유일한 명령.
 - `src/mcp/tools.js#symbol:TOOL_DEFS` — Agent-native(MCP) 도메인이 노출하는 읽기 전용 툴의 단일 소스(현재 17종).
-- `src/commands.js#symbol:impactCommand` — Change tracking의 diff 앵커 역영향. `impact.source_changed`는 2026-08-03(결정 21)부터 기본 error라 `--strict` 없이 빌드를 실패시킨다(그 규칙에 한해 `--strict`는 no-op). 1.31.0부터 앵커 매칭이 경로 prefix라 디렉터리 앵커도 발화하고(N-8), 요약·JSON에 additive `stamp_only_exclusions`가 붙어 검토 스탬프만으로 자기제외된 문서를 이름으로 보고한다(N-9; 보고 전용이라 exit code 불변). 1.33.0(미출시)에서는 opt-in 규칙 `impact.stamp_only`가 같은 보고를 문서별 finding으로 낼 수 있다(기본 off).
+- `src/commands.js#symbol:impactCommand` — Change tracking의 diff 앵커 역영향. `impact.source_changed`는 2026-08-03(결정 21)부터 기본 error라 `--strict` 없이 빌드를 실패시킨다(그 규칙에 한해 `--strict`는 no-op). 1.31.0부터 앵커 매칭이 경로 prefix라 디렉터리 앵커도 발화하고(N-8), 요약·JSON에 additive `stamp_only_exclusions`가 붙어 검토 스탬프만으로 자기제외된 문서를 이름으로 보고한다(N-9; 보고 전용이라 exit code 불변). 1.33.0에서는 opt-in 규칙 `impact.stamp_only`가 같은 보고를 문서별 finding으로 낼 수 있다(기본 off).
 - `src/commands.js#symbol:checkRunCommand` — Change tracking의 intent 앵커(run manifest 파이프라인 검증). 매니페스트 선택은 git 추적본 우선(결정 22/N-6)이고, 신규 `run.manifest_untracked`(info)·`run.change_set_undeclared`(warning)를 낸다.
 - `src/git.js#symbol:trackedPaths`·`modifiedTrackedFiles` — `check-run`이 쓰는 git seam 2종: 디렉터리별 추적 경로 집합(레포가 아니면 빈 집합이 아니라 `null`=미상이라 "추적 안 함"과 혼동되지 않는다)과 HEAD 대비 추적 수정분(untracked 미포함).
 - `src/commands/scans.js#symbol:FRESHNESS_EXEMPT_DOC_TYPES` — release note를 `evidence.stale`·`impact.source_changed` 양쪽에서 빼는 하드코딩 면제(결정 28).

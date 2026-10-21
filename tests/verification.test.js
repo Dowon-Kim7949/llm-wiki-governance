@@ -3561,12 +3561,19 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.33.0");
+  assert.equal(packageJson.version, "1.34.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");
   assert.ok(packageJson.files.includes("README.ko.md"));
-  assert.ok(packageJson.files.includes("ROADMAP.md"));
+  // Since 1.34.0 the tarball carries only what runs plus README/LICENSE. The
+  // project documents (CHANGELOG, ROADMAP, GATE_REVIEW, …) were 46% of the
+  // unpacked package and nothing at runtime reads them — src/ resolves only
+  // package.json and templates/ against its own location. They live on GitHub.
+  for (const doc of ["CHANGELOG.md", "ROADMAP.md", "GATE_REVIEW.md", "VERIFICATION.md", "RELEASE_CHECKLIST.md"]) {
+    assert.ok(!packageJson.files.includes(doc), `${doc} must not ship in the tarball`);
+  }
+  assert.ok(packageJson.files.includes("LICENSE"));
 });
 
 test("GitHub Actions validation example includes strict LLM-WIKI checks", async () => {

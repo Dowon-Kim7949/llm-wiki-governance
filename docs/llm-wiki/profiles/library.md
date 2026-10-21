@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: profile
 project: llm-wiki-governance
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -35,7 +35,7 @@ contains_sensitive_info: false
 
 ## Why library
 
-- 산출물이 `bin`으로 노출되는 CLI이고 런타임 서드파티 의존성이 없다(package.json). 소비자는 npm/npx/yarn로 설치해 명령을 호출하므로, 공개 표면·버전 계약·예시가 프론트/백엔드형 문서보다 중요하다.
+- 산출물이 `bin`으로 노출되는 CLI이고 런타임 서드파티 의존성이 없다(package.json). 소비자는 npm/npx/yarn로 설치해 명령을 호출하므로, 공개 표면·버전 계약·예시가 프론트/백엔드형 문서보다 중요하다. 소비자가 받는 tarball에는 실행에 필요한 것과 README·LICENSE만 들어 있다(1.34.0) — 프로젝트 문서는 GitHub가 정본이다.
 
 ## Evidence
 

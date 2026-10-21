@@ -10,10 +10,10 @@
 //      the source of truth; token thrift must never buy an unverified claim).
 //   3. This repo exposes a quiet test reporter so an agent re-running the suite
 //      does not pull ~380 result lines into context each time.
-//   4. The write workflows carry a delegation budget: the sweep that locates and
-//      scopes belongs in a cheap, disposable context that hands back a brief, while
-//      the judgment and the prose stay with the agent holding the reasoning — and a
-//      dispatch that returns the raw material has bought nothing.
+//   4. (Removed in 1.34.0.) The write workflows used to carry a delegation budget
+//      — who reads, next to how much. A paid A/B found no saving and a blind
+//      grading found no accuracy difference, while it was a quarter of every write
+//      prompt, so it went. The test below keeps it from coming back unnoticed.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
@@ -22,7 +22,7 @@ import os from "node:os";
 import path from "node:path";
 import { initCommand } from "../src/commands.js";
 import { SKILL_TASKS } from "../src/commands/skills.js";
-import { buildTaskPrompt, contextBudget, delegationPolicy } from "../src/task-prompts.js";
+import { buildTaskPrompt, contextBudget } from "../src/task-prompts.js";
 
 // fileURLToPath, not import.meta.dirname: the latter landed in Node 20.11 and this
 // package supports >=18.18.0, where it is undefined (the house pattern is in mcp.test.js).
@@ -172,79 +172,28 @@ test("the test suite has a quiet reporter script, and the default script keeps t
   assert.match(pkg.scripts.verify, /^node --test tests\/\*\.test\.js/);
 });
 
-// Lever 4 (1.29.2): the delegation budget. contextBudget decides how much gets read;
-// this decides WHO reads it. The block is agent-neutral BY DESIGN and these tests pin
-// that: the generated artifact body is one shared text rendered into every skill
-// format (built with agents: []), and initialEnrichmentWorkflow embeds it inside the
-// canonical chunk verification.test.js pins as a verbatim substring of both bootstrap
-// and handoff. A harness-specific instruction belongs in that harness's adapter.
-const DELEGATING_TASKS = ["feature", "fix", "refactor", "docs-sync", "bootstrap"];
-const NON_DELEGATING_TASKS = ["onboard", "prepare", "okf-extract"];
+// Lever 4 was the delegation budget (1.29.2 → removed 1.34.0). The measurement that
+// removed it is the reason it must not return quietly: re-adding a block that costs
+// a quarter of every write prompt needs a measurement that says it pays.
+const WRITE_TASKS = ["feature", "fix", "refactor", "docs-sync", "bootstrap", "backfill"];
 
-test("delegationPolicy is a pure, agent-neutral source embedded verbatim in the work tasks", () => {
-  const lines = delegationPolicy();
-  assert.ok(Array.isArray(lines) && lines.length > 0, "returns lines");
-  assert.deepEqual(delegationPolicy(), lines, "deterministic");
-  // Neutrality is the contract, not an accident: no argument may change the text.
-  assert.deepEqual(delegationPolicy(["claude"]), lines, "does not vary by agent");
-  assert.deepEqual(delegationPolicy(["codex", "cursor"]), lines, "does not vary by agent");
-
-  // No machine-specific leakage into committed artifacts (the block is static text;
-  // this keeps it that way if anyone later interpolates into it).
-  for (const line of lines) {
-    assert.ok(!line.includes("/home/") && !line.includes("/Users/"), `no absolute path in: ${line}`);
-  }
-  // It must not re-introduce the numbered micro-steps 1.27.2 removed.
-  assert.doesNotMatch(lines.join("\n"), /^\s*\d+\.\s/m, "no numbered steps");
-
-  const block = lines.join("\n");
-  for (const task of DELEGATING_TASKS) {
+test("no generated prompt or skill carries the removed delegation budget", async () => {
+  for (const task of WRITE_TASKS) {
     const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
     assert.equal(built.result, "pass", `${task}: builds`);
-    assert.ok(built.prompt.includes(block), `${task}: embeds the shared delegation budget verbatim`);
+    assert.doesNotMatch(built.prompt, /Delegation budget|subagent on a cheaper model/, `${task}: carries no delegation budget`);
   }
-  // Read-only scoping IS the work a delegate does, and okf-extract is a format
-  // conversion: a delegation budget there is noise, not guidance.
-  for (const task of NON_DELEGATING_TASKS) {
-    const built = buildTaskPrompt({ task, cwd: ".", projectType: "backend", profiles: ["core"] });
-    assert.equal(built.result, "pass", `${task}: builds`);
-    assert.doesNotMatch(built.prompt, /Delegation budget/, `${task}: carries no delegation budget`);
-  }
-});
 
-test("the delegation budget names what cannot be delegated, and never buys an unverified claim", () => {
-  const block = delegationPolicy().join("\n");
-  // The boundary: judgment and prose stay with whoever holds the reasoning.
-  assert.match(block, /Judgment is not dispatchable/, "states the boundary");
-  assert.match(block, /cannot write the sentence that explains why/, "prose stays with the reasoning");
-  // The same safety floor as the context budget: thrift never replaces evidence.
-  assert.match(block, /never buys an unverified claim/, "evidence outranks thrift");
-  assert.match(block, /reads the actual source and reports the evidence/, "the delegate still reads the source");
-  // The economics, so dispatching does not become reflexive.
-  assert.match(block, /only when it pays/, "states the break-even");
-  assert.match(block, /hands back the raw material has bought nothing/, "a raw-material dump is not a brief");
-});
-
-test("every generated write skill carries the delegation budget; the read-only skills do not", async () => {
-  const cwd = await skillsFixture("delegation-budget-");
-
-  for (const { slug, task } of SKILL_TASKS) {
+  const cwd = await skillsFixture("delegation-removed-");
+  for (const { slug } of SKILL_TASKS) {
     const body = await readFile(path.join(cwd, ".claude", "skills", slug, "SKILL.md"), "utf8");
-    if (READ_ONLY_TASKS.includes(task)) {
-      assert.doesNotMatch(body, /Delegation budget/, `${slug}: read-only skill stays free of it`);
-      continue;
-    }
-    assert.match(body, /Delegation budget/, `${slug}: carries the delegation budget`);
-    assert.match(body, /read-only subagent on a cheaper model/, `${slug}: names the mechanism`);
-    assert.match(body, /Judgment is not dispatchable/, `${slug}: keeps judgment local`);
-    assert.match(body, /never buys an unverified claim/, `${slug}: evidence outranks thrift`);
+    assert.doesNotMatch(body, /Delegation budget/, `${slug}: carries no delegation budget`);
   }
 
-  // One shared body is rendered into every format, so the neutral prompt and the
-  // Cursor rule must read the same way — with no harness named in the text.
+  // One shared body is rendered into every format, so it must name no harness.
   for (const rel of [".agents/skills/llm-wiki-fix/SKILL.md", ".cursor/rules/llm-wiki-fix.mdc", ".llm-wiki/prompts/llm-wiki-fix.md"]) {
     const body = await readFile(path.join(cwd, ...rel.split("/")), "utf8");
-    assert.match(body, /Delegation budget/, `${rel}: carries the delegation budget`);
+    assert.doesNotMatch(body, /Delegation budget/, `${rel}: carries no delegation budget`);
     assert.doesNotMatch(body, /Claude Code|\.claude\/agents/, `${rel}: names no specific harness`);
   }
 });

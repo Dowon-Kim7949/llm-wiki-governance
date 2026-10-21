@@ -15,6 +15,44 @@ export function fileChangedSince(cwd, file, sinceDate) {
   return out.length > 0;
 }
 
+// Every path touched by a commit after the END of sinceDate, in one `git log`
+// instead of one per anchor. It is a SUPERSET of what `fileChangedSince` can
+// report: `-m` lists a merge's diff against each parent, so a commit the
+// path-limited walk keeps (one that is not TREESAME to some parent) always has
+// the path in this list. That makes it safe only as a negative filter — absent
+// here means `fileChangedSince` would answer false; present means "ask it".
+// Matching stays case-sensitive because pathspecs are, even under
+// core.ignorecase on Windows. `prefix` is the cwd relative to the repo root, since git prints
+// root-relative paths while anchors are cwd-relative.
+// Each flag pins a user config that would otherwise shrink the list below the
+// superset: diff.relative (`--no-relative`), rename detection hiding a path that
+// moved out of an anchored directory (`--no-renames`), log.diffMerges
+// (`--diff-merges=separate`), and log.showRoot (`--root`). A git too old for one
+// of them fails the command, which callers treat as "use the per-file query".
+// Best-effort: throws only if git itself fails; callers fall back to per-file.
+export function pathsChangedSince(cwd, sinceDate) {
+  const prefix = runGit(cwd, ["rev-parse", "--show-prefix"]).trim();
+  const out = runGit(cwd, [
+    "-c",
+    "core.quotePath=false",
+    "log",
+    `--since=${sinceDate} 23:59:59`,
+    "--diff-merges=separate",
+    "--root",
+    "--no-renames",
+    "--no-relative",
+    "--name-only",
+    "--pretty=format:",
+    "-z"
+  ]);
+  const paths = new Set();
+  for (const part of out.split(/[\0\n]/)) {
+    const trimmed = part.trim();
+    if (trimmed) paths.add(trimmed);
+  }
+  return { prefix, paths };
+}
+
 // True when the given line range of <file> has commits after the END of
 // sinceDate. Uses `git log -L<start>,<end>:<file> -s` so only edits touching
 // those specific lines count — a narrower signal than fileChangedSince for

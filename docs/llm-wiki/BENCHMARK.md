@@ -7,7 +7,7 @@ tags:
 status: verified
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -341,7 +341,8 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   "Delegation Policy Scope Decision"이 적은 "`full`의 약 44–50%"는 렌더된 프롬프트의 **문자 수
   비교**다. 토큰이나 답변 품질을 잰 것이 아니다. 같은 절은 1.29.2 `delegationPolicy` A/B를 "반증되지
   않았을 뿐 입증된 이득이 아니다"로 판정한다. 그래서 slim은 opt-in으로 출하하고, 기본값은 측정된 A/B
-  뒤에만 바꾼다. README·런치 카피에 "프롬프트 절반" 같은 헤드라인을 쓰지 않는다.
+  뒤에만 바꾼다. 1.34.0에서는 그 블록 자체를 `full`에서도 뺐다 — 블라인드 채점(2026-10-21)에서도
+  정확도 차이가 측정되지 않았다. slim 비율은 분모만 줄어 약 54–67%가 됐고, 이것 역시 문자 수다. README·런치 카피에 "프롬프트 절반" 같은 헤드라인을 쓰지 않는다.
 - 이 문서는 에이전트(Claude Code)가 작성했으므로 `needs_review`다 — 사람 검토 후 `verified`.
 
 ## 토큰-효율 벤치 확장 (proxy 실행됨 · real 하네스는 executed:false)

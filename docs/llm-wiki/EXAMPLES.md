@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-governance
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -93,10 +93,10 @@ node bin/llm-wiki.js validate --type library
 # `npm ci`가 필요 없고(게이트가 쓰는 패키지는 런타임 의존성이 없는 이것 하나뿐이다) 이
 # 패키지를 devDependency로 둘 필요도 없다. 비공개 저장소에서 러너 분이 과금되는 쪽이라면
 # 그 의존성 설치가 보통 워크플로에서 가장 긴 스텝이다.
-npx -y llm-wiki-governance@1.33 validate-frontmatter
-npx -y llm-wiki-governance@1.33 validate --strict --agent codex
-npx -y llm-wiki-governance@1.33 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
-npx -y llm-wiki-governance@1.33 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
+npx -y llm-wiki-governance@1.34 validate-frontmatter
+npx -y llm-wiki-governance@1.34 validate --strict --agent codex
+npx -y llm-wiki-governance@1.34 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx -y llm-wiki-governance@1.34 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
 
 🚨 **패키지 이름을 줄여 `npx llm-wiki`라고 쓰면 안 된다.** 이 패키지의 bin 이름이 `llm-wiki`인데
@@ -146,7 +146,7 @@ llm-wiki handoff --agent claude
 ```bash
 llm-wiki archive-log                               # 미리보기: 어느 항목이 어느 월별 권으로 가는가
 llm-wiki archive-log --keep-months 3 --write       # 최근 3개월만 log.md에 남기고 나머지는 log-YYYY-MM.md로
-llm-wiki prompt --task fix --prompt-profile slim   # 위임 예산·일반 조언을 뺀 짧은 프롬프트
+llm-wiki prompt --task fix --prompt-profile slim   # 일반 조언을 뺀 짧은 프롬프트
 llm-wiki prompt --task issue                       # 대화와 위키로 GitHub 이슈 본문 초안(읽기 전용)
 ```
 

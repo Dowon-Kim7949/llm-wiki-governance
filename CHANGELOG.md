@@ -6,6 +6,55 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.34.0 — 2026-10-21
+
+A weight release: less to download, less to wait for, less to read. Three cuts, each
+measured before and after on this repository and, for the speed change, on eleven local
+repositories that carry a wiki.
+
+- **The date-anchored drift scan stops spawning one `git log` per anchor.** `validate`,
+  `audit`, `stats`, `status`, `review`, and `drift` spent 80–90% of their time there —
+  72 spawns on this repository, about 45 ms each on Windows. Each review baseline now gets one
+  listing of every path changed after it (`pathsChangedSince`), used only as a negative
+  filter: an anchor absent from it is one the per-file query would have answered "unchanged",
+  and an anchor present in it still gets the per-file query. Findings are byte-identical:
+  `drift` and `validate --strict` produced the same JSON before and after on all eleven
+  repositories, two of them with real drift (8 and 28 `evidence.stale`). Measured here:
+  `validate --strict` 4.0–4.4 s → 0.7 s, `drift` 3.7 s → 0.3 s; elsewhere `drift`
+  17.9 s → 0.7 s and 12.2 s → 0.4 s. The listing pins four flags so a user's git config cannot
+  make it smaller than what the per-file query sees (`--diff-merges=separate`, `--root`,
+  `--no-renames`, `--no-relative`); a git too old for them fails the listing, and the scan
+  falls back to the per-file query. Each flag is pinned by a mutation check in
+  `tests/drift-batched-listing.test.js`.
+- **The npm tarball carries only what runs.** The project documents — `CHANGELOG`,
+  `ROADMAP`, `GATE_REVIEW`, `VERIFICATION`, `RELEASE_CHECKLIST`, `CONTRIBUTING`,
+  `CODE_OF_CONDUCT`, `SECURITY` and their Korean pairs — were 46% of the unpacked package,
+  and nothing at runtime reads them: `src/` resolves only `package.json` and `templates/`
+  against its own location. They stay on GitHub. Packed 557,702 → 278,450 bytes, unpacked
+  1,704,003 → 941,286, 80 → 67 files.
+- **The delegation budget is removed from every generated prompt and skill.** Added in 1.29.2
+  to tell an agent *who* reads, it was measured twice: a paid A/B (2026-08-19) found no cost
+  difference outside noise, and a blind re-grade of the stored answers (2026-10-21) found no
+  accuracy difference — 33 of 36 answers hit every rubric claim. It was 1,318 characters,
+  about a quarter of every write prompt. Write prompts shrink about 25% (`fix` 5,200 → 3,881
+  characters) and the seven generated Claude skills 42,876 → 36,241 bytes. `slim` never
+  carried the block and is unchanged, so its ratio to `full` moved from 44–50% to 54–67%.
+  Existing skills keep the block until `llm-wiki init --write --skills --refresh`. The
+  limits stay with the decision (n=1 per pass, one fixture, a saturated rubric): no effect
+  was found, which is not a proof of none. See GATE_REVIEW "Delegation Policy Scope Decision".
+
+**Behaviour changes, named:** generated prompt and skill text is shorter (above); the tarball
+no longer contains the project documents. Findings, exit codes, and JSON shapes are unchanged.
+
+**Found while proving the speed change, not changed by it:** the drift scan does not flag a
+change that reaches the branch only through a merge made after the review when the branch's
+own commit predates it, because `git log -- <path>` simplifies history by following the
+parent the merge is identical to. That is how the per-file query has always behaved; the new
+test pins it as preserved behavior, and fixing it is a separate decision.
+
+Sized as a MINOR: no command, option, or JSON shape changed, but adopters who refresh their
+skills receive different text. Tests: 669 → 671.
+
 ## 1.33.0 — 2026-10-21
 
 A read-cost release. A wiki that lives long enough gets expensive to read in two

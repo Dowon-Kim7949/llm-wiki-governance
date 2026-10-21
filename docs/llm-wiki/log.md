@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-21 - release: 1.34.0 — 받기도, 돌리기도, 읽기도 가볍게
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: code, test, release, docs
+- changed: `src/git.js`(`pathsChangedSince` 신설) · `src/commands/scans.js`(`changeFilter`, `scanEvidenceDrift`의 음성 필터) · `src/task-prompts.js`(`delegationPolicy` 정의와 삽입 4곳 제거) · `package.json`(`files`를 실행 파일과 README·LICENSE로 축소, 1.33.0 → 1.34.0) · `tests/drift-batched-listing.test.js`(신규 4건) · `tests/agent-token-discipline.test.js`(위임 테스트 3건 → 재유입 가드 1건) · `tests/prompt-profile.test.js`(slim 비율 상한 50% → 70%, full/slim 구분 표지 교체) · `tests/verification.test.js` · `RELEASE_CHECKLIST.md` · `GATE_REVIEW.md`("Delegation Policy Scope Decision"에 제거 기록) · CHANGELOG 쌍 · ROADMAP 쌍 · README 2종·action.yml·템플릿 핀 · 위키 14종 + `REVIEW_HISTORY.md`
+- summary: 유지보수자가 "패키지를 가볍게"를 요청해, 측정해서 무게가 아무것도 사지 못하는 곳 세 군데를 덜어냈다. ① 날짜 앵커 드리프트가 인용 파일마다 `git log`를 띄워 6개 명령 시간의 80–90%를 쓰고 있었다(이 저장소 72회). 기준일마다 변경 경로 목록을 한 번 받아 **음성 필터로만** 쓰고, 목록에 든 앵커는 기존 파일별 쿼리가 판정하게 해서 finding이 바이트 동일하다. 목록이 상위 집합이려면 사용자 config가 줄이지 못해야 해서 플래그 넷을 고정했다. 처음엔 소문자 정규화도 넣었지만, git pathspec은 Windows `core.ignorecase`에서도 대소문자를 구분해서(직접 확인) 뺐다. ② tarball의 46%가 런타임이 읽지 않는 프로젝트 문서였다(코드가 자기 위치에서 읽는 것은 `package.json`·`templates/`뿐임을 grep으로 확인). `files`를 줄이고 이를 요구하던 RELEASE_CHECKLIST 줄과 wiki README의 `.ko.md` 등록 규칙을 고쳤다. ③ `delegationPolicy`를 뺐다 — 유료 A/B와 블라인드 채점 모두 효과를 찾지 못했는데 쓰기 프롬프트의 약 25%였다. 결정과 한계는 GATE_REVIEW에 남겼고, `contextBudget`·`governanceBudget`은 측정한 적이 없어 다른 경우로 보고 남겼다. 같은 자리에서 이미 출시된 1.33.0을 "미출시"·"예정"이라 적던 현재형 서술 17곳(6종)과, 설정을 마친 `agentReviewers`를 "아직 안 바꿨다"고 적던 GLOSSARY 문장을 고쳤다.
+- evidence: `validate --strict` 4.0–4.4초 → 0.7초, `drift` 3.7초 → 0.3초(이 저장소, 3회·2회 측정). 위키가 있는 로컬 저장소 11곳에서 개선 전(origin/main worktree)과 후의 `drift`·`validate --strict` JSON 22쌍이 **전부 동일**했다. 이 중 드리프트가 실제로 있는 곳이 두 곳이다(`evidence.stale` 8·28). 부하가 없던 첫 실행에서 가장 큰 위키 `drift`가 17.9초 → 0.7초였다. 두 번째 실행은 전체 테스트와 동시에 돌아 절대 시간이 흔들렸지만(개선 전 `validate` 최대 57초) 22쌍 모두 동일했다. 플래그 넷을 하나씩 뺀 변이는 모두 새 테스트가 잡았다. 테스트 671/671, lint OK. tarball은 packed 557,702 → 278,450 B, unpacked 1,704,003 → 941,286 B. `fix` 프롬프트는 5,200 → 3,881자, Claude 스킬 7종은 42,876 → 36,241 B.
+- caveats: 드리프트가 **리뷰 뒤 머지로만 들어온 오래된 브랜치의 변경**을 잡지 못하는 기존 위음성을 찾았다(`git log -- <path>`의 히스토리 단순화). 이번 변경은 출력 보존이 원칙이라 고치지 않고 테스트로 "보존된 동작"이라고 고정했다. 기존 도입처 스킬은 `--refresh` 전까지 위임 블록을 유지한다. push·태그·배포는 하지 않았다.
+
 ## 2026-10-21 - docs: 1.33.0 배포 이후 정렬 — 발표 덱이 1.31에서 멈춰 있었고, 커밋이 드리프트 12건을 만들었다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

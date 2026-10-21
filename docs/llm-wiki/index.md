@@ -39,7 +39,7 @@ contains_sensitive_info: false
 - 이 완화는 **이 저장소 한정**입니다. 제품이 도입처로 내보내는 규칙(`templates/adapters/*`)은 여전히 사람 검토를 요구하고, `docs/llm-wiki/` 밖의 어떤 파일도 `verified`를 씨앗으로 삼을 수 없습니다. 전체 계약은 `AGENTS.md`의 "Wiki discipline"이 소유합니다.
 - **`impact --since <ref>`는 플래그 없이 빌드를 실패시킵니다**(1.28.0부터 `impact.source_changed` 기본 `error`). 소스를 바꾸면서 그 소스를 인용하는 `verified` 문서를 같은 변경에서 안 고치면 CI가 빨개집니다 — 이 저장소의 CI `governance` 잡이 `--since HEAD~1 --strict`로 실행합니다. 릴리스 노트(`doc_type: release_notes`)는 면제이고, `version` 한 줄만 바뀐 `package.json`(N-13)과 `docs/llm-wiki/templates/` 하위(N-14)도 대조에서 빠지지만 **릴리스 커밋의 finding이 0이 되지는 않습니다.** 완화는 `rules`/`rulesPreset`으로만 하고, 인용을 지워서 우회하지 않습니다.
 - **이 저장소는 config에 `governance.mode: strict`를 명시합니다.** 블록이 없어도 `strict`로 해소되지만, CI를 게이트하는 레벨을 기본값에 맡기면 `doctor`의 `source:` 필드가 드러내라고 있는 바로 그 애매함이 생깁니다.
-- 릴리스별로 무엇이 왜 바뀌었는지(1.29.2 `delegationPolicy`, 1.30.0 거버넌스 모드와 그 도그푸딩 결함, 1.31.0 레벨 정합, 1.32.0 CI 템플릿 비용 등)는 [CHANGELOG](../../CHANGELOG.md)와 [log.md](log.md)(및 그 월별 권)가 소유하고, 현재 기능 서술은 [Domain Features](DOMAIN_FEATURES.md)에 있습니다. 이 절에는 이 저장소를 읽는 방법만 둡니다.
+- 릴리스별로 무엇이 왜 바뀌었는지(1.29.2 `delegationPolicy` 도입과 1.34.0의 제거, 1.30.0 거버넌스 모드와 그 도그푸딩 결함, 1.31.0 레벨 정합, 1.32.0 CI 템플릿 비용 등)는 [CHANGELOG](../../CHANGELOG.md)와 [log.md](log.md)(및 그 월별 권)가 소유하고, 현재 기능 서술은 [Domain Features](DOMAIN_FEATURES.md)에 있습니다. 이 절에는 이 저장소를 읽는 방법만 둡니다.
 - **`bench/`의 외부 대상 실측 산출물은 익명화본입니다**(2026-09-03부터). 측정값·표본 수·채점 절차는 원본 그대로지만 대응표가 이 저장소에 없어 동일 대상의 완전한 재실행은 불가능합니다. 계약은 [`docs/BENCHMARK_DISCLOSURE.md`](../BENCHMARK_DISCLOSURE.md)가 소유하고, `bench/tasks.json`은 별개의 완전 공개 harness fixture입니다.
 
 ## Recommended Read Order

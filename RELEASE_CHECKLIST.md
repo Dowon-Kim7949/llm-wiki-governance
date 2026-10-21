@@ -85,7 +85,8 @@ Use this checklist before publishing `llm-wiki-governance@<version>` (the versio
 - [ ] Confirm `README.md`, `README.ko.md`, `GATE_REVIEW.md`, `VERIFICATION.md`, and `RELEASE_CHECKLIST.md` mention stable release behavior.
 - [ ] Confirm `README.md` starts with language links to English and Korean.
 - [ ] Confirm `README.ko.md` is included in `package.json` files.
-- [ ] Confirm each bilingual root doc (`README`, `CHANGELOG`, `ROADMAP`) has an in-sync `.ko.md` pair listed in `package.json` files.
+- [ ] Confirm each bilingual root doc (`README`, `CHANGELOG`, `ROADMAP`) has an in-sync `.ko.md` pair in the repository.
+- [ ] Confirm `npm pack --dry-run` ships only `bin/`, `src/`, `templates/`, `rules/`, `adapters/`, `profiles/`, the two READMEs, `LICENSE`, and `package.json` — since 1.34.0 the project documents stay on GitHub, because nothing at runtime reads them.
 - [ ] Confirm `rules/frontmatter.schema.json` matches the runtime frontmatter contract in `src/frontmatter-schema.js`.
 
 ## External Verification

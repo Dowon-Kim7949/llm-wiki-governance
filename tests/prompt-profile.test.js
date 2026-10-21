@@ -38,7 +38,7 @@ const TASKS = [...SUPPORTED_TASK_PROMPTS];
 const WRITE_TASKS = ["feature", "fix", "refactor", "docs-sync"];
 const IMPLEMENTATION_TASKS = ["feature", "fix", "refactor"];
 // The tasks whose slim rendering promises to be at most half of full.
-const HALF_TARGET_TASKS = ["feature", "fix", "refactor", "docs-sync", "bootstrap", "backfill"];
+const SLIM_TARGET_TASKS = ["feature", "fix", "refactor", "docs-sync", "bootstrap", "backfill"];
 const PROJECT_TYPES = ["unknown", "frontend", "backend", "fullstack", "library"];
 const LANGS = ["en", "ko"];
 const ISSUE_SECTIONS = [
@@ -247,7 +247,13 @@ test("slim read-only workflows stay read-only and keep their tool commands", () 
   assert.ok(okf.includes("OKF v0.1") && okf.includes("status: needs_review") && okf.includes("verified is human-approved only"));
 });
 
-test("slim is shorter than full everywhere, and at most half for the write and reconstruction tasks", () => {
+// The bound was 50% while `full` carried the delegation budget, which slim never
+// did. Removing that block from `full` (1.34.0) took 1,318 characters out of the
+// denominator only, so the measured ratio moved to 54–67% without slim growing a
+// byte. 70% keeps the test about slim staying substantially shorter.
+const SLIM_MAX_RATIO = 0.7;
+
+test("slim is shorter than full everywhere, and at most 70% for the write and reconstruction tasks", () => {
   for (const task of TASKS) {
     for (const projectType of PROJECT_TYPES) {
       for (const governanceMode of GOVERNANCE_MODES) {
@@ -257,7 +263,7 @@ test("slim is shorter than full everywhere, and at most half for the write and r
           const slim = build(task, { ...args, promptProfile: "slim" }).prompt.length;
           const label = `${task}/${projectType}/${governanceMode}/${docLang}: ${slim}/${full}`;
           assert.ok(slim < full, `${label} — slim must be shorter`);
-          if (HALF_TARGET_TASKS.includes(task)) assert.ok(slim <= full / 2, `${label} — slim must be at most 50% of full`);
+          if (SLIM_TARGET_TASKS.includes(task)) assert.ok(slim <= full * SLIM_MAX_RATIO, `${label} — slim must be at most ${SLIM_MAX_RATIO * 100}% of full`);
         }
       }
     }
@@ -302,13 +308,13 @@ test("the config key selects the profile, and the CLI flag wins over it", async 
   const fromConfig = await promptCommand(resolved);
   assert.equal(fromConfig.taskPrompt.promptProfile, "slim");
   assert.match(fromConfig.text, /prompt_profile: slim/);
-  assert.doesNotMatch(fromConfig.taskPrompt.prompt, /Delegation budget/);
+  assert.doesNotMatch(fromConfig.taskPrompt.prompt, /Context budget \(spend tokens/);
 
   const overridden = (await api.resolveOptions({ cwd, task: "fix", type: "backend", profiles: [], agents: ["claude"], promptProfile: "full" })).options;
   const fromFlag = await promptCommand(overridden);
   assert.ok(!("promptProfile" in fromFlag.taskPrompt));
   assert.doesNotMatch(fromFlag.text, /prompt_profile:/, "the full report is unchanged");
-  assert.match(fromFlag.taskPrompt.prompt, /Delegation budget/);
+  assert.match(fromFlag.taskPrompt.prompt, /Context budget \(spend tokens/);
 
   // A config that names `full` renders exactly what a config without the key renders.
   const plain = await project("cfg-profile-none-");

@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: glossary
 project: llm-wiki-governance
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -36,7 +36,7 @@ contains_sensitive_info: false
 - **Frontmatter** — 각 wiki 문서 상단의 YAML 블록. 필수 필드/enum은 `src/frontmatter-schema.js`가 정의한다.
 - **status** — 문서 검토 상태. 허용값: `draft`, `needs_review`, `verified`, `deprecated`(`src/config.js` `VALID_STATUSES`). CLI/에이전트 **생성 시점** 산출물은 항상 `needs_review`(생성기에는 `verified` 경로가 없다).
 - **verified** — 검토가 끝난 문서에만 부여하며, 누가 검토했는지는 `reviewed_by`가 말한다. `--strict`에서는 `reviewed_by`/`reviewed_at`가 없으면 실패. 도구는 스스로 승격하지 않고 명시적 `review --approve`/`--approve-all --yes`만이 스탬프한다 — **누가 그 명령을 실행하는지는 저장소 정책이다.** 이 저장소는 2026-08-03부터 에이전트 승인을 허용하고 `reviewed_by`에 에이전트를 적는다([index.md](index.md) Status). 도입처 기본값은 사람 검토다.
-- **human_verified** (evidence tier) — `stats`가 계산하는 report-only 값이며 정의는 "`verified` + reviewer 메타 존재"다. **reviewer가 사람인지 검사하지 않으므로**, 이 저장소에서는 에이전트 승인분도 여기에 포함된다. 이름과 실제 의미가 어긋나 있고, 이 저장소의 수치를 인용할 때 그 사실을 함께 적어야 한다. 1.33.0(미출시)부터 config `agentReviewers`에 에이전트 검토자 이름을 적으면 그 승인은 **agent_verified**로 분리된다(목록이 없으면 `null` = 구분 불가). 이 저장소에 적용하면 51 → 사람 4 / 에이전트 47이지만 config는 아직 바꾸지 않았다.
+- **human_verified** (evidence tier) — `stats`가 계산하는 report-only 값이며 정의는 "`verified` + reviewer 메타 존재"다. **reviewer가 사람인지 검사하지 않으므로**, 이 저장소에서는 에이전트 승인분도 여기에 포함된다. 이름과 실제 의미가 어긋나 있고, 이 저장소의 수치를 인용할 때 그 사실을 함께 적어야 한다. 1.33.0부터 config `agentReviewers`에 에이전트 검토자 이름을 적으면 그 승인은 **agent_verified**로 분리된다(목록이 없으면 `null` = 구분 불가). 이 저장소는 2026-10-21에 config를 설정해 사람 4 / 에이전트 47로 갈라 센다.
 - **source_files** — 문서 주장이 근거로 삼는 파일 목록(넓은 범위 근거).
 - **evidence** — 파일/라인/심볼/섹션/라우트 단위의 정밀 근거 참조. 예: `src/cli.js#symbol:main`, `file#L10-L20`, `file#route:/users`. 본문 `## Evidence` 섹션과 정렬되어야 한다. 형식의 정의는 `src/frontmatter-schema.js#symbol:EVIDENCE_REFERENCE_PATTERN` 하나다(1.33.0). 파일 없는 `#anchor`는 아무 소스도 가리키지 않으므로 evidence가 아니다.
 - **related** — 연결된 다른 wiki 문서 경로. 존재하지 않으면 `related.missing` 경고(P0-2에서 추가).

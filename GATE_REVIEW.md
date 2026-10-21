@@ -2683,7 +2683,7 @@ append-only log to `review --approve <path>` no longer stamps it (it never shoul
 project that wants documents under `docs/llm-wiki/templates/` freshness-checked cannot ask for it.
 Both are intended, and neither is a contract this repository published.
 
-## Delegation Policy Scope Decision (accepted for 1.29.2 — built, shipped, measured)
+## Delegation Policy Scope Decision (accepted for 1.29.2 — built, shipped, measured; removed in 1.34.0)
 
 The 1.27.1 `contextBudget` block told a generating agent **how much** to read back. It could
 not touch the path that actually costs the most: a read explosion — locating a convention
@@ -2713,7 +2713,7 @@ driver task, n=1) found **no detectable saving — the difference sat inside the
 is recorded here rather than dropped, because the block shipped on the strength of an
 argument, not a measurement, and the honest state of the evidence is "unfalsified reasoning,
 not a demonstrated win." The one remaining cheap check (a free blind re-grade of the stored
-answers, no API calls) has not been run.
+answers, no API calls) has not been run. *(Run on 2026-10-21 — see the 1.34.0 entry below.)*
 
 **1.33.0 (2026-10-20): an off switch, not a verdict.** `--prompt-profile slim` (config
 `promptProfile`) renders every generated prompt and skill without this block and without generic
@@ -2724,6 +2724,24 @@ An outside practitioner's write-up (2026-10) reports the opposite of this block'
 frontier models — detailed procedure that helped an older model got in a newer one's way, and
 trimming the skills improved results. That is an anecdote, not a measurement, which is why the
 shorter text ships opt-in and the default moves only on a measured A/B.
+
+**1.34.0 (2026-10-21): removed, by the maintainer's decision.** The blind re-grade ran: all 36
+stored answers (3 passes × 2 arms × 6 tasks), arm labels stripped and the order hashed, grades
+fixed in a file before the mapping was opened. Accuracy could not separate the arms either — 33
+of 36 answers hit every rubric claim, and the one clean pass scored 6/6 in both arms; the two
+misses were both delegating answers in a pass whose control arm was contaminated, and the three
+minor factual slips were all in answers that did not delegate. So the block had a certain cost
+(1,318 characters, about a quarter of every write prompt and skill) and no observed effect on
+cost or accuracy, and what did move delegation in the A/B was the harness's tool description,
+not this text. The principle this repository holds itself to — an unmeasured benefit is not
+claimed — applied here in the direction it usually does not: a benefit measured and not found
+does not keep paying for its place. Removed from all four sites (`implementationPrompt`,
+`docsSyncPrompt`, `initialEnrichmentWorkflow`, `backfillPrompt`); `slim`, which never carried
+it, is unchanged. **Limits that stay attached to this decision:** n=1 per pass, one fixture, a
+rubric the model saturates — "no effect found", not "no effect". `contextBudget` and
+`governanceBudget` were never measured at all and are a different case: they stay until a
+measurement says otherwise. A future delegation lever belongs in `templates/adapters/*`, where
+the A/B says the effect lives.
 
 ## Governance Modes Scope Decision (accepted for 1.30.0 — built, shipped 2026-09-07)
 

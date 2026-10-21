@@ -9,7 +9,7 @@ tags:
 status: verified
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -1777,7 +1777,7 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 | **evidence** | 문서의 주장이 어느 파일·줄·함수·섹션에 근거하는지 적어둔 것 |
 | **needs_review** | 아직 검토를 거치지 않은 상태. AI가 만들거나 고친 문서는 **편집 시점에** 항상 이 상태입니다 |
 | **verified** | 읽고 맞다고 승인한 상태. 도입처에서는 **사람만** 만들 수 있습니다. **이 저장소에서는 에이전트가 만들며**(2026-08-03), `reviewed_by`가 승인자를 이름으로 기록하므로 두 경우를 구분하는 것은 상태값이 아니라 그 필드입니다 |
-| **human_verified**(evidence tier) | `stats`가 세는 티어. 이름과 달리 **검토 메타데이터의 존재만** 보고 사람 여부는 보지 않습니다. 이 저장소의 51은 대부분 에이전트 승인분입니다. 1.33.0(미출시)의 config `agentReviewers`로 가르면 사람 4 / 에이전트 47입니다 |
+| **human_verified**(evidence tier) | `stats`가 세는 티어. 이름과 달리 **검토 메타데이터의 존재만** 보고 사람 여부는 보지 않습니다. 이 저장소의 51은 대부분 에이전트 승인분입니다. 1.33.0의 config `agentReviewers`로 가르면 사람 4 / 에이전트 47입니다 |
 | **R0 R1 R2 R3** | 자동화 위험 등급. R0은 보기만, R1은 기계적으로 확인 가능한 작은 수정, R2는 의미가 달라질 수 있어 제안만, R3은 안전·계약 변경이라 사람 승인 필수 |
 | **드리프트 앵커** | 낡음을 판정하는 기준점. 날짜 앵커는 리뷰 날짜 이후 커밋을, diff 앵커는 지금 변경 집합을, intent 앵커는 실행 기록의 신고 내용을 봅니다 |
 | **run manifest** | 에이전트가 자기 작업을 마치고 "무엇을 바꿨고 무엇을 갱신했다"고 적어 남기는 작은 기록 파일 |
