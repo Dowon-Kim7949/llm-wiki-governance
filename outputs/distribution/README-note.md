@@ -1,5 +1,8 @@
 # Storefront readiness — two README changes (✅ BOTH APPLIED 2026-07-27)
 
+> **Historical (2026-07-27).** The README this note changed was cut down in 1.30.1 and no longer
+> carries the benchmark figure. Kept as a record of that decision.
+
 > **Status: done.** The maintainer approved both on 2026-07-27 and chose the **conservative
 > pooled −40.7%** ("about 41%") over the N=3-only −48.4%. Applied to `README.md` and
 > `README.ko.md` together; the CI example now pins `@v1.26.0` (tag verified to exist on origin).

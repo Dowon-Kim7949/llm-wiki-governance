@@ -1,6 +1,15 @@
 # Real-LLM measurement — design (the deferred heavier follow-up)
 
-> **Status: DESIGN + PROTOTYPE (not executed).** This document and `bench/real/` define
+> **Status (updated 2026-10-26): executed.** This design was run against one external private
+> repository: a pilot on 2026-07-22, an SDK-driven N=3 run on 2026-07-24, and an empty-wiki
+> control arm on 2026-07-27. Results, their conditions (one repository, one model, six tasks,
+> agent-graded), and the runs that went against the product are in
+> [`docs/llm-wiki/BENCHMARK.md`](../docs/llm-wiki/BENCHMARK.md). The anonymization contract,
+> which means the published artifacts cannot be re-run against the original target, is in
+> [`docs/BENCHMARK_DISCLOSURE.md`](../docs/BENCHMARK_DISCLOSURE.md). The README rule below still
+> holds: no headline number. The design-time status note is kept unchanged underneath.
+
+> **Original status (design time, before any run): DESIGN + PROTOTYPE (not executed).** This document and `bench/real/` define
 > *how* to run a real-agent measurement of the retrieval value. No real numbers exist yet —
 > running it requires wiring an agent driver (see §5) and spending real API budget, which is
 > a deliberate, authorized step. Until a real run lands, **no token / speed / productivity

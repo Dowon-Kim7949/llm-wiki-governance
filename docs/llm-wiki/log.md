@@ -24,6 +24,22 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - docs: README 재구성과 공개 주장 감사 — 사실보다 넓게 말하던 문장들을 고쳤다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs, wiki
+- changed: `README.md`·`README.ko.md`(재구성) · `CONTRIBUTING.md`·`.ko.md`(한 문장) · `docs/ORCA_PARALLEL_DEV.md`(이 저장소 예외 명시) · `bench/REAL_LLM_METHODOLOGY.md`(상태 노트) · `outputs/distribution/`(`CLAIMS.md` 갱신·감사표, 런치 키트 신설, 7월 초안 5종에 상태 배너) · 위키 `EXAMPLES.md`·`README.md`(Review Note) · `index.md`(재스탬프) · `REVIEW_HISTORY.md`(노트 2건 회전)
+- summary: 저장소 전반 검토(엔지니어링·문서·홍보) 중 문서 쪽 결과다. README는 골격을 유지한 채 빠진 답을 채웠다. 동작 방식, 지시 파일과의 차이, 하지 않는 일, CI 절, 운영 비용, 문제 해결, 문서 안내가 새로 들어갔다. 동시에 공개 주장을 소스와 대조해, 사실보다 넓게 말하던 문장을 고쳤다.
+  - "Every claim is tied to real code": 실제로는 인용이 대상을 가리키는지만 검사한다.
+  - "only a human promotes … can never self-approve": 강제되지 않는다. 이 저장소 자체가 에이전트 승인이다.
+  - "Works on any stack, with any agent": 감지하는 스택과 adapter 대상만 적었다.
+  - 모드를 빼고 말한 "fails the build": 새 프로젝트는 `lite`라 드리프트 게이트가 꺼져 있다.
+  - `ORCA_PARALLEL_DEV.md`의 "agents write, only a human verifies"는 이 저장소 정책과 정면으로 충돌하고 있었다. `AGENTS.md`가 생성 스킬과의 충돌을 처리한 방식대로 예외를 명시했다. 정책 선택 자체는 유지보수자 몫이다.
+  - `CLAIMS.md`는 수치(명령 32개·MCP 툴 18개)와 금지 주장(유일성, 사람만 승인, 비밀 절대 미반환)을 갱신하고 감사표를 붙였다.
+- evidence: README가 기대는 사실은 소스로 다시 확인했다. `COMMANDS` 32개, `MCP_TOOLS` 18개, `src/`의 네트워크 모듈 import 0건, `doctor`·`next`·`explain` 도움말 문구, OPERATIONS 앵커 두 개다. `impact`가 지목한 verified 3종(EXAMPLES·index·위키 README)은 README에서 가져오는 서술을 각각 대조했고, 셋 다 불변이다. EXAMPLES와 위키 README에는 대조 결과를 Review Note로 남겼다. `index.md`는 Review Notes 절이 없는 상시 적재 문서라서 노트 절을 새로 만들지 않고 재스탬프만 했다. 그래서 이 변경의 `stamp_only_exclusions`는 1로 보고된다. 대조한 내용은 index 32행의 정체성 서술이며, 새 README와 일치한다.
+- caveats: README 길이는 빈 줄 제외 74 → 125줄(전체 104 → 172줄)로, 계획한 약 120줄을 조금 넘었다. `llm-wiki help`의 "fewer tokens, fewer errors"는 소스 변경이라 이번 범위에서 고치지 않았다. npm 상점 페이지는 다음 배포 전까지 옛 README를 보여 준다. 버전 범프 없음. push 안 함.
+
 ## 2026-10-26 - fix(retrieval): PEM 블록이 헤더 한 줄만 가려지고 키 본문은 반환되고 있었다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
