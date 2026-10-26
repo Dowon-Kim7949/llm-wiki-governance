@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - feat(sensitive): 탐지기가 `access_token:`·`client_secret:` 같은 키와 벤더 토큰을 못 보고 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs
+- changed: `src/sensitive-info.js`(접미 자격 증명 키 + 값 모양 게이트, 신규 유형 `vendor_token`) · `tests/sensitive-info.test.js`(신규 4건) · 위키 `VISIBILITY.md`(일관성 규칙이 재사용하는 스캔의 범위) · `outputs/distribution/CLAIMS.md`(탐지 범위 문장)
+- summary: 기존 패턴의 `\b(token|secret|password)\b`는 `_`가 단어 문자라서 `access_token`·`client_secret`·`db_password` 앞에 경계를 찾지 못했다. 그래서 YAML이나 설정 형태로 흔히 쓰는 이런 줄이 `validate`를 통과했고, 승인까지 받을 수 있었다. 이제 마지막 마디가 자격 증명 단어인 키(snake·kebab·점 표기와 camelCase)를 잡는다. 다만 값이 자격 증명 모양일 때만 잡는다. 영숫자 계열 12자 이상, 숫자와 문자를 함께 포함, 플레이스홀더 제외가 조건이다. `ghp_`·`github_pat_`·`AKIA`·`xoxb-`·`sk-`·`AIza`·`sk_live_`·`npm_` 접두 토큰은 키 이름이 없어도 `vendor_token`으로 잡는다. 기존 패턴 6종과 finding 형태는 그대로다.
+- evidence: 탐지기를 바꾸기 전에 측정했다. 로컬 위키 11곳(394개 파일, 84,231줄)에서 기존 대비 새로 잡힌 줄은 0, 잡히지 않게 된 줄도 0이었다. 같은 저장소들의 소스 1,219개 파일로 오탐 스트레스를 걸었다. 값 모양 게이트가 없는 안은 새 적중 45건이 전부 코드 참조(`nextPageToken`, `mapToken` 등)였고, 게이트를 둔 실제 구현은 새로 잡힌 줄 1건(벤더 형식 문자열)에 잃은 줄 0이었다. 합성 코퍼스의 의도한 참 양성 9줄은 기존 탐지기와 새 패턴을 합쳐 전부 잡혔고, 코드·참조·플레이스홀더 음성 사례는 전부 조용했다. 새 테스트 4건 중 3건은 원래 탐지기에서 실패하고(음성 사례 1건은 원래도 통과), 수정 후 4건 모두 통과한다. `npm test` 678/678.
+- caveats: `sensitive.*`는 끌 수 없는 blocked 규칙이라, 이 확장이 도입처 문서를 새로 막으면 우회 수단이 없다. 측정 코퍼스는 이 PC의 저장소 11곳이 전부다. 측정 원문은 어디에도 기록하지 않았고, 개수와 키 이름·값 모양만 봤다. 테스트의 벤더 형식 문자열은 외부 시크릿 스캐너가 오탐하지 않도록 런타임에 조립한다.
+
 ## 2026-10-26 - docs: README 재구성과 공개 주장 감사 — 사실보다 넓게 말하던 문장들을 고쳤다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

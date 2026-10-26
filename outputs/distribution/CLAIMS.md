@@ -84,9 +84,12 @@ Both hold **for this fixture**. Neither is a general claim.
   staleness, CI exit codes, and MCP servers; driftlint also has a merge-base diff mode and a beta
   human-approval flow. Mintlify Autopilot and Dosu open doc-update PRs from merged code. A
   uniqueness claim loses on the first reply.
-- **"Never returns a secret."** Detection is six line-level patterns. It misses PEM bodies,
-  vendor-prefixed tokens, and keys such as `access_token`. Say "sensitive-looking lines are
-  redacted, and they block the check".
+- **"Never returns a secret."** Detection is pattern-based and line-level. From 1.35.0 it covers
+  the original six patterns, keys whose last segment names a credential (`access_token`,
+  `client_secret`, `accessToken` …) when the value is credential-shaped, and common
+  vendor-prefixed tokens; retrieval redacts a detected PEM block through its END line. A secret
+  that matches none of those passes. Say "sensitive-looking lines are redacted, and they block
+  the check".
 - **"Fewer tokens, fewer errors" as a general benefit.** The CLI's own `help` text still says this;
   that is a source change tracked separately, and copy must not repeat it.
 

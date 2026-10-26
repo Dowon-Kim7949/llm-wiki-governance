@@ -10,7 +10,7 @@ last_updated: 2026-10-20
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-21
+reviewed_at: 2026-10-26
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -54,6 +54,10 @@ Question("팀/조직 도입 시 visibility 경계 정책 문서가 필요하다"
 - **contains_sensitive_info 일관성**: `contains_sensitive_info: false`인데 sensitive-info
   스캔에 매치되면 선언과 내용이 어긋난다.
 
+두 규칙은 스캔을 그대로 재사용하므로 스캔 범위가 넓어지면 함께 넓어진다. 1.35.0에서 스캔은
+마지막 마디가 자격 증명 단어인 키(`access_token:`, `client_secret:`, `accessToken:` 등, 값이
+자격 증명 모양일 때만)와 벤더 접두 토큰(`vendor_token`)까지 잡게 됐다.
+
 ### 불변식 · Invariants
 
 - **off by default**: 규칙은 config `rules`로 명시 활성화해야 동작한다(1.8 토글 기계 재사용).
@@ -83,3 +87,4 @@ Question("팀/조직 도입 시 visibility 경계 정책 문서가 필요하다"
 
 - 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 인용 소스 `src/config.js`(앵커 `#symbol:VALID_VISIBILITIES`)를 재확인했다. 파일은 바뀌었지만 변경 내용은 에이전트 어휘 2종(`SUPPORTED_AGENTS`·`ALL_AGENTS`)을 `src/cli.js`에서 이 leaf 모듈로 **옮겨 온 신규 export**뿐이고, `VALID_VISIBILITIES`와 이 문서가 서술하는 visibility 계약은 무변경이다. 본문 **불변**.
 - 2026-10-20(1.33.0)에 `impact`가 이 문서를 지목해 `src/frontmatter-schema.js`를 대조했다. 바뀐 것은 `evidence` 참조 정규식을 `EVIDENCE_REFERENCE_PATTERN` export로 꺼내 런타임 파서와 함께 쓰게 한 것뿐이다. 이 문서가 근거로 삼는 `visibility` enum과 필수 필드 목록은 그대로다. 이 문서의 `evidence` 세 줄이 새 단일 정규식을 통과하는지 `validate-frontmatter`로 확인했고, 결과는 pass였다.
+- 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `src/sensitive-info.js`를 대조했다. `scanSensitiveInfo`의 시그니처와 finding 형태(`type`·`line`·`message`, 값 미포함)는 그대로이고, 기존 패턴 6종도 그대로다. 바뀐 것은 탐지 범위가 넓어진 것이다. 마지막 마디가 자격 증명 단어인 키를 잡되 값이 자격 증명 모양일 때만 잡고, 벤더 접두 토큰을 새 유형 `vendor_token`으로 잡는다. 이 문서가 서술하는 두 opt-in 린트는 스캔을 그대로 재사용하므로 계약은 같지만, 같은 문서에서 더 일찍 걸릴 수 있다. 그 사실을 일관성 규칙 절에 한 문단으로 더했다. 실측으로 로컬 위키 11곳(394개 파일)에서 새로 잡힌 줄은 0이었다.
