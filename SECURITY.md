@@ -162,7 +162,10 @@ deployment. Understand its boundary before exposing it:
 - **Sensitive repositories.** The same content protections apply as in the CLI:
   restricted / `contains_sensitive_info` / sensitive-scan-hit documents are
   excluded from `list_docs`/`search_docs` by default (opt-in `includeSensitive`),
-  and returned bodies/snippets redact sensitive-looking lines. Still, assume any
+  and returned content is redacted: sensitive-looking body lines, a detected PEM
+  block through its END line, and sensitive-looking frontmatter values in
+  `get_doc`. The last two hold since 1.35.0; earlier versions returned frontmatter
+  values and PEM key bodies unredacted, so upgrade. Still, assume any
   caller that can reach the server can read every non-excluded document — keep
   real secrets out of the wiki, not merely `visibility: restricted`.
 

@@ -89,6 +89,6 @@
 - **인증과 인가가 없습니다.** 인증 계층도, 세션도, 호출자별 접근 통제도 없습니다. 그 프로세스에 닿을 수 있는 사람은 노출된 툴을 전부 호출할 수 있습니다.
 - **읽기 전용 툴만 노출합니다.** 노출되는 툴은 18개입니다. `validate`·`audit`·`next`·`status`·`doctor`·`stats`·`graph`·`explain`·`mode`·`handoff`·`prompt`·`list_docs`·`search_docs`·`get_doc`·`get_related`·`onboard`·`review`·`prepare`입니다. 쓰기 경로는 하나도 닿지 않습니다. `init`·`fix`·`migrate`·`quickstart --write`·`backfill`·`archive-log --write`·`drift --downgrade`·`mode set --write`와 `review`의 승격 경로가 전부 빠져 있습니다. `mode`는 읽기 전용 리포트만이고 레벨을 바꾸지 못합니다. 툴에는 `readOnlyHint`가 붙습니다. `verified` 승격은 사람이 CLI에서 직접 할 때만 일어나고, `review` MCP 툴은 읽기 전용 백로그 목록만 보여 줍니다.
 - **네트워크에 노출하지 마세요.** 인증이 없으니 이 stdio 서버를 공개 브로커나 원격 브로커, 네트워크 전송 뒤에 그대로 두면 안 됩니다. 원격 접근이 꼭 필요하다면 인증과 접근 통제를 갖춘 프록시를 직접 앞에 두시고, 그 프록시에 닿는 사람은 위키 전체를 읽을 수 있다고 전제하세요.
-- **민감한 저장소라면.** CLI와 같은 보호가 그대로 적용됩니다. restricted 문서, `contains_sensitive_info` 문서, 민감 스캔에 걸린 문서는 기본적으로 `list_docs`와 `search_docs`에서 빠지고(`includeSensitive`로 켤 수 있습니다), 돌려주는 본문과 스니펫에서는 민감한 줄을 가립니다. 그래도 서버에 닿는 호출자는 제외되지 않은 문서를 전부 읽을 수 있다고 보셔야 합니다. 진짜 비밀은 `visibility: restricted`에 기대지 마시고 애초에 위키에 두지 마세요.
+- **민감한 저장소라면.** CLI와 같은 보호가 그대로 적용됩니다. restricted 문서, `contains_sensitive_info` 문서, 민감 스캔에 걸린 문서는 기본적으로 `list_docs`와 `search_docs`에서 빠지고(`includeSensitive`로 켤 수 있습니다), 돌려주는 내용에서는 민감해 보이는 본문 줄, 탐지된 PEM 블록 전체(END 줄까지), `get_doc`의 민감해 보이는 frontmatter 값을 가립니다. 뒤의 두 가지는 1.35.0부터이고, 이전 버전은 frontmatter 값과 PEM 키 본문을 가리지 않았으니 올리세요. 그래도 서버에 닿는 호출자는 제외되지 않은 문서를 전부 읽을 수 있다고 보셔야 합니다. 진짜 비밀은 `visibility: restricted`에 기대지 마시고 애초에 위키에 두지 마세요.
 
 프로젝트와 사용자를 안전하게 지키는 데 힘을 보태 주셔서 감사합니다.

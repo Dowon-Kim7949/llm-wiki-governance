@@ -1,4 +1,4 @@
-# Launch kit — October 2026 (1.34.0)
+# Launch kit — October 2026 (1.35.0)
 
 Drafts only. **Nothing here has been posted, submitted, or changed in repository settings.**
 Publishing is the maintainer's action, under the maintainer's accounts. Every line obeys
@@ -53,7 +53,9 @@ doc has a `status` (`needs_review` → `verified`), `reviewed_by`/`reviewed_at`,
 `source_files` and `evidence` — files, line ranges, symbols, or Markdown sections. `validate`
 checks the structure and that every citation resolves. `drift` compares a doc's review date with
 git history for its citations; `impact --since <base>` takes a PR diff and names every `verified`
-doc whose cited source changed while the doc did not, and it exits 1 under the strict mode. Only
+doc whose cited source changed while the doc did not, and it exits 1 under the strict mode.
+Its report lists, per document, the changed sources it cites, and the composite action puts
+that table in the pull request's job summary. Only
 an explicit `review --approve` promotes a doc. Retrieval is keyword-based, over the CLI or a
 stdio MCP server that exposes 18 read-only tools. Zero runtime dependencies, Node ≥ 18.18, MIT.
 

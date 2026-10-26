@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - docs: SECURITY가 조회 redaction 범위를 1.35.0 이전 기준으로 말하고 있었다
+
+- status: needs_review (위키 문서 변경 없음 — 로그만)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: `SECURITY.md`·`SECURITY.ko.md`(MCP 신뢰 모델 절의 redaction 문장) · `outputs/distribution/launch-kit-2026-10.md`(제목 버전, 1분 설명에 PR 리포트 한 문장)
+- summary: SECURITY의 "returned bodies/snippets redact sensitive-looking lines"는 1.35.0 수정 전의 범위만 말하고 있었다. 지금은 본문 줄, 탐지된 PEM 블록 전체, `get_doc`의 frontmatter 값까지 가린다. 1.35.0 이전 버전은 뒤의 둘을 가리지 않았다는 사실과, 올리라는 안내를 영·한 같은 위치에 적었다. 런치 키트는 제목의 버전을 1.35.0으로 맞췄다.
+- evidence: `impact`(작업트리) 0, `tests/impact-default-gate.test.js` 7/7(SECURITY.md는 이 테스트의 문구 감시 대상이다).
+- caveats: 없음. 유지보수자 지시로 이 커밋 뒤의 push·병합·태그·배포는 에이전트가 진행한다.
+
 ## 2026-10-26 - release: 1.35.0 — 코드가 하는 만큼만 말하기
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
