@@ -1,5 +1,10 @@
 # Reddit draft — r/ClaudeAI
 
+> **Superseded on 2026-10-26 — do not post as is.** Written against 1.26.x: the counts
+> (27 commands, 17 MCP tools), the action pin, and some phrasing are out of date, and a figure in
+> an opening or TL;DR line conflicts with [`CLAIMS.md`](./CLAIMS.md). Start from
+> [`launch-kit-2026-10.md`](./launch-kit-2026-10.md). This file is kept as history.
+
 Draft only. **Nothing here has been posted.** Publishing is the maintainer's action.
 
 **Context from the July attempt:** the previous launch went into the *Built with Claude Project

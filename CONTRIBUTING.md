@@ -48,7 +48,7 @@ Run the CLI directly during development with `node bin/llm-wiki.js <command>`.
 
 ## Project conventions
 
-This repository **dogfoods its own standard** — its knowledge base lives in
+This repository **runs its own tool on itself** — its knowledge base lives in
 `docs/llm-wiki/`. Please read [`docs/llm-wiki/index.md`](./docs/llm-wiki/index.md)
 before changing code or docs.
 

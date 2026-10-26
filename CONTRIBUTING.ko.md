@@ -44,7 +44,7 @@ npm test             # node --test tests/*.test.js
 
 ## 이 저장소의 규칙
 
-이 저장소는 자기 표준을 스스로에게 적용합니다. 그래서 지식 기반이 `docs/llm-wiki/`에 그대로 들어 있습니다. 코드든 문서든 고치기 전에 [`docs/llm-wiki/index.md`](./docs/llm-wiki/index.md)를 먼저 읽어 주세요.
+이 저장소는 자기 도구를 스스로에게 적용합니다. 그래서 지식 기반이 `docs/llm-wiki/`에 그대로 들어 있습니다. 코드든 문서든 고치기 전에 [`docs/llm-wiki/index.md`](./docs/llm-wiki/index.md)를 먼저 읽어 주세요.
 
 - **모든 파일은 UTF-8입니다.** Markdown도 UTF-8로 읽고 씁니다.
 - **크로스플랫폼을 지킵니다.** CI가 Linux·Windows·macOS에서 Node 18.18·20·22·24 조합으로 돕니다. OS에 종속된 경로 처리를 피하고 `node:path`를 쓰세요.

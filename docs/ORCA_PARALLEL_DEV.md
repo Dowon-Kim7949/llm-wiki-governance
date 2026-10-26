@@ -12,6 +12,18 @@ The governing principle is the same one the product enforces: **agents write,
 only a human verifies.** If the development process quietly promoted its own
 work, the tool would not mean anything.
 
+> **Exception for this repository's own wiki, stated so it is not quiet.** Since
+> 2026-08-03 (maintainer's decision) the agent stamps this repository's
+> `docs/llm-wiki/` documents itself with `review --approve-all --yes`, and
+> `reviewed_by` names the agent, not a person. [`AGENTS.md`](../AGENTS.md)
+> "Wiki discipline" owns that contract, and for this repository's wiki it
+> overrides the "only a human verifies" rule above, the `review --approve` item in
+> the definition of done, and the `llm-wiki review --approve` line in the
+> permissions section. `stats` counts those approvals as `agent_verified`, apart
+> from human ones. Nothing else is relaxed: code, merges, pushes, and releases
+> still need a human, and the rule shipped to adopters in `templates/adapters/*`
+> still requires human review.
+
 ## The loop
 
 ```text
