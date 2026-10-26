@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - docs(deck): 1.35.0 정렬 — 배포 전에 PR에 함께 넣었다
+
+- status: needs_review (위키 문서 변경 없음 — 로그만)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs (outputs/team-briefing)
+- changed: `llm-wiki-briefing.html`(제목·버전 배지 v1.35.0, 21장 "1.29 – 1.29.2"로 병합, 22장 "1.30 → 1.35"에 1.35 행) · `SPEAKER_NOTES.md`(대상 버전, 21·22장 대본, 1.35 한 줄 설명, 시간 조절 팁) · `README.md`(대상 버전)
+- summary: 지금까지 덱 정렬은 배포 뒤 별도 커밋으로 했다. 이번에는 PR 병합이 에이전트에게 `deny`로 막혀 있어서(`.claude/settings.json`의 `gh pr merge`), 유지보수자의 병합 한 번으로 끝나도록 배포 전에 같은 PR에 넣었다. 22장에 행이 하나 늘지 않게, 가장 오래된 1.29.2 행을 21장의 "1.29 – 1.29.1" 행과 합쳤다. 공유 Artifact는 재게시하지 않는다(유지보수자 지시).
+- evidence: headless Chrome으로 DevTools 프로토콜을 써서 슬라이드 높이를 쟀다. 1366×768·1440×900·1920×1080 세 해상도 모두 21·22장 높이가 기준선과 같다(858/878/894px, 862/882/898px). 1.35 행의 첫 문구는 22장을 19px 늘려 1440×900에서 넘쳤으므로 줄였다.
+- caveats: 이 headless 측정에서는 **기준선에서도** 1366×768의 21·22장이 넘친다(858·862px > 768). 1.34.0 덱 정렬 커밋은 "Chrome 실측 757·747px, 넘침 0장"이라고 기록했는데, 두 측정이 어긋나는 원인(글꼴 로딩이나 측정 방식으로 추정)은 확인하지 않았다. 그래서 이번 기준은 "기준선보다 높아지지 않는다"로 잡았다.
+
 ## 2026-10-26 - fix(sensitive): 넓힌 탐지 패턴이 다항 시간으로 역추적하고 있었다(CodeQL js/polynomial-redos)
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
