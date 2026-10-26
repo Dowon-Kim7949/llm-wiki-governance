@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - fix(retrieval): PEM 블록이 헤더 한 줄만 가려지고 키 본문은 반환되고 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs
+- changed: `src/commands/retrieval.js`(`redactSensitive`가 탐지된 PEM 헤더부터 짝 END 줄까지 블록째 가림) · `tests/verification.test.js`(회귀 테스트 1건) · 위키 `PUBLIC_API.md`(`get-doc` 행, 같은 날 Review Note 확장) · `domains/00_overview.md`(Retrieval 항목 한 구절, 같은 날 노트 확장)
+- summary: 바로 앞 수정을 검증하다가 찾은 같은 계열의 결함이다. 민감정보 탐지기는 PEM 블록의 헤더 줄만 잡는다. base64 본문 줄에는 키 이름이 없으니 줄 스캔으로는 잡을 수 없다. 그런데 retrieval의 redaction이 줄 단위라서, `get-doc`·`search-docs` 스니펫·`onboard`·`prepare`가 헤더 한 줄만 가리고 키 본문을 그대로 돌려줬다. 이제 `private_key`/`certificate`로 탐지된 줄부터 짝 END 줄까지, 닫히지 않은 블록이면 끝까지를 가린다. 탐지기(`scanSensitiveInfo`)와 finding 판정은 바꾸지 않았다.
+- evidence: 가짜 블록(헤더 + 가짜 본문 2줄 + END) 픽스처로 측정했다. 수정 전 노출은 CLI `get-doc` 2줄, `search-docs --include-sensitive` 스니펫 2건, MCP `get_doc` 4회였고, 수정 후에는 모두 0이며 END 뒤 본문은 그대로 남는다. 새 테스트는 원래 코드에서 실패하고 수정 후 통과한다. 테스트 소스의 PEM 헤더는 외부 시크릿 스캐너가 오탐하지 않도록 런타임에 조립한다.
+- caveats: `validate`는 이 문서를 원래도 `sensitive.redacted` blocked로 막았으므로 CI를 통과한 커밋에는 남기 어렵다. 노출 경로는 커밋 전 워킹트리를 읽는 MCP·CLI 조회였다. push 안 함.
+
+## 2026-10-26 - fix(retrieval): get-doc이 frontmatter의 민감해 보이는 값을 가리지 않고 돌려주고 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs
+- changed: `src/commands/retrieval.js`(frontmatter redaction 뷰. `get-doc`·`list-docs`·`search-docs`가 이 뷰를 쓴다) · `tests/verification.test.js`(회귀 테스트 1건) · 위키 `PUBLIC_API.md`(retrieval 3행) · `domains/00_overview.md`(Retrieval 항목) · `REVIEW_HISTORY.md`(노트 2건 회전)
+- summary: 저장소 전반 검토 중에 재현한 결함이다. `get-doc`의 기본 출력(CLI JSON, MCP `get_doc`)은 frontmatter 객체를 그대로 실어 보내고, redaction은 본문 줄에만 걸었다. 같은 탐지기가 그 문서를 민감 문서로 분류해 `list-docs`/`search-docs`에서는 기본 제외하는데도, `get-doc`은 경로를 지정하면 게이트가 없어 frontmatter 값이 원문으로 나갔다. 수정 후에는 각 스칼라를 `key: value`로 재구성해 같은 스캔에 걸고, 걸린 값만 표식으로 바꾼다. 깨끗한 문서는 참조를 그대로 돌려주므로 기본 출력이 byte-identical이다.
+- evidence: frontmatter의 `secret` 키에 가짜 값을 넣은 픽스처로 측정했다. 수정 전에는 CLI JSON에 1회, MCP에 1회 노출됐고, 수정 후에는 0회다. 새 테스트는 원래 코드에서 실패하고(원문 포함 `true`), 수정 후 통과한다. `npm test` 673/673, lint OK.
+- caveats: 탐지 패턴은 바꾸지 않았다. `api_token`·`access_token`처럼 `_token`으로 끝나는 키는 `\b` 경계 때문에 본문에서도 탐지되지 않는데, 이것은 별개의 공백이다. 탐지기를 바꾸면 모든 명령의 blocked 판정 범위가 같이 바뀌므로 별도로 결정한다. CHANGELOG 기재와 버전 범프는 하지 않았다(릴리스 시 기재). push 안 함.
+
 ## 2026-10-21 - docs+test: N-15 기록 — drift는 머지가 메인에 들어온 날짜를 보지 못한다(고치지 않기로 결정)
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

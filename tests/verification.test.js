@@ -2537,6 +2537,60 @@ test("retrieval: get-doc returns content, redacts sensitive lines, and reports n
   assert.ok(missing.findings.some((finding) => finding.rule === "retrieval.not_found"));
 });
 
+test("retrieval: a secret declared in frontmatter is redacted wherever frontmatter is echoed", async () => {
+  const cwd = await makeRetrievalWiki("retr-fmsecret-");
+  const raw = "fmsecretvalue12345";
+  await writeWikiDocAt(cwd, "fm-secret.md", `password=${raw}`, "Ordinary body about widget.", (base) =>
+    base.replace("visibility: internal", `visibility: internal\nsecret: "${raw}"`));
+
+  // get-doc has no sensitivity gate, so its default payload (which echoes the
+  // whole frontmatter) is the path that must never carry the raw value.
+  const doc = await getDocCommand({ ...RETR_BASE, cwd, docPath: "fm-secret.md" });
+  assert.equal(doc.result, "pass");
+  assert.equal(doc.document.redacted, true, "frontmatter redaction is reported");
+  assert.ok("secret" in doc.document.frontmatter, "the key is kept; only its value is withheld");
+  assert.equal(JSON.stringify(doc).includes(raw), false, "no raw secret in the get-doc payload or text");
+
+  const compact = await getDocCommand({ ...RETR_BASE, cwd, docPath: "fm-secret.md", compact: true });
+  assert.equal(JSON.stringify(compact).includes(raw), false, "compact omits frontmatter but keeps the title redacted");
+
+  // list/search exclude the doc by default; the opt-in must not echo the raw title.
+  const listed = await listDocsCommand({ ...RETR_BASE, cwd, includeSensitive: true });
+  assert.ok(listed.documents.some((entry) => entry.path === "docs/llm-wiki/fm-secret.md"));
+  assert.equal(JSON.stringify(listed).includes(raw), false, "opt-in listing never echoes the raw title");
+  const found = await searchDocsCommand({ ...RETR_BASE, cwd, query: "widget", includeSensitive: true });
+  assert.ok(found.matches.some((match) => match.path === "docs/llm-wiki/fm-secret.md"));
+  assert.equal(JSON.stringify(found).includes(raw), false, "opt-in search never echoes the raw title");
+
+  // A clean document's frontmatter comes back untouched.
+  const clean = await getDocCommand({ ...RETR_BASE, cwd, docPath: "guide.md" });
+  assert.equal(clean.document.redacted, false);
+  assert.equal(clean.document.title, "Guide");
+  assert.equal(clean.document.frontmatter.visibility, "internal");
+});
+
+test("retrieval: a PEM block is withheld whole, not just its header line", async () => {
+  const cwd = await makeRetrievalWiki("retr-pem-");
+  // Assembled at runtime so secret scanners do not flag this test file itself.
+  const begin = ["-----BEGIN", "PRIVATE KEY-----"].join(" ");
+  const end = ["-----END", "PRIVATE KEY-----"].join(" ");
+  const bodyLine = "fakepembodylineAAAABBBBCCCCDDDDEEEE";
+  await writeWikiDoc(cwd, "key-notes.md", "Key Notes",
+    `Widget setup notes.\n\n${begin}\n${bodyLine}1\n${bodyLine}2\n${end}\n\nAfter the block.`);
+
+  // The scan flags only the header line; the base64 body carries no key name, so a
+  // line-by-line redaction returned the key material without its first line.
+  const doc = await getDocCommand({ ...RETR_BASE, cwd, docPath: "key-notes.md" });
+  assert.equal(doc.document.redacted, true);
+  assert.equal(JSON.stringify(doc).includes(bodyLine), false, "no PEM body line in the get-doc payload or text");
+  assert.ok(doc.document.body.includes("Widget setup notes."), "text before the block is kept");
+  assert.ok(doc.document.body.includes("After the block."), "text after the END line is kept");
+
+  const found = await searchDocsCommand({ ...RETR_BASE, cwd, query: "widget", includeSensitive: true });
+  assert.ok(found.matches.some((match) => match.path === "docs/llm-wiki/key-notes.md"));
+  assert.equal(JSON.stringify(found).includes(bodyLine), false, "no PEM body line in search snippets");
+});
+
 test("retrieval: get-doc --section returns only matching sections (focused read), falls back to full body", async () => {
   const cwd = await makeProject("retr-section-");
   await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "retr" }, null, 2)}\n`, { encoding: "utf8" });
