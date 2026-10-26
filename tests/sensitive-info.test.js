@@ -48,6 +48,27 @@ test("sensitive-info: vendor-prefixed credentials are caught without a key name"
   assert.deepEqual(types("the sk-learn-compatible-estimator-wrapper module"), []);
 });
 
+test("sensitive-info: a pathological line is scanned in linear time", () => {
+  // CodeQL js/polynomial-redos caught the first version of these patterns: a trailing-
+  // separator trim, a nested key quantifier, and unbounded vendor runs each went
+  // quadratic (0.15–1.5 s on a 20k-character line, growing with the square). Every
+  // input below took seconds on that version; the bound here is loose for slow runners.
+  const n = 50000;
+  const lines = [
+    `api_token: ${",".repeat(n)}y`,
+    "a_".repeat(n),
+    `${"a_".repeat(n)}token: short`,
+    ["s", "k-"].join("").repeat(n),
+    ["xo", "xb-"].join("").repeat(n)
+  ];
+  for (const line of lines) {
+    const started = performance.now();
+    scanSensitiveInfo(line);
+    const elapsed = performance.now() - started;
+    assert.ok(elapsed < 1500, `${line.slice(0, 12)}… took ${elapsed.toFixed(0)} ms`);
+  }
+});
+
 test("sensitive-info: the original patterns and the finding shape are unchanged", () => {
   assert.deepEqual(types(`token: ${SHAPED}`), ["token_assignment"]);
   assert.deepEqual(types("API_TOKEN=super-secret-token-value"), ["env_value"]);

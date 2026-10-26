@@ -34,6 +34,8 @@ pull-request reviewer what to fix. Upgrade if you serve a wiki over MCP.
   `npm_`) are caught as the new type `vendor_token`. Measured before shipping: across eleven
   local wikis (394 files, 84,231 lines) 0 new hits and 0 lost; on their source trees (1,219
   files) the unshaped variant added 45 hits, all code references, and the shipped one 1.
+  Every pattern is bounded, so a pathological line scans in linear time; a regression test
+  pins it (the first version, caught by CodeQL before release, took seconds on one long line).
 - **`impact` reads as a pull-request report.** The text output gains a "Documents to
   re-review" table (document, and the changed sources it cites) with the next step, and
   `--format json` gains `changedPaths` and `impactedDocuments: [{ path, sources }]`.
@@ -66,7 +68,7 @@ document type is this repository's convention, not a product concept), and narro
 that would also hide real prose gaps).
 
 Sized as a MINOR: new JSON keys, a new action input, and broader detection; no command,
-option, or exit-code contract changed. Tests: 672 → 682.
+option, or exit-code contract changed. Tests: 672 → 683.
 
 ## 1.34.0 — 2026-10-21
 

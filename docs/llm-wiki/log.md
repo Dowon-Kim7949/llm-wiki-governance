@@ -24,6 +24,19 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - fix(sensitive): 넓힌 탐지 패턴이 다항 시간으로 역추적하고 있었다(CodeQL js/polynomial-redos)
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, wiki
+- changed: `src/sensitive-info.js`(선형 구조로 재작성) · `tests/sensitive-info.test.js`(시간 상한 테스트 1건) · 위키 `VISIBILITY.md`(같은 날 노트 확장)
+- summary: 1.35.0 PR(#1)의 CI에서 CodeQL이 `src/sensitive-info.js`의 새 패턴에 high 경고 1건을 냈다. 지목된 곳은 끝 구분자를 지우는 `/[,;]+$/`였다. 같은 관점으로 보니 키의 중첩 수량자 `[A-Za-z0-9]+(?:[_.-][A-Za-z0-9]+)*`와 벤더 패턴의 상한 없는 반복·전방 탐색도 위험했다. 재현하니 셋 다 제곱으로 늘었다. 20,000자 한 줄에 0.15–1.5초가 걸렸고, 1.34.0은 1ms 미만이었다. 이 스캔은 `validate`·조회·리포트 쓰기에서 문서 내용에 돌므로, 병적인 줄 하나가 게이트를 멈출 수 있었다. 고친 방식은 세 가지다.
+  - 후보는 lookbehind로 식별자 덩어리의 시작에서만 찾고, 상한 128자 한 번의 매칭으로 잡는다. 키가 자격 증명 이름인지는 그 문자열에 대해 따로 판정한다.
+  - 끝 구분자는 반복문으로 지운다.
+  - 모든 수량자와 전방 탐색에 상한을 둔다.
+- evidence: 수정 후 같은 입력은 20,000자에서 0.1–12ms, 100,000자에서 0.6–62ms로 선형이다. 새 시간 상한 테스트는 수정 전 코드에서 5,846ms로 실패하고 수정 후 통과한다. 탐지 결과는 1.34.0 대비 위키 9곳(314개 파일)에서 +0/−0이고, 합성 코퍼스의 참 양성 8건도 직전 구현과 같다. `sensitive-info`·`frontmatter` 테스트는 13/13이다.
+- caveats: 비교 코퍼스에서 `roadmonitor`·`roadmonitor-frontend`를 뺐다(유지보수자 지시: 그 프로젝트의 정보는 건드리지 않는다). 그래서 앞선 측정의 11곳이 이번에는 9곳이다. 다른 저장소의 소스 트리 재스캔은 하지 않았다. 이 결함은 출시 전에 PR CI에서 잡혔고 배포된 버전에는 없다.
+
 ## 2026-10-26 - docs(wiki): 버전 범프 커밋이 VERSIONING을 evidence.stale로 지목했다 — 1.35.0의 MINOR 판정 대조
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
