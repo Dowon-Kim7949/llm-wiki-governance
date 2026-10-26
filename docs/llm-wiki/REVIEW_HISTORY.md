@@ -23,6 +23,7 @@ source_files:
   - docs/llm-wiki/domains/00_overview.md
   - docs/llm-wiki/project-profile.md
   - docs/llm-wiki/profiles/library.md
+  - docs/llm-wiki/VERSIONING.md
 related:
   - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md
   - docs/llm-wiki/BENCHMARK.md
@@ -36,6 +37,7 @@ related:
   - docs/llm-wiki/domains/00_overview.md
   - docs/llm-wiki/project-profile.md
   - docs/llm-wiki/profiles/library.md
+  - docs/llm-wiki/VERSIONING.md
 visibility: internal
 contains_sensitive_info: false
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -363,3 +365,9 @@ reviewed_at: 2026-10-26
 원문서: [library.md](profiles/library.md) — 1건(2026-07-13 → 2026-07-13), 2026-10-26 이전분.
 
 - 2026-07-13에 패키지 진입점과 배포 형태를 기준으로 검토했다.
+
+## Versioning
+
+원문서: [VERSIONING.md](VERSIONING.md) — 1건(2026-07-14 → 2026-07-14), 2026-10-26 이전분.
+
+- 2026-07-14에 버전 정책을 version-agnostic으로 전환하고(특정 버전 숫자 표기 제거 → `package.json` 단일 소스 참조) 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.

@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - docs(wiki): 버전 범프 커밋이 VERSIONING을 evidence.stale로 지목했다 — 1.35.0의 MINOR 판정 대조
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: wiki
+- changed: `VERSIONING.md`(Review Note 1건) · `REVIEW_HISTORY.md`(`Versioning` 절 신설, 노트 1건 이관)
+- summary: 릴리스 커밋이 들어간 뒤 `validate --strict`가 `VERSIONING.md`의 `evidence.stale` 1건을 냈다. 날짜 앵커 drift는 N-13의 version-only 면제를 쓰지 않아, 커밋된 버전 범프를 "검토 이후 바뀐 소스"로 본다. 작업트리 상태일 때는 git 이력에 없어서 보이지 않았다. 서술은 그대로 맞으므로 대조 결과를 노트로 남겼다. 같은 자리에서 1.35.0이 이 문서의 정의상 MINOR인지 대조했다. 탐지 확장은 계약 변경이 아니라 결함 수정이고, 이름 붙인 동작 변경으로 CHANGELOG에 적었다.
+- evidence: `validate --strict` 1 → 0, `review-notes-cap` 3/3.
+- caveats: CI는 `validate --strict`를 돌리지 않아(verify는 `validate-frontmatter`, governance는 `impact`) 배포를 막는 항목은 아니었다. 이 저장소의 기준을 지키려고 고쳤다.
+
 ## 2026-10-26 - docs: SECURITY가 조회 redaction 범위를 1.35.0 이전 기준으로 말하고 있었다
 
 - status: needs_review (위키 문서 변경 없음 — 로그만)
