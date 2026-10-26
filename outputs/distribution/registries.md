@@ -1,5 +1,9 @@
 # Registry and awesome-list submissions — prepared entries
 
+> **Update before use (2026-10-26).** The entries below predate 1.27–1.34. Correct the counts
+> (32 CLI commands plus `mcp`/`help`, 18 read-only MCP tools) and re-read [`CLAIMS.md`](./CLAIMS.md)
+> before submitting anything. The sequencing advice still stands.
+
 Ready-to-paste material for each target. **Nothing here has been submitted.** Submitting is the
 maintainer's action; each target below is a PR or a form that posts under your account.
 

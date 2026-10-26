@@ -1204,6 +1204,8 @@ export async function impactCommand(options) {
       result: findings.some((finding) => finding.severity === "error") ? "fail" : "pass",
       since: options.since,
       changedFiles: 0,
+      changedPaths: [],
+      impactedDocuments: [],
       versionOnlyExcluded: [],
       findingSummary,
       findings
@@ -1256,17 +1258,38 @@ export async function impactCommand(options) {
     `stamp_only_exclusions: ${stampOnlyExclusions.length}${stampOnlyExclusions.length ? ` (${stampOnlyExclusions.join(", ")})` : ""}`
   ];
 
+  // What a PR reviewer needs first: which documents, and which changed sources each
+  // one cites. Additive to the JSON (changedFiles stays a count); the text form is
+  // Markdown already, so the composite action can hand it to a job summary as is.
+  // params.sources is joined with ", " by scanReverseImpact; repo paths do not
+  // contain that sequence.
+  const impactedDocuments = findings
+    .filter((finding) => finding.rule === "impact.source_changed")
+    .map((finding) => ({ path: finding.path, sources: String(finding.params?.sources ?? "").split(", ").filter(Boolean) }));
+  const reReview = impactedDocuments.length === 0
+    ? []
+    : [
+      "| Document | Changed source it cites |",
+      "| --- | --- |",
+      ...impactedDocuments.map((doc) => `| \`${doc.path}\` | ${doc.sources.map((source) => `\`${source}\``).join(", ")} |`),
+      "",
+      "Next: re-read each document against the listed sources and update what is no longer true in this same change, then approve it again (`llm-wiki review --approve <path>`). `llm-wiki explain impact.source_changed` lists the other ways to clear it."
+    ].join("\n");
+
   return withText({
     command: "impact",
     result,
     since: options.since,
     changedFiles: changed.length,
+    changedPaths: [...changed].sort(),
+    impactedDocuments,
     versionOnlyExcluded,
     stampOnlyExclusions,
     findingSummary,
     findings
   }, "LLM-WIKI Reverse-Impact", [
     { title: "Summary", body: summary },
+    { title: "Documents to re-review", body: reReview },
     { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: [

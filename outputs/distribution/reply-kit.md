@@ -1,5 +1,8 @@
 # Reply kit — anticipated questions, honest answers
 
+> **Partly out of date (2026-10-26).** These answers predate 1.27–1.34 and the 2026-10 survey of
+> similar tools. Read the reply notes in [`launch-kit-2026-10.md`](./launch-kit-2026-10.md) first.
+
 For the first hours of any thread. **Nothing here has been posted.** The rule for every answer:
 concede the real limit first, then say what is actually true. A defensive answer to a fair
 criticism costs more credibility than the criticism did.

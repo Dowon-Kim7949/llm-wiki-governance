@@ -749,8 +749,10 @@ Governance modes / 거버넌스 모드 (llm-wiki mode):
   · 설정 파일의 값을 한 번만 덮어쓰려면 위 명령들에 '--mode <level>'을 줍니다.
 
 Why / 왜:
-  Your agent grounds on a verified wiki instead of re-deriving from the code each time — fewer tokens, fewer errors.
-  에이전트가 매번 코드를 다시 읽는 대신 '검증된 위키'를 근거로 삼아 토큰·오류를 줄입니다.
+  Your agent grounds on a reviewed wiki instead of re-deriving from the code each time.
+  The gain comes from keeping it current: an unenriched wiki measured worse than none.
+  에이전트가 매번 코드를 다시 읽는 대신 검토된 위키를 근거로 삼습니다.
+  이득은 위키를 최신으로 유지할 때 나옵니다. 보강하지 않은 위키는 위키가 없을 때보다 나쁘게 측정됐습니다.
   Point your agent at docs/llm-wiki first when adding or changing features.
   이후 기능 추가/수정 시 에이전트에게 docs/llm-wiki를 먼저 읽히세요.
 

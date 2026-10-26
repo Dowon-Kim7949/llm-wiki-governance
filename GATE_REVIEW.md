@@ -3085,6 +3085,47 @@ until separately accepted.
 `commands` map gains a key, which is a contract change approved by the
 maintainer for this release.
 
+## Trust Batch Scope Decision (1.35.0, 2026-10-26 — accepted and built)
+
+**Origin.** A whole-repository review on 2026-10-26 (engineering, documentation, public
+claims) reproduced two retrieval leaks and a detector blind spot, and found the README
+claiming more than the product does. The maintainer accepted the batch in-session:
+scope "1.35.0 candidate", keep this repository's agent self-approval and make the
+documents agree with it, measure detection on the local wikis, stop at a local release
+commit (no push, no tag).
+
+**Accepted and built:**
+
+1. **Retrieval redaction (security fix).** `get-doc` echoes frontmatter through a redacted
+   view (each scalar scanned as `key: value`); a detected PEM header is redacted through its
+   END line. Clean output stays byte-identical; JSON keys unchanged.
+2. **Detection widened (named build-breaking exception).** Credential-suffixed keys gated
+   on credential-shaped values, and vendor-prefixed tokens (`vendor_token`). `sensitive.*`
+   stays non-dialable, so a wiki that holds such a value now fails `validate`. Accepted
+   because the alternative is a safety rule that silently misses the most common form of the
+   thing it exists to catch. Evidence gate met before merge: 0 new and 0 lost hits across
+   eleven local wikis; the unshaped variant's 45 code-reference hits on their source trees
+   are why the value-shape gate exists.
+3. **`impact` as a PR report.** Additive JSON (`changedPaths`, `impactedDocuments`), a
+   "Documents to re-review" text section, and a composite-action `summary` input (default
+   `"true"`, exit code preserved). Not added to the workflow template, whose `bash -e`
+   without `pipefail` would turn a piped failure into a pass.
+4. **Claims.** README narrowed to what the code does; `help` states the condition on its
+   benefit; `docs/ORCA_PARALLEL_DEV.md` states the self-approval policy it had contradicted.
+
+**Considered and declined in this batch:**
+
+- Exempting `doc_type: review_history` from `impact` — the type is this repository's
+  convention, not a product concept; a general per-document exemption would be a new
+  contract and needs its own decision.
+- Narrowing `check-run`'s `run.doc_gap` to code — `run.change_set_undeclared` forces every
+  changed file into the manifest, so excluding prose would also hide real gaps; deciding what
+  counts as source is a design question (a config ignore list is one candidate).
+
+**Open, recorded for a later decision:** content-hash anchoring for drift (shadow mode
+first), approval provenance from git history, a retrieval relevance set, and a second real
+benchmark. None is started.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

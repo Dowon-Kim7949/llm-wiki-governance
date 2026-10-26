@@ -24,6 +24,114 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - docs(deck): 1.35.0 정렬 — 배포 전에 PR에 함께 넣었다
+
+- status: needs_review (위키 문서 변경 없음 — 로그만)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs (outputs/team-briefing)
+- changed: `llm-wiki-briefing.html`(제목·버전 배지 v1.35.0, 21장 "1.29 – 1.29.2"로 병합, 22장 "1.30 → 1.35"에 1.35 행) · `SPEAKER_NOTES.md`(대상 버전, 21·22장 대본, 1.35 한 줄 설명, 시간 조절 팁) · `README.md`(대상 버전)
+- summary: 지금까지 덱 정렬은 배포 뒤 별도 커밋으로 했다. 이번에는 PR 병합이 에이전트에게 `deny`로 막혀 있어서(`.claude/settings.json`의 `gh pr merge`), 유지보수자의 병합 한 번으로 끝나도록 배포 전에 같은 PR에 넣었다. 22장에 행이 하나 늘지 않게, 가장 오래된 1.29.2 행을 21장의 "1.29 – 1.29.1" 행과 합쳤다. 공유 Artifact는 재게시하지 않는다(유지보수자 지시).
+- evidence: headless Chrome으로 DevTools 프로토콜을 써서 슬라이드 높이를 쟀다. 1366×768·1440×900·1920×1080 세 해상도 모두 21·22장 높이가 기준선과 같다(858/878/894px, 862/882/898px). 1.35 행의 첫 문구는 22장을 19px 늘려 1440×900에서 넘쳤으므로 줄였다.
+- caveats: 이 headless 측정에서는 **기준선에서도** 1366×768의 21·22장이 넘친다(858·862px > 768). 1.34.0 덱 정렬 커밋은 "Chrome 실측 757·747px, 넘침 0장"이라고 기록했는데, 두 측정이 어긋나는 원인(글꼴 로딩이나 측정 방식으로 추정)은 확인하지 않았다. 그래서 이번 기준은 "기준선보다 높아지지 않는다"로 잡았다.
+
+## 2026-10-26 - fix(sensitive): 넓힌 탐지 패턴이 다항 시간으로 역추적하고 있었다(CodeQL js/polynomial-redos)
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, wiki
+- changed: `src/sensitive-info.js`(선형 구조로 재작성) · `tests/sensitive-info.test.js`(시간 상한 테스트 1건) · 위키 `VISIBILITY.md`(같은 날 노트 확장)
+- summary: 1.35.0 PR(#1)의 CI에서 CodeQL이 `src/sensitive-info.js`의 새 패턴에 high 경고 1건을 냈다. 지목된 곳은 끝 구분자를 지우는 `/[,;]+$/`였다. 같은 관점으로 보니 키의 중첩 수량자 `[A-Za-z0-9]+(?:[_.-][A-Za-z0-9]+)*`와 벤더 패턴의 상한 없는 반복·전방 탐색도 위험했다. 재현하니 셋 다 제곱으로 늘었다. 20,000자 한 줄에 0.15–1.5초가 걸렸고, 1.34.0은 1ms 미만이었다. 이 스캔은 `validate`·조회·리포트 쓰기에서 문서 내용에 돌므로, 병적인 줄 하나가 게이트를 멈출 수 있었다. 고친 방식은 세 가지다.
+  - 후보는 lookbehind로 식별자 덩어리의 시작에서만 찾고, 상한 128자 한 번의 매칭으로 잡는다. 키가 자격 증명 이름인지는 그 문자열에 대해 따로 판정한다.
+  - 끝 구분자는 반복문으로 지운다.
+  - 모든 수량자와 전방 탐색에 상한을 둔다.
+- evidence: 수정 후 같은 입력은 20,000자에서 0.1–12ms, 100,000자에서 0.6–62ms로 선형이다. 새 시간 상한 테스트는 수정 전 코드에서 5,846ms로 실패하고 수정 후 통과한다. 탐지 결과는 1.34.0 대비 위키 9곳(314개 파일)에서 +0/−0이고, 합성 코퍼스의 참 양성 8건도 직전 구현과 같다. `sensitive-info`·`frontmatter` 테스트는 13/13이다.
+- caveats: 비교 코퍼스에서 `roadmonitor`·`roadmonitor-frontend`를 뺐다(유지보수자 지시: 그 프로젝트의 정보는 건드리지 않는다). 그래서 앞선 측정의 11곳이 이번에는 9곳이다. 다른 저장소의 소스 트리 재스캔은 하지 않았다. 이 결함은 출시 전에 PR CI에서 잡혔고 배포된 버전에는 없다.
+
+## 2026-10-26 - docs(wiki): 버전 범프 커밋이 VERSIONING을 evidence.stale로 지목했다 — 1.35.0의 MINOR 판정 대조
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: wiki
+- changed: `VERSIONING.md`(Review Note 1건) · `REVIEW_HISTORY.md`(`Versioning` 절 신설, 노트 1건 이관)
+- summary: 릴리스 커밋이 들어간 뒤 `validate --strict`가 `VERSIONING.md`의 `evidence.stale` 1건을 냈다. 날짜 앵커 drift는 N-13의 version-only 면제를 쓰지 않아, 커밋된 버전 범프를 "검토 이후 바뀐 소스"로 본다. 작업트리 상태일 때는 git 이력에 없어서 보이지 않았다. 서술은 그대로 맞으므로 대조 결과를 노트로 남겼다. 같은 자리에서 1.35.0이 이 문서의 정의상 MINOR인지 대조했다. 탐지 확장은 계약 변경이 아니라 결함 수정이고, 이름 붙인 동작 변경으로 CHANGELOG에 적었다.
+- evidence: `validate --strict` 1 → 0, `review-notes-cap` 3/3.
+- caveats: CI는 `validate --strict`를 돌리지 않아(verify는 `validate-frontmatter`, governance는 `impact`) 배포를 막는 항목은 아니었다. 이 저장소의 기준을 지키려고 고쳤다.
+
+## 2026-10-26 - docs: SECURITY가 조회 redaction 범위를 1.35.0 이전 기준으로 말하고 있었다
+
+- status: needs_review (위키 문서 변경 없음 — 로그만)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: `SECURITY.md`·`SECURITY.ko.md`(MCP 신뢰 모델 절의 redaction 문장) · `outputs/distribution/launch-kit-2026-10.md`(제목 버전, 1분 설명에 PR 리포트 한 문장)
+- summary: SECURITY의 "returned bodies/snippets redact sensitive-looking lines"는 1.35.0 수정 전의 범위만 말하고 있었다. 지금은 본문 줄, 탐지된 PEM 블록 전체, `get_doc`의 frontmatter 값까지 가린다. 1.35.0 이전 버전은 뒤의 둘을 가리지 않았다는 사실과, 올리라는 안내를 영·한 같은 위치에 적었다. 런치 키트는 제목의 버전을 1.35.0으로 맞췄다.
+- evidence: `impact`(작업트리) 0, `tests/impact-default-gate.test.js` 7/7(SECURITY.md는 이 테스트의 문구 감시 대상이다).
+- caveats: 없음. 유지보수자 지시로 이 커밋 뒤의 push·병합·태그·배포는 에이전트가 진행한다.
+
+## 2026-10-26 - release: 1.35.0 — 코드가 하는 만큼만 말하기
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, src, test, docs, wiki
+- changed: 버전 1.34.0 → 1.35.0(`package.json`, 테스트 단언, 템플릿 핀 3곳, 액션 `version` 기본값, README 핀 2곳) · `src/commands.js`(`impact` PR 리포트) · `.github/actions/validate/action.yml`(입력 `summary`) · `src/cli.js`(도움말 문구) · `tests/impact-report.test.js`(4건) · CHANGELOG·ROADMAP 영·한 · `GATE_REVIEW.md`("Trust Batch Scope Decision") · README 2종(승인 정책, job summary) · `docs/ORCA_PARALLEL_DEV.md`(승인 정책 정합) · 위키 13종 + `REVIEW_HISTORY.md`
+- summary: 유지보수자 결정(2026-10-26, 세션 안에서)은 네 가지다. 범위는 1.35.0 후보 일괄, 이 저장소의 자기 승인은 유지하되 문서를 정합, 탐지 측정은 로컬 위키 사용, 멈추는 지점은 로컬 릴리스 커밋(push·태그 없음). 이 커밋에는 그중 PR 리포트, 도움말 문구, 승인 정책 문서, 릴리스 메타데이터가 들어간다. 보안 수정(`7858644`)과 탐지 확장(`0525bf7`)은 앞선 커밋에 있다.
+- evidence:
+  - `impact`가 지목한 verified 13종을 대조했다. 새 출력·입력과 충돌하는 서술은 없었다.
+  - 새 동작을 실제로 반영한 문서는 6종이다(PUBLIC_API·EXAMPLES·DOMAIN_FEATURES·ARCHITECTURE·00_overview·index). HARNESS 로드맵에는 결함 48~52를 등록했고, 나머지 6종은 불변이라 노트로 기록했다.
+  - `profiles/library.md`는 노트 상한을 처음 넘어서, `REVIEW_HISTORY.md`에 `Library Profile` 절을 새로 만들었다.
+  - 새 테스트 4건은 원래 코드에서 모두 실패하고 수정 후 통과한다.
+  - 결과: `npm run verify` 682/682, lint OK(88개 파일), `validate --strict` 0, `audit` pass, `drift` 0, `impact`는 이 커밋 단독과 `origin/main` 이후 전체 모두 0(`stamp_only_exclusions` 0), `npm pack --dry-run`은 67개 파일·285.1 kB이며 허용된 최상위 항목만 담는다.
+- caveats:
+  - N-11(같은 날 두 번째 재스탬프는 no-op) 때문에, 오늘 이미 승인한 문서(00_overview·EXAMPLES·index·PUBLIC_API·위키 README)는 재스탬프가 아니라 본문을 실제로 고쳐야 게이트를 통과했다. 각 변경은 이번 릴리스가 바꾼 사실을 담은 것이다. 다만 `index.md`에 더한 문장(실패 시 표를 먼저 보라)은 유용해서 넣었지만, 게이트 통과에도 필요했다는 점을 밝혀 둔다.
+  - 워크플로 템플릿에는 job summary를 넣지 않았다. `pipefail` 없는 `bash -e`에서 파이프는 실패를 삼키기 때문이다.
+  - 발표 덱(`outputs/team-briefing/`) 정렬은 관례대로 배포 뒤에 한다.
+  - push·태그·npm 배포는 하지 않았다.
+
+## 2026-10-26 - feat(sensitive): 탐지기가 `access_token:`·`client_secret:` 같은 키와 벤더 토큰을 못 보고 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs
+- changed: `src/sensitive-info.js`(접미 자격 증명 키 + 값 모양 게이트, 신규 유형 `vendor_token`) · `tests/sensitive-info.test.js`(신규 4건) · 위키 `VISIBILITY.md`(일관성 규칙이 재사용하는 스캔의 범위) · `outputs/distribution/CLAIMS.md`(탐지 범위 문장)
+- summary: 기존 패턴의 `\b(token|secret|password)\b`는 `_`가 단어 문자라서 `access_token`·`client_secret`·`db_password` 앞에 경계를 찾지 못했다. 그래서 YAML이나 설정 형태로 흔히 쓰는 이런 줄이 `validate`를 통과했고, 승인까지 받을 수 있었다. 이제 마지막 마디가 자격 증명 단어인 키(snake·kebab·점 표기와 camelCase)를 잡는다. 다만 값이 자격 증명 모양일 때만 잡는다. 영숫자 계열 12자 이상, 숫자와 문자를 함께 포함, 플레이스홀더 제외가 조건이다. `ghp_`·`github_pat_`·`AKIA`·`xoxb-`·`sk-`·`AIza`·`sk_live_`·`npm_` 접두 토큰은 키 이름이 없어도 `vendor_token`으로 잡는다. 기존 패턴 6종과 finding 형태는 그대로다.
+- evidence: 탐지기를 바꾸기 전에 측정했다. 로컬 위키 11곳(394개 파일, 84,231줄)에서 기존 대비 새로 잡힌 줄은 0, 잡히지 않게 된 줄도 0이었다. 같은 저장소들의 소스 1,219개 파일로 오탐 스트레스를 걸었다. 값 모양 게이트가 없는 안은 새 적중 45건이 전부 코드 참조(`nextPageToken`, `mapToken` 등)였고, 게이트를 둔 실제 구현은 새로 잡힌 줄 1건(벤더 형식 문자열)에 잃은 줄 0이었다. 합성 코퍼스의 의도한 참 양성 9줄은 기존 탐지기와 새 패턴을 합쳐 전부 잡혔고, 코드·참조·플레이스홀더 음성 사례는 전부 조용했다. 새 테스트 4건 중 3건은 원래 탐지기에서 실패하고(음성 사례 1건은 원래도 통과), 수정 후 4건 모두 통과한다. `npm test` 678/678.
+- caveats: `sensitive.*`는 끌 수 없는 blocked 규칙이라, 이 확장이 도입처 문서를 새로 막으면 우회 수단이 없다. 측정 코퍼스는 이 PC의 저장소 11곳이 전부다. 측정 원문은 어디에도 기록하지 않았고, 개수와 키 이름·값 모양만 봤다. 테스트의 벤더 형식 문자열은 외부 시크릿 스캐너가 오탐하지 않도록 런타임에 조립한다.
+
+## 2026-10-26 - docs: README 재구성과 공개 주장 감사 — 사실보다 넓게 말하던 문장들을 고쳤다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs, wiki
+- changed: `README.md`·`README.ko.md`(재구성) · `CONTRIBUTING.md`·`.ko.md`(한 문장) · `docs/ORCA_PARALLEL_DEV.md`(이 저장소 예외 명시) · `bench/REAL_LLM_METHODOLOGY.md`(상태 노트) · `outputs/distribution/`(`CLAIMS.md` 갱신·감사표, 런치 키트 신설, 7월 초안 5종에 상태 배너) · 위키 `EXAMPLES.md`·`README.md`(Review Note) · `index.md`(재스탬프) · `REVIEW_HISTORY.md`(노트 2건 회전)
+- summary: 저장소 전반 검토(엔지니어링·문서·홍보) 중 문서 쪽 결과다. README는 골격을 유지한 채 빠진 답을 채웠다. 동작 방식, 지시 파일과의 차이, 하지 않는 일, CI 절, 운영 비용, 문제 해결, 문서 안내가 새로 들어갔다. 동시에 공개 주장을 소스와 대조해, 사실보다 넓게 말하던 문장을 고쳤다.
+  - "Every claim is tied to real code": 실제로는 인용이 대상을 가리키는지만 검사한다.
+  - "only a human promotes … can never self-approve": 강제되지 않는다. 이 저장소 자체가 에이전트 승인이다.
+  - "Works on any stack, with any agent": 감지하는 스택과 adapter 대상만 적었다.
+  - 모드를 빼고 말한 "fails the build": 새 프로젝트는 `lite`라 드리프트 게이트가 꺼져 있다.
+  - `ORCA_PARALLEL_DEV.md`의 "agents write, only a human verifies"는 이 저장소 정책과 정면으로 충돌하고 있었다. `AGENTS.md`가 생성 스킬과의 충돌을 처리한 방식대로 예외를 명시했다. 정책 선택 자체는 유지보수자 몫이다.
+  - `CLAIMS.md`는 수치(명령 32개·MCP 툴 18개)와 금지 주장(유일성, 사람만 승인, 비밀 절대 미반환)을 갱신하고 감사표를 붙였다.
+- evidence: README가 기대는 사실은 소스로 다시 확인했다. `COMMANDS` 32개, `MCP_TOOLS` 18개, `src/`의 네트워크 모듈 import 0건, `doctor`·`next`·`explain` 도움말 문구, OPERATIONS 앵커 두 개다. `impact`가 지목한 verified 3종(EXAMPLES·index·위키 README)은 README에서 가져오는 서술을 각각 대조했고, 셋 다 불변이다. EXAMPLES와 위키 README에는 대조 결과를 Review Note로 남겼다. `index.md`는 Review Notes 절이 없는 상시 적재 문서라서 노트 절을 새로 만들지 않고 재스탬프만 했다. 그래서 이 변경의 `stamp_only_exclusions`는 1로 보고된다. 대조한 내용은 index 32행의 정체성 서술이며, 새 README와 일치한다.
+- caveats: README 길이는 빈 줄 제외 74 → 125줄(전체 104 → 172줄)로, 계획한 약 120줄을 조금 넘었다. `llm-wiki help`의 "fewer tokens, fewer errors"는 소스 변경이라 이번 범위에서 고치지 않았다. npm 상점 페이지는 다음 배포 전까지 옛 README를 보여 준다. 버전 범프 없음. push 안 함.
+
+## 2026-10-26 - fix(retrieval): PEM 블록이 헤더 한 줄만 가려지고 키 본문은 반환되고 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs
+- changed: `src/commands/retrieval.js`(`redactSensitive`가 탐지된 PEM 헤더부터 짝 END 줄까지 블록째 가림) · `tests/verification.test.js`(회귀 테스트 1건) · 위키 `PUBLIC_API.md`(`get-doc` 행, 같은 날 Review Note 확장) · `domains/00_overview.md`(Retrieval 항목 한 구절, 같은 날 노트 확장)
+- summary: 바로 앞 수정을 검증하다가 찾은 같은 계열의 결함이다. 민감정보 탐지기는 PEM 블록의 헤더 줄만 잡는다. base64 본문 줄에는 키 이름이 없으니 줄 스캔으로는 잡을 수 없다. 그런데 retrieval의 redaction이 줄 단위라서, `get-doc`·`search-docs` 스니펫·`onboard`·`prepare`가 헤더 한 줄만 가리고 키 본문을 그대로 돌려줬다. 이제 `private_key`/`certificate`로 탐지된 줄부터 짝 END 줄까지, 닫히지 않은 블록이면 끝까지를 가린다. 탐지기(`scanSensitiveInfo`)와 finding 판정은 바꾸지 않았다.
+- evidence: 가짜 블록(헤더 + 가짜 본문 2줄 + END) 픽스처로 측정했다. 수정 전 노출은 CLI `get-doc` 2줄, `search-docs --include-sensitive` 스니펫 2건, MCP `get_doc` 4회였고, 수정 후에는 모두 0이며 END 뒤 본문은 그대로 남는다. 새 테스트는 원래 코드에서 실패하고 수정 후 통과한다. 테스트 소스의 PEM 헤더는 외부 시크릿 스캐너가 오탐하지 않도록 런타임에 조립한다.
+- caveats: `validate`는 이 문서를 원래도 `sensitive.redacted` blocked로 막았으므로 CI를 통과한 커밋에는 남기 어렵다. 노출 경로는 커밋 전 워킹트리를 읽는 MCP·CLI 조회였다. push 안 함.
+
+## 2026-10-26 - fix(retrieval): get-doc이 frontmatter의 민감해 보이는 값을 가리지 않고 돌려주고 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs
+- changed: `src/commands/retrieval.js`(frontmatter redaction 뷰. `get-doc`·`list-docs`·`search-docs`가 이 뷰를 쓴다) · `tests/verification.test.js`(회귀 테스트 1건) · 위키 `PUBLIC_API.md`(retrieval 3행) · `domains/00_overview.md`(Retrieval 항목) · `REVIEW_HISTORY.md`(노트 2건 회전)
+- summary: 저장소 전반 검토 중에 재현한 결함이다. `get-doc`의 기본 출력(CLI JSON, MCP `get_doc`)은 frontmatter 객체를 그대로 실어 보내고, redaction은 본문 줄에만 걸었다. 같은 탐지기가 그 문서를 민감 문서로 분류해 `list-docs`/`search-docs`에서는 기본 제외하는데도, `get-doc`은 경로를 지정하면 게이트가 없어 frontmatter 값이 원문으로 나갔다. 수정 후에는 각 스칼라를 `key: value`로 재구성해 같은 스캔에 걸고, 걸린 값만 표식으로 바꾼다. 깨끗한 문서는 참조를 그대로 돌려주므로 기본 출력이 byte-identical이다.
+- evidence: frontmatter의 `secret` 키에 가짜 값을 넣은 픽스처로 측정했다. 수정 전에는 CLI JSON에 1회, MCP에 1회 노출됐고, 수정 후에는 0회다. 새 테스트는 원래 코드에서 실패하고(원문 포함 `true`), 수정 후 통과한다. `npm test` 673/673, lint OK.
+- caveats: 탐지 패턴은 바꾸지 않았다. `api_token`·`access_token`처럼 `_token`으로 끝나는 키는 `\b` 경계 때문에 본문에서도 탐지되지 않는데, 이것은 별개의 공백이다. 탐지기를 바꾸면 모든 명령의 blocked 판정 범위가 같이 바뀌므로 별도로 결정한다. CHANGELOG 기재와 버전 범프는 하지 않았다(릴리스 시 기재). push 안 함.
+
 ## 2026-10-21 - docs+test: N-15 기록 — drift는 머지가 메인에 들어온 날짜를 보지 못한다(고치지 않기로 결정)
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

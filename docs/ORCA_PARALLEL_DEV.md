@@ -2,15 +2,28 @@
 
 How this repository is developed using several AI coding agents at once, each in
 its own [Orca](https://github.com/stablyai/orca)-managed git worktree, with a
-human as the only approver.
+human approving code, merges, and releases.
 
 This lives outside `docs/llm-wiki/` on purpose — like
 [OPERATIONS.md](OPERATIONS.md), it is a working guide, not a governed wiki
 document, so it is not part of the validated corpus.
 
-The governing principle is the same one the product enforces: **agents write,
-only a human verifies.** If the development process quietly promoted its own
-work, the tool would not mean anything.
+The governing principle is the one the product ships: **agents write, and
+promotion to `verified` is an explicit, recorded act — never a side effect.**
+Adopters get the default that a human performs it; that rule lives in
+`templates/adapters/*` and is unchanged.
+
+This repository runs a different policy, and states it rather than doing it
+quietly. Since 2026-08-03 (maintainer's decision) the agent that edits a document
+under `docs/llm-wiki/` also approves it with `review --approve-all --yes`, and
+`reviewed_by` names the agent, not a person. The reason: this repository is the
+product's dogfood, built end to end by agents, not a codebase whose docs a human
+curates. [`AGENTS.md`](../AGENTS.md) "Wiki discipline" owns the contract, `stats`
+counts these approvals as `agent_verified` apart from human ones, and the README
+says so. What stays human here: reading the diff, merging, pushing, tagging, and
+releasing. What would make the tool meaningless is an agent promoting its own
+work *without* saying so — which is why the policy is written down and the counts
+are kept apart.
 
 ## The loop
 
@@ -107,8 +120,10 @@ validates the artifact → draft PR → **human reads the diff and merges**.
 
 **C — documentation drift.** Input: recent code changes.
 `impact --since <ref>` and `validate --changed` find the affected `verified`
-docs → a docs-sync agent updates them to `needs_review` → `validate` → **human
-runs `review --approve`**. That last step is never delegated.
+docs → a docs-sync agent updates them to `needs_review` → `validate` → approval.
+In an adopter's repository a **human runs `review --approve`**, and that step is
+not delegated. In this repository the docs-sync agent runs
+`review --approve-all --yes` itself, under the policy above.
 
 ## Definition of done
 
@@ -126,9 +141,9 @@ An agent saying "done" is not done. All of these must hold:
 [ ] public API / CLI / JSON-shape / exit-code impact is stated
 [ ] Node.js 18.18 compatibility confirmed
 [ ] no runtime dependency was added
-[ ] related wiki docs updated and left needs_review
+[ ] related wiki docs updated (set to needs_review at edit time)
 [ ] docs/llm-wiki/log.md appended
-[ ] review --approve was NOT run by an agent
+[ ] wiki docs approved as AGENTS.md "Wiki discipline" says (here: by the agent)
 [ ] npm pack --dry-run reviewed (release candidates)
 [ ] a human read the diff
 ```
@@ -161,10 +176,14 @@ confident assumption wearing a fact's clothes.
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | Research | ✓ | | | | | | |
 | Planner | ✓ | | | | | | |
-| Implementation | ✓ | ✓ | ✓ | branch only | draft | | |
+| Implementation | ✓ | ✓ | ✓ | branch only | draft | | wiki only¹ |
 | Reviewer | ✓ | | | | comment | | |
 | Release | ✓ | | | | report | | |
 | Human | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+¹ This repository's own `docs/llm-wiki/` documents, the ones that agent edited, as
+`AGENTS.md` requires. Never templates or shipped assets, which must keep seeding
+`needs_review`.
 
 Agents must not run:
 
@@ -175,7 +194,7 @@ git push --force
 git reset --hard
 git clean -fdx
 gh pr merge
-llm-wiki review --approve
+llm-wiki review --approve   # except as footnote ¹ allows (implementation / docs-sync only)
 ```
 
 **A table in a document is a convention, not a control.** Orca does not enforce

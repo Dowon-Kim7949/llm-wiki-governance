@@ -13,7 +13,7 @@ last_updated: 2026-10-21
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-21
+reviewed_at: 2026-10-26
 wiki_block_version: v1
 source_files:
   - package.json
@@ -1748,6 +1748,35 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     필요합니다. 현재 동작은 `tests/known-gaps.test.js` GAP 5가 고정합니다. `--first-parent` 변이를
     넣으면 그 테스트가 실패하는 것을 확인했습니다.
 
+### 1.35.0 처리 중 발견 (2026-10-26, 저장소 전면 검토)
+
+48. ~~**N-16 `get-doc`이 frontmatter를 redaction 없이 돌려준다**~~ — **1.35.0에서 수정.**
+    본문 줄은 가렸지만 frontmatter 객체는 그대로 실렸습니다(CLI JSON, MCP `get_doc`).
+    `list-docs`·`search-docs`는 같은 스캔으로 그 문서를 제외하는데, `get-doc`은 경로를 지정하면
+    sensitivity 게이트가 없었습니다. 가짜 값으로 재현했고(CLI 1·MCP 1 → 0), 이제 각 스칼라를
+    `key: value`로 재구성해 같은 스캔에 겁니다.
+49. ~~**N-17 PEM 블록이 헤더 한 줄만 가려진다**~~ — **1.35.0에서 수정.** 탐지기는 헤더만 잡고 redaction은
+    줄 단위라, 키 본문이 `get-doc`·검색 스니펫·`onboard`·`prepare`로 나갔습니다(get-doc 2줄·스니펫
+    2건·MCP 4회 → 0). 이제 탐지된 헤더부터 짝 END 줄까지 가립니다.
+50. ~~**N-18 탐지기가 `access_token:`·`client_secret:` 같은 키와 벤더 토큰을 못 본다**~~ — **1.35.0에서
+    수정(이름 붙인 빌드 차단 예외).** `\b(token|secret|password)\b`는 `_`가 단어 문자라서 이런 키
+    안에서 경계를 찾지 못했고, 그래서 흔한 YAML 줄이 `validate`를 통과해 승인까지 받을 수 있었습니다.
+    값 모양 조건을 둔 접미 키 패턴과 `vendor_token`을 더했습니다. 측정 순서가 결정의 근거입니다.
+    조건 없는 안은 로컬 저장소 11곳의 소스에서 새 적중 45건이 전부 코드 참조였고, 조건을 둔 안은
+    위키 394개 파일에서 새 적중 0건·잃은 줄 0건이었습니다.
+51. **N-19 이 저장소의 개발 가이드가 자기 승인 정책과 반대되는 원칙을 걸고 있었다** —
+    `docs/ORCA_PARALLEL_DEV.md`는 "agents write, only a human verifies"를 원칙으로, "review --approve was
+    NOT run by an agent"를 완료 조건으로 두었는데, `AGENTS.md`는 2026-08-03부터 에이전트 자기 승인을
+    의무로 정했습니다. 유지보수자 결정(2026-10-26)은 **현행 유지 + 문서 정합**이고, ORCA 가이드와
+    README가 이제 정책을 밝힙니다. 위 33번(“`verified` 자동 승격 반대”)이 이 저장소에 한해 뒤집혔다는
+    기록과 같은 사안의 공개 쪽 마무리입니다.
+52. **관찰 2건(이번에 고치지 않음)** — (a) `check-run`의 `run.doc_gap`이 README·홍보 초안 같은 산문
+    파일까지 소스로 세서, 문서만 바꾼 실행에서 warning 13건이 났습니다. `run.change_set_undeclared`가
+    바뀐 파일 전부를 선언하게 만들므로 산문을 일괄 제외하면 실제 공백도 숨깁니다(설계 결정 필요).
+    (b) `REVIEW_HISTORY.md`가 원문서들을 `source_files`로 인용해서, 원문서만 바꾼 커밋에서
+    아카이브가 2차로 지목됩니다(N-1 계열). `review_history`는 제품 개념이 아니라 이 저장소의 관례라
+    제품에 면제를 넣지 않았습니다.
+
 ### 사람의 결정이 필요함
 
 > 아래 11건의 결정 브리프(질문 / 현재 근거 / 선택지와 대가 / 권고 / 미룰 때의 비용)는 **J장**에 있습니다. 2026-07-31 측정 이후 21번은 "아직 결정하지 말 것"이 권고입니다.
@@ -2022,9 +2051,8 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 
 ## Review Notes
 
-Older review notes (14 entries, 2026-07-31 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (15 entries, 2026-07-31 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 4건을 재확인했다: `package.json`, `src/cli.js`, `.github/actions/validate/action.yml`, `ROADMAP.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서가 action.yml에서 인용하는 것은 **게이트 배선의 유무**(공백 5·Phase 0)이지 `version` 입력의 숫자가 아니고, `src/cli.js`에서 인용하는 것은 명령 표면이지 `drift` 도움말 문구가 아니며, ROADMAP 변경은 이 문서가 제안한 라인을 shipped로 등재한 것이므로 **분석과 모순되지 않는다** — 본문 **불변**. 다만 이번 발화 자체가 이 문서의 관측 대상이라 기록해 둔다: **릴리스 커밋은 언제나 `package.json`을 바꾸고, 그 파일을 인용하는 비면제 verified 문서가 11건이므로 매 릴리스마다 같은 fan-out이 재발한다**(이번 측정: 릴리스 노트 33건은 결정 28로 면제되어 0건, 나머지 11건 발화). 결정 21의 허브 fan-out 비용이 릴리스 경로에서 구체적 숫자로 확인된 첫 사례다.
 - 2026-08-06(1.29.1 배포 직전)에 **46번(N-14) 배치의 테스트 6건 중 1건이 Windows에서만 참인 것을
   단언했고 CI가 잡았다**. `isTemplateDoc("docs\\llm-wiki\\templates\\win.md")`가 true라는 단언은
   `toPosix()`가 `path.sep`으로만 분리하므로 POSIX에서 거짓이며, ubuntu·macOS 8잡이 실패하고 windows
@@ -2038,3 +2066,4 @@ Older review notes (14 entries, 2026-07-31 → 2026-08-03) are archived in [REVI
 - 2026-09-07(1.30.0)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 9건을 재확인했다: `package.json`·`src/cli.js`·`src/index.js`·`src/commands.js`·`src/commands/findings.js`·`src/commands/skills.js`·`src/mcp/tools.js`·`.github/actions/validate/action.yml`·`ROADMAP.md`. 이번 변경은 거버넌스 모드 추가이고 이 문서가 다루는 것은 **하네스 자체의 거버넌스**(자기관리 게이트·측정·결정 기록)이므로 본문 주장 중 낡은 것이 없다 — Phase 0 결함 목록·오탐률 실측·결정 기록은 모두 그 시점 사실 진술이다. 새로 알게 된 하네스 공백 하나는 [log.md](log.md)의 2026-09-07 항목 caveats에 적었다: **모드를 바꾼 뒤 생성 스킬이 낡는 것을 제품이 finding으로 잡지 못한다** — 스킬 본문은 작성 시점 모드의 워크플로를 담고, 블록이 자기 안에 갱신 명령(`init --write --skills --refresh`)을 적어 두는 것이 현재 유일한 방어다. 본문 **불변**. **(이어서)** 같은 배치의 도그푸딩이 하네스 공백 하나가 아니라 **제품 결함 2건**을 냈고, 발견 경로가 이 문서의 주제 그대로다 — 코드 리뷰가 아니라 **이 저장소에 새 명령을 실행해서** 나왔다. ① `backfill`이 `docs/llm-wiki/` 안만 뒤지고 “이 저장소에서 근거 복구 불가”라고 단언했다(루트에 196 KB `GATE_REVIEW.md`가 있는 저장소에 대해) — 증거보다 넓은 부정. ② `review_backlog` 준비도 체크가 append-only 로그 때문에 **구조적으로 통과 불가**였다 — 이 제품이 이미 두 번 고친 “해소 경로가 없는 finding” 계열의 세 번째다. 둘 다 같은 배치에서 고치고 회귀 테스트 3건으로 고정했다. 앞서 적은 하네스 공백(모드 변경 후 낡은 스킬을 finding으로 잡지 못함)은 **여전히 미해결**이다.
 - 2026-09-08에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `ROADMAP.md`를 재확인했다. 바뀐 것은 post-1.19 목록에서 **1.25가 1.24보다 앞에 있던 순서를 바로잡은 것**뿐이고, 항목 본문은 글자 하나 움직이지 않았다(순수 이동이라 파일 바이트 수가 같다). 국문판을 먼저 고치면서 생긴 영·국문 불일치를 닫은 것이며, `CONTRIBUTING`의 "한쪽을 고치면 짝도 함께" 규칙을 지킨 것이다. 이 문서가 `ROADMAP.md`에 대해 하는 말은 **소유 경계**(릴리스별 계획은 ROADMAP이 소유)와 **스캔 범위**(루트 문서는 `listTargetMarkdown` 밖)뿐이라 목록 순서와 무관하다 — 본문 **불변**.
 - 2026-09-14(1.32.0)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 3건을 재확인했다: `templates/github-actions/llm-wiki-validate.yml`·`.github/actions/validate/action.yml`·`ROADMAP.md`. 이번 변경은 출하 템플릿의 **러너 비용**을 깎은 것이다 — `npm ci`와 `npm test` 스텝 삭제, 게이트 3개를 `npx -y llm-wiki-governance@1.32`로 전환(패키지 전체명 + 버전 핀이라 devDependency가 불필요해졌다), `runs-on`의 `LLM_WIKI_RUNNER` 변수 폴백, `timeout-minutes: 10`과 `concurrency`의 `cancel-in-progress` 신설, 그리고 action.yml `version` 기본값 1.31 → 1.32. **본문은 불변이다.** 190~197줄의 배포 아티팩트 4종 표는 **Phase 0 측정 시점의 관측 기록**이고(당시 4종 전부 `impact --since --strict`를 실행하지 않았다는 것), 그 표가 적는 실행 명령 `validate-frontmatter`·`validate --strict`는 지금도 템플릿에 그대로 있다 — 바뀐 것은 호출 형태이지 명령이 아니다. 기록을 현재 상태로 덮어쓰면 측정 시점을 왜곡하므로 표는 건드리지 않았다. 이 노트로 6건이 되므로 가장 오래된 2026-08-03 저녁 항목을 `REVIEW_HISTORY.md`로 원문 그대로 옮겨 5건을 유지했다(아카이브 13 → 14건).
+- 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 6건을 대조했다: `src/cli.js`·`src/commands.js`·`.github/actions/validate/action.yml`·`templates/github-actions/llm-wiki-validate.yml`·`GATE_REVIEW.md`·`ROADMAP.md`. H장에 1.35.0 검토에서 찾은 항목 48~52(N-16~N-19와 관찰 2건)를 더했다. 이 문서의 액션 서술("하드코딩된 인자 배열")은 이미 종결 표시된 과거 기록이다. 새 입력 `summary`는 이 문서가 다루는 하네스 게이트의 동작(종료 코드)을 바꾸지 않으며, 템플릿의 핀 상승은 MINOR 릴리스 절차 그대로다.

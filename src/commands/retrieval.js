@@ -8,7 +8,8 @@
 // Invariants: read-only (nothing is written); honors visibility + reuses the
 // sensitive-info scan — restricted/sensitive docs are excluded from list/search
 // by default (opt-in options.includeSensitive), and every returned body/snippet
-// has sensitive-looking lines redacted so a raw secret is never returned;
+// has sensitive-looking lines redacted — and every echoed frontmatter value
+// (get-doc payload, titles, tags) likewise — so a raw secret is never returned;
 // zero-dependency (keyword/substring + the existing wiki graph, no embeddings/
 // index/network). Depends only on leaf helpers (wiki-files, wiki-graph,
 // frontmatter, sensitive-info, encoding, files, findings) — no back-dependency
@@ -36,9 +37,12 @@ export async function loadContentDocs(cwd) {
     const raw = await readUtf8(file);
     const parsed = parseFrontmatter(raw);
     const frontmatter = parsed.frontmatter ?? {};
+    const display = redactFrontmatter(frontmatter);
     docs.push({
       path: toPosix(path.relative(cwd, file)),
       frontmatter,
+      displayFrontmatter: display.frontmatter,
+      frontmatterRedacted: display.redacted,
       body: parsed.body ?? "",
       sensitiveHits: scanSensitiveInfo(raw).length,
       visibility: typeof frontmatter.visibility === "string" ? frontmatter.visibility : null
@@ -54,13 +58,61 @@ function isRestrictedOrSensitive(doc) {
 }
 
 // Redact sensitive-looking lines using the same scan the report writer safety-net
-// uses, so no returned body/snippet ever carries a raw secret.
+// uses, so no returned body/snippet ever carries a raw secret. A flagged PEM header
+// guards a block: its base64 body carries no key name, so the line scan cannot flag
+// those lines. Withhold everything through the matching END line, or to the end of
+// the text when the block is never closed.
+const PEM_END = /-----END [A-Z0-9 ]+-----/;
 export function redactSensitive(text) {
   if (!text) return text;
   const hits = scanSensitiveInfo(text);
   if (hits.length === 0) return text;
+  const lines = text.split(/\r?\n/);
   const flagged = new Set(hits.map((hit) => hit.line));
-  return text.split(/\r?\n/).map((line, index) => (flagged.has(index + 1) ? REDACTION : line)).join("\n");
+  for (const hit of hits) {
+    if (hit.type !== "private_key" && hit.type !== "certificate") continue;
+    // hit.line is 1-based, so index hit.line is the line after the header.
+    for (let index = hit.line; index < lines.length; index++) {
+      flagged.add(index + 1);
+      if (PEM_END.test(lines[index])) break;
+    }
+  }
+  return lines.map((line, index) => (flagged.has(index + 1) ? REDACTION : line)).join("\n");
+}
+
+// Frontmatter is echoed too (get-doc's default payload, plus titles and tags in
+// every listing), and once a value is parsed away from its key the line scan can
+// no longer see `api_token: ...` as an assignment. Rebuild "key: value" for each
+// scalar and run the same scan, so a secret declared in frontmatter is withheld
+// exactly like a body line. Untouched values are returned by reference, keeping
+// the output for a clean document identical.
+function redactFrontmatter(frontmatter) {
+  let redacted = false;
+  const visit = (value, key) => {
+    if (typeof value === "string" || typeof value === "number") {
+      const text = String(value);
+      if (scanSensitiveInfo(`${key}: ${text}`).length > 0 || scanSensitiveInfo(text).length > 0) {
+        redacted = true;
+        return REDACTION;
+      }
+      return value;
+    }
+    if (Array.isArray(value)) {
+      const next = value.map((item) => visit(item, key));
+      return next.some((item, index) => item !== value[index]) ? next : value;
+    }
+    if (value && typeof value === "object") {
+      let changed = false;
+      const next = {};
+      for (const [childKey, childValue] of Object.entries(value)) {
+        next[childKey] = visit(childValue, childKey);
+        if (next[childKey] !== childValue) changed = true;
+      }
+      return changed ? next : value;
+    }
+    return value;
+  };
+  return { frontmatter: visit(frontmatter ?? {}, ""), redacted };
 }
 
 function docType(frontmatter) {
@@ -70,14 +122,15 @@ function docType(frontmatter) {
 }
 
 export function docSummary(doc) {
+  const fm = doc.displayFrontmatter ?? doc.frontmatter;
   return {
     path: doc.path,
-    title: typeof doc.frontmatter.title === "string" ? doc.frontmatter.title : null,
-    status: typeof doc.frontmatter.status === "string" ? doc.frontmatter.status : null,
-    docType: docType(doc.frontmatter),
+    title: typeof fm.title === "string" ? fm.title : null,
+    status: typeof fm.status === "string" ? fm.status : null,
+    docType: docType(fm),
     visibility: doc.visibility,
-    lastUpdated: typeof doc.frontmatter.last_updated === "string" ? doc.frontmatter.last_updated : null,
-    tags: Array.isArray(doc.frontmatter.tags) ? doc.frontmatter.tags.filter((tag) => typeof tag === "string") : []
+    lastUpdated: typeof fm.last_updated === "string" ? fm.last_updated : null,
+    tags: Array.isArray(fm.tags) ? fm.tags.filter((tag) => typeof tag === "string") : []
   };
 }
 
@@ -269,14 +322,14 @@ export async function getDocCommand(options) {
   const noSectionMatch = strict && selection.noSectionMatch;
   const selectedBody = selection.body;
   const redactedBody = redactSensitive(selectedBody);
-  const redacted = redactedBody !== selectedBody;
+  const redacted = redactedBody !== selectedBody || Boolean(doc.frontmatterRedacted);
   const clamped = clampText(redactedBody, maxChars);
   const bodyOut = clamped.text;
 
   const meta = docSummary(doc);
   const document = compact
     ? { ...meta, body: bodyOut, redacted }
-    : { ...meta, frontmatter: doc.frontmatter, body: bodyOut, redacted };
+    : { ...meta, frontmatter: doc.displayFrontmatter ?? doc.frontmatter, body: bodyOut, redacted };
   // Additive: only present when --section actually filtered (default output unchanged).
   if (selection.sectioned) document.section = { query, returned: selection.returned, total: selection.total };
   else if (noSectionMatch) document.section = { query, returned: 0, total: selection.total, noSectionMatch: true };
@@ -358,10 +411,12 @@ export function rankDocsByQuery(docs, query, { requireAll = true } = {}) {
   const terms = String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
   const matches = [];
   for (const doc of docs) {
-    const title = typeof doc.frontmatter.title === "string" ? doc.frontmatter.title : "";
+    // Score and echo the redacted view, as the body below already is.
+    const fm = doc.displayFrontmatter ?? doc.frontmatter;
+    const title = typeof fm.title === "string" ? fm.title : "";
     const metaText = [title]
-      .concat(Array.isArray(doc.frontmatter.tags) ? doc.frontmatter.tags : [])
-      .concat(Array.isArray(doc.frontmatter.aliases) ? doc.frontmatter.aliases : [])
+      .concat(Array.isArray(fm.tags) ? fm.tags : [])
+      .concat(Array.isArray(fm.aliases) ? fm.aliases : [])
       .filter((value) => typeof value === "string")
       .join(" ");
     const bodyRedacted = redactSensitive(doc.body);
