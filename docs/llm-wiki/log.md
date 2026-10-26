@@ -24,6 +24,25 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-26 - release: 1.35.0 — 코드가 하는 만큼만 말하기
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, src, test, docs, wiki
+- changed: 버전 1.34.0 → 1.35.0(`package.json`, 테스트 단언, 템플릿 핀 3곳, 액션 `version` 기본값, README 핀 2곳) · `src/commands.js`(`impact` PR 리포트) · `.github/actions/validate/action.yml`(입력 `summary`) · `src/cli.js`(도움말 문구) · `tests/impact-report.test.js`(4건) · CHANGELOG·ROADMAP 영·한 · `GATE_REVIEW.md`("Trust Batch Scope Decision") · README 2종(승인 정책, job summary) · `docs/ORCA_PARALLEL_DEV.md`(승인 정책 정합) · 위키 13종 + `REVIEW_HISTORY.md`
+- summary: 유지보수자 결정(2026-10-26, 세션 안에서)은 네 가지다. 범위는 1.35.0 후보 일괄, 이 저장소의 자기 승인은 유지하되 문서를 정합, 탐지 측정은 로컬 위키 사용, 멈추는 지점은 로컬 릴리스 커밋(push·태그 없음). 이 커밋에는 그중 PR 리포트, 도움말 문구, 승인 정책 문서, 릴리스 메타데이터가 들어간다. 보안 수정(`7858644`)과 탐지 확장(`0525bf7`)은 앞선 커밋에 있다.
+- evidence:
+  - `impact`가 지목한 verified 13종을 대조했다. 새 출력·입력과 충돌하는 서술은 없었다.
+  - 새 동작을 실제로 반영한 문서는 6종이다(PUBLIC_API·EXAMPLES·DOMAIN_FEATURES·ARCHITECTURE·00_overview·index). HARNESS 로드맵에는 결함 48~52를 등록했고, 나머지 6종은 불변이라 노트로 기록했다.
+  - `profiles/library.md`는 노트 상한을 처음 넘어서, `REVIEW_HISTORY.md`에 `Library Profile` 절을 새로 만들었다.
+  - 새 테스트 4건은 원래 코드에서 모두 실패하고 수정 후 통과한다.
+  - 결과: `npm run verify` 682/682, lint OK(88개 파일), `validate --strict` 0, `audit` pass, `drift` 0, `impact`는 이 커밋 단독과 `origin/main` 이후 전체 모두 0(`stamp_only_exclusions` 0), `npm pack --dry-run`은 67개 파일·285.1 kB이며 허용된 최상위 항목만 담는다.
+- caveats:
+  - N-11(같은 날 두 번째 재스탬프는 no-op) 때문에, 오늘 이미 승인한 문서(00_overview·EXAMPLES·index·PUBLIC_API·위키 README)는 재스탬프가 아니라 본문을 실제로 고쳐야 게이트를 통과했다. 각 변경은 이번 릴리스가 바꾼 사실을 담은 것이다. 다만 `index.md`에 더한 문장(실패 시 표를 먼저 보라)은 유용해서 넣었지만, 게이트 통과에도 필요했다는 점을 밝혀 둔다.
+  - 워크플로 템플릿에는 job summary를 넣지 않았다. `pipefail` 없는 `bash -e`에서 파이프는 실패를 삼키기 때문이다.
+  - 발표 덱(`outputs/team-briefing/`) 정렬은 관례대로 배포 뒤에 한다.
+  - push·태그·npm 배포는 하지 않았다.
+
 ## 2026-10-26 - feat(sensitive): 탐지기가 `access_token:`·`client_secret:` 같은 키와 벤더 토큰을 못 보고 있었다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

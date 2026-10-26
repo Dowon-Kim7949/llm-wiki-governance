@@ -12,7 +12,7 @@ inputs:
   version:
     description: "npm version or dist-tag of llm-wiki-governance to run (pinned by default for supply-chain reproducibility; override with a tag/dist-tag such as 'latest' when you want floating). Bump this with every minor release — see RELEASE_FLOW.md."
     required: false
-    default: "1.34"
+    default: "1.35"
   cwd:
     description: "Project root to validate."
     required: false
@@ -45,6 +45,10 @@ inputs:
     description: "Write the report to this path (optional)."
     required: false
     default: ""
+  summary:
+    description: "Also append the report to the job summary when format is text (true | false). The text report is Markdown; for impact it includes a table of the documents to re-review. Needs no extra permission, and the step's exit code is unchanged."
+    required: false
+    default: "true"
 
 # Composite action: pulls in NO other actions, preserving the project's zero-
 # dependency ethos. It only shells out to `npx` and the read-only `validate`
@@ -66,6 +70,7 @@ runs:
         LW_RUN: ${{ inputs.run }}
         LW_FORMAT: ${{ inputs.format }}
         LW_OUT: ${{ inputs.out }}
+        LW_SUMMARY: ${{ inputs.summary }}
       run: |
         set -euo pipefail
 
@@ -104,5 +109,22 @@ runs:
           args+=(--run "$LW_RUN")
         fi
         if [ -n "$LW_OUT" ]; then args+=(--out "$LW_OUT"); fi
+
+        # Job summary: the text report is already Markdown. Capture it, print it to
+        # the log as before, append it to the summary, and exit with the command's
+        # own status so a failing gate still fails the step. GitHub caps a step's
+        # summary at 1 MiB, so an oversized report gets a pointer instead.
+        if [ "$LW_SUMMARY" = "true" ] && [ "$LW_FORMAT" = "text" ] && [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+          report="$(mktemp)"
+          status=0
+          npx -y "llm-wiki-governance@$LW_VERSION" "${args[@]}" > "$report" || status=$?
+          cat "$report"
+          if [ "$(wc -c < "$report")" -gt 900000 ]; then
+            echo "llm-wiki $LW_COMMAND: report too large for the job summary; see the step log." >> "$GITHUB_STEP_SUMMARY"
+          else
+            cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
+        fi
 
         npx -y "llm-wiki-governance@$LW_VERSION" "${args[@]}"

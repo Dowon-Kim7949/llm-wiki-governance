@@ -67,7 +67,7 @@ Keep those files: this tool generates them and points them at the wiki. An instr
 
 - **It does not check that the prose is true.** It checks that each citation resolves: the file exists, the line range fits, the symbol is mentioned, the section heading exists. Whether the sentence citing it is correct is still for the reviewer to judge.
 - **It does not write your docs.** The CLI scaffolds, checks, and prints prompts. Your agent writes the content, and that step decides quality.
-- **It cannot prove who approved.** `reviewed_by` records the name given to `review --approve`. If agents approve docs in your repo, list them under `agentReviewers` in `llm-wiki.config.json` so `stats` counts their approvals separately. Branch protection, not this tool, controls who can merge.
+- **It cannot prove who approved.** `reviewed_by` records the name given to `review --approve`. If agents approve docs in your repo, list them under `agentReviewers` in `llm-wiki.config.json` so `stats` counts their approvals separately. Branch protection, not this tool, controls who can merge. This repository's own wiki is a case in point: an agent approves it under the agent's own name, by a recorded maintainer decision ([AGENTS.md](./AGENTS.md)), and `stats` counts those approvals apart from human ones.
 - **It is not semantic search.** Retrieval is keyword-based over the wiki. There are no embeddings and no index service.
 - **It is not a hosted service.** It runs on your machine or in your CI. The CLI makes no network calls of its own.
 - **Drift detection is file-level, and the date-based check has blind spots** that depend on your merge strategy. `impact --since <base>` is diff-based and avoids them. See [Wiring the gate](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#wiring-the-gate-the-step-most-repos-skip).
@@ -92,7 +92,9 @@ Writes happen only with an explicit `--write`, `--apply`, or `--approve`; every 
 
 ## Run it in CI
 
-Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or reference the composite action in one step with an exact tag: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.34.0`. Recipes sized to your repo are in [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
+Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or reference the composite action in one step with an exact tag: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.35.0`. Recipes sized to your repo are in [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
+
+Since 1.35.0 the composite action also appends the text report to the job summary (`summary: "false"` turns that off; the step's exit code is unchanged). For `impact`, that report includes a table of the documents to re-review and the changed sources each one cites, and `--format json` carries the same as `impactedDocuments`.
 
 On a private repository, runner minutes come out of an allowance the whole organization shares. Two channels cost nothing: `templates/git-hooks/pre-commit` needs no runner at all, and the workflow template reads its `runs-on` from a `LLM_WIKI_RUNNER` variable, so it can point at a self-hosted runner without editing the file. OPERATIONS.md covers what each one gives up.
 

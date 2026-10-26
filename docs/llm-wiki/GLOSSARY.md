@@ -10,7 +10,7 @@ last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-21
+reviewed_at: 2026-10-26
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -61,12 +61,12 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (4 entries, 2026-07-13 → 2026-07-31) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (5 entries, 2026-07-13 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-08-03에 `status`·`verified` 정의를 이 저장소의 새 승격 정책에 맞게 고치고 **`human_verified` tier를 용어로 신설했다**(유지보수자 결정 반영). `verified` 항목이 "사람 검토가 끝난 문서에만 부여"라고 단정하고 있었는데, 이 저장소는 2026-08-03부터 에이전트 승인을 허용하므로 그 문장은 거짓이 됐다 — 도구가 스스로 승격하지 않는다는 사실(명시적 `--approve`만이 스탬프한다)과 **누가 그 명령을 실행하는지는 저장소 정책이라는 사실**을 분리해 적었다. `status` 항목의 "CLI/에이전트 산출물은 항상 `needs_review`"도 **생성 시점** 한정으로 좁혔다(생성기에 `verified` 경로가 없다는 것은 여전히 참이다). `human_verified`를 새로 적은 이유는 그 이름이 실제 계산과 어긋나기 때문이다 — 정의는 "`verified` + reviewer 메타 존재"일 뿐 사람인지 검사하지 않으므로, 이 저장소의 그 수치는 에이전트 승인분을 포함한다. 인용할 때 함께 적어야 한다. 에이전트(Claude Code) 편집이며 새 정책에 따라 같은 작업 안에서 승격했다 — `reviewed_by`는 에이전트다.
 - 2026-08-03에 `impact.source_changed` 기본 severity의 error화, 신규 규칙 2종(`run.manifest_untracked` info·`run.change_set_undeclared` warning), `strict` 프리셋에서 `impact.source_changed` 항목 제거, `FRESHNESS_EXEMPT_DOC_TYPES`(release_notes) 면제, `drift --watch-needs-review` 도입에 따라 재검토했다: 이 문서가 severity·빌드 실패·`--strict`에 대해 취한 입장 셋 — `verified`의 "`--strict`에서 `reviewed_by`/`reviewed_at` 없으면 실패"(`frontmatter.verified_review`는 HEAD에서도 기본 warning), `related.missing` 경고, `rules`/`rulesPreset`이 severity만 바꾸고 `--strict`(exit code 의미론)와 별개라는 문장(`RULE_PRESETS` 주석이 그대로 재확인) — 이 모두 여전히 참이고, `human_verified` 정의의 근거인 `evidenceTier()`도 무변경이며 근거 파일 `src/frontmatter-schema.js`·`src/config.js`·`src/config-file.js`는 이 커밋에서 아예 바뀌지 않았다(`src/commands.js`는 광의 앵커일 뿐이다) — **내용 불변, 무편집**. 신규 규칙 2종과 exit code 계약은 같은 커밋에서 갱신된 [PUBLIC_API](PUBLIC_API.md)가 소유하므로, 규칙을 열거하지 않는 용어집에 옮겨 적지 않았다.
 - 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `src/commands.js`를 재확인했다. 이번 변경은 `impact`의 change set에서 `version`만 바뀐 `package.json`을 빼는 판정기(`versionOnlyManifestChanges`)를 더하고 고친 것이며, 이 용어집이 정의하는 어휘(`status`·`verified`·`human_verified`·`source_files`·`evidence`·`rules`/`rulesPreset`)의 계약은 하나도 건드리지 않았다 — `rules`/`rulesPreset`이 severity만 바꾸고 `--strict`와 별개라는 문장도 그대로 참이다. 새 제외 규칙은 설정 키가 아니라 하드코딩이므로 `rules` 항목에 추가할 것도 없다. 본문 **불변**. 재스탬프가 no-op이 되는 N-11 때문에 노트로 남긴다.
 
 - 2026-09-07(1.30.0)에 용어 4종을 신설하고 한 곳의 낡은 목록을 고쳤다: **거버넌스 모드**·**rule floor**·**backfill**·**근거 라벨(verified/inferred/unknown)**을 추가하고, `llm-wiki.config.json` 항목이 직접 나열하는 인식 키 목록에 `governance`를 더했다(그 목록은 이 문서가 손으로 나열하므로 새 키가 생기면 반드시 낡는다 — 2026-07-31에 같은 자리에서 같은 이유로 한 번 고쳤다). `impact.source_changed`가 지목한 인용 소스 `src/commands.js`의 변경은 `backfillCommand` 신설과 모드 배선이며 기존 용어 정의는 하나도 낡지 않았다. **(이어서)** 같은 배치의 도그푸딩으로 `src/commands.js`가 다시 바뀌었다(의사결정 기록 탐색 범위, append-only 로그 제외). 새로 넣은 용어 4종의 정의는 그대로 유효하다 — **근거 라벨** 항목이 이미 “그것을 그럴듯한 이야기로 채우는 것이 이 기능이 방어하는 실패”라고 적고 있고, 이번 수정은 그 방어를 **명령 자신에게** 적용한 것이다. 용어 본문 **불변**.
 
 - 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 `llm-wiki.config.json` 항목을 고쳤다. 인식 키 목록은 맞았지만 **값 검증**을 적지 않았고, 1.31.0부터 `type`은 `KNOWN_TYPES`에 `agents`는 `SUPPORTED_AGENTS`에 대조돼 위반이 exit 3이다(`all`은 CLI와 같이 펼쳐진다). 그 전에는 타입만 봐서 `{"type": "frontendd"}`가 조용히 통과한 뒤 알 수 없는 유형으로 동작했다 — 이 항목이 키만 적고 값 계약을 안 적어 둔 동안 그 비대칭이 보이지 않았다. 같은 자리에서 `source_files`(넓은 범위 근거)·`evidence`(정밀 근거) 정의를 재확인했다: 1.31.0이 N-7을 다시 검토해 **이 정의가 계약이라고 확정**했으므로(로케이터를 `source_files`에서 정밀 앵커로 읽는 구현을 했다가 되돌렸다) 두 줄은 **불변**이다.
+- 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `src/commands.js`를 대조했다. 바뀐 것은 `impactCommand`의 출력 키 추가뿐이고, 이 문서가 정의하는 용어(`needs_review`·`verified`·`source_files`·`evidence`·drift 등)의 의미는 그대로다. 새 출력 키(`impactedDocuments`)는 용어가 아니라 필드이므로 `PUBLIC_API.md`가 소유한다. 본문 **불변**.

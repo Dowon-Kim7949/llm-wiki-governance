@@ -67,7 +67,7 @@ CLI를 돌리는 데는 모델이 필요 없습니다. 모델이 쓰이는 곳�
 
 - **산문이 참인지는 검사하지 않습니다.** 검사하는 것은 인용이 대상을 가리키는지입니다. 파일이 있는지, 라인 범위가 파일 안에 있는지, 심볼이 언급되는지, 섹션 헤딩이 있는지를 봅니다. 그 인용을 단 문장이 맞는지는 여전히 검토자가 판단합니다.
 - **문서를 대신 쓰지 않습니다.** CLI는 뼈대를 만들고, 검사하고, 프롬프트를 출력합니다. 내용은 에이전트가 쓰고, 품질도 그 단계에서 정해집니다.
-- **누가 승인했는지 증명하지 못합니다.** `reviewed_by`에는 `review --approve`에 넘긴 이름이 기록될 뿐입니다. 저장소에서 에이전트가 문서를 승인한다면 `llm-wiki.config.json`의 `agentReviewers`에 그 이름을 적어 두세요. 그러면 `stats`가 에이전트 승인을 따로 셉니다. 누가 머지할 수 있는지를 통제하는 것은 이 도구가 아니라 브랜치 보호입니다.
+- **누가 승인했는지 증명하지 못합니다.** `reviewed_by`에는 `review --approve`에 넘긴 이름이 기록될 뿐입니다. 저장소에서 에이전트가 문서를 승인한다면 `llm-wiki.config.json`의 `agentReviewers`에 그 이름을 적어 두세요. 그러면 `stats`가 에이전트 승인을 따로 셉니다. 누가 머지할 수 있는지를 통제하는 것은 이 도구가 아니라 브랜치 보호입니다. 이 저장소의 위키가 그 예입니다. 유지보수자의 기록된 결정에 따라 에이전트가 자기 이름으로 승인하고([AGENTS.md](./AGENTS.md)), `stats`는 그 승인을 사람 승인과 따로 셉니다.
 - **의미 검색이 아닙니다.** 조회는 위키에 대한 키워드 검색입니다. 임베딩도, 인덱스 서비스도 없습니다.
 - **호스팅 서비스가 아닙니다.** 여러분의 컴퓨터나 CI에서 돕니다. CLI가 스스로 네트워크를 호출하는 일은 없습니다.
 - **드리프트 감지는 파일 단위이고, 날짜 기준 검사에는 머지 방식에 따른 사각지대가 있습니다.** `impact --since <base>`는 diff 기준이라 그 문제가 없습니다. 자세한 내용은 [Wiring the gate](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#wiring-the-gate-the-step-most-repos-skip)(영문)에 있습니다.
@@ -92,7 +92,9 @@ CLI를 돌리는 데는 모델이 필요 없습니다. 모델이 쓰이는 곳�
 
 ## CI에서 돌리기
 
-[`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 참조하되 태그를 정확히 고정하세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.34.0`. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)(영문)에 있습니다.
+[`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 참조하되 태그를 정확히 고정하세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.35.0`. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)(영문)에 있습니다.
+
+1.35.0부터 컴포지트 액션은 text 리포트를 job summary에도 붙입니다(`summary: "false"`로 끌 수 있고, 스텝의 종료 코드는 그대로입니다). `impact`의 리포트에는 다시 검토할 문서와 각 문서가 인용하는 바뀐 소스를 정리한 표가 들어가고, `--format json`에는 같은 내용이 `impactedDocuments`로 실립니다.
 
 비공개 저장소라면 러너 사용 시간이 조직 전체가 나눠 쓰는 한도에서 빠져나갑니다. 비용이 들지 않는 경로가 두 가지 있습니다. 러너 없이 도는 `templates/git-hooks/pre-commit`을 쓰거나, 워크플로 템플릿의 `runs-on`을 `LLM_WIKI_RUNNER` 변수로 바꿔 파일을 고치지 않고 self-hosted 러너에 붙이는 것입니다. 각각이 무엇을 포기하는지는 OPERATIONS.md에 있습니다.
 

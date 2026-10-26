@@ -1042,6 +1042,27 @@ the weight bought nothing.
 finish in 0.2–0.3 s, so code size is not where the time goes, and a refactor would buy risk
 without a felt gain.
 
+## Release Plan (post-1.34.0) — say only what the code does — **shipped as 1.35.0 (2026-10-26)**
+
+A whole-repository review (engineering, documentation, public claims) found the product
+promising more than it did in three places, and each one is now either true or no longer said.
+
+- **Secrets.** "A raw secret is never returned" was true for body lines only: frontmatter and
+  PEM key bodies came back from retrieval. Both are redacted now, and the detector sees
+  `access_token:`-style keys and vendor tokens — gated on value shape, measured first so that
+  no wiki among eleven local ones gained a single new block.
+- **Review.** A failing `impact` now names, per document, which changed sources it cites, in
+  the JSON and in a table the composite action puts in the job summary.
+- **Claims.** The README and `help` say what the tool checks (citations resolve) rather than
+  what it cannot (prose is true, a human approved), and this repository's own agent-approval
+  policy is stated where it had been contradicted.
+
+**Next, needing a decision before any code:** a content-hash anchor for drift (stamp the
+cited sources' digests at review; compare content, not dates — independent of merge
+strategy) in a shadow mode first; approval provenance from git history rather than from the
+stamp; a retrieval relevance set before any ranking change; a second real benchmark with a
+stale-wiki arm and code-change tasks.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

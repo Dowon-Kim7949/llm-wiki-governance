@@ -4,6 +4,39 @@
 
 `llm-wiki-governance`(옛 이름 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. [유의적 버전](https://semver.org/)을 따르며, 항목은 최신 릴리스가 위로 옵니다.
 
+## 1.35.0 — 2026-10-26
+
+신뢰 릴리스입니다. 제품이 비밀값에 대해 약속한 것이 더 많은 곳에서 지켜지고, 탐지기가 사람들이 실제로 쓰는 자격 증명 줄을 보며, 실패한 `impact`가 PR 검토자에게 무엇을 고쳐야 하는지 알려 줍니다. 위키를 MCP로 제공하고 있다면 올리세요.
+
+- **조회 명령이 민감해 보이는 값을 두 경로로 그대로 돌려주던 문제를 고쳤습니다.**
+  - `get-doc`(CLI와 MCP `get_doc`)은 frontmatter를 redaction 없이 돌려줬습니다. 본문 줄이었다면 가려졌을 값이 원문으로 나갔고, `list-docs`/`search-docs`가 민감 문서로 제외한 문서도 경로를 지정하면 그대로 나갔습니다.
+  - 탐지기는 PEM 블록의 헤더 줄만 잡는데 redaction은 줄 단위라서, 키 본문이 `get-doc`·`search-docs` 스니펫·`onboard`·`prepare`로 반환됐습니다.
+  - 이제 frontmatter의 각 스칼라를 `key: value`로 재구성해 검사하고 걸린 값만 바꾸며, 탐지된 PEM 헤더는 짝 END 줄까지 가립니다. 가짜 값 재현에서 노출이 0이 됐고, 깨끗한 문서의 출력은 바이트 단위로 같습니다.
+- **민감정보 탐지기가 `access_token:` 같은 키와 벤더 토큰을 봅니다.**
+  - 기존 `\b(token|secret|password)\b`는 `access_token`·`client_secret`·`db_password` 안에서 단어 경계를 찾지 못했습니다. 그래서 흔한 YAML·설정 줄이 `validate`를 통과했고 승인까지 받을 수 있었습니다.
+  - 이제 마지막 마디가 자격 증명 단어인 키(snake·kebab·점 표기, camelCase)를 `token_assignment`로 잡습니다. 단 값이 자격 증명 모양일 때만 잡습니다(토큰 문자 12자 이상, 문자와 숫자 혼합, 플레이스홀더 아님). 그래서 코드(`response.data.token`), 참조(`${CLIENT_SECRET}`, `process.env.X`), 플레이스홀더(`<your-token>`, `xxxx…`)는 걸리지 않습니다.
+  - 벤더 접두 토큰(`ghp_`, `github_pat_`, `AKIA`/`ASIA`, `xox?-`, `sk-`, `AIza`, `sk_live_`/`rk_test_`, `npm_`)은 새 유형 `vendor_token`으로 잡습니다.
+  - 출시 전에 측정했습니다. 로컬 위키 11곳(394개 파일, 84,231줄)에서 새로 잡힌 줄 0, 놓치게 된 줄 0이었습니다. 같은 저장소들의 소스 1,219개 파일에서는, 값 모양 조건이 없는 안이 새 적중 45건(전부 코드 참조)을 냈고 출시한 안은 1건이었습니다.
+- **`impact`가 PR 리포트처럼 읽힙니다.**
+  - 텍스트 출력에 "Documents to re-review" 표(문서와, 그 문서가 인용하는 바뀐 소스)와 다음 조치가 추가됩니다.
+  - `--format json`에 `changedPaths`와 `impactedDocuments: [{ path, sources }]`가 추가됩니다. `changedFiles`는 여전히 개수이고 finding은 그대로입니다.
+  - 컴포지트 액션은 job summary가 있으면 text 리포트를 붙입니다(새 입력 `summary`, 기본 `"true"`). 스텝의 종료 코드는 그대로입니다.
+  - 워크플로 템플릿에는 넣지 않았습니다. 템플릿의 스텝은 `pipefail` 없는 `bash -e`로 돌아서, summary로 파이프하면 실패한 게이트가 통과로 바뀌기 때문입니다.
+- **주장을 코드가 하는 만큼으로 줄였습니다.**
+  - README를 다시 구성했습니다: 동작 방식, `AGENTS.md`만으로는 왜 부족한가, 하지 않는 일, 문제 해결, 문서 안내.
+  - 제품보다 넓게 말하던 문장을 고쳤습니다: "모든 주장이 코드에 묶인다"(인용이 대상을 가리키는지만 검사), "사람만 승격한다"(누가 `review --approve`를 실행했는지 기록할 뿐 사람임을 증명하지 못함), "어떤 스택·에이전트에서나".
+  - `help`의 "fewer tokens, fewer errors"에 조건을 붙였습니다.
+  - 이 저장소의 에이전트 승인 정책을 README와 `docs/ORCA_PARALLEL_DEV.md`에 밝혔습니다. ORCA 문서는 원래 이 정책과 반대되는 원칙을 걸고 있었습니다.
+
+**바뀐 동작:**
+- 위키나 adapter 파일에 `client_secret:` 같은 키로 자격 증명 모양의 값을 두거나 벤더 접두 토큰을 두면, 이제 `validate`가 `sensitive.redacted`(blocked, 종료 코드 2)로 실패합니다. `sensitive.*`는 낮출 수 없으니 값을 지우거나 플레이스홀더로 바꾸세요.
+- 컴포지트 액션이 기본으로 job summary를 씁니다.
+- `get-doc`이 전에는 원문으로 돌려주던 frontmatter 값을 `[redacted: …]`로 보여 주고 `redacted: true`를 붙일 수 있습니다.
+
+**검토했지만 넣지 않은 것:** 위키의 Review Notes 아카이브를 `impact`에서 면제하는 것(그 문서 유형은 이 저장소의 관례이지 제품 개념이 아닙니다), 그리고 `check-run`의 `run.doc_gap`을 코드 파일로 좁히는 것(무엇을 소스로 볼지는 설계 결정이고, 실제 산문 공백까지 숨깁니다).
+
+MINOR입니다. JSON 키·액션 입력이 늘고 탐지 범위가 넓어졌지만, 명령·옵션·종료 코드 계약은 바뀌지 않았습니다. 테스트: 672 → 682.
+
 ## 1.34.0 — 2026-10-21
 
 가볍게 만드는 릴리스입니다. 내려받을 것, 기다릴 것, 읽을 것이 줄었습니다. 세 가지 모두 이 저장소에서 전후를 측정했고, 속도 개선은 위키가 있는 로컬 저장소 11곳에서도 쟀습니다.

@@ -6,6 +6,68 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.35.0 — 2026-10-26
+
+A trust release. What the product promised about secrets now holds in more places, the
+detector sees the credential lines people actually write, and a failing `impact` tells a
+pull-request reviewer what to fix. Upgrade if you serve a wiki over MCP.
+
+- **Retrieval stopped returning sensitive-looking values on two paths.** `get-doc` (the CLI
+  and MCP `get_doc`) echoed frontmatter without redaction, so a value that would have been
+  redacted as a body line came back raw — even for a document `list-docs`/`search-docs`
+  excluded as sensitive, because `get-doc` by path has no sensitivity gate. And because
+  detection flags only a PEM block's header line while redaction is line-level, the key body
+  came back from `get-doc`, `search-docs` snippets, `onboard`, and `prepare`. Frontmatter
+  scalars are now scanned as `key: value` and only the values that trip the scan are replaced;
+  a detected PEM header is redacted through its END line. Reproduced with fake values before
+  the fix (CLI 1 / MCP 1 exposures for frontmatter; 2 lines, 2 snippets, 4 MCP hits for PEM)
+  and 0 after. Clean documents return byte-identical output.
+- **Sensitive-info detection sees keys like `access_token:` and vendor tokens.** The
+  `\b(token|secret|password)\b` pattern found no word boundary inside `access_token`,
+  `client_secret`, or `db_password`, so those common YAML and config lines passed `validate`
+  and could be approved. Keys whose last segment names a credential (snake, kebab, dotted, and
+  camelCase) are now caught as `token_assignment` — but only when the value is
+  credential-shaped (12+ characters of a token alphabet, letters and digits mixed, not a
+  placeholder), so code (`response.data.token`), references (`${CLIENT_SECRET}`,
+  `process.env.X`), and placeholders (`<your-token>`, `xxxx…`) stay quiet. Vendor-prefixed
+  tokens (`ghp_`, `github_pat_`, `AKIA`/`ASIA`, `xox?-`, `sk-`, `AIza`, `sk_live_`/`rk_test_`,
+  `npm_`) are caught as the new type `vendor_token`. Measured before shipping: across eleven
+  local wikis (394 files, 84,231 lines) 0 new hits and 0 lost; on their source trees (1,219
+  files) the unshaped variant added 45 hits, all code references, and the shipped one 1.
+- **`impact` reads as a pull-request report.** The text output gains a "Documents to
+  re-review" table (document, and the changed sources it cites) with the next step, and
+  `--format json` gains `changedPaths` and `impactedDocuments: [{ path, sources }]`.
+  `changedFiles` stays a count and the findings are unchanged. The composite action appends
+  the text report to the job summary when one exists (new input `summary`, default `"true"`);
+  the step's exit code is unchanged. The workflow template does not do this: its steps run
+  under `bash -e` without `pipefail`, where piping into the summary would swallow a failing
+  gate.
+- **Claims narrowed to what the code does.** The README was restructured (how it works, why
+  not just `AGENTS.md`, what it does not do, troubleshooting, a documentation map) and
+  corrected where it said more than the product does: "every claim tied to real code" (the
+  tool checks that citations resolve, not that prose is true), "only a human promotes" (the
+  tool records who ran `review --approve`, it cannot prove a human did), and "any stack, any
+  agent". `help`'s "fewer tokens, fewer errors" now states its condition. This repository's
+  own agent-approval policy is stated in the README and in `docs/ORCA_PARALLEL_DEV.md`, which
+  had contradicted it.
+
+**Behaviour changes, named:**
+- A wiki or adapter file holding a credential-shaped value under a key such as
+  `client_secret:`, or a vendor-prefixed token, now fails `validate` with `sensitive.redacted`
+  (blocked, exit 2). `sensitive.*` cannot be dialed down; remove the value or use a
+  placeholder.
+- The composite action writes a job summary by default.
+- `get-doc` can now show `[redacted: …]` for a frontmatter value, and `redacted: true`, where
+  it returned the raw value before.
+
+**Considered and left out:** exempting a wiki's own review-notes archive from `impact` (that
+document type is this repository's convention, not a product concept), and narrowing
+`check-run`'s `run.doc_gap` to code files (which files count as source is a design decision
+that would also hide real prose gaps).
+
+Sized as a MINOR: new JSON keys, a new action input, and broader detection; no command,
+option, or exit-code contract changed. Tests: 672 → 682.
+
 ## 1.34.0 — 2026-10-21
 
 A weight release: less to download, less to wait for, less to read. Three cuts, each
