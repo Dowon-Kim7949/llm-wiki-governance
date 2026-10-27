@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-27 - fix(security): 정규식 감사 후속 — 남아 있던 제곱 시간 2건과 링크 추출 결함 측정
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/commands/scans.js`(`sectionHeadingText`) · `src/commands/wiki-hygiene.js`(`stripUnderscoreEmphasis` 한 번 처리를 선형 스캔으로, 반복 16단계 상한) · `tests/linear-markdown-scan.test.js`(차분 1건, 시간 상한 3건) · `GATE_REVIEW.md`("Regex Audit Follow-up", "Link-Extraction False Negatives") · 위키 재확인 노트 5건, `REVIEW_HISTORY.md` 이관 5건
+- summary: PR 입력이 닿는 명령 경로의 정규식을 목록으로 뽑아 하나씩 실측했다. 기본 `validate`의 `## ` 절 이름 추출(placeholder 문장이 있는 문서에서 도달)과, 옵트인 앵커 규칙의 밑줄 강조 제거가 제곱 시간이었다. 둘 다 같은 결과의 선형 처리로 바꿨다. 정적 판독으로 후보에 올랐던 evidence 콜론 표기는 실측상 선형이었다. 링크 추출 결함 2건(붙은 링크 누락, 참조 정의의 다음 줄 삼킴)은 고친 빌드로 측정했고, 로컬 위키 9곳에서 차이가 0이었다. 실제 위키에 그 형태가 없기 때문이다. 수정 권고와 함께 결정을 기다린다.
+- evidence: 시간 상한 3건이 옛 정규식에서 2.2–9.8초로 실패하고 새 코드에서 0.3초 이내로 통과한다 · 차분 테스트 각 8,000건(강조 변화 1,844건, 여러 번 반복 64건, 제목 620건) · 로컬 위키 9곳에서 앵커 5,065개, `## ` 줄 2,907개, `validate`·`audit` JSON 모두 차이 0
+- caveats: 밑줄 강조가 16단계보다 깊게 중첩된 제목은 옛 결과와 다를 수 있다. 워크플로 줄 분류(`doctor`)와 `init`의 Route 패턴은 이차 시간이지만 고치지 않았다(입력을 통제하는 사람이 이미 더 큰 권한을 가진다). 로컬 위키 비교에서 `roadmonitor`·`roadmonitor-frontend`는 뺐다(유지보수자 지시).
+
 ## 2026-10-27 - docs(examples): 실행 가능한 Vue 3 + TypeScript 데모와 README 연결
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

@@ -57,7 +57,7 @@ reviewed_at: 2026-10-27
 
 ## Architecture Conventions
 
-원문서: [ARCHITECTURE_CONVENTIONS.md](ARCHITECTURE_CONVENTIONS.md) — 53건(2026-07-14 → 2026-08-03), 2026-07-30·2026-07-31·2026-08-03 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 1건 추가 이관(5건 상한).
+원문서: [ARCHITECTURE_CONVENTIONS.md](ARCHITECTURE_CONVENTIONS.md) — 54건(2026-07-14 → 2026-08-03), 2026-07-30·2026-07-31·2026-08-03 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 2건 추가 이관(5건 상한).
 
 - 2026-07-14에 1.3.0 명령 표면과 소스 구조를 기준으로 재검토했다.
 - 2026-07-14에 1.5 프로그래매틱 API 모듈(`src/index.js`)과 `--format json`의 `schemaVersion` 부가를 반영하고, 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
@@ -112,10 +112,11 @@ reviewed_at: 2026-10-27
 - 2026-08-03에 신규 leaf `src/commands/harness-health.js`를 모듈 배치에 추가하고 명령 수를 30으로 갱신했다(문서 표기가 아니라 `src/cli.js`를 직접 세어 확인했다 — `COMMANDS` 29 + `mcp`). 단방향 의존 규칙은 그대로다: 이 모듈은 `adapters`·`skills`·`retrieval`·`findings` 아래에 앉고 `commands.js`로의 역의존이 없으며 배럴에서 재수출된다. 신규 `harness` finding 카테고리도 다른 명령과 같이 `applyRuleConfig` 이음매를 통과하므로 config 토글과 KO 지역화가 자동으로 적용되고, `NON_TOGGLEABLE_CATEGORIES`에는 넣지 않았다.
 - 2026-08-03에 관례 4건을 갱신했다: `src/git.js`의 신규 `trackedPaths`·`modifiedTrackedFiles`(둘 다 저장소가 아니면 빈 결과가 아니라 `null`을 돌려준다 — "저장소 없음"과 "추적하는 것이 없음"을 섞으면 안 되기 때문), `scanEvidenceDrift(cwd, options)` 시그니처 확장과 3개 호출부, `FRESHNESS_EXEMPT_DOC_TYPES`(제품에서 두 번째 하드코딩 스킵 — 첫 번째는 append-only 로그), 그리고 **프리셋 불변식의 정정**. 기존 문구 "error/blocked 기본값을 건드리지 말 것"은 dialable한 error 규칙이 없던 시절의 우연에 기대고 있었다 — 이제 "안전 규칙과 `blocked` 금지 + `error`는 `PRESET_DIALABLE_ERROR_RULES` 허용 목록만"이며, 그 목록에 추가하는 것은 리팩터가 아니라 결정이다. **`verifiedSourceAnchors`는 의도적으로 옵션을 받지 않는다** — drift 옵트인이 impact에 닿을 수 있는 경로를 구조적으로 없애기 위해서다.
 - 2026-08-03(1.28.0 배포 준비)에 이 문서가 **아직 미릴리스라고 적고 있던 항목들의 버전을 확정했다.** `rulesPreset`(`RULE_PRESETS`)·`import-memory.js`·run manifest의 `testEvidence`·생성 아티팩트의 토큰 예산 스탬프는 2026-07-28 ECC 기법 추출분으로 "미릴리스"라고 적혀 있었으나 **1.27.1로 이미 배포됐다** — 즉 서술이 사실과 달랐다(CHANGELOG 1.27.1 절이 넷 모두를 등재한다). 여덟 자리를 실제 버전으로 바꿨고 본문의 다른 서술은 손대지 않았다. 함께: `src/cli.js`의 `drift` usage 요약과 `help drift`가 이 라인이 추가한 `--watch-needs-review`와 새로 받게 된 `--strict`를 나열하지 않던 것을 고쳤다(`COMMAND_OPTION_RULES`는 둘 다 이미 받고 있었으므로 도움말만 뒤처진 상태였다 — 이 문서가 기록해 온 "명령이 자기 표면을 잘못 말한다" 계열의 재발). 492 tests.
+- 2026-08-20에 **제품이 스스로 출력하는 MCP 툴 목록 3곳이 낡아 있던 것을 고치고 가드를 세웠다.** 최상위 도움말의 `mcp` 줄은 17종 중 14종만 열거해 `onboard`·`review`·`prepare`를 빠뜨렸고, `help mcp`의 `Tools` 블록은 1.6 당시의 10종에 멈춰 있었으며, `src/mcp/dispatch.js`의 `initialize` instructions는 `review`를 빠뜨렸다 — **낡은 정도가 셋 다 달랐다.** 위키 3문서(`PUBLIC_API.md`·`DOMAIN_FEATURES.md`·`domains/00_overview.md`)와 README 2종은 이미 17종으로 정확했으므로 **틀린 것은 위키가 아니라 도입처가 실제로 보는 표면이었다** — 위키 게이트가 전부 초록이어도 제품 출력이 거짓을 말할 수 있다. 하필 빠진 것이 `prepare`라는 점이 대가를 키운다: 질문의 범위를 좁히라고 만든 툴이 도움말에서 지워져 있으면 그것을 읽은 에이전트는 없다고 결론 내리고 소스를 다시 읽는다. 신규 가드 `tests/mcp-tool-census.test.js`의 완전성 검사 3건은 전부 수정 전 RED임을 확인했다(팬텀 방향 1건은 반대 방향이라 처음부터 GREEN). **첫 배치는 세 번째 사본(`help mcp`)을 놓쳤고, 세션 메모가 그것을 지목해 같은 날 이어붙였다** — 사본을 손으로 세면 빠진다는 것이 이 규약 자신의 근거다. Conventions에 규약 1건을 더했을 뿐 모듈 구조·command → scan → report 파이프라인 서술·Evidence는 불변이다.
 
 ## Domain Features
 
-원문서: [DOMAIN_FEATURES.md](DOMAIN_FEATURES.md) — 59건(2026-07-14 → 2026-08-03), 2026-07-30·2026-07-31·2026-08-03 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 1건 추가 이관(5건 상한).
+원문서: [DOMAIN_FEATURES.md](DOMAIN_FEATURES.md) — 60건(2026-07-14 → 2026-08-03), 2026-07-30·2026-07-31·2026-08-03 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 2건 추가 이관(5건 상한).
 
 - 2026-07-14에 1.3.0 기능(PHP/Ruby/.NET 감지 · backend/fullstack 도메인 문서 분리 생성 · OKF `type` alias)을 반영해 갱신하고 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.4.0 기능(파일 기반 도메인 감지[Gate 10] · `graph`/`stats` 명령 · 대시보드 Document Index)을 반영해 갱신하고 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
@@ -176,10 +177,11 @@ reviewed_at: 2026-10-27
 - 2026-08-03에 **이 문서의 아카이브 포인터가 거짓 건수를 담고 있던 것을 고쳤다.** 포인터는 "48 entries"라고 적었지만 `REVIEW_HISTORY.md`의 `Domain Features` 절에는 실제로 51건이 있었다 — 2026-07-31에 3건을 받았는데 2026-08-03의 갱신이 그것을 모르는 낡은 47에서 +1을 계산했기 때문이며, **같은 종류의 오류가 2026-07-31에 이미 한 번 교정됐다가 곧바로 재발한 것**이다. 이 문서는 5건 상한 자체는 지키고 있었으나 이 노트로 6건이 되므로 가장 오래된 2026-07-31 항목을 아카이브로 옮겼고, 이제 세 값(포인터 · 헤더 · 실제 항목 수)이 52로 일치한다. 손 계산을 금지하는 규칙과 그것을 고정하는 가드(`tests/review-notes-cap.test.js`)는 `ARCHITECTURE_CONVENTIONS.md`가 소유한다. 기능 목록·Evidence는 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 `harness-health`(Phase 1, R0)를 기능 목록에 추가하고, **이 문서가 틀리게 적고 있던 문장 하나를 정정했다** — "마커는 어떤 코드도 파싱하지 않으므로 호환은 불변"은 더 이상 사실이 아니다(`adapterMarkerVersion`이 파싱하고 `harness-health`가 읽는다). 어떤 어댑터가 어느 버전이었는지의 역사적 기록은 그대로 두고 그 절만 고쳤다. 기능 근거로 실측 오탐률을 함께 적었다: 5개 저장소 91개 산출물에서 findings 33건·오탐 0건, 그중 한 저장소는 진짜 0건. 두 한계를 같이 적었다 — "참"은 보고된 사실이 정확하다는 뜻이지 조치 가치가 있다는 뜻이 아니고, 측정에 쓴 codex 어댑터 `v2` 템플릿은 아직 미배포다.
 - 2026-08-03에 기능 서술 4건을 사실에 맞췄다. `impact`는 이제 `--strict` 없이 빌드를 실패시키고, `drift`·`check-run`은 규칙이 여전히 warning이라 `--strict`가 필요하다 — 이 비대칭이 핵심이라 함께 적었다. `check-run`은 git 추적 매니페스트를 우선하고(N-6), 자기신고 `changedSource`를 git과 대조한다. **`release_notes` 면제의 대가를 숨기지 않고 적었다**: 릴리스 노트 33건이 이미 `verified`라 이 면제는 비용 상한이 아니라 커버리지 제거(52건 중 33건)이며, 그럼에도 옳은 이유는 이 저장소 `impact` 23건 중 16건이 바로 그 불변 문서였고 면제 후 23 → 9가 됐기 때문이다.
+- 2026-08-03(1.28.0 배포 준비)에 기능 등재의 **릴리스 표기를 확정했다.** 1.28.0으로 나가는 것: `harness-health`(Phase 1)·`doctor`의 `ci_governance`·어댑터 7종 v2 확장. 1.27.1로 **이미 나갔는데** "미릴리스"로 남아 있던 것: `import-memory`·`rulesPreset`·`testEvidence`·`estimated-tokens` 스탬프. 후자는 서술이 사실과 달랐던 경우이며 CHANGELOG 1.27.1 절로 대조해 확정했다. 기능 서술 자체는 불변 — 이번 배치는 버전 표기만 건드렸다. `HARNESS_GOVERNANCE_ROADMAP.md`의 "미릴리스라 지금이 최적기" 문장들은 **작성 시점의 판단 기록**이라 의도적으로 남겼다.
 
 ## Benchmark
 
-원문서: [BENCHMARK.md](BENCHMARK.md) — 10건(2026-07-22 → 2026-08-03), 2026-08-03 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 1건 추가 이관(5건 상한).
+원문서: [BENCHMARK.md](BENCHMARK.md) — 11건(2026-07-22 → 2026-08-03), 2026-08-03 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 2건 추가 이관(5건 상한).
 
 - 2026-07-22에 Gate 22 베이스라인 + Gate 24 재측정(정직/불리) + B2 retrieval 델타를 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-22)를 거쳐 `verified`로 승인했다(최초 verified 승격). **핵심 불변 조건**: 이 문서의 모든 수치(특히 B2 −81.5%/−80.5%)는 `chars/4` **프록시**이지 실제 LLM 실행 결과가 아니다. 따라서 README·런치 카피에 토큰/속도/생산성 수치를 싣는 것은 **여전히 금지**이며, 실측(`bench/real/` 실행)이 뒷받침될 때까지 이 규율을 유지한다. 실측 방법은 `bench/REAL_LLM_METHODOLOGY.md` 참조.
 - 2026-07-22에 **실제 LLM N=3 실측**(외부 프로젝트 `external-vue-quasar-app`@`benchmark-baseline`, Opus 4.8)을 반영했다: "실측 · Real-LLM measurement" 섹션 추가(최신 위키에서 B2 −10% 토큰·−5% wall·정확도 18/18 동률·소스 fallback 0; stale 위키는 보안 오답 → 신선도-종속 정확도가 핵심)와 규율 갱신(스코프 명시 정직 수치 허용, 볼드 헤드라인·`chars/4` 프록시 수치는 계속 금지). 원자료: `bench/results/real-driver-external-vue-app-pilot-2026-07-22.md`. 에이전트(Claude Code) 편집이라 `needs_review`로 강등 — 사람 검토 후 재승인 예정.
@@ -230,6 +232,7 @@ reviewed_at: 2026-10-27
 - 2026-07-30에 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-30 — 유지보수자 지시로 세션 내 재승인)를 거쳐 `verified`로 재승인했다. 2026-07-27 통제군(B2_empty) 실측·비준 이후 벤치 사실관계 변경이 없고, 1.27.1(문맥 규율)·1.27.2(프롬프트 형태 규율)는 벤치를 재실행하지 않았으며 이 문서도 그렇게 주장하지 않음을 확인했다. README 헤드라인 금지 유지.
 - 2026-08-03에 Review Notes 5건 상한 집행 배치에서 오래된 4건(2026-07-22 → 2026-07-27)을 `REVIEW_HISTORY.md`의 신규 `Benchmark` 절로 원문 그대로 옮겼다(8건 → 4건 + 이 노트 = 5건). **이 문서는 인수인계의 위반 목록에 없었다** — 그 목록이 손으로 작성돼 `EXAMPLES.md`와 함께 빠졌고, 전 문서 계수를 돌려서야 드러났다. 형식 두 가지를 함께 처리했다: 이 문서의 노트는 여러 줄로 감겨 있어 이전기가 항목 경계를 `- ` 시작 줄로 잡아야 했고(원문 줄바꿈 보존), 워킹트리 줄바꿈이 이 문서만 CRLF 혼재라 `.gitattributes`의 `eol=lf`에 맞춰 LF로 정규화됐다(인덱스는 이미 LF여서 git이 보는 diff는 이번 이동뿐이다). 수치·규율 서술은 한 글자도 바뀌지 않았고, README 토큰·속도 헤드라인 금지 규율도 불변이다. 에이전트(Claude Code) 편집이라 `verified`→`needs_review`로 강등 — 사람 검토 후 재승인 예정, 허위 검토 메타 미기입.
 - 2026-08-03에 게이트가 지목한 `GATE_REVIEW.md` 변경을 재대조했다: 이번 커밋은 새 절(`Detection Defaults and Freshness Scope Decision`·`Doc-Only Decisions`)을 **덧붙였을 뿐**(162줄 추가·0줄 삭제)이고 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`(Gate 22, 2026-07-21 수용)과 `bench/**`는 한 글자도 바뀌지 않았으며, 새 절의 `impact.source_changed` 기본 error는 CLI 탐지 규칙이라 이 문서의 Gate 22 임팩트 측정 수치·규율과 무관하므로 **본문 불변**이다(`GATE_REVIEW.md` 스스로 기록해 둔 section-anchor 오탐 사례의 재발화).
+- 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를 재확인했다. 이번 변경이 그 파일에 더한 것은 "Version-Only Manifest Scope Decision" 절과 Gate 23 승인 행·불변식 2건·CI 배선 결정에 붙인 SUPERSEDED 표시뿐이고, 벤치 범위를 정한 Gate 22·24 항목과 통제군(B2_empty) 서술에는 손대지 않았다 — 이 문서의 수치·규율(모든 proxy 수치는 chars/4이고 README 헤드라인은 금지)은 **불변**이다. 재스탬프만으로는 해소되지 않아 이 노트를 남긴다: `reviewed_at`이 이미 오늘이면 강등→승격 왕복이 byte-identical이 되어 문서가 change set에 들어가지 않는다(결함 N-11).
 
 ## Domain Overview
 
@@ -275,7 +278,7 @@ reviewed_at: 2026-10-27
 
 ## Harness Governance Roadmap
 
-원문서: [HARNESS_GOVERNANCE_ROADMAP.md](HARNESS_GOVERNANCE_ROADMAP.md) — 16건(2026-07-31 → 2026-08-03), 2026-09-08 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 1건 추가 이관(5건 상한).
+원문서: [HARNESS_GOVERNANCE_ROADMAP.md](HARNESS_GOVERNANCE_ROADMAP.md) — 17건(2026-07-31 → 2026-08-03), 2026-09-08 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 2건 추가 이관(5건 상한).
 
 - 2026-07-31: 2026-07-31 조사(도구 실행 12종, 소스 36파일, 실사용 저장소 4곳, 파일럿 git 이력)를 근거로 신규 작성했다. 에이전트(Claude Code) 작성이므로 `needs_review`다. 승인 전에는 확정 계획으로 인용하지 않는다.
 - 2026-07-31: 가설 문장을 수정 제안했다. 조사에서 확인된 최대 실패는 자동 수정의 부재가 아니라 사람 승인 경계의 미강제였다(B-1).
@@ -301,10 +304,11 @@ reviewed_at: 2026-10-27
   EOL을 문자열로 다루는 테스트에서 "로컬 515/515"는 증거가 아니다. 이 노트를 남기는 이유는 5건
   상한 때문에 오래된 1건을 `REVIEW_HISTORY.md`로 회전시켜야 했기 때문이며(10건 → 11건, 포인터 동기화),
   재스탬프만으로는 해소되지 않는다(`reviewed_at`이 이미 오늘 — 결함 N-11).
+- 2026-09-07(1.30.0)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 9건을 재확인했다: `package.json`·`src/cli.js`·`src/index.js`·`src/commands.js`·`src/commands/findings.js`·`src/commands/skills.js`·`src/mcp/tools.js`·`.github/actions/validate/action.yml`·`ROADMAP.md`. 이번 변경은 거버넌스 모드 추가이고 이 문서가 다루는 것은 **하네스 자체의 거버넌스**(자기관리 게이트·측정·결정 기록)이므로 본문 주장 중 낡은 것이 없다 — Phase 0 결함 목록·오탐률 실측·결정 기록은 모두 그 시점 사실 진술이다. 새로 알게 된 하네스 공백 하나는 [log.md](log.md)의 2026-09-07 항목 caveats에 적었다: **모드를 바꾼 뒤 생성 스킬이 낡는 것을 제품이 finding으로 잡지 못한다** — 스킬 본문은 작성 시점 모드의 워크플로를 담고, 블록이 자기 안에 갱신 명령(`init --write --skills --refresh`)을 적어 두는 것이 현재 유일한 방어다. 본문 **불변**. **(이어서)** 같은 배치의 도그푸딩이 하네스 공백 하나가 아니라 **제품 결함 2건**을 냈고, 발견 경로가 이 문서의 주제 그대로다 — 코드 리뷰가 아니라 **이 저장소에 새 명령을 실행해서** 나왔다. ① `backfill`이 `docs/llm-wiki/` 안만 뒤지고 “이 저장소에서 근거 복구 불가”라고 단언했다(루트에 196 KB `GATE_REVIEW.md`가 있는 저장소에 대해) — 증거보다 넓은 부정. ② `review_backlog` 준비도 체크가 append-only 로그 때문에 **구조적으로 통과 불가**였다 — 이 제품이 이미 두 번 고친 “해소 경로가 없는 finding” 계열의 세 번째다. 둘 다 같은 배치에서 고치고 회귀 테스트 3건으로 고정했다. 앞서 적은 하네스 공백(모드 변경 후 낡은 스킬을 finding으로 잡지 못함)은 **여전히 미해결**이다.
 
 ## Public API
 
-원문서: [PUBLIC_API.md](PUBLIC_API.md) — 43건(2026-07-14 → 2026-08-03), 2026-08-03 · 2026-10-01 · 2026-10-26에 1건씩 추가 이관(5건 상한) 이전분 · 2026-10-27에 1건 추가 이관(5건 상한).
+원문서: [PUBLIC_API.md](PUBLIC_API.md) — 44건(2026-07-14 → 2026-08-03), 2026-08-03 · 2026-10-01 · 2026-10-26에 1건씩 추가 이관(5건 상한) 이전분 · 2026-10-27에 2건 추가 이관(5건 상한).
 
 - 2026-07-14에 1.3.0 CLI 명령·옵션 계약(migrate --apply, drift, 신규 --agent, OKF type alias 포함)을 기준으로 재검토하고 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-07-14에 1.4.0의 새 명령(`graph`, `stats`)과 graph 전용 `--format mermaid|dot`을 반영하고, stale했던 "migrate --apply 차단" 서술을 정정한 뒤, 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
@@ -349,6 +353,7 @@ reviewed_at: 2026-10-27
 - 2026-08-03(Phase 1 착수)에 신규 명령 `harness-health`를 공개 계약 표면에 추가했다: 명령 표 1행, 옵션 `--preload-budget`·`--skill-token-cap`(양의 정수, 아니면 exit 3), config `harnessHealth` 블록, `harness.*` 규칙 4종(전부 기본 warning·`--strict`에서 error·config `rules`로 토글 가능), `--format json` 최상위 키. `schemaVersion`은 추가 변경이라 올리지 않았다. 명령 수는 29→30이며 `COMMAND_OPTION_RULES`·`COMMAND_HELP` 양쪽 등록 규칙을 그대로 따랐다(`monorepo` 누락 결함의 재발 방지선).
 - 2026-08-03(사람 결정 11건 집행)에 공개 계약 3건을 갱신했다. **`impact.source_changed`가 기본 `error`가 됐다 — exit code 계약 변경이고 이 문서가 그 계약을 소유한다.** `--strict`는 이 규칙에 대해 no-op이며, 돌아가는 길(config `rules`의 `warning`/`info`/`off`, 또는 `rulesPreset: "relaxed"`)을 계약으로 함께 적었다. 신규 플래그 `--watch-needs-review`는 `drift` 전용·기본 off이고(`impact`는 error가 됐으므로 넓히지 않았다), 신규 규칙 2종 `run.manifest_untracked`(info)·`run.change_set_undeclared`(warning)를 등록했다. `check-run`의 매니페스트 선택은 git 추적분을 우선하되 추적분이 0건이면 기존대로 동작한다(JSON 키 제거 없음).
 - 2026-08-03(1.28.0 배포 준비)에 공개 계약 표의 미릴리스 표기 2건을 확정했다: `validate-frontmatter`의 `frontmatter.duplicate_key` 상속("미릴리스, main 한정" → **1.27.1**)과 `check-run`의 `testEvidence` 검증("2026-07-28(미릴리스)" → **1.27.1**). 둘 다 1.27.1 CHANGELOG에 등재된 항목이라 표기가 사실과 달랐던 경우다. 이번 배포로 바뀌는 계약(`impact`의 error 기본값·`harness-health`·`drift --watch-needs-review`·`monorepo` 옵션 검증)은 직전 노트들이 이미 등재했으므로 중복 기재하지 않았다.
+- 2026-09-07(1.30.0)에 거버넌스 모드를 공개 계약 표면에 반영했다: Commands 표에 `mode`·`backfill` 두 행을 추가하고, `prompt --task` 지원 값을 8종 → **9종**(`backfill`), MCP 노출 툴을 17 → **18종**(읽기 전용 `mode`)으로 고쳤으며, Configuration에 `governance` 블록 항목을 신설했다 — 레벨이 rule floor를 기여하고 `rulesPreset`·명시 `rules` **아래**에 키 단위로 깔린다는 우선순위, `strict`의 floor가 비어 있다는 마이그레이션 보증, `init`이 새 프로젝트와 레거시를 근거로 가른다는 규칙을 함께 적었다. `monorepo` 행의 “다른 29개 명령” 수치도 고쳤다 — **이 문서가 손으로 나열하는 수치는 새 명령이 생기면 반드시 낡는다**(이번에 세 곳이 그랬다: 명령 수·task 수·MCP 툴 수). **(이어서)** 같은 배치의 도그푸딩(이 저장소에 `backfill`을 실행)이 제품 결함 2건을 드러내 함께 고쳤다: ① 의사결정 기록 탐색이 `docs/llm-wiki/` 안만 보고서 “이 저장소에서 근거 복구 불가”라고 **증거보다 넓은 부정을 단언**했다 — 정작 루트에 자기 `project-profile.md`가 의사결정 기록으로 지목하는 196 KB `GATE_REVIEW.md`가 있다. 이제 git이 추적하는 관례 위치까지 찾고, 못 찾으면 자기가 뒤진 범위를 문장에 적는다. ② `review_backlog` 준비도 체크가 append-only 로그 때문에 **구조적으로 통과 불가**였다(`review`가 의도적으로 스탬프하지 않는 문서를 세었다 — N-14) — 로그를 쓰는 모든 저장소에서 `backfill --strict`가 영원히 실패했을 것이다. 회귀 테스트 3건으로 고정했다.
 
 ## Project Profile
 

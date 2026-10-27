@@ -3206,6 +3206,60 @@ number passes every check, and date-based `drift` misses a same-day change.
 and 21 frontmatter shapes; it did not cover other commands (prompt generation, release notes,
 graph), and no line-by-line audit of every regex in `src/` was done.
 
+## Regex Audit Follow-up (2026-10-27 — built, unreleased)
+
+**Origin.** The gap named in "Not covered" above. Every regex in `src/` reachable from
+`validate`, `audit`, `impact`, `drift`, `review`, `status`, `stats`, `graph` and the MCP read
+tools was listed (a read-only pass over the source), and each candidate was then timed at
+20,000 and 40,000 characters. Static reading alone would have been wrong once: the
+`path:10-20` evidence parser in `references.js` was listed as quadratic, but its `^` anchor
+leaves one start position and it measured linear.
+
+| Location | Input a pull request controls | Measured | Action |
+| --- | --- | --- | --- |
+| `src/commands/scans.js` `enrichmentChecklist` (`/^##\s+(.+?)\s*$/`) | Any `## ` line of a document that carries a placeholder sentence; reached by default `validate` | Quadratic: 1.0 s at 40,000 characters, ×5 per doubling | Rewritten as one pass (`sectionHeadingText`) |
+| `src/commands/wiki-hygiene.js` `stripUnderscoreEmphasis` | Heading text, with the opt-in anchor rule on | Quadratic per pass from openers without a closer (0.43 s at 40,000), and one pass per nesting level | One pass is now a code-point scan with next-closer tables; passes stop at 16 |
+| `src/commands.js` `CI_COMMAND_ON_LINE` | A workflow or hook line, read by `doctor` | Quadratic | Not changed: whoever can edit a workflow can already run code in CI |
+| `src/commands/domains.js` `<Route … path=` | Source files, read by `init` domain detection | Mildly quadratic (×2.6) | Not changed: a local scaffolding command, not a gate |
+| `src/commands/references.js` colon-line evidence | Evidence strings | Linear | None |
+
+**The one stated difference.** `stripUnderscoreEmphasis` returns what the old fixpoint
+returned for any heading whose `_` emphasis is nested at most 16 levels deep. A deeper heading
+keeps its remaining delimiters. The old code went on unwinding one level per full re-scan,
+which is how a 100,000-character heading took 9.8 s. Real headings nest three levels at most.
+
+**Evidence.** Differential tests against the old regexes cover 8,000 random strings each:
+1,844 emphasis inputs change, 64 of them over more than one pass, and 620 heading lines,
+42 of them empty. The time-bound cases take 2.2–9.8 s on the regexes and 0.003–0.3 s on the
+scanners. Across nine local wikis, 5,065 anchors and 2,907 `## ` lines give identical results,
+and `validate` / `audit` JSON is byte-identical.
+
+## Link-Extraction False Negatives (open — recorded 2026-10-27, measured, not decided)
+
+The scanners from "Security Review Batch" reproduce two behaviours of the regexes they
+replaced, and both hide links from every caller of `extractMarkdownLinkTargets`:
+`markdown_link.missing` in `validate`/`audit`, the graph's edges and orphans, the anchor rule,
+and `fix`'s stub creation for broken links.
+
+- (a) An inline link glued to the end of the previous one is skipped: `[a](b)[c](d)` yields
+  `b` only. The `[^!]` that guards against images consumes the character before the bracket.
+- (b) A reference definition swallows the line after it, so consecutive definitions are
+  checked every other one: `[a]: one`, `[b]: two`, `[c]: three` yields `one` and `three`.
+
+**Measured blast radius of fixing both: zero on nine local wikis.** A patched build (a: check
+the character before `[` without consuming it; b: end a definition at its own line) changed
+nothing in extracted targets, `validate`, `audit`, `graph` or the `fix` preview. That is
+because the shapes do not occur there: of 1,783 inline links none is glued to the previous
+one, and no document uses reference-style definitions. The patch does change the results on
+the shapes above, which rules out a measurement that could not have seen a difference.
+
+**Recommendation: fix both in the next MINOR, as a named build-affecting change.** Each is a
+plain false negative in a safety check, and the measured cost on real wikis is nil. The
+cost lands only on documents written in these shapes, as new `markdown_link.missing` findings
+and new `fix` stubs for links that were broken all along. It is still a change to what a
+shipped check reports, so it waits for the maintainer's decision, and the differential tests
+that currently pin both behaviours change in the same pull request.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)
