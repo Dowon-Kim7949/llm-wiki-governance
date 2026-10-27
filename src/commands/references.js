@@ -109,14 +109,17 @@ export function isExternalSourceReference(source) {
 //   wiki       /\[\[([^\]\n]+)\]\]/g
 // Each one backtracked in quadratic time: one line of 50,000 "[" or 50,000 blank
 // lines held validate for 4-7 seconds, and the cost grows with the square. The
-// scanners below return the same targets in the same order, quirks included (an
-// inline link glued to the end of the previous one is skipped, and a reference
-// definition swallows the line after it). They precompute "next stop character"
-// tables so that each candidate position is decided in constant time.
-// tests/linear-markdown-scan.test.js compares them with the old regexes on
-// random input.
+// scanners below precompute "next stop character" tables so that each candidate
+// position is decided in constant time.
+//
+// They first reproduced the regexes exactly, including two false negatives, which
+// were then fixed on their own (GATE_REVIEW "Link-Extraction False Negatives"):
+// an inline link glued to the end of the previous one is no longer skipped, and a
+// reference definition no longer swallows the line after it.
+// tests/linear-markdown-scan.test.js compares the scanners on random input with
+// regexes that state the corrected behavior.
 const WHITESPACE = /\s/;
-const LINE_TERMINATORS = new Set(["\n", "\r", " ", " "]);
+const LINE_TERMINATORS = new Set(["\n", "\r", "\u2028", "\u2029"]);
 
 // table[i] = the first index >= i whose character satisfies `isStop`, or text.length.
 export function nextStopTable(text, isStop) {
@@ -145,10 +148,9 @@ function inlineLinkTargets(text) {
   };
   let position = 0;
   while (position < text.length) {
-    // `^` (start of input only) is tried before `[^!]`, which consumes the
-    // character in front of the "[".
-    let end = position === 0 ? linkEnd(0) : -1;
-    if (end === -1 && text[position] !== "!") end = linkEnd(position + 1);
+    // `(?<!!)\[`: the character in front of the "[" is checked, not consumed, so an
+    // image is still excluded and a link right after another link is still found.
+    const end = position === 0 || text[position - 1] !== "!" ? linkEnd(position) : -1;
     position = end === -1 ? position + 1 : end;
   }
   return targets;
@@ -183,9 +185,9 @@ function referenceDefinitionTargets(text) {
       continue;
     }
     targets.push(text.slice(valueStart, valueEnd));
-    // `(?:\s+.*)?$`: any whitespace after the value (line breaks included), then
-    // the rest of that line.
-    position = valueEnd === text.length ? valueEnd : lineEnd[spaceEnd[valueEnd]];
+    // A title or anything else after the value belongs to the value's own line, so
+    // the next line is free to be a definition of its own.
+    position = lineEnd[valueEnd];
   }
   return targets;
 }

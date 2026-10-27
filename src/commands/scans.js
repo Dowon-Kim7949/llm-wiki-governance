@@ -178,7 +178,7 @@ export async function scanEnrichment(cwd) {
 // `.+?` one character at a time and re-ran `\s*$` over the following whitespace at
 // every step, so "## x", 50,000 spaces and "y" took seconds — and a document reaches
 // this through default validate as soon as it carries a placeholder sentence.
-const LINE_TERMINATOR_CHARS = new Set(["\n", "\r", " ", " "]);
+const LINE_TERMINATOR_CHARS = new Set(["\n", "\r", "\u2028", "\u2029"]);
 
 export function sectionHeadingText(line) {
   const isSpace = (ch) => /\s/.test(ch);

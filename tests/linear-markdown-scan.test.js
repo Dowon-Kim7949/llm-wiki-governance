@@ -33,12 +33,17 @@ for (const [name, value] of [
   if (typeof value !== "function") throw new Error(`${name} is not imported; this file would have silently skipped`);
 }
 
-// The regexes as they shipped in 1.35.0, kept here as the oracle.
+// The regexes as they shipped in 1.35.0, kept here as the oracle. The two link
+// regexes are the exception: they state the corrected behavior (GATE_REVIEW
+// "Link-Extraction False Negatives"). The 1.35.0 forms were
+//   /(^|[^!])\[[^\]\n]+\]\(([^)\n]+)\)/g        — consumed the character before "["
+//   /^\s*\[[^\]\n]+\]:\s*(\S+)(?:\s+.*)?$/gm   — `\s+` ran into the next line
 const regexImpl = {
   markdownLinks(markdown) {
     const targets = [];
-    for (const match of markdown.matchAll(/(^|[^!])\[[^\]\n]+\]\(([^)\n]+)\)/g)) targets.push(match[2]);
-    for (const match of markdown.matchAll(/^\s*\[[^\]\n]+\]:\s*(\S+)(?:\s+.*)?$/gm)) targets.push(match[1]);
+    for (const match of markdown.matchAll(/(?<!!)\[[^\]\n]+\]\(([^)\n]+)\)/g)) targets.push(match[1]);
+    // After the value: horizontal whitespace and the rest of that line, or nothing.
+    for (const match of markdown.matchAll(/^\s*\[[^\]\n]+\]:\s*(\S+)(?:[^\S\n\r\p{Zl}\p{Zp}]+.*)?$/gmu)) targets.push(match[1]);
     return targets;
   },
   wikiLinks(markdown) {
@@ -100,15 +105,19 @@ function agree(label, inputs, actual, expected) {
   }
 }
 
-const LINK_PIECES = ["[", "]", "(", ")", "!", "\n", "\r", " ", "\t", ":", "a", "b", " ", " ", "[a](b)", "[x]: y"];
+const LINK_PIECES = ["[", "]", "(", ")", "!", "\n", "\r", " ", "\t", ":", "a", "b", "\u2028", "\u00a0", "[a](b)", "[x]: y"];
 
-test("markdown link targets: the scanner matches the regexes it replaced", () => {
+test("markdown link targets: the scanner matches the regexes that state its behavior", () => {
   agree("extractMarkdownLinkTargets", randomStrings(1, LINK_PIECES, 6000, 24), extractMarkdownLinkTargets, regexImpl.markdownLinks);
-  // Quirks the scanner must keep: a link glued to the previous one is skipped,
-  // and a reference definition swallows the line after it.
-  assert.deepEqual(extractMarkdownLinkTargets("[a](b)[c](d) [e](f)"), ["b", "f"]);
-  assert.deepEqual(extractMarkdownLinkTargets("[a]: one\n[b]: two\n[c]: three"), ["one", "three"]);
+  // The two false negatives the 1.35.0 regexes had, now found: a link glued to the
+  // previous one, and every definition in a run of consecutive definitions.
+  assert.deepEqual(extractMarkdownLinkTargets("[a](b)[c](d) [e](f)"), ["b", "d", "f"]);
+  assert.deepEqual(extractMarkdownLinkTargets("[a]: one\n[b]: two\n[c]: three"), ["one", "two", "three"]);
+  // Unchanged: images are not links, a title stays on its definition's line, and a
+  // destination may sit on the line after the colon.
   assert.deepEqual(extractMarkdownLinkTargets("![img](pic.png) [doc](guide.md)\n\n  [ref]: ../x.md \"t\""), ["guide.md", "../x.md"]);
+  assert.deepEqual(extractMarkdownLinkTargets("![a](x)[b](y)"), ["y"]);
+  assert.deepEqual(extractMarkdownLinkTargets("[a]: one \"title\"\n[b]:\n  two"), ["one", "two"]);
 });
 
 test("wiki link targets: the scanner matches the regex it replaced", () => {
@@ -117,7 +126,7 @@ test("wiki link targets: the scanner matches the regex it replaced", () => {
 });
 
 test("heading slug helpers: each scanner matches the regex it replaced", () => {
-  agree("trimClosingHashes", randomStrings(3, ["#", " ", "\t", "a", " ", "\n"], 6000, 16), trimClosingHashes, regexImpl.closingHashes);
+  agree("trimClosingHashes", randomStrings(3, ["#", " ", "\t", "a", "\u00a0", "\n"], 6000, 16), trimClosingHashes, regexImpl.closingHashes);
   const labelInputs = randomStrings(4, ["!", "[", "]", "(", ")", "a", "\n", "![a](b)"], 6000, 20);
   agree("keepLinkLabels(image)", labelInputs, (text) => keepLinkLabels(text, true), regexImpl.imageLabels);
   agree("keepLinkLabels(link)", labelInputs, (text) => keepLinkLabels(text, false), regexImpl.linkLabels);
@@ -126,7 +135,7 @@ test("heading slug helpers: each scanner matches the regex it replaced", () => {
 });
 
 test("CodeQL-flagged trims: each loop matches the regex it replaced", () => {
-  const scalarPieces = ["status: a", "status:", "statu", "\n", "\r", " ", "\t", "x", " ", " "];
+  const scalarPieces = ["status: a", "status:", "statu", "\n", "\r", " ", "\t", "x", "\u2028", "\u00a0"];
   for (const value of ["verified", "a$&b", "$'", "$`"]) {
     agree(
       `replaceFrontmatterScalar(${value})`,
@@ -153,14 +162,14 @@ test("CodeQL-flagged trims: each loop matches the regex it replaced", () => {
 test("follow-up audit: underscore emphasis and section headings match the regexes they replaced", () => {
   // Letters, digits, an astral code point, NBSP and line terminators all change
   // what the u-flag regex treats as a word character, whitespace or `.`.
-  const emphasisPieces = ["_", "__", "___", "____", " ", "a", "1", "-", "é", "\u{1F600}", " ", " ", "x_", "_y", " _a", "a_ "];
+  const emphasisPieces = ["_", "__", "___", "____", " ", "a", "1", "-", "é", "\u{1F600}", "\u00a0", "\u2028", "x_", "_y", " _a", "a_ "];
   agree("stripUnderscoreEmphasis", randomStrings(10, emphasisPieces, 8000, 16), stripUnderscoreEmphasis, regexImpl.underscoreEmphasis);
   // Nesting within the pass cap, where the fixpoint takes one pass per level.
   for (const depth of [1, 2, 5, 16]) {
     const nested = `${" _a".repeat(depth)}${" a_".repeat(depth)}`;
     assert.equal(stripUnderscoreEmphasis(nested), regexImpl.underscoreEmphasis(nested), `depth ${depth}`);
   }
-  const headingPieces = ["#", "##", "###", " ", "\t", "a", "b", "\r", " ", " ", "## "];
+  const headingPieces = ["#", "##", "###", " ", "\t", "a", "b", "\r", "\u2028", "\u00a0", "## "];
   agree("sectionHeadingText", randomStrings(11, headingPieces, 8000, 10), sectionHeadingText, regexImpl.sectionHeading);
   assert.deepEqual(
     enrichmentChecklist("## Summary\n- Concise summary: describe the purpose\n##   Evidence  \nplain"),

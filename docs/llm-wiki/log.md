@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-27 - fix(links): 붙은 인라인 링크와 연속된 참조 정의의 거짓 음성 수정
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/commands/references.js`(인라인 앞 글자를 소비하지 않음, 참조 정의는 자기 줄에서 끝남) · 줄 종결자 집합 4곳의 표기(문자 그대로 → 이스케이프) · `tests/linear-markdown-scan.test.js`(비교 기준을 고친 동작으로 교체, 결함 단언 2개 반전) · `tests/verification.test.js`(통합 테스트 1건) · `GATE_REVIEW.md`("Link-Extraction False Negatives" 결정) · 위키 `ARCHITECTURE_CONVENTIONS.md`(`references.js` 서술 정정) 외 재확인 노트 5건, `REVIEW_HISTORY.md` 이관 6건
+- summary: 유지보수자 결정에 따라 링크 추출의 거짓 음성 둘을 고쳤다. 앞 링크에 붙은 인라인 링크와, 연속된 참조 정의의 두 번째 이후 정의다. 그런 형태로 쓴 문서에서는 원래 깨져 있던 링크가 `markdown_link.missing`으로 새로 보고되고, `fix`가 그 링크의 stub을 만든다. 출시된 검사가 보고하는 내용이 바뀌므로 다음 MINOR에서 이름 붙인 변경으로 다룬다.
+- evidence: 차분 테스트 6,000건 중 인라인 234건과 참조 70건이 옛 동작과 결과가 갈린다 · 통합 테스트가 main 코드에서 실패하고 이번 코드에서 통과한다 · 로컬 위키 9곳에서 `validate`·`audit`·`graph`·`fix` 미리보기가 main과 같다 · 테스트 693/693
+- caveats: 로컬 위키에는 해당 형태가 없어서 이 측정은 "기존 도입처 영향 없음"까지만 말한다. 그런 형태를 쓰는 저장소에서 finding이 몇 건 늘지는 측정하지 않았다. 로컬 위키 비교에서 `roadmonitor`·`roadmonitor-frontend`는 뺐다(유지보수자 지시).
+
 ## 2026-10-27 - fix(security): 정규식 감사 후속 — 남아 있던 제곱 시간 2건과 링크 추출 결함 측정
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
