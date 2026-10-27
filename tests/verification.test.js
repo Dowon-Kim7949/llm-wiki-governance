@@ -2946,6 +2946,28 @@ test("audit and validate report missing local markdown links in wiki docs", asyn
   assert.equal(auditResult.findings.some((finding) => finding.rule === "markdown_link.missing" && finding.message.includes("#local-section")), false);
 });
 
+test("validate checks a link glued to the previous one and every definition in a run", async () => {
+  // Until the link-extraction fix (GATE_REVIEW "Link-Extraction False Negatives"),
+  // both broken targets below passed: the glued link was skipped, and the second
+  // of two consecutive reference definitions was swallowed by the first.
+  const cwd = await makeProject("links-glued-");
+  await writeJson(path.join(cwd, "package.json"), { name: "links-glued" });
+  await writeWikiDoc(cwd, "README.md", "LLM-WIKI README", "Existing target.");
+  await writeWikiDoc(
+    cwd,
+    "index.md",
+    "LLM-WIKI Index",
+    "See [readme](README.md)[glued](glued-missing.md).\n\n[one]: README.md\n[two]: second-missing.md"
+  );
+
+  const result = await validateCommand({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
+  const missing = result.findings.filter((finding) => finding.rule === "markdown_link.missing").map((finding) => finding.message);
+
+  assert.ok(missing.some((message) => message.includes("glued-missing.md")), missing.join("\n"));
+  assert.ok(missing.some((message) => message.includes("second-missing.md")), missing.join("\n"));
+  assert.equal(missing.length, 2, missing.join("\n"));
+});
+
 test("status reports missing markdown links and accepts existing local links", async () => {
   const cwd = await makeProject("links-status-");
   await writeJson(path.join(cwd, "package.json"), { name: "links-status" });

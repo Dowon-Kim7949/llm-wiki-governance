@@ -33,12 +33,17 @@ for (const [name, value] of [
   if (typeof value !== "function") throw new Error(`${name} is not imported; this file would have silently skipped`);
 }
 
-// The regexes as they shipped in 1.35.0, kept here as the oracle.
+// The regexes as they shipped in 1.35.0, kept here as the oracle. The two link
+// regexes are the exception: they state the corrected behavior (GATE_REVIEW
+// "Link-Extraction False Negatives"). The 1.35.0 forms were
+//   /(^|[^!])\[[^\]\n]+\]\(([^)\n]+)\)/g        — consumed the character before "["
+//   /^\s*\[[^\]\n]+\]:\s*(\S+)(?:\s+.*)?$/gm   — `\s+` ran into the next line
 const regexImpl = {
   markdownLinks(markdown) {
     const targets = [];
-    for (const match of markdown.matchAll(/(^|[^!])\[[^\]\n]+\]\(([^)\n]+)\)/g)) targets.push(match[2]);
-    for (const match of markdown.matchAll(/^\s*\[[^\]\n]+\]:\s*(\S+)(?:\s+.*)?$/gm)) targets.push(match[1]);
+    for (const match of markdown.matchAll(/(?<!!)\[[^\]\n]+\]\(([^)\n]+)\)/g)) targets.push(match[1]);
+    // After the value: horizontal whitespace and the rest of that line, or nothing.
+    for (const match of markdown.matchAll(/^\s*\[[^\]\n]+\]:\s*(\S+)(?:[^\S\n\r\p{Zl}\p{Zp}]+.*)?$/gmu)) targets.push(match[1]);
     return targets;
   },
   wikiLinks(markdown) {
@@ -102,13 +107,17 @@ function agree(label, inputs, actual, expected) {
 
 const LINK_PIECES = ["[", "]", "(", ")", "!", "\n", "\r", " ", "\t", ":", "a", "b", "\u2028", "\u00a0", "[a](b)", "[x]: y"];
 
-test("markdown link targets: the scanner matches the regexes it replaced", () => {
+test("markdown link targets: the scanner matches the regexes that state its behavior", () => {
   agree("extractMarkdownLinkTargets", randomStrings(1, LINK_PIECES, 6000, 24), extractMarkdownLinkTargets, regexImpl.markdownLinks);
-  // Quirks the scanner must keep: a link glued to the previous one is skipped,
-  // and a reference definition swallows the line after it.
-  assert.deepEqual(extractMarkdownLinkTargets("[a](b)[c](d) [e](f)"), ["b", "f"]);
-  assert.deepEqual(extractMarkdownLinkTargets("[a]: one\n[b]: two\n[c]: three"), ["one", "three"]);
+  // The two false negatives the 1.35.0 regexes had, now found: a link glued to the
+  // previous one, and every definition in a run of consecutive definitions.
+  assert.deepEqual(extractMarkdownLinkTargets("[a](b)[c](d) [e](f)"), ["b", "d", "f"]);
+  assert.deepEqual(extractMarkdownLinkTargets("[a]: one\n[b]: two\n[c]: three"), ["one", "two", "three"]);
+  // Unchanged: images are not links, a title stays on its definition's line, and a
+  // destination may sit on the line after the colon.
   assert.deepEqual(extractMarkdownLinkTargets("![img](pic.png) [doc](guide.md)\n\n  [ref]: ../x.md \"t\""), ["guide.md", "../x.md"]);
+  assert.deepEqual(extractMarkdownLinkTargets("![a](x)[b](y)"), ["y"]);
+  assert.deepEqual(extractMarkdownLinkTargets("[a]: one \"title\"\n[b]:\n  two"), ["one", "two"]);
 });
 
 test("wiki link targets: the scanner matches the regex it replaced", () => {
