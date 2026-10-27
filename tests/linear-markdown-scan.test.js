@@ -168,11 +168,19 @@ test("follow-up audit: underscore emphasis and section headings match the regexe
   );
 });
 
+// Coverage instrumentation (`npm run test:coverage`, the informational CI coverage
+// job) slows these JavaScript loops several times over: the nested-emphasis case took
+// 1.8 s there and 0.2 s without it. Regex matching is not instrumented, so the wide
+// bound used under coverage only catches a catastrophic regression; the 1.5 s bound
+// that separates the scanners from the old regexes is enforced by every
+// uninstrumented run, including the twelve CI verify jobs.
+const TIME_BOUND_MS = process.env.NODE_V8_COVERAGE ? 15000 : 1500;
+
 function assertFast(label, run) {
   const started = performance.now();
   run();
   const elapsed = performance.now() - started;
-  assert.ok(elapsed < 1500, `${label} took ${elapsed.toFixed(0)} ms`);
+  assert.ok(elapsed < TIME_BOUND_MS, `${label} took ${elapsed.toFixed(0)} ms (bound ${TIME_BOUND_MS} ms)`);
 }
 
 test("pathological inputs are scanned in linear time", () => {
