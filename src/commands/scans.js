@@ -173,6 +173,32 @@ export async function scanEnrichment(cwd) {
   return findings;
 }
 
+// The trimmed text of a `## ` line, or null when the line is not one: what
+// /^##\s+(.+?)\s*$/.exec(line)?.[1].trim() returned, in one pass. That regex grew
+// `.+?` one character at a time and re-ran `\s*$` over the following whitespace at
+// every step, so "## x", 50,000 spaces and "y" took seconds — and a document reaches
+// this through default validate as soon as it carries a placeholder sentence.
+const LINE_TERMINATOR_CHARS = new Set(["\n", "\r", " ", " "]);
+
+export function sectionHeadingText(line) {
+  const isSpace = (ch) => /\s/.test(ch);
+  if (!line.startsWith("##") || line.length < 3 || !isSpace(line[2])) return null;
+  let start = 2;
+  while (start < line.length && isSpace(line[start])) start += 1;
+  let end = line.length;
+  while (end > start && isSpace(line[end - 1])) end -= 1;
+  if (start < end) {
+    // `.` cannot cross a line terminator, and only the text between the leading and
+    // trailing whitespace can be the captured part.
+    for (let i = start; i < end; i++) if (LINE_TERMINATOR_CHARS.has(line[i])) return null;
+    return line.slice(start, end);
+  }
+  // Whitespace only: `\s+` gives back one character so `.+?` can take one that is
+  // not a line terminator; the captured text trims to "".
+  for (let i = 3; i < line.length; i++) if (!LINE_TERMINATOR_CHARS.has(line[i])) return "";
+  return null;
+}
+
 // P5: for a document body, list the `##` sections that still contain generated
 // placeholder guidance, so `next`/`handoff` can point an agent at WHAT to fill
 // and WHERE. Splits on level-2 headings; a section is "to fill" when it still
@@ -184,9 +210,9 @@ export function enrichmentChecklist(body) {
   const seen = new Set();
   let currentSection = "(intro)";
   for (const line of String(body).split(/\r?\n/)) {
-    const heading = /^##\s+(.+?)\s*$/.exec(line);
-    if (heading) {
-      currentSection = heading[1].trim();
+    const heading = sectionHeadingText(line);
+    if (heading !== null) {
+      currentSection = heading;
       continue;
     }
     if (seen.has(currentSection)) continue;

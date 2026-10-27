@@ -9,7 +9,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
 import { extractMarkdownLinkTargets, extractWikiLinkTargets } from "../src/commands/references.js";
-import { dropInlineTags, headingSlug, keepLinkLabels, trimClosingHashes } from "../src/commands/wiki-hygiene.js";
+import { dropInlineTags, headingSlug, keepLinkLabels, stripUnderscoreEmphasis, trimClosingHashes } from "../src/commands/wiki-hygiene.js";
+import { enrichmentChecklist, sectionHeadingText } from "../src/commands/scans.js";
 import { replaceFrontmatterScalar, upsertFrontmatterScalar } from "../src/commands/fix-migrate.js";
 import { importedDocName } from "../src/commands/import-memory.js";
 import { forArtifact } from "../src/commands/skills.js";
@@ -24,7 +25,10 @@ for (const [name, value] of [
   ["replaceFrontmatterScalar", replaceFrontmatterScalar],
   ["upsertFrontmatterScalar", upsertFrontmatterScalar],
   ["importedDocName", importedDocName],
-  ["forArtifact", forArtifact]
+  ["forArtifact", forArtifact],
+  ["stripUnderscoreEmphasis", stripUnderscoreEmphasis],
+  ["sectionHeadingText", sectionHeadingText],
+  ["enrichmentChecklist", enrichmentChecklist]
 ]) {
   if (typeof value !== "function") throw new Error(`${name} is not imported; this file would have silently skipped`);
 }
@@ -54,7 +58,16 @@ const regexImpl = {
     const stem = file.replace(/\.md$/i, "").toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^[-.]+|[-.]+$/g, "");
     return `${stem || "memory"}.md`;
   },
-  forArtifact: (prompt) => prompt.replace(/\n\nWorkspace:\n[^\n]*\n/, "\n").replace(/ Target agent context: [^.\n]*\./, "")
+  forArtifact: (prompt) => prompt.replace(/\n\nWorkspace:\n[^\n]*\n/, "\n").replace(/ Target agent context: [^.\n]*\./, ""),
+  underscoreEmphasis(text) {
+    let current = text;
+    for (;;) {
+      const next = current.replace(/(^|[^\p{L}\p{N}_])(_{1,3})(?=[^\s_])(.*?[^\s_])\2(?![\p{L}\p{N}_])/gu, "$1$3");
+      if (next === current) return current;
+      current = next;
+    }
+  },
+  sectionHeading: (line) => /^##\s+(.+?)\s*$/.exec(line)?.[1].trim() ?? null
 };
 
 // Deterministic PRNG (mulberry32) so a failure reproduces from the printed input.
@@ -137,6 +150,24 @@ test("CodeQL-flagged trims: each loop matches the regex it replaced", () => {
   );
 });
 
+test("follow-up audit: underscore emphasis and section headings match the regexes they replaced", () => {
+  // Letters, digits, an astral code point, NBSP and line terminators all change
+  // what the u-flag regex treats as a word character, whitespace or `.`.
+  const emphasisPieces = ["_", "__", "___", "____", " ", "a", "1", "-", "é", "\u{1F600}", " ", " ", "x_", "_y", " _a", "a_ "];
+  agree("stripUnderscoreEmphasis", randomStrings(10, emphasisPieces, 8000, 16), stripUnderscoreEmphasis, regexImpl.underscoreEmphasis);
+  // Nesting within the pass cap, where the fixpoint takes one pass per level.
+  for (const depth of [1, 2, 5, 16]) {
+    const nested = `${" _a".repeat(depth)}${" a_".repeat(depth)}`;
+    assert.equal(stripUnderscoreEmphasis(nested), regexImpl.underscoreEmphasis(nested), `depth ${depth}`);
+  }
+  const headingPieces = ["#", "##", "###", " ", "\t", "a", "b", "\r", " ", " ", "## "];
+  agree("sectionHeadingText", randomStrings(11, headingPieces, 8000, 10), sectionHeadingText, regexImpl.sectionHeading);
+  assert.deepEqual(
+    enrichmentChecklist("## Summary\n- Concise summary: describe the purpose\n##   Evidence  \nplain"),
+    [{ section: "Summary", hint: "Concise summary: describe the purpose" }]
+  );
+});
+
 function assertFast(label, run) {
   const started = performance.now();
   run();
@@ -162,4 +193,8 @@ test("pathological inputs are scanned in linear time", () => {
   assertFast("frontmatter key search over blank lines", () => replaceFrontmatterScalar(`${"\n".repeat(n)}x`, "status", "verified"));
   assertFast("memory file name dashes", () => importedDocName({}, `a${"-".repeat(n)}b`));
   assertFast("agent context marker", () => forArtifact(" Target agent context: ".repeat(n / 2)));
+  // Follow-up audit (2026-10-27): 40,000 characters took 0.3-1.0 s on the regexes.
+  assertFast("underscore openers without a closer", () => headingSlug(" _a".repeat(n / 3)));
+  assertFast("underscore emphasis nested past the pass cap", () => stripUnderscoreEmphasis(`${" _a".repeat(n / 3)}${" a_".repeat(n / 3)}`));
+  assertFast("section heading with a long inner space run", () => enrichmentChecklist(`## x${" ".repeat(n)}y\nConcise summary: describe`));
 });

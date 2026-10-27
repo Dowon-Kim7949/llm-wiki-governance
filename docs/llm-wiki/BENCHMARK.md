@@ -402,9 +402,8 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 
 ## Review Notes
 
-Older review notes (10 entries, 2026-07-22 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (11 entries, 2026-07-22 → 2026-08-04) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를 재확인했다. 이번 변경이 그 파일에 더한 것은 "Version-Only Manifest Scope Decision" 절과 Gate 23 승인 행·불변식 2건·CI 배선 결정에 붙인 SUPERSEDED 표시뿐이고, 벤치 범위를 정한 Gate 22·24 항목과 통제군(B2_empty) 서술에는 손대지 않았다 — 이 문서의 수치·규율(모든 proxy 수치는 chars/4이고 README 헤드라인은 금지)은 **불변**이다. 재스탬프만으로는 해소되지 않아 이 노트를 남긴다: `reviewed_at`이 이미 오늘이면 강등→승격 왕복이 byte-identical이 되어 문서가 change set에 들어가지 않는다(결함 N-11).
 - 2026-08-06(1.29.1 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를
   재확인했다. 이번 커밋이 그 파일에 한 일은 N-14 절의 크기 판정 문단을 "MINOR가 보수적 읽기"에서
   **PATCH로 확정**하고 그 근거·대가를 적은 것뿐이고, 이 문서가 인용하는
@@ -416,3 +415,4 @@ Older review notes (10 entries, 2026-07-22 → 2026-08-03) are archived in [REVI
 - 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 인용 앵커 `GATE_REVIEW.md#section:Impact Measurement Scope Decision`을 확인했다. 이번 커밋의 `GATE_REVIEW.md` diff는 (a) `Detection Defaults and Freshness Scope Decision` 절 안의 "SemVer MAJOR" 문단에 정정 문단을 붙인 것과 (b) 파일 끝에 신규 결정 절 7개를 더한 것뿐이며, **인용된 절은 글자 하나 바뀌지 않았다.** 이것은 N-7 계열의 알려진 노이즈다 — `scanReverseImpact`가 로케이터를 버리고 base path만 비교하므로 섹션 앵커가 판정에 쓰이지 않는다. 1.31.0이 N-8(디렉터리)은 고쳤지만 **섹션·심볼 로케이터 존중은 여전히 미구현**이고, 그 이유도 기록됐다: diff hunk를 심볼/헤딩 범위에 매핑하려면 해석기가 필요해서 서술된 노이즈를 조용한 위음성과 바꾸게 된다. 본문 **불변**.
 - 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를 대조했다. 이번 diff는 그 파일 끝에 "Trust Batch Scope Decision" 절을 덧붙였을 뿐이고, 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로다. 벤치 수치·조건·한계에 영향이 없으므로 본문 **불변**이다. 같은 검토에서 `bench/REAL_LLM_METHODOLOGY.md` 상단의 낡은 "not executed, no real numbers" 문구 위에 현행 상태 노트를 덧붙였다. 그 파일은 이 문서가 인용하지 않으므로 지목 대상은 아니었다.
 - 2026-10-27(보안 검토)에 `impact`가 인용 소스 `GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 이번 diff는 "Security Review Batch" 절을 추가했고 "Publish Credential Cleanup" 절에 결정 문단과 헤더 변경을 더했다. 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로다. 벤치 수치·조건·한계와 무관하므로 본문은 **불변**이다.
+- 2026-10-27(정규식 감사 후속)에 `impact`가 인용 소스 `GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 추가된 것은 "Regex Audit Follow-up"·"Link-Extraction False Negatives" 두 절이다. 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로이고 벤치 수치·조건·한계와 무관하므로, 본문은 **불변**이다.

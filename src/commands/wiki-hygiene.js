@@ -161,15 +161,93 @@ function blankCodeSpans(line) {
 // opens only when it is not glued to a letter or digit on its left, and closes only
 // when it is not glued to one on its right, so snake_case and __dunder__ inside a
 // word stay; an unmatched `_` stays. (`*` needs no handling: the slug drops it.)
-const UNDERSCORE_EMPHASIS_RE = /(^|[^\p{L}\p{N}_])(_{1,3})(?=[^\s_])(.*?[^\s_])\2(?![\p{L}\p{N}_])/gu;
+//
+// Until 1.35.x this was the regex
+//   /(^|[^\p{L}\p{N}_])(_{1,3})(?=[^\s_])(.*?[^\s_])\2(?![\p{L}\p{N}_])/gu
+// replaced with "$1$3" until nothing changed. Each pass re-scanned to the end of the
+// line from every opener without a closer, and nested emphasis took one pass per
+// level, so both shapes went quadratic. One pass is now a scan over code points with
+// next-closer tables and gives the regex's result; the passes stop at
+// MAX_EMPHASIS_PASSES, which only a heading nested deeper than that can notice.
+const MAX_EMPHASIS_PASSES = 16;
+// ASCII answers without a regex call; anything else asks the same classes the regex used.
+const isWordChar = (ch) => {
+  const code = ch.charCodeAt(0);
+  if (code < 128) return (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code === 95;
+  return /[\p{L}\p{N}_]/u.test(ch);
+};
+const isSpaceCodePoint = (ch) => {
+  const code = ch.charCodeAt(0);
+  if (code < 128) return code === 32 || (code >= 9 && code <= 13);
+  return /\s/u.test(ch);
+};
+const isLineTerminator = (ch) => ch === "\n" || ch === "\r" || ch === " " || ch === " ";
 
-function stripUnderscoreEmphasis(text) {
+function emphasisPass(text) {
+  if (!text.includes("_")) return text;
+  const cp = Array.from(text);
+  const n = cp.length;
+  const runLength = new Int32Array(n + 1);
+  for (let i = n - 1; i >= 0; i--) runLength[i] = cp[i] === "_" ? runLength[i + 1] + 1 : 0;
+  // nextCloser[k][i]: the first e >= i where a closing run of exactly k underscores
+  // starts: after a character that is neither whitespace nor "_", and not followed
+  // by a letter, digit or "_".
+  const nextCloser = [null];
+  for (let k = 1; k <= 3; k++) {
+    const table = new Int32Array(n + 1);
+    table[n] = n;
+    for (let e = n - 1; e >= 0; e--) {
+      const closes = e > 0 && runLength[e] === k && !isSpaceCodePoint(cp[e - 1]) && cp[e - 1] !== "_" &&
+        (e + k === n || !isWordChar(cp[e + k]));
+      table[e] = closes ? e : table[e + 1];
+    }
+    nextCloser.push(table);
+  }
+  const nextBreak = new Int32Array(n + 1);
+  nextBreak[n] = n;
+  for (let i = n - 1; i >= 0; i--) nextBreak[i] = isLineTerminator(cp[i]) ? i : nextBreak[i + 1];
+
+  // The emphasis whose opening run starts at `start`: [contentStart, closer, k], or null.
+  const emphasisAt = (start) => {
+    const k = runLength[start];
+    const contentStart = start + k;
+    if (k < 1 || k > 3 || contentStart >= n || isSpaceCodePoint(cp[contentStart]) || cp[contentStart] === "_") return null;
+    const closer = nextCloser[k][contentStart + 1];
+    return closer < n && closer <= nextBreak[contentStart] ? [contentStart, closer, k] : null;
+  };
+
+  let out = "";
+  let copied = 0;
+  let position = 0;
+  while (position < n) {
+    // `^` (position 0 only) is tried before `[^\p{L}\p{N}_]`, which keeps the
+    // character in front of the run.
+    let lead = 0;
+    let found = position === 0 ? emphasisAt(0) : null;
+    if (!found && !isWordChar(cp[position])) {
+      lead = 1;
+      found = emphasisAt(position + 1);
+    }
+    if (!found) {
+      position += 1;
+      continue;
+    }
+    const [contentStart, closer, k] = found;
+    out += cp.slice(copied, position + lead).join("") + cp.slice(contentStart, closer).join("");
+    position = closer + k;
+    copied = position;
+  }
+  return out + cp.slice(copied).join("");
+}
+
+export function stripUnderscoreEmphasis(text) {
   let current = text;
-  for (;;) {
-    const next = current.replace(UNDERSCORE_EMPHASIS_RE, "$1$3");
+  for (let pass = 0; pass < MAX_EMPHASIS_PASSES; pass++) {
+    const next = emphasisPass(current);
     if (next === current) return current;
     current = next;
   }
+  return current;
 }
 
 // The heading helpers below replace four regexes that backtracked in quadratic
