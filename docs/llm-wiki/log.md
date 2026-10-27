@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-27 - docs(release): 1.36.0 검색 계약 변경을 MINOR로 확정, 테스트 수 정정
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs, wiki
+- changed: `docs/llm-wiki/VERSIONING.md`(1.36.0 노트에 유지보수자의 MINOR 확정과 근거) · `CHANGELOG.md`·`CHANGELOG.ko.md`(테스트 수 683 → 724를 725로)
+- summary: 유지보수자가 검색 AND → any-term 변경을 MINOR로 확정했다. VERSIONING의 major 정의에 해당하지 않고, 예전 결과가 새 결과에 모두 포함되며, `search-docs`는 CI 게이트 밖이라 종료 코드가 그대로다. AND로 돌아가는 CLI 플래그는 다음 후보로 미뤘다.
+- evidence: `npm test` 실측 725/725(직전 항목과 CHANGELOG의 724는 마지막 수정 커밋 이전 수치)
+- caveats: 기존 항목(위 1.36.0 준비 항목의 "→ 724")은 append-only 규칙대로 고치지 않았다.
+
 ## 2026-10-27 - release: 1.36.0 준비 — 1.35.0 검토 후보 전부(로케이터·검색·check-run·섀도 기록)
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

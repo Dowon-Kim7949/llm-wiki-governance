@@ -82,7 +82,7 @@ what review dates and self-reports cannot show. It also ships the hardening merg
 
 Sized as a MINOR: new options, config keys, JSON keys, and one opt-in rule; the search change
 alters ranking and match semantics but no command, option, or exit-code contract was removed.
-Tests: 683 → 724.
+Tests: 683 → 725.
 
 ## 1.35.0 — 2026-10-26
 
