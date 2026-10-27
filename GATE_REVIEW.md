@@ -2830,7 +2830,7 @@ program — but it is a change, not a cleanup. `tests/verification.test.js` pinn
 strings and was updated in the same change, with an added assertion that **no** `npx` call in
 the template lacks `--no-install`, so the class cannot come back one line at a time.
 
-## Publish Credential Cleanup (open — recorded 2026-09-08, not decided)
+## Publish Credential Cleanup (recorded 2026-09-08 as open; decided 2026-10-27, see the end of this section)
 
 `.github/workflows/publish.yml` supplies `NODE_AUTH_TOKEN` from an `npm-release` environment
 secret. Registry metadata says that token is **not** what authenticates:
@@ -2854,6 +2854,33 @@ line that now has a correction beside it.
 re-registration happened before or after the v1.29.4 attempt, and whether a publish succeeds
 with the env removed. `npm publish --dry-run` issues no registry PUT and therefore verifies
 no credential. The cheap check after any future release is the `_npmUser` field above.
+
+**Decided 2026-10-27: the env is removed** (the maintainer's security-review instruction:
+rely on OIDC alone if the evidence supports it). Two facts the paragraphs above did not have:
+
+- The workflow carried **no** `NODE_AUTH_TOKEN` env from 1.16.1 through 1.29.2 — the archived
+  repository's `publish.yml` at `v1.16.1` and `v1.29.2` has `registry-url` and no token, and
+  the registry records OIDC for all nineteen of those versions. The shape this decision
+  returns to has published before.
+- Under the current registration (`oidc:a5a81843-…`) all eight releases from 1.29.5 to 1.35.0
+  are recorded as OIDC, so the stored token never authenticated a release.
+
+What changed: the `Publish to npm` step no longer receives the token; a preflight step fails
+the job early when npm is older than 11.5.1 or the job cannot request an OIDC token; both
+checkouts set `persist-credentials: false`; `tests/publish-workflow.test.js` fails if the
+workflow reads any `secrets.` value again. A broken registration now fails the release instead
+of falling back to a stored credential.
+
+**Still unproven, by construction:** that the next release succeeds. Only a real publish shows
+it, and none was run for this decision. If it fails with `E404` or `ENEEDAUTH`, check the
+Trusted Publisher registration first (repository, workflow file `publish.yml`, environment
+`npm-release`); putting the env back is a rollback, not a fix.
+
+**Manual follow-up, after that release succeeds and `_npmUser` again shows OIDC** (nothing
+here was done by the agent): delete the `NODE_AUTH_TOKEN` secret from the `npm-release`
+environment, revoke the matching granular token on npmjs.com, and consider the package
+setting that requires two-factor authentication and disallows tokens, which Trusted
+Publishing does not need.
 
 ## Gate-Consistency Batch Scope Decision (1.31.0, 2026-09-08 — built)
 
@@ -3125,6 +3152,59 @@ commit (no push, no tag).
 **Open, recorded for a later decision:** content-hash anchoring for drift (shadow mode
 first), approval provenance from git history, a retrieval relevance set, and a second real
 benchmark. None is started.
+
+## Security Review Batch (2026-10-27 — built, unreleased)
+
+**Origin.** A maintainer-issued maintenance cycle on 1.35.0: review the open CodeQL alerts,
+fix what is real and document what is not, harden publish authentication (decided in
+"Publish Credential Cleanup" above), and add a runnable example. No release.
+
+**The seven open CodeQL alerts** (queried from the code-scanning API on 2026-10-27, all on
+`main` at `fb55190`). Every regex verdict below was reproduced, not inferred from the rule:
+
+| # | Rule | Location | Verdict | Action |
+| --- | --- | --- | --- | --- |
+| 1 | `js/polynomial-redos` | `src/commands/fix-migrate.js` trailing-break trim | Real, quadratic. Reached only by `review --approve`, a local write command. The key search in `replaceFrontmatterScalar`, which runs first on the same input, was quadratic too and was not flagged | Both rewritten as linear scans |
+| 2 | `js/polynomial-redos` | `src/commands/import-memory.js` stem trim | Quadratic, not exploitable: the input is a file name, capped at 255 bytes on common filesystems | Rewritten anyway (index scan) |
+| 3 | `js/polynomial-redos` | `src/commands/skills.js` agent-context strip | Quadratic, not reachable with hostile input: the prompt is generated from validated agent names | Rewritten anyway (one pass) |
+| 4, 5 | `js/incomplete-url-substring-sanitization` | `tests/verification.test.js` | False positive: negative assertions that a finding message does not mention an external URL; nothing is sanitized | Unchanged; dismiss as used in tests |
+| 6 | `js/incomplete-sanitization` | `tests/verification.test.js` | Not a security issue: a test built a RegExp from a path, escaping only `.` | Replaced by a substring check |
+| 7 | `js/incomplete-multi-character-sanitization` | `src/commands/wiki-hygiene.js` heading tag strip | False positive as injection: the text only feeds `headingSlug`, which keeps letters, numbers, `-`, `_` and spaces, and is compared with link fragments, never rendered. The same line was quadratic | Rewritten with the three other heading regexes for the time bound; the alert should close because the regex is gone, not because of a suppression |
+
+**Found during the review, not flagged by CodeQL, and the most exploitable.** The three link
+extraction regexes in `src/commands/references.js` (inline, reference definition, wiki link)
+run on every wiki document in default `validate` and `audit`, and a pull request controls that
+input. One 50,000-character line of `[` held `validate` for 4.3 s; 50,000 blank lines, 4.1 s;
+the cost grows with the square. That is a CI time sink for any adopter whose workflow runs
+only llm-wiki on pull-request content. Rewritten as scanners over precomputed next-stop tables.
+After the change, 500,000-character versions of every slow shape finish `validate` in under a
+second end to end.
+
+**Evidence that nothing moved.** Differential tests compare each scanner with the regex it
+replaced on seeded random input (`tests/linear-markdown-scan.test.js`); the time-bound cases
+in the same file take 4.7–34 s on the regexes and pass on the scanners. Across nine local
+wikis (300 files, 1,737 link targets, 946 wiki links, 5,062 heading anchors), the old and new
+functions return identical results and `validate` / `audit` JSON is byte-identical.
+
+**Kept on purpose, recorded as defects for a separate decision.** The scanners reproduce two
+false negatives of the regexes: an inline link glued to the end of the previous one is not
+extracted (`[a](b)[c](d)` yields only `b`), and a reference definition swallows the line after
+it, so consecutive definitions are checked every other one. Fixing either adds
+`markdown_link.missing` findings to adopters' builds, which is a contract change, not a
+hardening.
+
+**Runnable example (built).** `examples/vue3-typescript-demo/` runs the whole loop on a Vue 3
+app: `init`, two source-backed documents, `review --approve`, a source change that makes
+`impact` exit 1, and the update that clears it. It uses `lite` with `impact.source_changed`
+switched on by an explicit rule, because `standard`/`strict` would demand four more frontend
+profile documents than a demo can keep current. It is outside `package.json` `files`, and
+`tests/vue-demo-walkthrough.test.js` runs the scenario against the current CLI so its README
+cannot drift. Its README states what the scenario showed: a document updated with the wrong
+number passes every check, and date-based `drift` misses a same-day change.
+
+**Not covered.** The black-box sweep timed `validate`, `audit` and `drift` on 31 body shapes
+and 21 frontmatter shapes; it did not cover other commands (prompt generation, release notes,
+graph), and no line-by-line audit of every regex in `src/` was done.
 
 ## Release Caveats
 

@@ -102,28 +102,114 @@ export function isExternalSourceReference(source) {
   return /^https?:\/\//i.test(source) || isCrossRepoReference(source) || source.startsWith("#");
 }
 
-export function extractMarkdownLinkTargets(markdown) {
-  const targets = [];
-  const inlineLinkPattern = /(^|[^!])\[[^\]\n]+\]\(([^)\n]+)\)/g;
-  const referenceDefinitionPattern = /^\s*\[[^\]\n]+\]:\s*(\S+)(?:\s+.*)?$/gm;
+// Link extraction runs over every wiki document in validate and audit, so a pull
+// request controls its input. Until 1.35.x it used three regexes:
+//   inline     /(^|[^!])\[[^\]\n]+\]\(([^)\n]+)\)/g
+//   reference  /^\s*\[[^\]\n]+\]:\s*(\S+)(?:\s+.*)?$/gm
+//   wiki       /\[\[([^\]\n]+)\]\]/g
+// Each one backtracked in quadratic time: one line of 50,000 "[" or 50,000 blank
+// lines held validate for 4-7 seconds, and the cost grows with the square. The
+// scanners below return the same targets in the same order, quirks included (an
+// inline link glued to the end of the previous one is skipped, and a reference
+// definition swallows the line after it). They precompute "next stop character"
+// tables so that each candidate position is decided in constant time.
+// tests/linear-markdown-scan.test.js compares them with the old regexes on
+// random input.
+const WHITESPACE = /\s/;
+const LINE_TERMINATORS = new Set(["\n", "\r", " ", " "]);
 
-  for (const match of markdown.matchAll(inlineLinkPattern)) {
-    targets.push(match[2]);
+// table[i] = the first index >= i whose character satisfies `isStop`, or text.length.
+export function nextStopTable(text, isStop) {
+  const table = new Int32Array(text.length + 1);
+  table[text.length] = text.length;
+  for (let i = text.length - 1; i >= 0; i--) {
+    table[i] = isStop(text[i]) ? i : table[i + 1];
   }
-  for (const match of markdown.matchAll(referenceDefinitionPattern)) {
-    targets.push(match[1]);
+  return table;
+}
+
+function inlineLinkTargets(text) {
+  if (!text.includes("](")) return [];
+  const targets = [];
+  const bracketStop = nextStopTable(text, (ch) => ch === "]" || ch === "\n");
+  const parenStop = nextStopTable(text, (ch) => ch === ")" || ch === "\n");
+  // A link whose "[" is at `open`: the index just past its ")", or -1.
+  const linkEnd = (open) => {
+    if (text[open] !== "[") return -1;
+    const close = bracketStop[open + 1];
+    if (close === open + 1 || text[close] !== "]" || text[close + 1] !== "(") return -1;
+    const end = parenStop[close + 2];
+    if (end === close + 2 || text[end] !== ")") return -1;
+    targets.push(text.slice(close + 2, end));
+    return end + 1;
+  };
+  let position = 0;
+  while (position < text.length) {
+    // `^` (start of input only) is tried before `[^!]`, which consumes the
+    // character in front of the "[".
+    let end = position === 0 ? linkEnd(0) : -1;
+    if (end === -1 && text[position] !== "!") end = linkEnd(position + 1);
+    position = end === -1 ? position + 1 : end;
   }
   return targets;
 }
 
-export function extractWikiLinkTargets(markdown) {
+function referenceDefinitionTargets(text) {
+  if (!text.includes("]:")) return [];
   const targets = [];
-  const wikiLinkPattern = /\[\[([^\]\n]+)\]\]/g;
-
-  for (const match of markdown.matchAll(wikiLinkPattern)) {
-    targets.push(match[1]);
+  const isSpace = (ch) => WHITESPACE.test(ch);
+  const spaceEnd = nextStopTable(text, (ch) => !isSpace(ch));
+  const wordEnd = nextStopTable(text, isSpace);
+  const bracketStop = nextStopTable(text, (ch) => ch === "]" || ch === "\n");
+  const lineEnd = nextStopTable(text, (ch) => LINE_TERMINATORS.has(ch));
+  let position = 0;
+  while (position < text.length) {
+    // `^` with the m flag: the start of input or just after a line terminator.
+    // `\s*` crosses line breaks, so leading blank lines belong to the match.
+    if (position > 0 && !LINE_TERMINATORS.has(text[position - 1])) {
+      position += 1;
+      continue;
+    }
+    const open = spaceEnd[position];
+    const close = open < text.length ? bracketStop[open + 1] : open;
+    if (text[open] !== "[" || close === open + 1 || text[close] !== "]" || text[close + 1] !== ":") {
+      position += 1;
+      continue;
+    }
+    const valueStart = spaceEnd[close + 2];
+    const valueEnd = wordEnd[valueStart];
+    if (valueEnd === valueStart) {
+      position += 1;
+      continue;
+    }
+    targets.push(text.slice(valueStart, valueEnd));
+    // `(?:\s+.*)?$`: any whitespace after the value (line breaks included), then
+    // the rest of that line.
+    position = valueEnd === text.length ? valueEnd : lineEnd[spaceEnd[valueEnd]];
   }
+  return targets;
+}
 
+export function extractMarkdownLinkTargets(markdown) {
+  return [...inlineLinkTargets(markdown), ...referenceDefinitionTargets(markdown)];
+}
+
+export function extractWikiLinkTargets(markdown) {
+  if (!markdown.includes("]]")) return [];
+  const targets = [];
+  const bracketStop = nextStopTable(markdown, (ch) => ch === "]" || ch === "\n");
+  let position = 0;
+  while (position < markdown.length) {
+    if (markdown[position] === "[" && markdown[position + 1] === "[") {
+      const close = bracketStop[position + 2];
+      if (close > position + 2 && markdown[close] === "]" && markdown[close + 1] === "]") {
+        targets.push(markdown.slice(position + 2, close));
+        position = close + 2;
+        continue;
+      }
+    }
+    position += 1;
+  }
   return targets;
 }
 

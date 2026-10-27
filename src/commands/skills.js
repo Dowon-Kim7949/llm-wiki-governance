@@ -247,10 +247,30 @@ function manifestContractSection(task) {
 // don't belong in a committed, agent-invoked artifact: the ephemeral "Workspace:"
 // block (the agent already runs in the repo) and the generic "Target agent context:"
 // clause (the artifact IS the agent's). The task workflow itself is unchanged.
-function forArtifact(prompt) {
-  return prompt
-    .replace(/\n\nWorkspace:\n[^\n]*\n/, "\n")
-    .replace(/ Target agent context: [^.\n]*\./, "");
+export function forArtifact(prompt) {
+  return dropAgentContextClause(prompt.replace(/\n\nWorkspace:\n[^\n]*\n/, "\n"));
+}
+
+// Removes the first " Target agent context: <agents>." that ends at a "." before
+// any line break. The regex form, / Target agent context: [^.\n]*\./, re-scanned
+// the same tail from every occurrence of the marker and went quadratic (CodeQL
+// js/polynomial-redos). The prompt is generated here from validated agent names,
+// so this was never reachable with hostile input; the scan just costs one pass.
+const AGENT_CONTEXT_MARKER = " Target agent context: ";
+
+function dropAgentContextClause(text) {
+  let from = 0;
+  for (;;) {
+    const start = text.indexOf(AGENT_CONTEXT_MARKER, from);
+    if (start === -1) return text;
+    const clauseStart = start + AGENT_CONTEXT_MARKER.length;
+    let stop = clauseStart;
+    while (stop < text.length && text[stop] !== "." && text[stop] !== "\n") stop += 1;
+    if (text[stop] === ".") return text.slice(0, start) + text.slice(stop + 1);
+    // Every marker before `stop` would reach the same line break or the end.
+    if (stop === text.length) return text;
+    from = stop + 1;
+  }
 }
 
 // --- token-budget metadata ------------------------------------------------

@@ -97,12 +97,25 @@ export function parseEccMemory(raw) {
 export function importedDocName(fields, sourceFile) {
   const id = typeof fields.id === "string" ? fields.id.trim() : "";
   if (MEMORY_ID_PATTERN.test(id)) return `${id}.md`;
-  const stem = path.basename(sourceFile)
+  const stem = trimDashesAndDots(path.basename(sourceFile)
     .replace(/\.md$/i, "")
     .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
-    .replace(/^[-.]+|[-.]+$/g, "");
+    .replace(/[^a-z0-9._-]+/g, "-"));
   return `${stem || "memory"}.md`;
+}
+
+// Leading and trailing "-" / "." removed with index scans. The regex form,
+// /^[-.]+|[-.]+$/g, retried the trailing branch from every dash in a run and went
+// quadratic (CodeQL js/polynomial-redos). A file name is capped at 255 bytes on
+// common filesystems, so that was never slow in practice; the scan just has no
+// such dependency.
+function trimDashesAndDots(text) {
+  const edge = (ch) => ch === "-" || ch === ".";
+  let start = 0;
+  let end = text.length;
+  while (start < end && edge(text[start])) start += 1;
+  while (end > start && edge(text[end - 1])) end -= 1;
+  return text.slice(start, end);
 }
 
 export async function importMemoryCommand(options) {

@@ -42,6 +42,19 @@ Add `--skills` (or `--agent claude|codex|cursor`) to also generate invocable, wi
 
 The CLI itself needs no model. Only the enrichment step does, and that step decides quality. Use your agent's strongest reasoning model for the first wiki build; routine `docs-sync` runs fine on a cheaper one.
 
+## Try it on a demo app
+
+[`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo) is a small Vue 3 + TypeScript task list with a wiki written from its source. It walks through the full loop: `init`, two source-backed docs, `validate --strict`, `review --approve`, then a code change (a title limit goes from 80 to 120) that makes `impact` exit 1 until the doc is updated and approved again.
+
+```bash
+git clone https://github.com/Dowon-Kim7949/llm-wiki-governance.git
+cd llm-wiki-governance/examples/vue3-typescript-demo
+npm install
+npm run demo    # runs every step in a temporary git repo; ends with "All 11 checks passed."
+```
+
+It needs Node.js 20.19+ (for Vite) and git, and no API key or AI service. The demo's README has the same steps to run by hand. It also shows the limits: `impact` is file-level, so a doc updated with the *wrong* number passes too, and date-based `drift` misses a change committed the same day as the review.
+
 ## Why not just an AGENTS.md or CLAUDE.md?
 
 Keep those files: this tool generates them and points them at the wiki. An instruction file tells an agent how to work. It does not record whether a statement was reviewed, which code it came from, or whether that code has changed since. That record is what this tool adds.
@@ -165,6 +178,7 @@ Every exposed tool is read-only. An agent can query the wiki but never write to 
 | Look up every command, option, and exit code | `npx llm-wiki-governance help <command>` · [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) (Korean prose) |
 | Understand the trust model or report a vulnerability | [SECURITY.md](./SECURITY.md) |
 | See what was measured, and what was not | [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md) (Korean prose) · [BENCHMARK_DISCLOSURE.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/BENCHMARK_DISCLOSURE.md) |
+| Run a demo end to end | [examples/vue3-typescript-demo](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo) |
 | Follow worked examples | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) (Korean prose) |
 | Read history and direction | [CHANGELOG.md](./CHANGELOG.md) · [ROADMAP.md](./ROADMAP.md) |
 | Check accepted safety scopes and release gates | [GATE_REVIEW.md](./GATE_REVIEW.md) (a long decision record) |

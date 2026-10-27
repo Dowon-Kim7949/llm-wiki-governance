@@ -10,7 +10,7 @@ last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-26
+reviewed_at: 2026-10-27
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -92,12 +92,10 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (10 entries, 2026-07-14 → 2026-08-03) are archived in [REVIEW_HISTORY.md](../REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](../log.md).
+Older review notes (11 entries, 2026-07-14 → 2026-08-03) are archived in [REVIEW_HISTORY.md](../REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](../log.md).
 
-- 2026-08-03에 도메인 지도의 **거짓이 된 문장 하나**를 고쳤다. Change tracking 항목이 `impact`와 `check-run`을 묶어 "둘 다 기본 warning이며 `--strict`로 CI를 실패시킨다"고 적고 있었는데, 결정 21 이후 앞의 절반만 참이다. 두 명령을 갈라 적었다. 함께: `check-run`의 추적분 우선 선택과 신규 교차검증, Migrate & Repair의 `--watch-needs-review` 옵트인, `release_notes` 면제. **이 문서가 같은 배치에서 두 번째로 옳았다** — 지도가 자기 완전성 계약을 스스로 선언해 둔 덕분에 재스탬프로 넘길 뻔한 갱신을 잡았고, 이번에는 게이트가 아니라 문장 자체가 낡았다.
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`(기본 error)가 이 문서를 지목해 인용 소스를 재확인했다: `src/cli.js`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서가 `src/cli.js`에서 취하는 것은 **명령 디스패치 목록**인데 이번 diff는 `drift` 한 명령의 도움말 문자열만 건드렸고 명령 집합·분류·개수(30)는 그대로다 — 명령어군 지도 **불변**. 본문 변경 없음.
-
 - 2026-09-07(1.30.0)에 거버넌스 모드를 반영해 **Domains 지도에 항목 하나를 추가하고 MCP 툴 수를 고쳤다**(`Governance level` — `mode`·`backfill`; 17종 → 18종). `impact.source_changed`가 지목한 인용 소스 3건(`src/commands.js`·`src/cli.js`·`src/mcp/tools.js`)의 변경은 새 명령 2종 등록·`--mode` 옵션·읽기 전용 `mode` MCP 툴 추가이고, 기존 12개 도메인 항목의 서술은 어느 것도 거짓이 되지 않았다 — **지도에 없는 명령군이 생긴 것**과 이 문서가 직접 나열하는 툴 수가 낡은 것이 실제 공백이었다. **(이어서)** 같은 배치의 도그푸딩이 `backfill`의 결함 2건을 드러내 `src/commands.js`가 다시 바뀌었다. 이 지도의 `Governance level` 항목이 적은 계약(“아무도 기록하지 않은 근거는 발명하지 않는다”)은 그대로 유효하고, 수정은 그 계약을 **더 정확히** 만든 것이다 — 못 찾았을 때 “저장소에 없다”가 아니라 “내가 뒤진 곳에 없다”고 말하게 했다. 항목 본문 **불변**.
-
 - 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 `impactCommand` 근거 줄에 1.31.0 변경 2건을 더했다: 앵커 매칭이 경로 prefix가 돼 디렉터리 앵커도 발화하고(N-8), 요약·JSON에 additive `stamp_only_exclusions`가 붙어 검토 스탬프만으로 자기제외된 문서를 이름으로 보고한다(N-9, exit code 불변). 같은 커밋이 `validateCommand`·`checkRunCommand`·`harnessHealthCommand`의 요약 키를 `mode:` → `strict:` + `governance_mode:`로 쪼갰지만, 이 문서는 그 세 명령을 **역할 수준**으로만 서술하고 요약 필드명을 박아 두지 않았으므로 해당 줄들은 **불변**이다 — 필드 계약은 `PUBLIC_API.md`가 소유한다.
 - 2026-10-26에 `impact.source_changed`가 이 문서를 지목했다(인용 소스 `src/commands/retrieval.js`). 변경은 `get-doc`이 frontmatter를 redaction 없이 돌려주던 결함의 수정이다. Retrieval 도메인 항목이 "반환 본문·스니펫은 민감 라인을 redact한다"고만 적고 있어서, frontmatter 값(`get-doc`의 echo, 제목·태그)도 같은 스캔으로 가린다는 것을 한 구절 더했다. 같은 날 두 번째 수정으로, 헤더만 탐지되는 PEM 블록은 이제 END 줄까지 통째로 가려진다(전에는 키 본문 줄이 반환됐다). 이것도 한 구절로 반영했다. 이것은 도메인 경계·명령 귀속·Evidence의 변경이 아니라 **계약 서술의 정밀화**이며, 수정 전에는 그 문장이 frontmatter에 대해 거짓이었다. 필드 단위 계약은 `PUBLIC_API.md`가 소유한다. 에이전트(Claude Code) 편집이므로 `needs_review`로 둔 뒤 이 저장소 규칙대로 자체 승인한다. 같은 날 1.35.0 준비에서 `src/commands.js`·`src/cli.js` 변경으로 다시 지목됐다. Change tracking 항목에 `impact`의 PR 리포트 출력(`Documents to re-review` 표, JSON `impactedDocuments`)을 한 문장 더했다. `cli.js` 변경은 도움말 문구뿐이라 명령 집합·분류(32개)는 그대로다.
+- 2026-10-27(보안 검토)에 `impact`가 인용 소스 `import-memory.js`·`fix-migrate.js`의 변경으로 이 문서를 지목했다. 파일 이름 정리와 frontmatter 스칼라 갱신을 선형 스캔으로 바꾼 변경이고 결과가 같다(차분 테스트). 도메인 지도는 그대로이며 본문은 **불변**이다.

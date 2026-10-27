@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-governance
-last_updated: 2026-10-21
+last_updated: 2026-10-27
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-26
+reviewed_at: 2026-10-27
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -27,6 +27,8 @@ contains_sensitive_info: false
 # Examples
 
 실제로 검증된 사용 예시입니다. 명령/옵션 근거는 [Public Api](PUBLIC_API.md).
+
+처음부터 끝까지 직접 실행해 볼 수 있는 예제는 저장소의 `examples/vue3-typescript-demo/`에 있습니다(2026-10-27). Vue 3 + TypeScript 할 일 앱에서 `init --write` → 소스 근거 문서 2종 → `validate --strict` → `review --approve` → 소스 변경 → `impact` exit 1 → 문서 갱신·재승인 → `impact` exit 0을 `npm run demo` 한 번으로 돌립니다. lite 모드에 `impact.source_changed` 규칙 하나만 켜는 구성이고, `tests/vue-demo-walkthrough.test.js`가 CI마다 현재 CLI로 같은 시나리오를 실행합니다. npm 패키지에는 들어가지 않습니다.
 
 ## Zero-base 프로젝트 초기화
 
@@ -169,11 +171,10 @@ llm-wiki explain content.not_enriched
 
 ## Review Notes
 
-Older review notes (10 entries, 2026-07-13 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (11 entries, 2026-07-13 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `src/cli.js`, `README.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서의 예제는 `drift`의 usage 요약을 인용하지 않고(직전 노트에서 추가한 것은 `impact` CI 레시피다), README 변경은 Upgrading 절의 **배포 상태 문장**(“다음 릴리스는 MAJOR·미릴리스” → “1.28.0으로 배포”)과 액션 핀 문자열이라 예제가 재현하는 동작에 영향이 없다 — **불변**. 본문 변경 없음.
 - 2026-08-19(1.29.2 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 이번 릴리스 커밋의 README 변경은 **액션 핀 한 줄**(`@v1.29.1` → `@v1.29.2`)이 전부이고, 이 문서의 CI 레시피는 핀 문자열을 재현하지 않는다(인용하는 것은 `impact --since`의 exit 계약과 완화 설정 두 가지다) — 예제가 재현하는 동작에 영향이 없어 본문 **불변**. 1.29.2의 실기능(`delegationPolicy`)은 생성 프롬프트 안의 문장이라 예제 명령 표면을 바꾸지 않는다. 2026-08-03(1.28.0)·2026-08-06(1.29.1)과 같은 유형이다. 상한 5건을 지키려고 최고령 1건(2026-07-23, `--doc-lang` 예시 추가)을 `REVIEW_HISTORY.md`의 `Examples` 절로 원문 그대로 옮겼다.
-
 - 2026-09-07(1.30.0)에 거버넌스 모드 예제 절(`평소에는 lite, 인수인계 전에 strict`)을 추가했다. `impact.source_changed`가 지목한 인용 소스 2건(`src/cli.js`·`README.md`)의 변경은 `mode`/`backfill` 명령·`--mode` 옵션 등록과 README의 새 절이라 기존 예제 절은 전부 그대로 유효하다 — **새 워크플로를 보여줄 예제가 없다**는 것이 실제 공백이었다.
 - 2026-09-08에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README를 소개와 핵심 기능 위주로 축약하면서, `impact`의 exit 계약과 완화 설정 두 가지를 적어 두던 Upgrading 절이 README에서 빠지고 그 상세가 `CHANGELOG`(1.28.0)로 넘어갔다. 이 문서의 CI 레시피는 README를 인용하는 것이 아니라 그 계약 자체를 재현하므로 예제는 전부 그대로 유효하다 — `impact --since`가 플래그 없이 exit 1이라는 것도, `rules`의 `warning`/`info`/`off`와 `rulesPreset: "relaxed"`도 제품 동작이 바뀐 것이 아니라 서술 위치만 옮겼다. 거버넌스 모드 예제 절도 README의 요약본이 아니라 실제 명령을 재현하므로 영향이 없다. 본문 **불변**. 상한 5건을 지키려고 최고령 1건(2026-08-03, Review Notes 상한 집행 배치)을 `REVIEW_HISTORY.md`의 `Examples` 절로 원문 그대로 옮겼다.
 - 2026-10-26에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 대조했다. 루트 README의 구성을 바꿨다: 동작 방식 다이어그램, 지시 파일과의 비교표, "하지 않는 일", 별도의 CI 절, 도입·운영 비용, 문제 해결 표, 문서 안내 표를 더하고, 사실보다 넓게 말하던 문장(모든 주장이 코드에 묶인다, 어떤 스택·에이전트에서나 동작한다)을 고쳤다. 이 문서가 README에서 재현하는 것은 CI 레시피의 `impact --since` exit 계약과 완화 설정 두 가지다. 그 문단("Before you add `impact` to a required check")은 문구 그대로 남았고, 액션 핀도 `@v1.34.0` 그대로다. README 명령 표에 새로 오른 `doctor`·`next`·`explain`은 신규 명령이 아니라 기존 명령을 표에 올린 것이므로, 예제가 재현하는 명령 표면·옵션에는 변화가 없다. 본문 **불변**. 같은 날 1.35.0 준비에서 다시 지목됐다(`src/cli.js`·`README.md`). 이번에는 본문을 고쳤다. CI 예시의 버전 핀을 `@1.35`로 올렸고(README 핀은 `@v1.35.0`), 실패한 `impact`를 읽는 법을 N-13 예외 다음에 한 문단으로 더했다. 새 `Documents to re-review` 표, JSON `impactedDocuments`, 액션의 job summary가 그 내용이다.
+- 2026-10-27에 `impact`가 인용 소스 `README.md`의 변경으로 이 문서를 지목했다. 루트 README에 실행 가능한 Vue 3 데모(`examples/vue3-typescript-demo/`) 절이 생겼으므로 머리말에 그 예제를 한 단락으로 소개했다. 기존 예시들은 그대로다.

@@ -8,6 +8,10 @@ commands into your own repo.
 This lives outside `docs/llm-wiki/` on purpose: it is a tutorial, not a governed
 wiki document.
 
+For a runnable version of the same loop, see
+[`vue3-typescript-demo/`](./vue3-typescript-demo/README.md): a small Vue 3 app where
+`npm run demo` executes every step, including a source change that `impact` catches.
+
 The loop in one line: **the CLI scaffolds → an agent enriches from real code
 (stays `needs_review`) → a human reviews and promotes to `verified`.** No command
 the CLI runs can promote a document on its own.
