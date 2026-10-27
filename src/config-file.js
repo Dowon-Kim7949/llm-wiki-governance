@@ -15,6 +15,28 @@ export const CONFIG_FILENAME = "llm-wiki.config.json";
 // refuses to toggle safety rules (the sensitive-info category).
 export const RULE_TOGGLE_ACTIONS = new Set(["off", "blocked", "error", "warning", "info"]);
 
+// One checkRun.ignore entry: "dir/", "*.ext", or an exact posix path, relative to
+// the repository root. Anything else — another wildcard, a backslash, an absolute
+// or climbing path — is refused rather than read as a literal path that would
+// never match.
+function isCheckRunIgnoreEntry(entry) {
+  if (typeof entry !== "string" || entry !== entry.trim() || entry === "") return false;
+  if (entry.startsWith("/") || entry.includes("\\") || /[?[\]{}]/.test(entry)) return false;
+  if (entry.split("/").some((segment) => segment === ".." || segment === ".")) return false;
+  if (entry.startsWith("*.")) return entry.length > 2 && !/[*/]/.test(entry.slice(2));
+  return !entry.includes("*") && !entry.includes("//");
+}
+
+// Whether a repository-relative posix path is covered by checkRun.ignore.
+export function checkRunIgnored(file, patterns) {
+  if (!Array.isArray(patterns)) return false;
+  return patterns.some((pattern) => {
+    if (pattern.endsWith("/")) return file.startsWith(pattern);
+    if (pattern.startsWith("*.")) return file.endsWith(pattern.slice(1));
+    return file === pattern;
+  });
+}
+
 // Conservative v1 schema: persistent defaults that mirror existing CLI options.
 // Unknown keys are ignored so the contract can grow without breaking old files.
 export async function loadProjectConfig(cwd) {
@@ -249,6 +271,31 @@ export async function loadProjectConfig(cwd) {
     }
   }
 
+  // Paths `check-run` leaves out of BOTH run.doc_gap and run.change_set_undeclared
+  // (F-6): prose such as README.md or outputs/ that no wiki document is meant to
+  // cite. One list for both rules, because excluding a path from only one of them
+  // just moves the warning to the other. Three entry forms and no glob engine:
+  // "dir/" (everything under a directory), "*.ext" (a file extension at any
+  // depth), or an exact repository-relative path. Strict like wikiBudget — a
+  // malformed entry is a config error, never a silently ignored pattern.
+  if ("checkRun" in parsed) {
+    const checkRun = parsed.checkRun;
+    if (checkRun === null || typeof checkRun !== "object" || Array.isArray(checkRun)) {
+      errors.push(`${CONFIG_FILENAME}: "checkRun" must be an object.`);
+    } else {
+      const unknown = Object.keys(checkRun).filter((key) => key !== "ignore");
+      if (unknown.length > 0) {
+        errors.push(`${CONFIG_FILENAME}: "checkRun" accepts only ignore (unknown: ${unknown.join(", ")}).`);
+      }
+      const ignore = checkRun.ignore;
+      if (!Array.isArray(ignore) || ignore.length === 0 || ignore.some((entry) => !isCheckRunIgnoreEntry(entry))) {
+        errors.push(`${CONFIG_FILENAME}: "checkRun.ignore" must be a non-empty array of "dir/", "*.ext", or exact repository-relative paths (no other wildcards, no leading "/" or "..").`);
+      } else {
+        config.checkRun = { ignore: [...ignore] };
+      }
+    }
+  }
+
   // Prompt profile (1.33.0): which rendering of the generated agent prompts and
   // skills this project wants. An unknown value is a config error, never a silent
   // fallback to `full` — a project that asked for the short text and quietly got
@@ -341,6 +388,9 @@ export function mergeConfigIntoOptions(options, config) {
   }
   if (Array.isArray(config.agentReviewers) && options.agentReviewers == null) {
     options.agentReviewers = [...config.agentReviewers];
+  }
+  if (config.checkRun && options.checkRunIgnore == null) {
+    options.checkRunIgnore = [...config.checkRun.ignore];
   }
   // CLI --prompt-profile wins; config promptProfile only fills an unset value.
   if (options.promptProfile == null && isPromptProfile(config.promptProfile)) {

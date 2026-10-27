@@ -1278,6 +1278,12 @@ Strict / CI (see GATE_REVIEW.md "Agent Update Runner ... Scope Decision", Gate 2
   - Toggle/override per project via llm-wiki.config.json rules
     ("run.doc_gap": "off"|"error"|...). File-level; proves the pipeline ran, not
     that the prose is correct.
+  - Prose that no wiki document is meant to cite (README.md, outputs/) can be
+    left out with "checkRun": { "ignore": ["outputs/", "*.md", "README.md"] } in
+    llm-wiki.config.json. The list applies to BOTH run.doc_gap and
+    run.change_set_undeclared, accepts only "dir/", "*.ext", or exact paths, and
+    every ignored path is listed in the report (JSON: ignored[]). Nothing is
+    ignored by default.
 `,
   "harness-health": `llm-wiki harness-health
 

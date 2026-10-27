@@ -5,7 +5,7 @@ import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PR
 import { detectProject, detectWorkspaces } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
-import { CONFIG_FILENAME, loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
+import { CONFIG_FILENAME, checkRunIgnored, loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { hasRequiredField, parseFrontmatter, validateFrontmatter } from "./frontmatter.js";
 import { schemaRequiredFields } from "./frontmatter-schema.js";
 import { renderTextReport } from "./report.js";
@@ -1457,9 +1457,18 @@ export async function checkRunCommand(options) {
   for (const docRel of touchedDocs) {
     for (const base of await docSourceAnchors(cwd, docRel)) covered.add(base);
   }
+  // checkRun.ignore (config, F-6): paths the project declared as prose that no
+  // wiki document is meant to cite. They leave BOTH checks below and are listed
+  // in `ignored`, so the exemption is visible in every report rather than silent.
+  const ignorePatterns = options.checkRunIgnore;
+  const ignored = new Set();
   for (const src of changedSource) {
     const norm = toPosix(src.split("#")[0].trim());
     if (!norm || isExternalSourceReference(norm)) continue;
+    if (checkRunIgnored(norm, ignorePatterns)) {
+      ignored.add(norm);
+      continue;
+    }
     if (!covered.has(norm)) {
       findings.push({
         severity: "warning",
@@ -1488,6 +1497,10 @@ export async function checkRunCommand(options) {
     for (const file of actual.map((entry) => toPosix(entry))) {
       if (file.startsWith("docs/llm-wiki/") || file.startsWith(".llm-wiki/")) continue;
       if (declared.has(file)) continue;
+      if (checkRunIgnored(file, ignorePatterns)) {
+        ignored.add(file);
+        continue;
+      }
       undeclared.push(file);
     }
   }
@@ -1540,7 +1553,8 @@ export async function checkRunCommand(options) {
   return finishCheckRun(options, relManifest, applyRuleConfig(findings, options), {
     task: typeof manifest.task === "string" ? manifest.task : null,
     changedSource: changedSource.length,
-    touchedDocs: touchedDocs.length
+    touchedDocs: touchedDocs.length,
+    ignored: [...ignored].sort()
   });
 }
 
@@ -1614,12 +1628,15 @@ function finishCheckRun(options, relManifest, findings, extra = {}) {
   if (extra.changedSource !== undefined) {
     summary.push(`changed_source: ${extra.changedSource}`, `touched_docs: ${extra.touchedDocs}`);
   }
+  const ignored = extra.ignored ?? [];
+  if (ignored.length > 0) summary.push(`ignored (checkRun.ignore): ${ignored.length} (${ignored.join(", ")})`);
   summary.push(`findings: ${findings.length}`);
 
   return withText({
     command: "check-run",
     result,
     manifest: relManifest,
+    ignored,
     findingSummary,
     findings
   }, "LLM-WIKI Check-Run", [
@@ -1628,7 +1645,8 @@ function finishCheckRun(options, relManifest, findings, extra = {}) {
     { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
     { title: "Caveats", body: [
       "Read-only: check-run verifies a skill run's manifest under .llm-wiki/runs/; it never writes. The manifest is authored by the agent during its own run.",
-      "Default warning; use --strict (for CI) to fail, or set \"run.*\" in llm-wiki.config.json rules. File-level — it proves the pipeline ran, not that the prose is correct."
+      "Default warning; use --strict (for CI) to fail, or set \"run.*\" in llm-wiki.config.json rules. File-level — it proves the pipeline ran, not that the prose is correct.",
+      "Paths matched by checkRun.ignore in llm-wiki.config.json (\"dir/\", \"*.ext\", or exact paths) leave both run.doc_gap and run.change_set_undeclared and are listed as ignored. Nothing is ignored unless the project configures it."
     ] }
   ]);
 }
