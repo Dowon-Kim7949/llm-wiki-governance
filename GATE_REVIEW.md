@@ -3234,7 +3234,7 @@ which is how a 100,000-character heading took 9.8 s. Real headings nest three le
 scanners. Across nine local wikis, 5,065 anchors and 2,907 `## ` lines give identical results,
 and `validate` / `audit` JSON is byte-identical.
 
-## Link-Extraction False Negatives (open — recorded 2026-10-27, measured, not decided)
+## Link-Extraction False Negatives (recorded 2026-10-27 as open; decided and built the same day, unreleased)
 
 The scanners from "Security Review Batch" reproduce two behaviours of the regexes they
 replaced, and both hide links from every caller of `extractMarkdownLinkTargets`:
@@ -3259,6 +3259,17 @@ cost lands only on documents written in these shapes, as new `markdown_link.miss
 and new `fix` stubs for links that were broken all along. It is still a change to what a
 shipped check reports, so it waits for the maintainer's decision, and the differential tests
 that currently pin both behaviours change in the same pull request.
+
+**Decided 2026-10-27: fix both (maintainer).** Built as recommended. `inlineLinkTargets`
+checks the character before `[` without consuming it, and `referenceDefinitionTargets` ends
+a definition at its own line; a destination on the line after the colon is still accepted.
+The differential tests now compare against regexes that state the corrected behavior (234
+and 70 of their 6,000 random inputs separate old from new). The two assertions that pinned
+the false negatives are inverted, and an integration test checks that `validate` reports
+both broken targets. It fails on the previous code. Re-measured with the real change:
+nine local wikis give results identical to `main` in `validate`, `audit`, `graph` and the
+`fix` preview. **This is a change in what a shipped check reports**, so the release that
+carries it names it, like the 1.31.0 exceptions.
 
 ## Release Caveats
 
