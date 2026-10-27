@@ -1270,7 +1270,7 @@ Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
     resolution path (N-11); see llm-wiki explain impact.stamp_only.
   - Opt in to "review.unattested_promotion": "warning" to name wiki documents
     that became verified in this diff while their review stamp did not move
-    (reviewed_at missing or unchanged): the hand-edited status that validate
+    (reviewed_at missing, or unchanged and older than today): the hand-edited status that validate
     cannot see. A cheap signal, not proof; see llm-wiki explain
     review.unattested_promotion.
 `,

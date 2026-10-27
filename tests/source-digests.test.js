@@ -136,6 +136,24 @@ test("a review stamp that adds source_digests is still a stamp-only change for i
   assert.deepEqual(result.stampOnlyExclusions, ["docs/llm-wiki/api.md"]);
 });
 
+test("a cited wiki document's review stamp is not a content change", async () => {
+  // Found on this repository: one approve-all stamped a document that cites another
+  // wiki document, then stamped the cited one, and the first digest was stale
+  // minutes later. A Markdown source is digested by its body.
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "llm-wiki-digests-md-"));
+  await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
+  const cited = path.join(cwd, "docs", "llm-wiki", "cited.md");
+  await writeFile(cited, "---\ntitle: Cited\nstatus: needs_review\n---\n\n# Cited\n\nBody.\n", "utf8");
+  const citing = { status: "verified", source_files: ["docs/llm-wiki/cited.md"] };
+  const [before] = await currentSourceDigests(cwd, citing);
+
+  await writeFile(cited, "---\ntitle: Cited\nstatus: verified\nreviewed_at: 2026-10-27\n---\n\n# Cited\n\nBody.\n", "utf8");
+  assert.equal((await currentSourceDigests(cwd, citing))[0].digest, before.digest, "a stamp leaves the digest alone");
+
+  await writeFile(cited, "---\ntitle: Cited\nstatus: verified\n---\n\n# Cited\n\nNew body.\n", "utf8");
+  assert.notEqual((await currentSourceDigests(cwd, citing))[0].digest, before.digest, "a body edit changes it");
+});
+
 test("upsertFrontmatterList replaces the whole block, or appends it", () => {
   const inner = ["title: A", "source_digests:", "  - a sha256:0000000000000000", "- b sha256:1111111111111111", "status: verified"].join("\r\n");
   assert.equal(

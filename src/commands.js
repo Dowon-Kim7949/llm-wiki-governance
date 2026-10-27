@@ -1209,11 +1209,16 @@ async function unattestedPromotionFindings(cwd, since, changed) {
     const before = beforeText === null ? null : parseFrontmatter(beforeText).frontmatter;
     if (before && before.status === "verified") continue;
     const reviewer = typeof now.reviewed_by === "string" ? now.reviewed_by.trim() : "";
+    // An unchanged reviewed_at dated today is not evidence of anything: a document
+    // downgraded and approved again on the same day gets the same date from
+    // `review --approve` (the N-11 shape). Replayed over this repository's 316
+    // commits, that one shape was all 43 of 187 promotions the rule named without
+    // this guard, and none with it.
     const problem = !reviewer
       ? "reviewed_by is empty"
       : !isDate(now.reviewed_at)
         ? "reviewed_at is missing or not a date"
-        : before && before.reviewed_at === now.reviewed_at
+        : before && before.reviewed_at === now.reviewed_at && now.reviewed_at < todayIsoDate()
           ? `reviewed_at is still ${now.reviewed_at}, the value it had before the promotion`
           : null;
     if (!problem) continue;

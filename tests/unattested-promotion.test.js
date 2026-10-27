@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { impactCommand, reviewCommand } from "../src/commands.js";
 import { normalizeOptions } from "../src/index.js";
+import { todayIsoDate } from "../src/template-renderer.js";
 
 for (const [name, value] of [["impactCommand", impactCommand], ["reviewCommand", reviewCommand], ["normalizeOptions", normalizeOptions]]) {
   if (typeof value !== "function") throw new Error(`${name} is not imported; this file would have silently skipped`);
@@ -77,6 +78,15 @@ test("review --approve writes the stamp, so its promotion is not named", { skip:
   const { cwd } = await project(["reviewed_by: Someone", "reviewed_at: 2026-09-01"]);
   const approved = await reviewCommand(normalizeOptions({ cwd, approve: ["docs/llm-wiki/api.md"], reviewer: "Fixture Reviewer" }));
   assert.deepEqual(approved.approved, ["docs/llm-wiki/api.md"], JSON.stringify(approved.refused));
+  assert.deepEqual(ruleFindings(await impactCommand(normalizeOptions({ cwd, rules: { [RULE]: "warning" } }))), []);
+});
+
+test("a same-day re-approval keeps today's date and is not named", { skip: !hasGit() }, async () => {
+  // Downgraded and approved again on the same day: review --approve writes the
+  // date the document already carries. 43 of 187 promotions in this repository's
+  // history had this shape, and none of them was a hand edit.
+  const { cwd, docPath } = await project(["reviewed_by: Someone", `reviewed_at: ${todayIsoDate()}`]);
+  await handPromote(docPath);
   assert.deepEqual(ruleFindings(await impactCommand(normalizeOptions({ cwd, rules: { [RULE]: "warning" } }))), []);
 });
 

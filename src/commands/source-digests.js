@@ -13,6 +13,7 @@ import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { readUtf8 } from "../encoding.js";
+import { parseFrontmatter } from "../frontmatter.js";
 import { locatedRegion, locatorLabel, narrowingLocators, verifiedSourceAnchors } from "./scans.js";
 
 const DIGEST_MARKER = " sha256:";
@@ -47,6 +48,17 @@ export async function currentSourceDigests(cwd, frontmatter) {
   return entries;
 }
 
+// A Markdown source with frontmatter is digested by its body alone. Its frontmatter
+// carries the review stamp, and one `review --approve-all` that stamps two
+// documents where one cites the other changed the cited file after the citing one
+// had been digested — a stale digest minutes old, measured on this repository.
+// Locators already point into the body, so only whole-file digests change.
+function digestedText(source, content) {
+  if (!/\.mdx?$/i.test(source)) return content;
+  const parsed = parseFrontmatter(content);
+  return parsed.frontmatter ? parsed.body : content;
+}
+
 async function digestFor(cwd, source, locators) {
   let content;
   try {
@@ -56,7 +68,7 @@ async function digestFor(cwd, source, locators) {
   } catch {
     return null;
   }
-  if (!locators) return digestText(content);
+  if (!locators) return digestText(digestedText(source, content));
   const regions = locators.map((locator) => locatedRegion(content, locator));
   if (regions.some((region) => region === null)) return null;
   return digestText(regions.join("\u0000"));
