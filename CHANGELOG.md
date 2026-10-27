@@ -6,6 +6,54 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.37.0 — 2026-10-27
+
+A follow-through release for 1.36.0. The date-based `drift` reads a cited Markdown section
+the way `impact` already does, `search-docs` gets its old match rule back as an option, and
+the search numbers are re-measured on queries the ranker was never chosen on. Upgrade if
+your wiki cites sections of long Markdown files, or if a script relied on search matching
+every term.
+
+- **`drift` honors Markdown section citations.**
+  - A file cited only in `evidence`, and only through line ranges or sections of a Markdown
+    file (`#section:Usage`), is now checked region by region. Line ranges were already
+    narrowed with `git log -L`. A section is compared between the repository as of the end
+    of the review day (the same committer-date boundary the date check uses) and `HEAD`.
+  - When the file changed but no cited region did, the citation is listed under the new
+    JSON key `locatorNarrowed` and the summary line `locator_narrowed`, the same shape
+    `impact` uses, instead of drifting. Line-range narrowings are now reported there too;
+    they used to be silent.
+  - Everything that cannot be compared exactly still drifts at file level: a file also in
+    `source_files` or cited bare, `#symbol:` and `#route:`, a section of a non-Markdown file,
+    no review-day snapshot, and a heading that matches zero or several headings on either
+    side. Renaming the cited heading therefore drifts the document.
+  - The snapshot is chosen by committer date, so it inherits the late-merge limit (N-15).
+    When it is wrong, it can only flag a document, not hide one.
+- **`search-docs --all-terms`** (MCP `search_docs`: `allTerms`) keeps only documents that
+  contain every query term, the rule before 1.36.0, ranked the same way. The flag filters
+  and does not rescore. The JSON adds `terms` (the query as the ranker used it, after
+  function words and particles are dropped) and `allTerms`, so `matchedTerms` can be read
+  against the term list.
+- **Held-out search evaluation.** `bench/search-eval/heldout.json` holds 40 new queries,
+  written after the 1.36.0 ranker was chosen by an agent that never ran a search over the
+  wiki. `run.js --queries <file>` selects the set. On it, the shipped ranker scores hit@5
+  85.0% and MRR 0.600, against 10.0% and 0.100 for the 1.35.0 AND rule (34 of 40 queries
+  returned nothing); `--all-terms` scores 17.5%, with 27 queries returning nothing. The
+  1.36.0 figure of 92.5% was measured on the selection set, so it is an upper bound; 85.0%
+  is the estimate. The corpus is the wiki itself, and editing the wiki moved the held-out
+  MRR from 0.589 to 0.600 while this release was written, so smaller differences are not
+  findings.
+
+**Behaviour changes, named:**
+- `drift` can report fewer `evidence.stale` findings, for files cited only through Markdown
+  sections (or sections plus line ranges).
+- `drift --format json` adds `locatorNarrowed`; `search-docs --format json` adds `terms` and
+  `allTerms`. The `drift` summary gains a `locator_narrowed:` line, and the `search-docs`
+  summary a `terms:` line.
+
+Sized as a MINOR: one new option, new JSON keys, and a gate that can only report less for a
+citation whose text provably did not change. Tests: 725 → 731.
+
 ## 1.36.0 — 2026-10-27
 
 A precision release. `impact` stops failing a document whose cited section did not change,
