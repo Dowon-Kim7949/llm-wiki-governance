@@ -2489,9 +2489,33 @@ test("retrieval: search-docs ranks keyword matches, excludes sensitive, and reda
   assert.ok(secret, "secret matched when included");
   assert.equal(secret.snippet.includes("supersecretvalue"), false, "snippet redacts the sensitive token");
 
-  // AND semantics: a term absent from every doc yields no match.
-  const none = await searchDocsCommand({ ...RETR_BASE, cwd, query: "widget nonexistentterm" });
-  assert.equal(none.matchCount, 0);
+  // Any-term semantics since 1.36.0: a term absent from every doc no longer
+  // empties the result (the AND rule returned nothing for 18 of 40 queries in
+  // bench/search-eval); matchedTerms says how much of the query each doc covers.
+  const partial = await searchDocsCommand({ ...RETR_BASE, cwd, query: "widget nonexistentterm" });
+  assert.ok(partial.matches.some((match) => match.path === "docs/llm-wiki/guide.md"));
+  assert.ok(partial.matches.every((match) => match.matchedTerms === 1));
+  const none = await searchDocsCommand({ ...RETR_BASE, cwd, query: "nonexistentterm" });
+  assert.equal(none.matchCount, 0, "a query nothing contains still finds nothing");
+});
+
+test("retrieval: search ranks a doc covering more of the query first and strips particles and stopwords", async () => {
+  const cwd = await makeProject("retr-bm25-");
+  await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "retr" }, null, 2)}\n`, { encoding: "utf8" });
+  await writeVerifiedSourceDoc(cwd, "index.md", "package.json", "2026-07-11");
+  await writeWikiDoc(cwd, "both.md", "Both", "The release flow publishes with provenance.");
+  await writeWikiDoc(cwd, "one.md", "One", "The release flow is described elsewhere. release release release.");
+  await writeWikiDoc(cwd, "ko.md", "Korean", "로그 보관 명령은 월별 볼륨을 만든다.");
+
+  const res = await searchDocsCommand({ ...RETR_BASE, cwd, query: "how does the release publish with provenance" });
+  assert.equal(res.matches[0].path, "docs/llm-wiki/both.md", "covering more distinct terms beats repeating one");
+  assert.ok(res.matches[0].matchedTerms > res.matches.find((m) => m.path === "docs/llm-wiki/one.md").matchedTerms);
+
+  const ko = await searchDocsCommand({ ...RETR_BASE, cwd, query: "로그를 보관하는 명령" });
+  assert.equal(ko.matches[0].path, "docs/llm-wiki/ko.md", "the particle in 로그를 does not stop the match");
+
+  const again = await searchDocsCommand({ ...RETR_BASE, cwd, query: "how does the release publish with provenance" });
+  assert.deepEqual(again.matches, res.matches, "deterministic");
 });
 
 test("retrieval: search-docs deprioritizes the change log below reference docs (log.md scorer fix)", async () => {
@@ -3637,7 +3661,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.35.0");
+  assert.equal(packageJson.version, "1.36.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");

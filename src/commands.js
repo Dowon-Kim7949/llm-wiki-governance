@@ -5,7 +5,7 @@ import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PR
 import { detectProject, detectWorkspaces } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
-import { CONFIG_FILENAME, loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
+import { CONFIG_FILENAME, checkRunIgnored, loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
 import { hasRequiredField, parseFrontmatter, validateFrontmatter } from "./frontmatter.js";
 import { schemaRequiredFields } from "./frontmatter-schema.js";
 import { renderTextReport } from "./report.js";
@@ -64,7 +64,7 @@ import {
 } from "./commands/adapters.js";
 import {
   agentReviewerSet,
-  changedAnchorMatcher,
+  changedCitedSources,
   EVIDENCE_REFERENCE_RULES,
   evidenceTier,
   isAgentReviewer,
@@ -95,9 +95,11 @@ import {
   runMechanicalRemediation,
   splitFrontmatter,
   syncStatusTag,
+  upsertFrontmatterList,
   upsertFrontmatterScalar
 } from "./commands/fix-migrate.js";
 import { applyFilters, loadContentDocs } from "./commands/retrieval.js";
+import { currentSourceDigests, formatDigestEntry } from "./commands/source-digests.js";
 import { planSkillArtifacts, writeSkillArtifacts } from "./commands/skills.js";
 import {
   buildEvidenceLedger,
@@ -1063,9 +1065,10 @@ export async function versionOnlyManifestChanges(cwd, sinceRef, changed) {
 
 
 // Fields a review stamp writes, and nothing else. `review --approve` writes
-// status/reviewed_by/reviewed_at (plus the tags: status entry), and
-// `drift --downgrade` writes status/last_updated (plus the same tag).
-const REVIEW_STAMP_FIELDS = new Set(["status", "reviewed_by", "reviewed_at", "last_updated", "last_edited_by"]);
+// status/reviewed_by/reviewed_at (plus the tags: status entry, and source_digests
+// when the project opted into "sourceDigests"), and `drift --downgrade` writes
+// status/last_updated (plus the same tag).
+const REVIEW_STAMP_FIELDS = new Set(["status", "reviewed_by", "reviewed_at", "last_updated", "last_edited_by", "source_digests"]);
 const STATUS_TAG_VALUES = new Set(["verified", "needs-review", "needs_review"]);
 
 // Everything about a wiki document EXCEPT its review stamp, as a comparable
@@ -1143,10 +1146,10 @@ function stampOnlyRuleEnabled(options) {
 // scanReverseImpact applies). A stamp-only DOWNGRADE is deliberately not reported:
 // a needs_review document is never an impact target, and `drift --downgrade` is the
 // remediation this product recommends, so flagging it would punish the honest move.
-// The changed anchors are named with the matcher scanReverseImpact uses, so the two
-// cannot disagree about what "depends on a changed source" means.
-async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet) {
-  const anchorMatches = changedAnchorMatcher(changedSet);
+// The changed anchors are named by the function scanReverseImpact uses
+// (changedCitedSources, locator narrowing included), so the two cannot disagree
+// about what "depends on a changed source" means.
+async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet, since) {
   const findings = [];
   for (const relPath of stampOnlyDocs) {
     if (isTemplateDoc(relPath) || isAppendOnlyLog(relPath)) continue;
@@ -1158,7 +1161,7 @@ async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet) {
     }
     const anchors = verifiedSourceAnchors(parseFrontmatter(text).frontmatter);
     if (!anchors || anchors.files.length === 0) continue;
-    const changedSources = anchors.files.filter(anchorMatches);
+    const { changed: changedSources } = await changedCitedSources(cwd, anchors, changedSet, since);
     const stampOnly = "Only the review stamp changed in this diff (status / reviewed_by / reviewed_at / last_updated / status tag; no body or other frontmatter change), so impact counted this verified document as updated and excluded it from impact.source_changed";
     findings.push({
       severity: "warning",
@@ -1168,6 +1171,63 @@ async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet) {
         ? `${stampOnly}, although it depends on ${changedSources.join(", ")}, which changed in this diff. Nothing in this run re-checked it against that source.`
         : `${stampOnly}. A stamp that moves reviewed_at also resets the drift (evidence.stale) baseline; nothing in this run shows the document was re-read.`,
       params: { sources: changedSources.join(", ") }
+    });
+  }
+  return findings;
+}
+
+// Opt-in `review.unattested_promotion` (P1-2, 2026-10-27): a wiki document that is
+// verified now, was not verified at the baseline, and whose review stamp did not
+// move with the promotion. `review --approve` always writes reviewed_by and a
+// fresh reviewed_at, so a promotion that keeps the old reviewed_at (or has none)
+// was most likely a hand edit of `status:` — the case validate cannot see (GAP 3)
+// because it reads one file at one point in time. A cheap signal, not proof: a
+// hand edit that also writes a new date passes. OFF unless named in config rules,
+// so a default run is unchanged; warning by default once enabled.
+const UNATTESTED_PROMOTION_RULE = "review.unattested_promotion";
+
+function unattestedPromotionEnabled(options) {
+  const setting = options && options.rules && options.rules[UNATTESTED_PROMOTION_RULE];
+  return Boolean(setting) && setting !== "off";
+}
+
+async function unattestedPromotionFindings(cwd, since, changed) {
+  const findings = [];
+  const isDate = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  for (const relPath of changed) {
+    if (!relPath.startsWith("docs/llm-wiki/") || !relPath.endsWith(".md")) continue;
+    if (isTemplateDoc(relPath) || isAppendOnlyLog(relPath)) continue;
+    let text;
+    try {
+      text = await readUtf8(path.join(cwd, ...relPath.split("/")));
+    } catch {
+      continue;
+    }
+    const now = parseFrontmatter(text).frontmatter;
+    if (!now || now.status !== "verified") continue;
+    const beforeText = fileAtRef(cwd, since || "HEAD", relPath);
+    const before = beforeText === null ? null : parseFrontmatter(beforeText).frontmatter;
+    if (before && before.status === "verified") continue;
+    const reviewer = typeof now.reviewed_by === "string" ? now.reviewed_by.trim() : "";
+    // An unchanged reviewed_at dated today is not evidence of anything: a document
+    // downgraded and approved again on the same day gets the same date from
+    // `review --approve` (the N-11 shape). Replayed over this repository's 316
+    // commits, that one shape was all 43 of 187 promotions the rule named without
+    // this guard, and none with it.
+    const problem = !reviewer
+      ? "reviewed_by is empty"
+      : !isDate(now.reviewed_at)
+        ? "reviewed_at is missing or not a date"
+        : before && before.reviewed_at === now.reviewed_at && now.reviewed_at < todayIsoDate()
+          ? `reviewed_at is still ${now.reviewed_at}, the value it had before the promotion`
+          : null;
+    if (!problem) continue;
+    findings.push({
+      severity: "warning",
+      rule: UNATTESTED_PROMOTION_RULE,
+      path: relPath,
+      message: `Became verified in this diff (was ${before ? before.status ?? "unset" : "absent"}), but its review stamp did not move with it: ${problem}. review --approve always writes a fresh stamp, so the status was likely edited by hand.`,
+      params: { before: before ? String(before.status ?? "unset") : "absent", problem }
     });
   }
   return findings;
@@ -1207,6 +1267,7 @@ export async function impactCommand(options) {
       changedPaths: [],
       impactedDocuments: [],
       versionOnlyExcluded: [],
+      locatorNarrowed: [],
       findingSummary,
       findings
     }, "LLM-WIKI Reverse-Impact", [
@@ -1223,9 +1284,11 @@ export async function impactCommand(options) {
   // Same cost gate as the drift scan above: scanReverseImpact is the only producer
   // of impact.source_changed. In lite the rule is off, so `impact` degrades to a
   // report of what changed instead of walking every document's anchors.
-  const findings = ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)
-    ? []
-    : applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
+  const reverseImpact = ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)
+    ? { findings: [], locatorNarrowed: [] }
+    : await scanReverseImpact(cwd, changedSet, { since: options.since });
+  const findings = applyRuleConfig(reverseImpact.findings, options);
+  const { locatorNarrowed } = reverseImpact;
   // Reported, not enforced — see stampOnlyDocExclusions and GATE_REVIEW.md.
   const stampOnlyExclusions = await stampOnlyDocExclusions(cwd, options.since, changed);
   // ...unless the project opted into impact.stamp_only. Skipped while
@@ -1235,7 +1298,12 @@ export async function impactCommand(options) {
   if (stampOnlyExclusions.length > 0
     && stampOnlyRuleEnabled(options)
     && !ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)) {
-    findings.push(...applyRuleConfig(await stampOnlyFindings(cwd, stampOnlyExclusions, changedSet), options));
+    findings.push(...applyRuleConfig(await stampOnlyFindings(cwd, stampOnlyExclusions, changedSet, options.since), options));
+  }
+  // Independent of impact.source_changed: a hand-promoted document is worth
+  // naming even in a project that has the reverse-impact gate switched off.
+  if (unattestedPromotionEnabled(options)) {
+    findings.push(...applyRuleConfig(await unattestedPromotionFindings(cwd, options.since, changed), options));
   }
 
   const result = findings.some((finding) => finding.severity === "blocked")
@@ -1254,6 +1322,7 @@ export async function impactCommand(options) {
     `changed_files: ${changed.length}`,
     `anchoring_files: ${changedSet.size}${versionOnlyExcluded.length ? ` (version-only manifest excluded: ${versionOnlyExcluded.join(", ")})` : ""}`,
     `impacted_verified_docs: ${findings.filter((finding) => finding.rule === "impact.source_changed").length}`,
+    `locator_narrowed: ${locatorNarrowed.length}${locatorNarrowed.length ? ` (${locatorNarrowed.map((entry) => `${entry.path} -> ${entry.source}`).join(", ")})` : ""}`,
     `findings: ${findings.length}`,
     `stamp_only_exclusions: ${stampOnlyExclusions.length}${stampOnlyExclusions.length ? ` (${stampOnlyExclusions.join(", ")})` : ""}`
   ];
@@ -1285,6 +1354,7 @@ export async function impactCommand(options) {
     impactedDocuments,
     versionOnlyExcluded,
     stampOnlyExclusions,
+    locatorNarrowed,
     findingSummary,
     findings
   }, "LLM-WIKI Reverse-Impact", [
@@ -1293,7 +1363,8 @@ export async function impactCommand(options) {
     { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: [
-      "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (file-level, git-diff based). Run it from the repo root.",
+      "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (git-diff based). Run it from the repo root.",
+      "Anchors are file-level, with one exception: a file cited ONLY in evidence, and only through line ranges (#L10-L20, path:10-20) or sections of a Markdown file (#section:Heading), is compared region by region between the baseline (--since ref, else HEAD) and the working tree. If every cited region reads the same, the citation is listed under locator_narrowed instead of failing the document. A file also in source_files, also cited bare or by #symbol:/#route:, a directory anchor, a file with no baseline copy, or a region that cannot be located on both sides (a range past the end of the file, a section heading that matches zero or several headings) stays file-level.",
       `impact.source_changed is an error by default under governance mode strict, a warning under standard, and off under lite; this run resolved to ${effectiveGovernanceMode(options)} (from ${governanceModeSource(options)}). Under strict it fails a build on its own and --strict does not change that. Dial it down per project with "impact.source_changed": "warning" (or "info"/"off") in llm-wiki.config.json rules, or rulesPreset: "relaxed" — the precedence is mode floor < rulesPreset < explicit rules. This complements the date-anchored evidence.stale (drift), it does not replace it.`,
       "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release.",
       "A package.json whose diff moves nothing but the version value is reported as changed but not used for anchoring (N-13, 2026-08-04): every release bumps it and no document's claims depend on the number. Any other key, an unparseable manifest, a version field added or removed, or a manifest with no baseline to compare against all still count. Version-only exclusion is package.json only, and never applies to pyproject.toml or Cargo.toml.",
@@ -1451,9 +1522,18 @@ export async function checkRunCommand(options) {
   for (const docRel of touchedDocs) {
     for (const base of await docSourceAnchors(cwd, docRel)) covered.add(base);
   }
+  // checkRun.ignore (config, F-6): paths the project declared as prose that no
+  // wiki document is meant to cite. They leave BOTH checks below and are listed
+  // in `ignored`, so the exemption is visible in every report rather than silent.
+  const ignorePatterns = options.checkRunIgnore;
+  const ignored = new Set();
   for (const src of changedSource) {
     const norm = toPosix(src.split("#")[0].trim());
     if (!norm || isExternalSourceReference(norm)) continue;
+    if (checkRunIgnored(norm, ignorePatterns)) {
+      ignored.add(norm);
+      continue;
+    }
     if (!covered.has(norm)) {
       findings.push({
         severity: "warning",
@@ -1482,6 +1562,10 @@ export async function checkRunCommand(options) {
     for (const file of actual.map((entry) => toPosix(entry))) {
       if (file.startsWith("docs/llm-wiki/") || file.startsWith(".llm-wiki/")) continue;
       if (declared.has(file)) continue;
+      if (checkRunIgnored(file, ignorePatterns)) {
+        ignored.add(file);
+        continue;
+      }
       undeclared.push(file);
     }
   }
@@ -1534,7 +1618,8 @@ export async function checkRunCommand(options) {
   return finishCheckRun(options, relManifest, applyRuleConfig(findings, options), {
     task: typeof manifest.task === "string" ? manifest.task : null,
     changedSource: changedSource.length,
-    touchedDocs: touchedDocs.length
+    touchedDocs: touchedDocs.length,
+    ignored: [...ignored].sort()
   });
 }
 
@@ -1608,12 +1693,15 @@ function finishCheckRun(options, relManifest, findings, extra = {}) {
   if (extra.changedSource !== undefined) {
     summary.push(`changed_source: ${extra.changedSource}`, `touched_docs: ${extra.touchedDocs}`);
   }
+  const ignored = extra.ignored ?? [];
+  if (ignored.length > 0) summary.push(`ignored (checkRun.ignore): ${ignored.length} (${ignored.join(", ")})`);
   summary.push(`findings: ${findings.length}`);
 
   return withText({
     command: "check-run",
     result,
     manifest: relManifest,
+    ignored,
     findingSummary,
     findings
   }, "LLM-WIKI Check-Run", [
@@ -1622,7 +1710,8 @@ function finishCheckRun(options, relManifest, findings, extra = {}) {
     { title: "Findings", body: findings.length ? findings.map(formatFinding) : ["none"] },
     { title: "Caveats", body: [
       "Read-only: check-run verifies a skill run's manifest under .llm-wiki/runs/; it never writes. The manifest is authored by the agent during its own run.",
-      "Default warning; use --strict (for CI) to fail, or set \"run.*\" in llm-wiki.config.json rules. File-level — it proves the pipeline ran, not that the prose is correct."
+      "Default warning; use --strict (for CI) to fail, or set \"run.*\" in llm-wiki.config.json rules. File-level — it proves the pipeline ran, not that the prose is correct.",
+      "Paths matched by checkRun.ignore in llm-wiki.config.json (\"dir/\", \"*.ext\", or exact paths) leave both run.doc_gap and run.change_set_undeclared and are listed as ignored. Nothing is ignored unless the project configures it."
     ] }
   ]);
 }
@@ -1800,7 +1889,12 @@ function resolveContentDocPath(docs, given) {
 // discipline in reverse: touches ONLY those fields, never body / source_files /
 // evidence / last_updated. Skips mojibake and re-scans the result for sensitive
 // content (blocking the write if it matches), like fix/drift.
-async function stampVerified(cwd, rel, reviewer, today) {
+//
+// With `digests` (config "sourceDigests": true, shadow mode) it also records what
+// the reviewer read: one `source_digests` entry per local anchor whose digest can
+// be computed (see source-digests.js). The list is replaced whole, so a stamp
+// never mixes digests from two reviews.
+async function stampVerified(cwd, rel, reviewer, today, { digests = false } = {}) {
   const abs = path.join(cwd, rel);
   const original = await readUtf8(abs);
   if (findMojibakeIndicators(original).length > 0) {
@@ -1814,6 +1908,11 @@ async function stampVerified(cwd, rel, reviewer, today) {
   inner = upsertFrontmatterScalar(inner, "reviewed_by", reviewer, split.eol);
   inner = upsertFrontmatterScalar(inner, "reviewed_at", today, split.eol);
   inner = syncStatusTag(inner, "verified");
+  if (digests) {
+    const entries = (await currentSourceDigests(cwd, parseFrontmatter(original).frontmatter ?? {}))
+      .filter((entry) => entry.digest !== null);
+    if (entries.length > 0) inner = upsertFrontmatterList(inner, "source_digests", entries.map(formatDigestEntry), split.eol);
+  }
 
   const newContent = `${split.bom}${split.open}${inner}${split.close}${split.body}`;
   if (newContent === original) return { changed: false, blocked: false, reason: "no change (already verified with this reviewer)" };
@@ -1933,7 +2032,7 @@ async function approveReview(options, { cwd, reviewed, docs, findingsByPath, app
       refused.push({ path: doc.path, reason: `unenriched scaffold: ${unenriched.map((finding) => finding.rule).join(", ")}` });
       continue;
     }
-    const stamp = await stampVerified(cwd, doc.path, reviewer, today);
+    const stamp = await stampVerified(cwd, doc.path, reviewer, today, { digests: options.sourceDigests === true });
     if (stamp.blocked) { blockedFindings.push(stamp.finding); refused.push({ path: doc.path, reason: stamp.reason }); continue; }
     if (!stamp.changed) { refused.push({ path: doc.path, reason: stamp.reason ?? "no change" }); continue; }
     approved.push(doc.path);

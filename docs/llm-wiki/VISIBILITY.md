@@ -10,7 +10,7 @@ last_updated: 2026-10-20
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-26
+reviewed_at: 2026-10-27
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -25,6 +25,10 @@ related:
   - GATE_REVIEW.md
 visibility: internal
 contains_sensitive_info: false
+source_digests:
+  - src/frontmatter-schema.js sha256:ec4476da72b5c2e2
+  - src/config.js sha256:1403eef64c1781a8
+  - src/sensitive-info.js sha256:43e55bad6b87aaff
 ---
 
 # Visibility Governance Policy
@@ -82,9 +86,11 @@ Question("팀/조직 도입 시 visibility 경계 정책 문서가 필요하다"
 
 ## Review Notes
 
-- 2026-07-15에 `1.9` 준비(Gate 14 초안)의 설계 입력으로 생성했다. 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 Gate 14 수락과 함께 `verified`로 승인했다.
+Older review notes (1 entries, 2026-07-15 → 2026-07-15) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+
 - 2026-07-16에 1.12.0에서 `src/config.js`가 변경되어(mobile 문서셋 `PROFILE_DOCS.mobile` 추가) `evidence.stale`이 발생했다. 이 문서 내용(visibility 정책)은 무관하며 변경되지 않았다. 사람 검토(reviewed_by: Dowon-Kim, reviewed_at: 2026-07-16)로 baseline을 refresh해 `verified`로 재승인했다(내용 불변).
 
 - 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 인용 소스 `src/config.js`(앵커 `#symbol:VALID_VISIBILITIES`)를 재확인했다. 파일은 바뀌었지만 변경 내용은 에이전트 어휘 2종(`SUPPORTED_AGENTS`·`ALL_AGENTS`)을 `src/cli.js`에서 이 leaf 모듈로 **옮겨 온 신규 export**뿐이고, `VALID_VISIBILITIES`와 이 문서가 서술하는 visibility 계약은 무변경이다. 본문 **불변**.
 - 2026-10-20(1.33.0)에 `impact`가 이 문서를 지목해 `src/frontmatter-schema.js`를 대조했다. 바뀐 것은 `evidence` 참조 정규식을 `EVIDENCE_REFERENCE_PATTERN` export로 꺼내 런타임 파서와 함께 쓰게 한 것뿐이다. 이 문서가 근거로 삼는 `visibility` enum과 필수 필드 목록은 그대로다. 이 문서의 `evidence` 세 줄이 새 단일 정규식을 통과하는지 `validate-frontmatter`로 확인했고, 결과는 pass였다.
 - 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `src/sensitive-info.js`를 대조했다. `scanSensitiveInfo`의 시그니처와 finding 형태(`type`·`line`·`message`, 값 미포함)는 그대로이고, 기존 패턴 6종도 그대로다. 바뀐 것은 탐지 범위가 넓어진 것이다. 마지막 마디가 자격 증명 단어인 키를 잡되 값이 자격 증명 모양일 때만 잡고, 벤더 접두 토큰을 새 유형 `vendor_token`으로 잡는다. 이 문서가 서술하는 두 opt-in 린트는 스캔을 그대로 재사용하므로 계약은 같지만, 같은 문서에서 더 일찍 걸릴 수 있다. 그 사실을 일관성 규칙 절에 한 문단으로 더했다. 실측으로 로컬 위키 11곳(394개 파일)에서 새로 잡힌 줄은 0이었다. 같은 날 PR CI에서 CodeQL이 그 첫 구현의 다항 시간 정규식(`js/polynomial-redos`, high)을 잡았다. 실제로 20,000자 한 줄에 0.15–1.5초가 걸렸다. 이 문서의 린트가 그 스캔을 재사용하므로 같은 지연이 그대로 옮아왔을 것이다. 후보를 키 하나당 상한 있는 한 번의 매칭으로 찾고, 모든 수량자에 상한을 두는 선형 구조로 바꿨다. 탐지 결과는 바뀌지 않았다(위키 9곳 314개 파일에서 1.34.0 대비 +0/−0, 합성 코퍼스 동일). 계약도 바뀌지 않았다.
+- 2026-10-27(1.36.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `src/frontmatter-schema.js`를 대조했다. 바뀐 것은 선택 필드 `source_digests` 추가뿐이고 `visibility` enum과 이 문서가 다루는 두 규칙은 그대로다. 본문 불변.

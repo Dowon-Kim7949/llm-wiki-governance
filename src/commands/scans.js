@@ -11,7 +11,7 @@ import { listMarkdownFiles, pathExists, toPosix } from "../files.js";
 import { findMojibakeIndicators, hasUtf8Bom, readTextAuto, readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
-import { fileChangedSince, lineRangeChangedSince, pathsChangedSince } from "../git.js";
+import { fileAtRef, fileChangedSince, lineRangeChangedSince, pathsChangedSince } from "../git.js";
 import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
@@ -872,23 +872,129 @@ export function changedAnchorMatcher(changedSet) {
     || changedPaths.some((changed) => changed.startsWith(`${base.replace(/\/+$/, "")}/`));
 }
 
+// The locators that narrow a document's anchor on <base>, or null when the anchor
+// is broad. Narrowing applies only when EVERY citation of the file is a line range,
+// or a section of a Markdown file, and the file is not also in source_files: one
+// broad citation keeps the whole file watched (the N-7 contract above). A symbol
+// or route locator stays file-level because its extent cannot be computed without
+// parsing the language, and a guess that is too small would be a false negative.
+export function narrowingLocators(anchors, base) {
+  if (anchors.sources.includes(base)) return null;
+  const refs = anchors.evidenceRefs.filter((ref) => ref.base === base);
+  if (refs.length === 0) return null;
+  const locators = [];
+  for (const ref of refs) {
+    const kind = ref.locator?.kind;
+    if (kind === "line" || (kind === "section" && /\.mdx?$/i.test(base))) {
+      locators.push(ref.locator);
+    } else {
+      return null;
+    }
+  }
+  return locators;
+}
+
+export function locatorLabel(locator) {
+  return locator.kind === "line"
+    ? `#L${locator.start}${locator.end !== locator.start ? `-L${locator.end}` : ""}`
+    : `#${locator.kind}:${locator.value}`;
+}
+
+// The text a line or section locator points at, or null when it cannot be pinned
+// down: a range past the end of the file, or a section heading that matches zero
+// or several headings. Matching follows sectionPresent (case-insensitive substring
+// of the heading text) but skips fenced code, where a `#` line is a comment, not a
+// heading. A section runs to the next heading of the same or a higher level, so it
+// includes its subsections.
+export function locatedRegion(content, locator) {
+  const lines = String(content).split(/\r?\n/);
+  if (locator.kind === "line") {
+    if (locator.start < 1 || locator.end < locator.start || locator.end > lines.length) return null;
+    return lines.slice(locator.start - 1, locator.end).join("\n");
+  }
+  if (locator.kind !== "section") return null;
+  const target = String(locator.value).toLowerCase().trim();
+  if (!target) return null;
+  const headings = [];
+  let fence = null;
+  lines.forEach((line, index) => {
+    const marker = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+    if (marker) {
+      if (!fence) fence = marker[1][0];
+      else if (marker[1][0] === fence) fence = null;
+      return;
+    }
+    if (fence) return;
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) headings.push({ index, level: heading[1].length, text: heading[2].toLowerCase() });
+  });
+  const matches = headings.filter((heading) => heading.text.includes(target));
+  if (matches.length !== 1) return null;
+  const [start] = matches;
+  const next = headings.find((heading) => heading.index > start.index && heading.level <= start.level);
+  return lines.slice(start.index, next ? next.index : lines.length).join("\n");
+}
+
+// Which of a document's anchors the change set touches, honoring line and section
+// locators. A file in the change set whose every citation is a narrowing locator
+// (see narrowingLocators) is compared region by region between the baseline (the
+// --since ref, else HEAD) and the working tree; when every cited region reads the
+// same on both sides, the file is reported under `narrowed` instead of `changed`.
+// Anything that cannot be compared exactly — no baseline copy (a new or untracked
+// file), an unreadable working copy, a region that cannot be located on either
+// side — keeps the file-level answer, so this can only remove a finding whose
+// cited text provably did not move. Directory anchors never narrow. Shared by
+// scanReverseImpact and impact.stamp_only so the two name the same sources.
+export async function changedCitedSources(cwd, anchors, changedSet, since) {
+  const anchorMatches = changedAnchorMatcher(changedSet);
+  const changed = [];
+  const narrowed = [];
+  for (const base of anchors.files.filter(anchorMatches)) {
+    const locators = changedSet.has(base) ? narrowingLocators(anchors, base) : null;
+    if (locators && await citedRegionsUnchanged(cwd, base, locators, since)) {
+      narrowed.push({ source: base, locators: locators.map(locatorLabel) });
+    } else {
+      changed.push(base);
+    }
+  }
+  return { changed, narrowed };
+}
+
+async function citedRegionsUnchanged(cwd, base, locators, since) {
+  const before = fileAtRef(cwd, since || "HEAD", base);
+  if (before === null) return false;
+  let after;
+  try {
+    after = await readUtf8(path.join(cwd, ...base.split("/")));
+  } catch {
+    return false;
+  }
+  return locators.every((locator) => {
+    const was = locatedRegion(before, locator);
+    const now = locatedRegion(after, locator);
+    return was !== null && now !== null && was === now;
+  });
+}
+
 // Gate 23 reverse-impact (diff-anchored). Given a set of repo-relative changed
 // paths (from git.js#changedFiles: the working tree, or a `--since <ref>` PR/CI
 // diff), flag each verified document whose referenced source files are IN the
 // change set while the document itself is NOT — the pre-merge complement to the
 // date-anchored scanEvidenceDrift. Paths align when the CLI runs from the repo
-// root (same assumption as validate --changed). File-level (a changed referenced
-// file counts; line-range narrowing is out of scope) with one content-aware
-// carve-out the CALLER applies, not this scan: impactCommand withholds a
+// root (same assumption as validate --changed). File-level, except that a file
+// cited ONLY through line or Markdown-section locators is compared region by
+// region against the baseline (changedCitedSources, 2026-10-27); every narrowed
+// citation is returned in `locatorNarrowed` so the skip is reported, never silent.
+// One more content-aware carve-out is the CALLER's: impactCommand withholds a
 // package.json whose diff moves nothing but `version` (N-13, 2026-08-04). A
 // document edited in the same change set is intentionally not flagged. Template
 // skeletons are out of scope for the same reason scanEvidenceDrift skips them
 // (N-14, 2026-08-06): review cannot re-stamp what it cannot enumerate.
 // Read-only.
-export async function scanReverseImpact(cwd, changedSet) {
+export async function scanReverseImpact(cwd, changedSet, { since } = {}) {
   const findings = [];
-  if (!changedSet || changedSet.size === 0) return findings;
-  const anchorMatches = changedAnchorMatcher(changedSet);
+  const locatorNarrowed = [];
+  if (!changedSet || changedSet.size === 0) return { findings, locatorNarrowed };
   for (const file of await listTargetMarkdown(cwd)) {
     const rel = toPosix(path.relative(cwd, file));
     if (isTemplateDoc(rel)) continue;
@@ -901,7 +1007,8 @@ export async function scanReverseImpact(cwd, changedSet) {
     if (changedSet.has(rel)) continue; // doc changed in the same diff → not drift
     const anchors = verifiedSourceAnchors(parseFrontmatter(await readUtf8(file)).frontmatter);
     if (!anchors) continue;
-    const changedSources = anchors.files.filter(anchorMatches);
+    const { changed: changedSources, narrowed } = await changedCitedSources(cwd, anchors, changedSet, since);
+    for (const entry of narrowed) locatorNarrowed.push({ path: rel, ...entry });
     if (changedSources.length === 0) continue;
     findings.push({
       // Error, not warning: decision 21 (maintainer, 2026-08-03) made this gate
@@ -917,7 +1024,7 @@ export async function scanReverseImpact(cwd, changedSet) {
       params: { sources: changedSources.join(", ") }
     });
   }
-  return findings;
+  return { findings, locatorNarrowed };
 }
 
 export async function scanOkfProfile(cwd, activeProfiles = []) {

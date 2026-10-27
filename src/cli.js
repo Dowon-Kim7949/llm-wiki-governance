@@ -61,6 +61,14 @@ export async function main(argv) {
     return 0;
   }
 
+  // Only a leading --version/-v prints the package version: release-notes takes
+  // its own `--version <x.y.z>` option further along the argument list.
+  if (argv[0] === "--version" || argv[0] === "-v") {
+    console.log(packageVersion());
+    process.exitCode = 0;
+    return 0;
+  }
+
   if (argv[0] === "help") {
     const code = printCommandHelp(argv[1]);
     process.exitCode = code;
@@ -191,6 +199,7 @@ export function defaultOptions() {
     maxChars: null,
     preloadBudget: null,
     watchNeedsReview: false,
+    anchor: null,
     skillTokenCap: null,
     keepMonths: null,
     minimal: false,
@@ -265,6 +274,14 @@ export function parseArgs(argv) {
         // and never a silent fallback to some other level.
         if (GOVERNANCE_MODES.includes(value)) options.mode = value;
         else errors.push(`Unsupported governance mode: ${value} (supported: ${GOVERNANCE_MODES.join(", ")}).`);
+        index += 1;
+      }
+    } else if (arg === "--anchor") {
+      usedOptions.add("anchor");
+      const value = readOptionValue(rest, index, arg, errors);
+      if (value) {
+        if (value === "date" || value === "content") options.anchor = value;
+        else errors.push(`Unsupported --anchor: ${value} (supported: date, content).`);
         index += 1;
       }
     } else if (arg === "--version") {
@@ -604,7 +621,7 @@ const COMMAND_OPTION_RULES = {
   // DATE-anchored check to unreviewed documents. impact stays verified-only
   // because its rule is an error since decision 21, and an advisory opt-in must
   // not hand an unreviewed document the power to fail a build.
-  drift: new Set(["cwd", "dry-run", "downgrade", "strict", "watch-needs-review", "mode", "format", "out"]),
+  drift: new Set(["cwd", "dry-run", "downgrade", "strict", "watch-needs-review", "anchor", "mode", "format", "out"]),
   impact: new Set(["cwd", "since", "strict", "mode", "format", "out"]),
   "check-run": new Set(["cwd", "run", "strict", "format", "out"]),
   // Preview by default like fix; --write applies. `keep-months` is the only knob:
@@ -786,7 +803,7 @@ Usage:
   llm-wiki import-memory --apply [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki fix [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki archive-log [--keep-months <n>] [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki drift [--downgrade] [--watch-needs-review] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki drift [--downgrade] [--watch-needs-review] [--anchor date|content] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki impact [--since <git-ref>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki check-run [--run <path>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki harness-health [--agent <agent>] [--preload-budget <n>] [--skill-token-cap <n>] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
@@ -812,7 +829,7 @@ Safety:
   fix previews by default and writes only with --write. It applies a narrow, accepted autofix scope inside docs/llm-wiki and never edits verified documents' content.
   archive-log previews by default and writes only with --write. It moves whole dated entries older than the retention window from docs/llm-wiki/log.md into monthly volumes next to it (log-YYYY-MM.md) without editing them, writes nothing unless re-parsing the planned files gives every entry back exactly once, refuses files it cannot read cleanly, renames each file into place from a temporary sibling (volumes first, log.md last), and never writes outside docs/llm-wiki.
   drift reports evidence.stale drift and, only with --downgrade, flips drifted verified documents to needs_review (status + last_updated, plus the tags: status tag when the document already carries one). It never promotes to verified.
-  review is read-only by default: it risk-ranks the needs_review backlog for human spot-checking. --approve <path> (or --approve-all --yes) stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one; it refuses docs with blocking/structural findings and never auto-verifies — promotion happens only on an explicit --approve, and reviewed_by records who ran it.
+  review is read-only by default: it risk-ranks the needs_review backlog for human spot-checking. --approve <path> (or --approve-all --yes) stamps ONLY the review stamp — status: verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one, plus source_digests when config sourceDigests is true; it refuses docs with blocking/structural findings and never auto-verifies — promotion happens only on an explicit --approve, and reviewed_by records who ran it.
   graph is read-only: it emits the wiki knowledge graph (documents + resolved doc-to-doc links) as text, JSON, Mermaid, or Graphviz DOT.
   stats is read-only: it reports a wiki health snapshot (verified %, enrichment %, evidence coverage, staleness, orphans).
   list-docs/search-docs/get-doc/get-related are read-only retrieval: they return document content (not governance reports). search-docs is keyword/substring only (not semantic). Restricted/sensitive docs are excluded from list/search unless --include-sensitive, and returned bodies/snippets redact sensitive-looking lines.
@@ -833,6 +850,7 @@ Exit codes / 종료 코드:
      · 사용법 오류(알 수 없는 명령/옵션, 또는 해당 명령이 거부하는 옵션)
 
 Use llm-wiki help <command> for command-specific guidance.
+Use llm-wiki --version (or -v) to print only the installed version.
 `;
 }
 
@@ -841,11 +859,17 @@ function printHelp() {
 }
 
 function printCommandHelp(command) {
+  // A bare `llm-wiki help` is a request for the general help, not a mistake.
+  if (!command) {
+    printHelp();
+    return 0;
+  }
+
   const text = COMMAND_HELP[command];
   if (!text) {
-    console.error(command ? `Unknown help topic: ${command}` : "Missing help topic.");
+    console.error(`Unknown help topic: ${command}`);
     printHelp();
-    return command ? 3 : 0;
+    return 3;
   }
 
   console.log(text);
@@ -1170,7 +1194,7 @@ Output:
   drift: `llm-wiki drift
 
 Usage:
-  llm-wiki drift [--watch-needs-review] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki drift [--watch-needs-review] [--anchor date|content] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki drift --downgrade [--watch-needs-review] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
@@ -1182,6 +1206,13 @@ Options:
   --watch-needs-review  Widen the date-anchored freshness check to needs_review
                         documents as well as verified ones (off by default;
                         accepted by drift only, never by impact).
+  --anchor content      Shadow report (no findings, no exit-code change): for
+                        each verified document, compare the date verdict with
+                        the content verdict — the source_digests stamped by
+                        review --approve (config "sourceDigests": true) against
+                        the sources now — and list where they disagree, e.g. a
+                        late merge the date check cannot see. --anchor date is
+                        the default and prints nothing extra.
   --strict              Escalate evidence severities and fail on findings. The
                         default exit code stays 0, so adding drift to an existing
                         pipeline cannot break it.
@@ -1219,8 +1250,14 @@ Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
     with or without --strict. That is the point of the default.
   - Read-only: never writes. Remediation is re-review or drift --downgrade.
   - Toggle/override per project via llm-wiki.config.json rules
-    ("impact.source_changed": "off"|"error"|...). File-level, with one
-    content-aware carve-out: a package.json whose diff moves nothing but the
+    ("impact.source_changed": "off"|"error"|...).
+  - File-level, except a file cited ONLY in evidence through line ranges
+    (#L10-L20, path:10-20) or Markdown sections (#section:Heading): each cited
+    region is compared between the baseline and the working tree, and when all
+    read the same the citation is listed under locatorNarrowed instead of
+    failing. source_files, bare, #symbol: and #route: citations stay file-level,
+    as does any region that cannot be located on both sides.
+  - One more content-aware carve-out: a package.json whose diff moves nothing but the
     version value is reported as changed but not used for anchoring (N-13,
     2026-08-04) — every release bumps it and no document's claims depend on the
     number. Any other key, an added/removed version field, an unparseable
@@ -1231,6 +1268,11 @@ Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
     "impact.stamp_only": "warning" (or "info") in rules. Raising it to "error",
     or running with --strict while it is a warning, removes the re-stamp
     resolution path (N-11); see llm-wiki explain impact.stamp_only.
+  - Opt in to "review.unattested_promotion": "warning" to name wiki documents
+    that became verified in this diff while their review stamp did not move
+    (reviewed_at missing, or unchanged and older than today): the hand-edited status that validate
+    cannot see. A cheap signal, not proof; see llm-wiki explain
+    review.unattested_promotion.
 `,
   "check-run": `llm-wiki check-run
 
@@ -1257,6 +1299,12 @@ Strict / CI (see GATE_REVIEW.md "Agent Update Runner ... Scope Decision", Gate 2
   - Toggle/override per project via llm-wiki.config.json rules
     ("run.doc_gap": "off"|"error"|...). File-level; proves the pipeline ran, not
     that the prose is correct.
+  - Prose that no wiki document is meant to cite (README.md, outputs/) can be
+    left out with "checkRun": { "ignore": ["outputs/", "*.md", "README.md"] } in
+    llm-wiki.config.json. The list applies to BOTH run.doc_gap and
+    run.change_set_undeclared, accepts only "dir/", "*.ext", or exact paths, and
+    every ignored path is listed in the report (JSON: ignored[]). Nothing is
+    ignored by default.
 `,
   "harness-health": `llm-wiki harness-health
 
@@ -1319,7 +1367,9 @@ Purpose:
 Approve (writes ONLY the review stamp; see GATE_REVIEW.md "Review Workflow Scope Decision", Gate 20):
   - --approve <path> promotes the named needs_review docs to verified, stamping
     status: verified + reviewed_by + reviewed_at, plus the tags: status tag when
-    the document already carries one. Repeatable, and a value may be a
+    the document already carries one, plus source_digests (one content digest
+    per local anchor, read by drift --anchor content) only when
+    llm-wiki.config.json sets "sourceDigests": true. Repeatable, and a value may be a
     comma-separated list. --approve-all promotes every approvable needs_review doc
     but REQUIRES an explicit --yes confirmation.
   - reviewed_by resolves --reviewer > llm-wiki.config.json "reviewer" > git
@@ -1397,13 +1447,15 @@ Usage:
 Purpose:
   Read-only retrieval. Deterministic keyword/substring search over document
   titles, bodies, and frontmatter (tags/aliases) — NOT semantic/vector search.
-  Every query term must appear in a document (AND); results are ranked (title
-  hits weighted highest) and return a short snippet per match. Use get-doc for
-  full content. Restricted/sensitive docs are excluded unless --include-sensitive;
+  A document matches when any query term appears; results are ranked by BM25
+  relevance over the body, with title and tags/aliases hits weighted, and each
+  carries matchedTerms (how many distinct query terms it contains) and a short
+  snippet. English function words and trailing Korean particles ("로그를" ->
+  "로그") are dropped from the query. Use get-doc for full content. Restricted/sensitive docs are excluded unless --include-sensitive;
   snippets redact sensitive-looking lines. --limit caps results (default 20).
 
 JSON (--format json):
-  Top-level keys: schemaVersion, command, result, query, limit, filters, excludedSensitive, matchCount, matches[], findings[]. matches[] items are { path, title, status, score, snippet }.
+  Top-level keys: schemaVersion, command, result, query, limit, filters, excludedSensitive, matchCount, matches[], findings[]. matches[] items are { path, title, status, score, matchedTerms, snippet }.
 `,
   "get-doc": `llm-wiki get-doc
 

@@ -6,6 +6,84 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.36.0 — 2026-10-27
+
+A precision release. `impact` stops failing a document whose cited section did not change,
+search answers questions instead of returning nothing, and two shadow records start measuring
+what review dates and self-reports cannot show. It also ships the hardening merged since
+1.35.0. Upgrade if your wiki cites sections or line ranges, or if agents search it.
+
+- **`impact` honors line-range and section citations.** A file cited only in `evidence`, and
+  only as line ranges (`#L10-L20`, `path:10-20`) or sections of a Markdown file
+  (`#section:Usage`), is compared region by region between the baseline (`--since`, else
+  `HEAD`) and the working tree. When every cited region reads the same, the citation is listed
+  under the new JSON key `locatorNarrowed` and the summary line `locator_narrowed` instead of
+  failing the document. Everything that cannot be compared exactly stays file-level: a file
+  also in `source_files` or cited bare, `#symbol:` and `#route:` citations (their extent
+  cannot be computed without parsing the language), a file with no baseline copy, and a
+  section heading that matches zero or several headings. Line ranges compare positions, so a
+  line inserted above a range is still reported.
+- **`search-docs` ranks by relevance and matches any term.** It required every query term to
+  appear in one document, which returned nothing for 18 of 40 queries in a new evaluation set
+  over this repository's wiki (`bench/search-eval`). It now ranks with BM25 over substring
+  counts, adds weight for title and tags/aliases hits, drops English function words and
+  trailing Korean particles from the query, and gives each result `matchedTerms`. On the same
+  set: hit@5 42.5% → 92.5%, MRR 0.272 → 0.660, no empty results. The ranker was chosen on
+  that set (40 agent-labeled queries, one wiki), so read the numbers as an in-sample upper
+  bound. `onboard` and `prepare` use the same ranker.
+- **`check-run` can leave prose out.** `"checkRun": { "ignore": ["outputs/", "*.md",
+  "README.md"] }` in `llm-wiki.config.json` removes those paths from both `run.doc_gap` and
+  `run.change_set_undeclared`. A documentation-only run in this repository produced 13
+  warnings for files no wiki document is meant to cite. Both rules read the one list, because
+  excluding a path from only one moves the warning to the other. Ignored paths are reported as
+  `ignored[]`. Entries are `"dir/"`, `"*.ext"`, or exact paths; anything else is a config
+  error.
+- **Content digests, in shadow mode.** With `"sourceDigests": true`, `review --approve` also
+  stamps `source_digests`: one `path sha256:<16 hex>` line per local anchor, covering only the
+  cited region for line-range or section citations, with line endings normalized.
+  `drift --anchor content` then prints the date verdict next to the content verdict and lists
+  the documents where they disagree, for example a change committed on the review day, which
+  the date check cannot see, or a late merge (N-15). It adds no finding and never changes the
+  exit code; nothing replaces the date check until the two have been compared on real
+  repositories.
+- **Opt-in `review.unattested_promotion`.** With the rule named in `rules`, `impact` reports a
+  wiki document that became `verified` in the diff while its review stamp did not move with
+  it: `reviewed_at` missing, or unchanged and older than today, or `reviewed_by` empty —
+  the hand-edited status that `validate` cannot see. A same-day date is withheld because a
+  document downgraded and approved again on one day keeps its date; replayed over this
+  repository's 316 commits, that shape was all 43 of 187 promotions the first version named,
+  and the shipped rule names none. It is a cheap signal, not proof.
+- **`llm-wiki --version`** (or `-v`) prints the installed version and exits 0, so a script can
+  check which version `npx` served. A bare `llm-wiki help` no longer prints "Missing help
+  topic." to stderr.
+- **Hardening merged since 1.35.0.**
+  - Link extraction in `validate` and `audit` ran in quadratic time on pull-request content:
+    one 50,000-character line of `[` held `validate` for 4.3 s. The three link regexes are now
+    linear scanners; a regex audit found two more quadratic paths reachable from `validate`
+    (the enrichment checklist and the heading anchor rule), now linear too. Three CodeQL
+    alerts on quadratic regexes were fixed; three were false positives in tests.
+  - The publish workflow authenticates with OIDC only; the unused npm token fallback is gone.
+  - `examples/vue3-typescript-demo` runs the whole loop on a Vue 3 app (`npm run demo`), and a
+    test runs the scenario against the current CLI so its README cannot drift.
+  - MCP `get_doc` now describes the redaction 1.35.0 added.
+
+**Behaviour changes, named:**
+- `search-docs`, MCP `search_docs`, `onboard` and `prepare` return documents that contain
+  only some of the query terms, in a different order, with a fractional `score` and a new
+  `matchedTerms`. Every document a query matched before still matches (it holds all the terms, so it holds
+  one); with the default limit of 20 it can now rank below documents that weigh more.
+- `impact` can report fewer `impact.source_changed` findings, for files cited only by line
+  ranges or Markdown sections.
+- `validate` and `audit` now check an inline link glued to the end of the previous one
+  (`[a](b)[c](d)`) and every one of consecutive reference definitions. Broken targets in
+  those shapes, previously skipped, are reported as `markdown_link.missing`. Measured on nine
+  local wikis: no change, because the shapes do not occur there.
+- `llm-wiki --version` exits 0 instead of 3.
+
+Sized as a MINOR: new options, config keys, JSON keys, and one opt-in rule; the search change
+alters ranking and match semantics but no command, option, or exit-code contract was removed.
+Tests: 683 → 725.
+
 ## 1.35.0 — 2026-10-26
 
 A trust release. What the product promised about secrets now holds in more places, the

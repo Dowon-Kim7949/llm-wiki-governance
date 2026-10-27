@@ -1063,6 +1063,26 @@ strategy) in a shadow mode first; approval provenance from git history rather th
 stamp; a retrieval relevance set before any ranking change; a second real benchmark with a
 stale-wiki arm and code-change tasks.
 
+## Release Plan (post-1.35.0) — measure, then narrow — **shipped as 1.36.0 (2026-10-27)**
+
+Every candidate the 1.35.0 review left open was built, each behind the boundary that kept it
+from moving a gate the wrong way.
+
+- **Precision.** `impact` compares the cited region, not the whole file, for line-range and
+  Markdown-section citations; anything it cannot compare exactly stays file-level.
+  `check-run` takes a project-declared list of prose paths that both of its gap rules skip.
+- **Search.** An evaluation set came first (`bench/search-eval`, 40 queries); it showed the
+  AND rule returning nothing for 18 of them, and the shipped BM25 ranker took hit@5 from
+  42.5% to 92.5% on that set.
+- **Shadow records.** Content digests stamped at review and compared by
+  `drift --anchor content`, and an opt-in rule for promotions whose review stamp did not
+  move — replayed over this repository's history before shipping (0 of 187 promotions named).
+  Neither changes a default result.
+
+**Next:** compare the date and content anchors on real repositories before letting the
+content anchor decide anything; a second real benchmark with a stale-wiki arm and
+code-change tasks (needs a budget decision); a held-out query set before tuning search again.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

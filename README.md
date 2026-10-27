@@ -8,13 +8,6 @@
 
 Coding agents are good at writing project docs and bad at noticing when those docs stop being true. LLM-WIKI Governance is a zero-dependency CLI that holds that knowledge — a Markdown wiki in `docs/llm-wiki/` — to the same discipline as code. Agent-written docs stay `needs_review` until someone approves them. Every doc cites the files it describes. When a cited file changes, the doc gets flagged and CI can fail on it. It needs Node.js ≥ 18.18, works alongside Claude Code, Codex, Cursor and other agents, and is OKF-compatible.
 
-```text
-Without:  task -> re-scan the codebase -> re-derive structure & rules -> work
-With:     task -> read index.md -> read the relevant (verified) wiki docs -> inspect only the source you need -> work
-```
-
-## How it works
-
 ```mermaid
 flowchart LR
   A["Agent writes or updates a doc"] --> B["needs_review"]
@@ -27,7 +20,7 @@ flowchart LR
 1. **Scaffold.** `quickstart --write` creates the wiki, plus adapter files (`AGENTS.md`, `CLAUDE.md`, …) that point your agent at it.
 2. **Enrich.** Your agent fills the docs from real source files and cites them in frontmatter (`source_files`, `evidence`). The CLI checks that each citation resolves.
 3. **Review.** Docs stay `needs_review` until `review --approve` stamps them `verified`. No other command promotes a doc.
-4. **Watch.** `drift` (by review date) and `impact` (by diff against a PR base) flag `verified` docs whose cited sources changed. With `validate` and `impact` in CI, a stale doc fails the build instead of quietly going wrong.
+4. **Watch.** `drift` (by review date) and `impact` (by diff against a PR base) flag `verified` docs whose cited sources changed, and CI can fail on them.
 
 ## Quick start
 
@@ -36,54 +29,31 @@ npm install -D llm-wiki-governance
 npx llm-wiki-governance quickstart --write --type frontend --agent claude   # or --agent codex
 ```
 
-`quickstart --write` detects the project, creates the wiki and adapter files, and prints a handoff prompt. Paste that prompt into your agent. It reads `docs/llm-wiki/index.md`, fills in the docs from real source files, and leaves everything `needs_review` for you to approve. To see what would be created first, run `quickstart --dry-run`.
+This detects the project, creates the wiki and adapter files, and prints a handoff prompt. Paste it into your agent: it fills in the docs from real source files and leaves everything `needs_review` for you to approve. `quickstart --dry-run` shows what would be created; `--skills` also generates wiki-grounded agent prompts (`bootstrap`, `onboard`, `prepare`, `feature`, `fix`, `docs-sync`, `backfill`). An existing OKF or plain-Markdown folder works too: `--profile okf-v0.1` adds verification and CI without changing your format.
 
-Add `--skills` (or `--agent claude|codex|cursor`) to also generate invocable, wiki-grounded automation prompts: `bootstrap`, `onboard`, `prepare`, `feature`, `fix`, `docs-sync`, and `backfill`. If you already keep an OKF or plain-Markdown knowledge folder, point the CLI at it. `--profile okf-v0.1` adds verification, drift detection, and CI without changing your format.
+The CLI needs no model. The enrichment step does, and it decides quality: use your strongest reasoning model for the first build.
 
-The CLI itself needs no model. Only the enrichment step does, and that step decides quality. Use your agent's strongest reasoning model for the first wiki build; routine `docs-sync` runs fine on a cheaper one.
-
-## Try it on a demo app
-
-[`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo) is a small Vue 3 + TypeScript task list with a wiki written from its source. It walks through the full loop: `init`, two source-backed docs, `validate --strict`, `review --approve`, then a code change (a title limit goes from 80 to 120) that makes `impact` exit 1 until the doc is updated and approved again.
-
-```bash
-git clone https://github.com/Dowon-Kim7949/llm-wiki-governance.git
-cd llm-wiki-governance/examples/vue3-typescript-demo
-npm install
-npm run demo    # runs every step in a temporary git repo; ends with "All 11 checks passed."
-```
-
-It needs Node.js 20.19+ (for Vite) and git, and no API key or AI service. The demo's README has the same steps to run by hand. It also shows the limits: `impact` is file-level, so a doc updated with the *wrong* number passes too, and date-based `drift` misses a change committed the same day as the review.
+**Demo.** [`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo) runs the whole loop on a small Vue 3 app in a temporary git repo (`npm install && npm run demo`, Node.js 20.19+, no API key): two source-backed docs, `validate --strict`, `review --approve`, then a code change that makes `impact` exit 1 until the doc is updated. It also shows the limits: a doc updated with the *wrong* number passes, and date-based `drift` misses a change committed the same day as the review.
 
 ## Why not just an AGENTS.md or CLAUDE.md?
 
-Keep those files: this tool generates them and points them at the wiki. An instruction file tells an agent how to work. It does not record whether a statement was reviewed, which code it came from, or whether that code has changed since. That record is what this tool adds.
+Keep them: this tool generates them and points them at the wiki. An instruction file tells an agent how to work. It does not record whether a statement was reviewed, which code it came from, or whether that code has changed since.
 
 | | Instruction file alone | With LLM-WIKI Governance |
 | --- | --- | --- |
 | Who approved this text? | unrecorded | `needs_review` → `verified`, with `reviewed_by` and `reviewed_at` |
 | What is it based on? | prose | cited files, line ranges, symbols, or sections, each checked to resolve |
-| Is it still current? | you find out when the agent gets it wrong | `drift` / `impact` flag the doc when a cited file changes |
+| Is it still current? | you find out when the agent gets it wrong | `drift` / `impact` flag the doc when a cited source changes |
 | Is any of it enforced? | no | `validate` and `impact` exit non-zero in pre-commit or CI |
-| How do agents read it? | the whole file, every session | a small index, then targeted reads through the CLI or MCP |
-
-## What you get
-
-- **Trust states.** AI-written docs start as `needs_review`. Only an explicit `review --approve` promotes a doc to `verified`. No other command and no MCP tool can do it.
-- **Checked citations.** A doc cites files, line ranges, symbols, or Markdown sections, and `validate` fails when a citation no longer resolves.
-- **Drift and impact.** When a cited source changes, `drift` and `impact` flag the `verified` doc for re-review.
-- **CI enforcement.** `validate` and `impact` exit non-zero, so pre-commit or GitHub Actions can block an unreviewed or stale wiki. How hard they block depends on the [governance mode](#governance-modes).
-- **Agent-queryable.** Read-only retrieval through the CLI and MCP, with sensitive-looking lines redacted.
-- **Safe by construction.** Writes are preview-first, the change log is append-only, sensitive-looking values block the check instead of passing with a warning, and there are no runtime dependencies.
+| How do agents read it? | the whole file, every session | a small index, then ranked keyword search and targeted reads through the CLI or MCP |
 
 ## What it does not do
 
-- **It does not check that the prose is true.** It checks that each citation resolves: the file exists, the line range fits, the symbol is mentioned, the section heading exists. Whether the sentence citing it is correct is still for the reviewer to judge.
-- **It does not write your docs.** The CLI scaffolds, checks, and prints prompts. Your agent writes the content, and that step decides quality.
-- **It cannot prove who approved.** `reviewed_by` records the name given to `review --approve`. If agents approve docs in your repo, list them under `agentReviewers` in `llm-wiki.config.json` so `stats` counts their approvals separately. Branch protection, not this tool, controls who can merge. This repository's own wiki is a case in point: an agent approves it under the agent's own name, by a recorded maintainer decision ([AGENTS.md](./AGENTS.md)), and `stats` counts those approvals apart from human ones.
-- **It is not semantic search.** Retrieval is keyword-based over the wiki. There are no embeddings and no index service.
-- **It is not a hosted service.** It runs on your machine or in your CI. The CLI makes no network calls of its own.
-- **Drift detection is file-level, and the date-based check has blind spots** that depend on your merge strategy. `impact --since <base>` is diff-based and avoids them. See [Wiring the gate](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#wiring-the-gate-the-step-most-repos-skip).
+- **It does not check that the prose is true.** It checks that each citation resolves: the file exists, the line range fits, the symbol is mentioned, the section heading exists. Whether the sentence is correct is still the reviewer's call.
+- **It does not write your docs.** The CLI scaffolds, checks, and prints prompts; your agent writes the content.
+- **It cannot prove who approved.** `reviewed_by` records the name given to `review --approve`. List agent names under `agentReviewers` so `stats` counts their approvals apart; branch protection, not this tool, controls who can merge. This repository's own wiki is agent-approved by a recorded maintainer decision ([AGENTS.md](./AGENTS.md)).
+- **It is not semantic search.** Retrieval ranks keyword matches (BM25); there are no embeddings and no index service. It is not a hosted service either: the CLI makes no network calls of its own.
+- **Change detection is mostly file-level.** `impact` narrows only citations that are line ranges or Markdown sections; the date-based `drift` has blind spots that depend on your merge strategy. See [Wiring the gate](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#wiring-the-gate-the-step-most-repos-skip).
 
 ## Commands
 
@@ -95,94 +65,57 @@ Keep those files: this tool generates them and points them at the wiki. An instr
 | `review` | Risk-ranked `needs_review` backlog; `--approve` is the only path to `verified`. |
 | `mode` · `backfill` | Read or change the governance level · rebuild an incomplete wiki from what the repository can prove. |
 | `onboard` · `prepare` | Learn a work area, or scope a change before implementing it. Read-only. |
-| `list-docs` · `search-docs` · `get-doc` · `get-related` | Read-only retrieval that returns document content, with sensitive-looking lines redacted. |
+| `list-docs` · `search-docs` · `get-doc` · `get-related` | Read-only retrieval that returns document content, with sensitive-looking values redacted. |
 | `graph` · `stats` | Knowledge graph (text/JSON/Mermaid/DOT) · health snapshot. |
-| `doctor` · `next` · `explain` | Check the runtime, project detection, and CI wiring · suggest the next action · explain a finding and how to fix it. |
+| `doctor` · `next` · `explain` | Check the runtime, detection, and CI wiring · suggest the next action · explain a finding. |
 | `mcp` | Run the read-only MCP server. |
 | `fix` · `migrate` · `archive-log` · `handoff` · `prompt` · `check-run` · `harness-health` · `import-memory` | Scoped autofix, contract upgrade, change-log volumes, agent prompts, and harness checks. |
 
-Writes happen only with an explicit `--write`, `--apply`, or `--approve`; every other command is read-only. Add `--lang ko` for Korean findings messages, or `--doc-lang ko` to generate the wiki content in Korean. You can also import the package instead of shelling out (`import { commands, run } from "llm-wiki-governance"`). Run `npx llm-wiki-governance help <command>` for the full offline reference, in English.
+Writes happen only with an explicit `--write`, `--apply`, or `--approve`. `--lang ko` gives Korean findings and `--doc-lang ko` generates Korean wiki content. The package can be imported instead of shelled out (`import { commands, run } from "llm-wiki-governance"`). `npx llm-wiki-governance help <command>` is the full offline reference; `--version` prints the installed version.
 
 ## Run it in CI
 
-Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or reference the composite action in one step with an exact tag: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.35.0`. Recipes sized to your repo are in [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
-
-Since 1.35.0 the composite action also appends the text report to the job summary (`summary: "false"` turns that off; the step's exit code is unchanged). For `impact`, that report includes a table of the documents to re-review and the changed sources each one cites, and `--format json` carries the same as `impactedDocuments`.
-
-On a private repository, runner minutes come out of an allowance the whole organization shares. Two channels cost nothing: `templates/git-hooks/pre-commit` needs no runner at all, and the workflow template reads its `runs-on` from a `LLM_WIKI_RUNNER` variable, so it can point at a self-hosted runner without editing the file. OPERATIONS.md covers what each one gives up.
+Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or use the composite action in one step: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.36.0`. It appends the report to the job summary, including the documents `impact` wants re-reviewed (`summary: "false"` turns that off). On a private repository, the runner-free `templates/git-hooks/pre-commit` hook and the `LLM_WIKI_RUNNER` variable (self-hosted runner) avoid shared runner minutes. Recipes per repository size: [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
 
 ## Governance modes
 
-How much documentation you maintain should match what the project needs now. One engine, three policy levels, switchable at any time in the same repository.
+One engine, three policy levels, switchable at any time with `{ "governance": { "mode": "lite" } }` in `llm-wiki.config.json`.
 
 | | `lite` | `standard` | `strict` |
 | --- | --- | --- | --- |
 | Intent | development speed | speed and knowledge | completeness, verification, handoff |
 | Docs after a code change | only what the code cannot show | when a domain, architecture, or contract moves | every affected document |
 | Drift and missing-doc gate | off | reports (warning) | fails the build (error) |
-| `audit` · `backfill` | on demand | on demand | core workflow |
 
-```json
-{ "governance": { "mode": "lite" } }
-```
-
-`init` and `quickstart` scaffold `lite` for a brand-new project, so a fresh setup does not fail builds on drift until you raise the mode. A project with no `governance` block resolves to `strict`, which is exactly the rule set this CLI enforced before modes existed, so upgrading changes nothing until you opt in. Structural and safety checks run in every mode: malformed frontmatter, a dangling `source_files` path, a broken link, and sensitive-info detection are never dialed down.
-
-The intended path is months in `lite`, then `strict` before a handoff. `llm-wiki mode set strict --write` writes one config key and runs no scan. `llm-wiki backfill` does the expensive reconstruction when you ask for it. It labels every fact `verified`, `inferred`, or `unknown`, and never invents a rationale nobody recorded.
-
-**Before you add `impact` to a required check:** under `strict`, `impact.source_changed` defaults to `error`, so `llm-wiki impact --since <ref>` fails a build without any flag. Set `governance.mode` to `standard` (advisory) or `lite` (off), or pin `"impact.source_changed": "warning"` in the `rules` map of `llm-wiki.config.json`. Background, the measured false-positive rates, and every escape hatch: [CHANGELOG.md](./CHANGELOG.md) (1.28.0).
+`quickstart` scaffolds `lite`. A config without a `governance` block resolves to `strict`, the rule set enforced before modes existed. Structural and safety checks run in every mode. The intended path is months in `lite`, then `mode set strict --write` and `backfill` before a handoff. **Before making `impact` a required check:** under `strict`, `impact.source_changed` is an `error`, so `impact --since <ref>` fails a build on its own; use `standard`, or pin `"impact.source_changed": "warning"` in `rules`.
 
 ## Agent-native (MCP)
 
-`llm-wiki mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio, using Node built-ins only. Register it in an MCP client:
+`llm-wiki mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio with Node built-ins only:
 
 ```json
 { "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-Every exposed tool is read-only. An agent can query the wiki but never write to it, and promotion to `verified` stays a CLI action. The server assumes a local stdio subprocess and has no authentication, so do not put it on a network without your own auth proxy. The trust model is in [SECURITY.md](./SECURITY.md#mcp-server-trust-model).
+Every tool is read-only; promotion to `verified` stays a CLI action. The server has no authentication, so keep it a local subprocess ([SECURITY.md](./SECURITY.md#mcp-server-trust-model)).
 
 ## What it takes to run
 
-- **Setup:** one `quickstart --write`, then one enrichment session with your agent. That session is where model cost and quality are decided.
-- **Day to day:** when `drift` or `impact` flags a doc, update it and approve it again. In `lite`, only what the code cannot show needs a doc at all.
-- **CI:** one job, or the runner-free pre-commit hook.
-- **Value comes from maintained content, not from the tooling.** In our benchmark (one external repository, one model, six tasks), a wiki that existed but was never enriched measured *worse* than no wiki at all. The conditions, and the runs that went against us, are in [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md) (Korean prose) and [BENCHMARK_DISCLOSURE.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/BENCHMARK_DISCLOSURE.md).
+Setup is one `quickstart --write` and one enrichment session. Day to day, when `drift` or `impact` flags a doc, update it and approve it again. **Value comes from maintained content, not from the tooling:** in our benchmark (one external repository, one model, six tasks), a wiki that existed but was never enriched measured *worse* than no wiki at all. Conditions and the runs that went against us: [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md) (Korean prose) and [BENCHMARK_DISCLOSURE.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/BENCHMARK_DISCLOSURE.md).
 
-## Supported environments
+Runs on Windows, macOS, and Linux with no runtime dependencies. It detects Node, Python, Go, Rust, JVM, PHP, Ruby, .NET, mobile, and infra projects, and ships adapters for Codex, Claude Code, Cursor, GitHub Copilot, Windsurf, and Gemini CLI.
 
-| | |
+## Troubleshooting and documentation
+
+| If you… | Then |
 | --- | --- |
-| **Runtime** | Node.js ≥ 18.18.0 · Windows, macOS, Linux |
-| **Dependencies** | none — no runtime third-party dependencies |
-| **Detects** | Node · Python · Go · Rust · JVM · PHP · Ruby · .NET · mobile (Android / Flutter / iOS / React Native) · infra (Docker / Compose / Kubernetes / Helm / Terraform) |
-| **Standards** | OKF-compatible — `--profile okf-v0.1` validates Open Knowledge Format `type`/`aliases`/`tags` |
-| **Agents / editors** | Adapter files for Codex (`AGENTS.md`), Claude Code (`CLAUDE.md`), Cursor, GitHub Copilot, Windsurf, Gemini CLI — plus any MCP client |
-| **Standalone** | the CLI works fully without any agent |
+| get an older version from `npx` | `npx` can reuse a cache: run `npx llm-wiki-governance@latest …` and check with `--version`. |
+| see a finding you do not recognize | `llm-wiki explain <rule>`. |
+| are unsure about setup or CI wiring | `llm-wiki doctor`. |
+| are blocked by `sensitive.redacted` | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you) |
+| want every command, option, and exit code | `help <command>` · [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) (Korean prose) |
+| want the trust model, or to report a vulnerability | [SECURITY.md](./SECURITY.md) |
+| want worked examples | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) (Korean prose) |
+| want history, direction, or the decision record | [CHANGELOG.md](./CHANGELOG.md) · [ROADMAP.md](./ROADMAP.md) · [GATE_REVIEW.md](./GATE_REVIEW.md) |
 
-## Troubleshooting
-
-| Symptom | First step |
-| --- | --- |
-| `npx` runs an older version than the latest release | npx can reuse a cached copy. Run `npx llm-wiki-governance@latest …`, or install it as a devDependency. |
-| A finding you do not recognize | `llm-wiki explain <rule>` explains it and suggests a safe fix. |
-| Unsure whether setup or CI wiring is right | `llm-wiki doctor` reports runtime, detection, and how many CI steps can actually block. |
-| `sensitive.redacted` blocks a document | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you) |
-| `impact` fails a build you did not expect | Check `governance.mode`, then see [Governance modes](#governance-modes). |
-
-## Documentation
-
-| If you want to… | Read |
-| --- | --- |
-| Run it at your repository's scale and wire CI | [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md) |
-| Look up every command, option, and exit code | `npx llm-wiki-governance help <command>` · [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) (Korean prose) |
-| Understand the trust model or report a vulnerability | [SECURITY.md](./SECURITY.md) |
-| See what was measured, and what was not | [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md) (Korean prose) · [BENCHMARK_DISCLOSURE.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/BENCHMARK_DISCLOSURE.md) |
-| Run a demo end to end | [examples/vue3-typescript-demo](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo) |
-| Follow worked examples | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) (Korean prose) |
-| Read history and direction | [CHANGELOG.md](./CHANGELOG.md) · [ROADMAP.md](./ROADMAP.md) |
-| Check accepted safety scopes and release gates | [GATE_REVIEW.md](./GATE_REVIEW.md) (a long decision record) |
-
-## Contributing and support
-
-Bug reports and questions: [Issues](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues) and [Discussions](https://github.com/Dowon-Kim7949/llm-wiki-governance/discussions). Security reports follow [SECURITY.md](./SECURITY.md). Before opening a pull request, read [CONTRIBUTING.md](./CONTRIBUTING.md) and the [Code of Conduct](./CODE_OF_CONDUCT.md). Licensed under [MIT](./LICENSE).
+Bug reports and questions: [Issues](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues) and [Discussions](https://github.com/Dowon-Kim7949/llm-wiki-governance/discussions). Before a pull request, read [CONTRIBUTING.md](./CONTRIBUTING.md) and the [Code of Conduct](./CODE_OF_CONDUCT.md). Licensed under [MIT](./LICENSE).

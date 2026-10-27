@@ -244,7 +244,12 @@ const EXPLANATION_CATALOG = {
     "impact.source_changed": {
       meaning: "verified 문서가 현재 diff에서 변경된 소스 파일에 의존하는데, 문서 자신은 변경되지 않았습니다.",
       whyItMatters: "이는 날짜 기준 evidence.stale의 diff 기준·pre-merge 보완으로, 가장 중요한 경우 — 코드와 그 문서가 서로 다른 위치/PR에서 바뀌는 경우 — 를 잡아 verified 문서가 문서화한 코드와 조용히 어긋나지 않게 합니다. 내용을 보는 예외가 하나 있습니다: version 값만 바뀐 package.json은 변경된 것으로 보고되지만 앵커 대조에는 쓰이지 않습니다(N-13, 2026-08-04). 릴리스마다 올라가는 값이고 어떤 문서의 주장도 그 숫자에 의존하지 않기 때문입니다. 다른 키가 바뀌거나, version 필드가 추가·삭제되거나, 파싱이 안 되거나, 비교할 기준 내용이 없으면 그대로 셉니다.",
-      remediation: ["변경된 소스를 다시 읽고 같은 변경집합에서 verified 문서를 갱신하세요.", "주장이 더 이상 성립하지 않으면 문서를 needs_review로 낮추세요(llm-wiki drift --downgrade).", "새 검토 후 reviewed_by/reviewed_at을 갱신하세요.", "이는 diff 기반 파일 수준 휴리스틱이니, 변경이 문서화된 주장에 영향이 없다면 무시하세요.", "이 규칙은 기본이 error라 --strict 없이도 빌드를 실패시킵니다. 너무 시끄러우면 llm-wiki.config.json rules에서 \"impact.source_changed\"를 \"warning\"(또는 \"info\"/\"off\")으로 낮추거나 rulesPreset: \"relaxed\"를 쓰세요.", "허브 파일 1개가 그것을 인용한 문서 수만큼 발화하는 것은 정상입니다."]
+      remediation: ["변경된 소스를 다시 읽고 같은 변경집합에서 verified 문서를 갱신하세요.", "evidence에서 줄 범위나 Markdown 섹션 로케이터로만 인용한 파일은 그 영역만 기준과 비교합니다. 영역이 그대로면 실패 대신 locatorNarrowed로 보고됩니다(source_files, 경로만 쓴 인용, #symbol:, #route:는 파일 단위).", "주장이 더 이상 성립하지 않으면 문서를 needs_review로 낮추세요(llm-wiki drift --downgrade).", "새 검토 후 reviewed_by/reviewed_at을 갱신하세요.", "이는 diff 기반 파일 수준 휴리스틱이니, 변경이 문서화된 주장에 영향이 없다면 무시하세요.", "이 규칙은 기본이 error라 --strict 없이도 빌드를 실패시킵니다. 너무 시끄러우면 llm-wiki.config.json rules에서 \"impact.source_changed\"를 \"warning\"(또는 \"info\"/\"off\")으로 낮추거나 rulesPreset: \"relaxed\"를 쓰세요.", "허브 파일 1개가 그것을 인용한 문서 수만큼 발화하는 것은 정상입니다."]
+    },
+    "review.unattested_promotion": {
+      meaning: "impact diff 안에서 위키 문서가 verified로 승격됐는데 검토 스탬프가 함께 바뀌지 않았습니다. reviewed_at이 없거나, 날짜가 아니거나, 승격 전과 같은 값이거나(그 값이 오늘이면 제외합니다. 같은 날 강등했다 다시 승인한 문서는 날짜가 그대로입니다), reviewed_by가 비어 있습니다. review --approve는 항상 새 reviewed_at을 쓰므로, 스탬프 없는 승격은 status를 손으로 고쳤을 가능성이 큽니다. opt-in 규칙이라 기본은 꺼져 있고 config rules로 켭니다.",
+      whyItMatters: "verified 표시는 모든 독자가 믿는 주장인데, validate는 현재 파일만 보므로 검토된 문서와 status 줄만 고친 문서를 구별할 수 없습니다(GAP 3). diff는 구별할 수 있습니다. 승격과 스탬프는 같은 변경에 함께 들어오기 때문입니다. 증명이 아니라 값싼 신호입니다. 손으로 새 reviewed_at까지 쓰면 통과하고, 처음부터 verified로 들어온 새 파일은 스탬프만으로 판정합니다.",
+      remediation: ["문서를 needs_review로 낮추고 소스와 대조해 다시 읽은 뒤 llm-wiki review --approve <path>로 승인하세요. 이 명령이 스탬프를 씁니다.", "실제로 검토한 승격이라면 review --approve로 다시 스탬프해 기록을 남기세요.", "llm-wiki.config.json rules에 \"review.unattested_promotion\": \"warning\"(또는 \"info\"/\"error\")을 넣어 켭니다. 빼거나 \"off\"로 두면 기본값입니다."]
     },
     "impact.unavailable": {
       meaning: "impact 검사가 git 이력을 읽을 수 없습니다.",

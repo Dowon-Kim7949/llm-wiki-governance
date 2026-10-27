@@ -22,6 +22,9 @@ related:
   - docs/llm-wiki/PUBLIC_API.md
 visibility: internal
 contains_sensitive_info: false
+source_digests:
+  - src/cli.js sha256:6c135d9a743008be
+  - README.md sha256:4fadab45838c724d
 ---
 
 # Examples
@@ -117,6 +120,8 @@ npm에는 **무관한** `llm-wiki` 패키지가 따로 있어서, 짧은 형태�
 
 실패한 `impact`를 읽는 법(1.35.0부터). 텍스트 출력에는 `Finding Summary` 앞에 `## Documents to re-review` 표가 붙는다. 한 행이 문서 하나이고, 둘째 칸은 그 문서가 인용하는데 이번 diff에서 바뀐 소스다. 그 아래 한 줄이 다음 조치를 알려 준다(그 소스와 대조해 문서를 같은 변경에서 고치고 다시 승인, 다른 해소 경로는 `llm-wiki explain impact.source_changed`). 같은 내용이 `--format json`에는 `impactedDocuments[{path, sources[]}]`로, 바뀐 경로 전체는 `changedPaths[]`로 실린다(`changedFiles`는 개수 그대로). 컴포지트 액션(`uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.35.0`, `command: impact`)은 이 text 리포트를 job summary에도 붙이므로, PR 화면에서 표를 바로 볼 수 있다. `summary: "false"`로 끄며, 스텝의 종료 코드는 그대로다.
 
+1.36.0부터는 로케이터가 결과를 바꾸기도 한다. 문서가 어떤 파일을 `source_files`에 두지 않고 `evidence`에서 `guide.md#section:Usage`나 `src/a.js#L10-L20`처럼 섹션·줄 범위로만 인용했다면, 그 파일이 diff에 들어도 인용한 영역이 그대로면 실패하지 않는다. 대신 요약에 `locator_narrowed: 1 (docs/llm-wiki/api.md -> guide.md)`가 찍히고 JSON에는 `locatorNarrowed[]`가 붙는다. 영역 위에 줄이 끼어 위치가 밀리면 그대로 실패하므로, 이 줄이 0이 아니라고 해서 아무것도 확인하지 않은 것은 아니다.
+
 예외가 하나 더 있다(N-14, 1.29.1부터): `docs/llm-wiki/templates/` 하위 문서는 `impact`와 `drift` **양쪽**에서 빠진다. 템플릿은 도입처가 복사해 쓰는 뼈대라 `review`가 열거하지 못하고, 그래서 게이트가 지목해도 강등도 재스탬프도 불가능한 — **해소 경로가 없는** — finding이 됐다. `impact.source_changed`는 기본 error이므로 위키 템플릿을 두는 저장소는 고칠 방법 없이 빌드가 빨개질 수 있었다. 이 제외는 `review`가 이미 쓰던 술어(`isTemplateDoc`)를 공유하므로 두 판정이 다시 갈라지지 않는다. 같은 배치에서 `review --approve <경로>`에 템플릿이나 append-only 로그를 주면 "not found"(거짓)가 아니라 **범위 밖**이라고 답하게 됐다.
 
 ## 드리프트 감시 범위 넓히기 (--watch-needs-review, 결정 28)
@@ -124,6 +129,7 @@ npm에는 **무관한** `llm-wiki` 패키지가 따로 있어서, 짧은 형태�
 ```bash
 llm-wiki drift                        # 기본: verified 문서만 date-앵커 최신성 검사
 llm-wiki drift --watch-needs-review   # needs_review 문서까지 함께 본다(기본 off)
+llm-wiki drift --anchor content       # 1.36.0 섀도: 날짜 판정 옆에 내용 해시 판정을 표로(finding·exit code 불변)
 ```
 
 `--watch-needs-review`는 **`drift`만** 받는다. `impact`에는 의도적으로 넓히지 않는데, 그 규칙은 결정 21 이후 error라 자문용 opt-in이 검토되지 않은 문서에게 빌드를 실패시킬 권한을 주게 되기 때문이다. `doc_type: release_notes` 문서는 `evidence.stale`·`impact.source_changed` 양쪽에서 면제되며, 이 면제가 위 opt-in보다 우선한다.
@@ -171,10 +177,10 @@ llm-wiki explain content.not_enriched
 
 ## Review Notes
 
-Older review notes (11 entries, 2026-07-13 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (12 entries, 2026-07-13 → 2026-08-19) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-08-19(1.29.2 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 이번 릴리스 커밋의 README 변경은 **액션 핀 한 줄**(`@v1.29.1` → `@v1.29.2`)이 전부이고, 이 문서의 CI 레시피는 핀 문자열을 재현하지 않는다(인용하는 것은 `impact --since`의 exit 계약과 완화 설정 두 가지다) — 예제가 재현하는 동작에 영향이 없어 본문 **불변**. 1.29.2의 실기능(`delegationPolicy`)은 생성 프롬프트 안의 문장이라 예제 명령 표면을 바꾸지 않는다. 2026-08-03(1.28.0)·2026-08-06(1.29.1)과 같은 유형이다. 상한 5건을 지키려고 최고령 1건(2026-07-23, `--doc-lang` 예시 추가)을 `REVIEW_HISTORY.md`의 `Examples` 절로 원문 그대로 옮겼다.
 - 2026-09-07(1.30.0)에 거버넌스 모드 예제 절(`평소에는 lite, 인수인계 전에 strict`)을 추가했다. `impact.source_changed`가 지목한 인용 소스 2건(`src/cli.js`·`README.md`)의 변경은 `mode`/`backfill` 명령·`--mode` 옵션 등록과 README의 새 절이라 기존 예제 절은 전부 그대로 유효하다 — **새 워크플로를 보여줄 예제가 없다**는 것이 실제 공백이었다.
 - 2026-09-08에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README를 소개와 핵심 기능 위주로 축약하면서, `impact`의 exit 계약과 완화 설정 두 가지를 적어 두던 Upgrading 절이 README에서 빠지고 그 상세가 `CHANGELOG`(1.28.0)로 넘어갔다. 이 문서의 CI 레시피는 README를 인용하는 것이 아니라 그 계약 자체를 재현하므로 예제는 전부 그대로 유효하다 — `impact --since`가 플래그 없이 exit 1이라는 것도, `rules`의 `warning`/`info`/`off`와 `rulesPreset: "relaxed"`도 제품 동작이 바뀐 것이 아니라 서술 위치만 옮겼다. 거버넌스 모드 예제 절도 README의 요약본이 아니라 실제 명령을 재현하므로 영향이 없다. 본문 **불변**. 상한 5건을 지키려고 최고령 1건(2026-08-03, Review Notes 상한 집행 배치)을 `REVIEW_HISTORY.md`의 `Examples` 절로 원문 그대로 옮겼다.
 - 2026-10-26에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 대조했다. 루트 README의 구성을 바꿨다: 동작 방식 다이어그램, 지시 파일과의 비교표, "하지 않는 일", 별도의 CI 절, 도입·운영 비용, 문제 해결 표, 문서 안내 표를 더하고, 사실보다 넓게 말하던 문장(모든 주장이 코드에 묶인다, 어떤 스택·에이전트에서나 동작한다)을 고쳤다. 이 문서가 README에서 재현하는 것은 CI 레시피의 `impact --since` exit 계약과 완화 설정 두 가지다. 그 문단("Before you add `impact` to a required check")은 문구 그대로 남았고, 액션 핀도 `@v1.34.0` 그대로다. README 명령 표에 새로 오른 `doctor`·`next`·`explain`은 신규 명령이 아니라 기존 명령을 표에 올린 것이므로, 예제가 재현하는 명령 표면·옵션에는 변화가 없다. 본문 **불변**. 같은 날 1.35.0 준비에서 다시 지목됐다(`src/cli.js`·`README.md`). 이번에는 본문을 고쳤다. CI 예시의 버전 핀을 `@1.35`로 올렸고(README 핀은 `@v1.35.0`), 실패한 `impact`를 읽는 법을 N-13 예외 다음에 한 문단으로 더했다. 새 `Documents to re-review` 표, JSON `impactedDocuments`, 액션의 job summary가 그 내용이다.
 - 2026-10-27에 `impact`가 인용 소스 `README.md`의 변경으로 이 문서를 지목했다. 루트 README에 실행 가능한 Vue 3 데모(`examples/vue3-typescript-demo/`) 절이 생겼으므로 머리말에 그 예제를 한 단락으로 소개했다. 기존 예시들은 그대로다.
+- 2026-10-27(1.36.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `src/cli.js`를 대조했다. 바뀐 것은 `--version`/`-v`, 인자 없는 `help`, impact·check-run·drift·review·search-docs 도움말 문구다. 틀려진 예시 명령은 없고, 실패한 impact를 읽는 절에 `locator_narrowed` 설명을, drift 예시에 `--anchor content` 한 줄을 더했다.

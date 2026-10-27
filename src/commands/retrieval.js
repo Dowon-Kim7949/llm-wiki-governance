@@ -399,55 +399,95 @@ export async function getRelatedCommand(options) {
 
 // ---- shared helpers ----------------------------------------------------
 
+// Query terms as the ranker sees them: lowercased whitespace-split words, deduped,
+// minus English function words, with a trailing Korean particle or ending removed
+// from a Hangul term of 3+ characters ("로그를" -> "로그"), so a question finds the
+// documents a keyword would. Matching stays substring-based, so a term still hits
+// inside a longer word. A query made only of function words keeps them.
+const SEARCH_STOPWORDS = new Set(["a", "an", "the", "and", "or", "of", "to", "in", "for", "on", "at", "is", "are", "be", "do", "does", "i", "how", "what", "why", "which", "that", "this", "it", "with", "by", "from", "look", "like"]);
+const KOREAN_SUFFIXES = ["에서는", "으로는", "에서", "으로", "하려면", "에게", "부터", "까지", "처럼", "는", "은", "이", "가", "을", "를", "의", "에", "로", "와", "과", "도", "나"];
+
+export function searchTerms(query) {
+  const words = [...new Set(String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean))];
+  const content = words.filter((word) => !SEARCH_STOPWORDS.has(word));
+  return [...new Set((content.length > 0 ? content : words).map(stripKoreanSuffix))];
+}
+
+function stripKoreanSuffix(term) {
+  if (term.length < 3 || !/[가-힣]/.test(term)) return term;
+  for (const suffix of KOREAN_SUFFIXES) {
+    if (term.endsWith(suffix) && term.length - suffix.length >= 2) return term.slice(0, -suffix.length);
+  }
+  return term;
+}
+
 // Pure keyword ranking over already-filtered docs. Single source shared by
 // search-docs and the guided onboard/prepare surfaces, so they never reimplement
-// the search engine. `requireAll` (default true) gives AND semantics — every
-// whitespace-separated term must appear (search-docs); pass false for OR-ish recall
-// over a free-text task sentence (prepare), where a doc matches if any term scores.
+// the search engine.
+//
+// Ranked by BM25 over substring term counts in the redacted body (k1 1.2, b 0.75,
+// idf over the docs passed in), plus +2 per term found in the title and +1 per
+// term found only in tags/aliases (1.36.0). A document matches when ANY term is
+// found, and `matchedTerms` says how many were. The earlier AND-only substring
+// count returned nothing for 18 of 40 queries in bench/search-eval; see that
+// directory for the measured comparison. `requireAll: true` still restricts the
+// result to documents that contain every term.
+//
 // Returns matches sorted by (change-log-deprioritized, score desc, path asc); each
-// carries path/title/status/score/snippet plus the internal `deprioritized` key
-// (callers that expose results strip it, as search-docs does).
-export function rankDocsByQuery(docs, query, { requireAll = true } = {}) {
-  const terms = String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
-  const matches = [];
-  for (const doc of docs) {
+// carries path/title/status/score/matchedTerms/snippet plus the internal
+// `deprioritized` key (callers that expose results strip it, as search-docs does).
+// Scores are rounded to 4 decimals so the order cannot depend on the last bit of
+// a logarithm.
+export function rankDocsByQuery(docs, query, { requireAll = false } = {}) {
+  const terms = searchTerms(query);
+  if (terms.length === 0) return [];
+  const prepared = docs.map((doc) => {
     // Score and echo the redacted view, as the body below already is.
     const fm = doc.displayFrontmatter ?? doc.frontmatter;
     const title = typeof fm.title === "string" ? fm.title : "";
-    const metaText = [title]
+    const metaHay = []
       .concat(Array.isArray(fm.tags) ? fm.tags : [])
       .concat(Array.isArray(fm.aliases) ? fm.aliases : [])
       .filter((value) => typeof value === "string")
-      .join(" ");
+      .join(" ")
+      .toLowerCase();
     const bodyRedacted = redactSensitive(doc.body);
-    const titleHay = title.toLowerCase();
-    const metaHay = metaText.toLowerCase();
-    const bodyHay = bodyRedacted.toLowerCase();
+    return { doc, title, titleHay: title.toLowerCase(), metaHay, bodyRedacted, bodyHay: bodyRedacted.toLowerCase() };
+  });
+  const averageLength = prepared.reduce((sum, entry) => sum + entry.bodyHay.length, 0) / Math.max(1, prepared.length);
+  const idf = new Map(terms.map((term) => {
+    const df = prepared.filter((entry) => entry.bodyHay.includes(term)).length;
+    return [term, Math.log(1 + (prepared.length - df + 0.5) / (df + 0.5))];
+  }));
 
-    // AND semantics (default): every query term must appear somewhere in the doc.
-    const allPresent = terms.length > 0
-      && terms.every((term) => titleHay.includes(term) || metaHay.includes(term) || bodyHay.includes(term));
-    if (requireAll && !allPresent) continue;
-
+  const matches = [];
+  for (const entry of prepared) {
     let score = 0;
+    let matchedTerms = 0;
+    const lengthNorm = 0.25 + 0.75 * (entry.bodyHay.length / (averageLength || 1));
     for (const term of terms) {
-      if (titleHay.includes(term)) score += 10;
-      if (metaHay.includes(term)) score += 3;
-      score += occurrences(bodyHay, term);
+      const tf = occurrences(entry.bodyHay, term);
+      const inTitle = entry.titleHay.includes(term);
+      const inMeta = !inTitle && entry.metaHay.includes(term);
+      if (tf > 0 || inTitle || inMeta) matchedTerms += 1;
+      score += idf.get(term) * ((tf * 2.2) / (tf + 1.2 * lengthNorm));
+      if (inTitle) score += 2;
+      else if (inMeta) score += 1;
     }
-    // OR-ish recall (requireAll=false): keep only docs at least one term touched.
-    if (!requireAll && score === 0) continue;
+    if (matchedTerms === 0) continue;
+    if (requireAll && matchedTerms < terms.length) continue;
     matches.push({
-      path: doc.path,
-      title: title || null,
-      status: typeof doc.frontmatter.status === "string" ? doc.frontmatter.status : null,
-      score,
-      snippet: buildSnippet(bodyRedacted, terms),
+      path: entry.doc.path,
+      title: entry.title || null,
+      status: typeof entry.doc.frontmatter.status === "string" ? entry.doc.frontmatter.status : null,
+      score: Math.round(score * 10000) / 10000,
+      matchedTerms,
+      snippet: buildSnippet(entry.bodyRedacted, terms),
       // Internal sort key (stripped before return). The append-only change log
-      // accumulates every keyword, so raw occurrence scoring lets it dominate the
-      // results; deprioritize change logs so reference docs rank above them. The
-      // log is still returned (demoted, not excluded).
-      deprioritized: isAppendOnlyLog(doc.path) || doc.frontmatter.doc_type === "change_log"
+      // accumulates every keyword, so it would dominate the results;
+      // deprioritize change logs so reference docs rank above them. The log is
+      // still returned (demoted, not excluded).
+      deprioritized: isAppendOnlyLog(entry.doc.path) || entry.doc.frontmatter.doc_type === "change_log"
     });
   }
   matches.sort((left, right) =>

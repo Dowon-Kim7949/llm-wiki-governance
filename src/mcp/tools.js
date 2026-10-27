@@ -176,10 +176,10 @@ export const TOOL_DEFS = [
     name: "search_docs",
     title: "Search wiki documents",
     description:
-      "Read-only keyword/substring search (deterministic, NOT semantic/vector) over document titles, bodies, and frontmatter. Every whitespace-separated term must appear (AND); returns ranked matches with a redacted snippet. Use get_doc for full content. Restricted/sensitive documents are excluded unless includeSensitive is set.",
+      "Read-only keyword/substring search (deterministic, NOT semantic/vector) over document titles, bodies, and frontmatter. A document matches when any query term appears; matches are ranked by BM25 relevance (title and tags/aliases weighted), each with matchedTerms (how many distinct terms it contains) and a redacted snippet. English function words and trailing Korean particles are dropped from the query. Use get_doc for full content. Restricted/sensitive documents are excluded unless includeSensitive is set.",
     command: "search-docs",
     inputSchema: schema({
-      query: { type: "string", description: "Keyword query. Every whitespace-separated term must appear in a document." },
+      query: { type: "string", description: "Keyword query. Whitespace-separated terms; a document containing more of them ranks higher." },
       cwd: cwdProp,
       status: statusFilterProp,
       visibility: visibilityFilterProp,
@@ -192,7 +192,7 @@ export const TOOL_DEFS = [
     name: "get_doc",
     title: "Get a wiki document",
     description:
-      "Read-only retrieval. Return one document's frontmatter and body by path. Sensitive-looking body lines are redacted; the document's own visibility/contains_sensitive_info frontmatter is preserved. Opt-in token controls: strictSection (with section, no full-body fallback), maxChars (exact body cap), compact (omit frontmatter echo and keep the body only in structuredContent — avoids duplicating it in the text content).",
+      "Read-only retrieval. Return one document's frontmatter and body by path. Sensitive-looking body lines are redacted, a private key or certificate block is withheld whole, and any frontmatter value that looks sensitive is replaced in the echoed frontmatter (the visibility/contains_sensitive_info fields themselves are kept). Opt-in token controls: strictSection (with section, no full-body fallback), maxChars (exact body cap), compact (omit frontmatter echo and keep the body only in structuredContent — avoids duplicating it in the text content).",
     command: "get-doc",
     inputSchema: schema({ path: docPathProp, section: sectionProp, strictSection: strictSectionProp, compact: compactProp, maxChars: maxCharsProp, cwd: cwdProp }, ["path"])
   },
