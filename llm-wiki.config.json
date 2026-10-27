@@ -4,5 +4,6 @@
   "governance": { "mode": "strict" },
   "reviewer": "Claude Code (delegated by Dowon-Kim)",
   "agentReviewers": ["Claude Code (delegated by Dowon-Kim)"],
-  "checkRun": { "ignore": ["outputs/", "README.md", "README.ko.md", "ROADMAP.md", "ROADMAP.ko.md", "CHANGELOG.md", "CHANGELOG.ko.md"] }
+  "sourceDigests": true,
+  "checkRun": { "ignore": ["outputs/", "tests/", "README.md", "README.ko.md", "ROADMAP.md", "ROADMAP.ko.md", "CHANGELOG.md", "CHANGELOG.ko.md"] }
 }

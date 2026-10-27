@@ -3271,6 +3271,69 @@ nine local wikis give results identical to `main` in `validate`, `audit`, `graph
 `fix` preview. **This is a change in what a shipped check reports**, so the release that
 carries it names it, like the 1.31.0 exceptions.
 
+## 1.36.0 Proposal Batch (2026-10-27 — built, unreleased)
+
+**Origin.** The maintainer asked for every open candidate from the 2026-10-26 engineering
+review to be carried out: the CLI usability defects, the stale distribution copy, `impact`
+honoring section and symbol locators, the `check-run` prose noise (P2-2), content-anchored
+drift (P1-5), approval provenance (P1-2), and a search evaluation set (P1-6). Paid benchmark
+v2 (P1-4) was not in the list and was not started.
+
+**What was built, and the boundary each one keeps.**
+
+| Item | Built | Default behavior | Boundary |
+| --- | --- | --- | --- |
+| CLI | `--version` / `-v` as the first argument prints the version; bare `help` prints no error line | changed (was exit 3 / an stderr line) | `release-notes --version <x.y.z>` is untouched because it is never the first argument |
+| `impact` locators | A file cited only in `evidence`, only by line ranges or Markdown sections, is compared region by region between the baseline and the working tree; unchanged citations go to `locatorNarrowed` | changed, toward fewer findings | Any broad citation of the file (`source_files`, bare path, `#symbol:`, `#route:`), a missing baseline copy, or a region not located exactly once on both sides keeps the file-level answer. Line ranges compare positions, so a shift above the range is still reported |
+| `check-run` prose (F-6) | Config `checkRun.ignore` (`"dir/"`, `"*.ext"`, exact paths) leaves both gap rules and is listed as `ignored[]` | unchanged | One list for both rules, because removing a path from only one moves the warning to the other — the reason 1.35.0 left this out |
+| Content anchor (P1-5) | Config `sourceDigests` makes `review --approve` stamp `source_digests`; `drift --anchor content` prints date and content verdicts side by side | unchanged | Shadow only: `contentAnchor` lives beside `findings`, never in them. An anchor that cannot be compared is never reported unchanged |
+| Approval provenance (P1-2) | Opt-in rule `review.unattested_promotion`, computed by `impact` from the diff | unchanged | A cheap signal, not proof: a hand edit that also writes a new date passes |
+| Search (P1-6) | BM25 ranking, any-term matching, `matchedTerms`, stopword and Korean particle handling | **changed: the search contract** | `requireAll: true` keeps the old filter for API callers |
+
+**Measured before shipping.**
+
+- Search: 40 queries over this repository's wiki (agent-labeled, not human-reviewed). The
+  1.35.0 ranker, frozen in `bench/search-eval/run.js` and checked to reproduce the released
+  code exactly, returned nothing for 18 queries; hit@5 42.5%, MRR 0.272. The shipped ranker:
+  0 empty, hit@5 92.5%, recall@5 83.3%, MRR 0.660. The ranker was chosen on the same 40
+  queries, so this is an in-sample upper bound, not a general claim.
+- Approval provenance: replayed over the 316 commits of this repository's full history
+  (the archive checkout), 187 promotions to `verified`. The first version of the rule named
+  43 of them, all a document downgraded and approved again on the same day, where
+  `review --approve` writes the date the document already carries. With an unchanged date
+  that is today withheld, it names 0. The history holds no hand promotion, so the rule's
+  true-positive side is shown only by fixtures.
+- `check-run` on this repository with `checkRun.ignore` set: the 1.35.0 manifest's 6 prose
+  paths are listed as ignored instead of warning. On this batch's own manifest, with the
+  prose out of the way, the rule found three real gaps: the new `source-digests.js`, the
+  published schema copy, and `llm-wiki.config.json` were described in wiki prose but cited
+  by no document. All three are cited now. This repository also ignores `tests/`, because
+  its wiki does not cite test files; that is a project choice, not a product default.
+- `impact --since main` on this branch: one citation narrowed (`BENCHMARK.md` cites a
+  `GATE_REVIEW.md` section this batch did not touch). `drift --anchor content` after the
+  first approval disagreed once, which exposed a stamping-order defect: a Markdown source
+  was digested with its frontmatter, so approving a cited document in the same run made the
+  citing document's digest stale. Markdown sources are now digested by their body; after
+  re-stamping, 14 agree and 0 disagree.
+
+**Decided against, with reasons.**
+
+- **A `reviewed_via: human|agent` frontmatter field** (part of P1-2). It is derivable at any
+  time from `reviewed_by` and config `agentReviewers`, which `stats` already does. A second
+  record of the same fact is a second place to disagree.
+- **Narrowing `#symbol:` and `#route:` citations.** Their extent cannot be computed without
+  parsing the language. A heuristic that guessed too small would remove a finding from an
+  error-level gate — the one direction a change here must not move (N-7).
+- **Making the content anchor decide anything.** It replaces nothing until the two anchors
+  have been compared on real repositories. This repository now sets `sourceDigests: true`
+  to start that record.
+
+**Behaviour changes a release must name:** the search contract (any-term instead of AND),
+`impact` reporting fewer findings for line/section-only citations, the link-extraction fix
+recorded above (more `markdown_link.missing` findings on glued links and consecutive
+reference definitions), `--version` exiting 0, and the publish workflow no longer passing
+a token (decided in "Publish Credential Cleanup").
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

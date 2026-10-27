@@ -10,12 +10,13 @@ last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-26
+reviewed_at: 2026-10-27
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
   - src/commands.js
   - src/config.js
+  - llm-wiki.config.json
 evidence:
   - src/frontmatter-schema.js
   - src/config.js#symbol:VALID_STATUSES
@@ -25,6 +26,11 @@ related:
   - docs/llm-wiki/PUBLIC_API.md
 visibility: internal
 contains_sensitive_info: false
+source_digests:
+  - src/frontmatter-schema.js sha256:ec4476da72b5c2e2
+  - src/commands.js sha256:11e10f20f5c64ced
+  - src/config.js sha256:1403eef64c1781a8
+  - llm-wiki.config.json sha256:16fa581c78b330eb
 ---
 
 # Glossary
@@ -43,7 +49,9 @@ contains_sensitive_info: false
 - **wikiGraph** — 위키 링크(이중 대괄호 표기) 기반 문서 그래프. 미해결 개념(unresolved concepts)·별칭(aliases)·고아 문서(orphans)를 집계한다.
 - **adapter** — 에이전트에게 wiki 진입점을 알리는 파일. `AGENTS.md`(Codex), `CLAUDE.md`(Claude Code), `.cursor/rules/llm-wiki.mdc`(Cursor), `.github/copilot-instructions.md`(GitHub Copilot), 후보 `ANTIGRAVITY.md`.
 - **profile** — 프로젝트 유형별 추가 문서 집합(`frontend`/`backend`/`fullstack`/`library`/`okf-v0.1`). `src/config.js` `PROFILE_DOCS`.
-- **llm-wiki.config.json** — 프로젝트 루트의 선택적 설정 파일. 인식하는 키는 `type`·`profiles`·`agents`·`strict`·`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage`·`harnessHealth`·`wikiBudget`(1.33.0, `{ "logTokens", "docTokens" }`)·`agentReviewers`(1.33.0, 이름 배열)·`promptProfile`(1.33.0, `"full"|"slim"`)·`governance`(1.30.0, `{ "mode": "lite"|"standard"|"strict" }`)이며, unknown 키는 무시돼 옛 파일이 계속 동작한다. **1.31.0부터 값 어휘도 검증한다**: `type`은 `KNOWN_TYPES`에, `agents`는 `SUPPORTED_AGENTS`에 대조하고 위반은 config 오류(exit 3), `agents`의 `all`은 CLI와 같이 세 이름으로 펼쳐진다 — 그 전에는 타입만 봐서 `{"type": "frontendd"}`가 조용히 통과했다. 적용 우선순위는 CLI 플래그 > config > 자동감지(`strict`는 additive라 config가 켤 수만 있다). `src/config-file.js`. 키별 의미는 [PUBLIC_API](PUBLIC_API.md)의 Configuration 절이 소유한다.
+- **source_digests / 내용 앵커** — (1.36.0, 섀도) `review --approve`가 config `sourceDigests: true`일 때 스탬프하는 선택 frontmatter 리스트. 항목은 `<경로[로케이터]> sha256:<16 hex>`이고, 검토 시점에 인용 소스가 어떤 내용이었는지를 날짜·SHA·머지 방식과 무관하게 기록한다. `drift --anchor content`가 지금 내용과 비교해 날짜 판정 옆에 보인다.
+- **locatorNarrowed** — (1.36.0) `impact` JSON 키. 줄 범위나 `.md` 섹션으로만 인용된 파일이 diff에 들었지만 인용된 영역은 그대로라 실패시키지 않은 인용의 목록. 건너뛴 사실을 숨기지 않으려고 보고한다.
+- **llm-wiki.config.json** — 프로젝트 루트의 선택적 설정 파일. 인식하는 키는 `type`·`profiles`·`agents`·`strict`·`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage`·`harnessHealth`·`wikiBudget`(1.33.0, `{ "logTokens", "docTokens" }`)·`agentReviewers`(1.33.0, 이름 배열)·`promptProfile`(1.33.0, `"full"|"slim"`)·`governance`(1.30.0, `{ "mode": "lite"|"standard"|"strict" }`)·`checkRun`(1.36.0, `{ "ignore": ["dir/", "*.ext", "경로"] }`)·`sourceDigests`(1.36.0, boolean)이며, unknown 키는 무시돼 옛 파일이 계속 동작한다. **1.31.0부터 값 어휘도 검증한다**: `type`은 `KNOWN_TYPES`에, `agents`는 `SUPPORTED_AGENTS`에 대조하고 위반은 config 오류(exit 3), `agents`의 `all`은 CLI와 같이 세 이름으로 펼쳐진다 — 그 전에는 타입만 봐서 `{"type": "frontendd"}`가 조용히 통과했다. 적용 우선순위는 CLI 플래그 > config > 자동감지(`strict`는 additive라 config가 켤 수만 있다). `src/config-file.js`. 키별 의미는 [PUBLIC_API](PUBLIC_API.md)의 Configuration 절이 소유한다.
 - **월별 권(log volume)** — `docs/llm-wiki/log-YYYY-MM.md`. `archive-log`(1.33.0)가 `log.md`에서 보존 기간을 넘긴 항목을 고치지 않고 통째로 옮겨 두는 파일이다(기존 권에 덧붙일 때는 줄끝만 그 권을 따른다). 집계(`stats`·orphan)에서는 `log.md` 하나로 센다. `log.md`와 같은 변경 로그 기록으로 취급된다(`isAppendOnlyLog`): 다시 쓰이지 않고 review·drift·impact 대상이 아니며, 민감정보·링크 스캔은 받는다.
 - **rules / rulesPreset** — finding 규칙의 severity를 프로젝트 단위로 조정하는 수단. `rules`는 규칙 id → `off`/`blocked`/`error`/`warning`/`info` 맵이고, `rulesPreset`은 `relaxed`/`standard`/`strict` 명명 번들(`src/commands/findings.js` `RULE_PRESETS`)을 바닥값으로 깐다 — 명시적 `rules` 항목이 항상 프리셋을 이긴다. `sensitive.*`는 어느 쪽으로도 끌 수 없다. 둘 다 finding severity만 바꾸며 `--strict`(exit code 의미론)와는 별개다.
 - **OKF v0.1** — 외부 지식 포맷 호환 프로필. `type`/`aliases`/`tags`와 위키 링크를 검증한다.
@@ -61,12 +69,12 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (5 entries, 2026-07-13 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (6 entries, 2026-07-13 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-08-03에 `impact.source_changed` 기본 severity의 error화, 신규 규칙 2종(`run.manifest_untracked` info·`run.change_set_undeclared` warning), `strict` 프리셋에서 `impact.source_changed` 항목 제거, `FRESHNESS_EXEMPT_DOC_TYPES`(release_notes) 면제, `drift --watch-needs-review` 도입에 따라 재검토했다: 이 문서가 severity·빌드 실패·`--strict`에 대해 취한 입장 셋 — `verified`의 "`--strict`에서 `reviewed_by`/`reviewed_at` 없으면 실패"(`frontmatter.verified_review`는 HEAD에서도 기본 warning), `related.missing` 경고, `rules`/`rulesPreset`이 severity만 바꾸고 `--strict`(exit code 의미론)와 별개라는 문장(`RULE_PRESETS` 주석이 그대로 재확인) — 이 모두 여전히 참이고, `human_verified` 정의의 근거인 `evidenceTier()`도 무변경이며 근거 파일 `src/frontmatter-schema.js`·`src/config.js`·`src/config-file.js`는 이 커밋에서 아예 바뀌지 않았다(`src/commands.js`는 광의 앵커일 뿐이다) — **내용 불변, 무편집**. 신규 규칙 2종과 exit code 계약은 같은 커밋에서 갱신된 [PUBLIC_API](PUBLIC_API.md)가 소유하므로, 규칙을 열거하지 않는 용어집에 옮겨 적지 않았다.
 - 2026-08-04에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `src/commands.js`를 재확인했다. 이번 변경은 `impact`의 change set에서 `version`만 바뀐 `package.json`을 빼는 판정기(`versionOnlyManifestChanges`)를 더하고 고친 것이며, 이 용어집이 정의하는 어휘(`status`·`verified`·`human_verified`·`source_files`·`evidence`·`rules`/`rulesPreset`)의 계약은 하나도 건드리지 않았다 — `rules`/`rulesPreset`이 severity만 바꾸고 `--strict`와 별개라는 문장도 그대로 참이다. 새 제외 규칙은 설정 키가 아니라 하드코딩이므로 `rules` 항목에 추가할 것도 없다. 본문 **불변**. 재스탬프가 no-op이 되는 N-11 때문에 노트로 남긴다.
 
 - 2026-09-07(1.30.0)에 용어 4종을 신설하고 한 곳의 낡은 목록을 고쳤다: **거버넌스 모드**·**rule floor**·**backfill**·**근거 라벨(verified/inferred/unknown)**을 추가하고, `llm-wiki.config.json` 항목이 직접 나열하는 인식 키 목록에 `governance`를 더했다(그 목록은 이 문서가 손으로 나열하므로 새 키가 생기면 반드시 낡는다 — 2026-07-31에 같은 자리에서 같은 이유로 한 번 고쳤다). `impact.source_changed`가 지목한 인용 소스 `src/commands.js`의 변경은 `backfillCommand` 신설과 모드 배선이며 기존 용어 정의는 하나도 낡지 않았다. **(이어서)** 같은 배치의 도그푸딩으로 `src/commands.js`가 다시 바뀌었다(의사결정 기록 탐색 범위, append-only 로그 제외). 새로 넣은 용어 4종의 정의는 그대로 유효하다 — **근거 라벨** 항목이 이미 “그것을 그럴듯한 이야기로 채우는 것이 이 기능이 방어하는 실패”라고 적고 있고, 이번 수정은 그 방어를 **명령 자신에게** 적용한 것이다. 용어 본문 **불변**.
 
 - 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 `llm-wiki.config.json` 항목을 고쳤다. 인식 키 목록은 맞았지만 **값 검증**을 적지 않았고, 1.31.0부터 `type`은 `KNOWN_TYPES`에 `agents`는 `SUPPORTED_AGENTS`에 대조돼 위반이 exit 3이다(`all`은 CLI와 같이 펼쳐진다). 그 전에는 타입만 봐서 `{"type": "frontendd"}`가 조용히 통과한 뒤 알 수 없는 유형으로 동작했다 — 이 항목이 키만 적고 값 계약을 안 적어 둔 동안 그 비대칭이 보이지 않았다. 같은 자리에서 `source_files`(넓은 범위 근거)·`evidence`(정밀 근거) 정의를 재확인했다: 1.31.0이 N-7을 다시 검토해 **이 정의가 계약이라고 확정**했으므로(로케이터를 `source_files`에서 정밀 앵커로 읽는 구현을 했다가 되돌렸다) 두 줄은 **불변**이다.
 - 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `src/commands.js`를 대조했다. 바뀐 것은 `impactCommand`의 출력 키 추가뿐이고, 이 문서가 정의하는 용어(`needs_review`·`verified`·`source_files`·`evidence`·drift 등)의 의미는 그대로다. 새 출력 키(`impactedDocuments`)는 용어가 아니라 필드이므로 `PUBLIC_API.md`가 소유한다. 본문 **불변**.
+- 2026-10-27(1.36.0 준비)에 `impact`가 이 문서를 지목해 `src/frontmatter-schema.js`(선택 필드 `source_digests` 추가)와 `src/commands.js`를 대조했다. config 키 목록에 `checkRun`·`sourceDigests`를 넣고 용어 `source_digests`·`locatorNarrowed`를 더했다. `status`·`verified` 정의는 그대로다.

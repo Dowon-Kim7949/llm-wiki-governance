@@ -90,8 +90,9 @@ Both hold **for this fixture**. Neither is a general claim.
   vendor-prefixed tokens; retrieval redacts a detected PEM block through its END line. A secret
   that matches none of those passes. Say "sensitive-looking lines are redacted, and they block
   the check".
-- **"Fewer tokens, fewer errors" as a general benefit.** The CLI's own `help` text still says this;
-  that is a source change tracked separately, and copy must not repeat it.
+- **"Fewer tokens, fewer errors" as a general benefit.** The CLI's `help` text said this until
+  1.35.0, which replaced it with the measured, conditional statement ("an unenriched wiki measured
+  worse than none"). Copy must not bring the old phrase back.
 
 ## Caveats that must travel with the numbers
 
@@ -145,7 +146,7 @@ Every public surface was re-read against the source on 2026-10-26 (1.34.0). Verd
 | "No real numbers exist yet" | `bench/REAL_LLM_METHODOLOGY.md` | outdated | status note added above the original |
 | "dogfoods its own standard" | `CONTRIBUTING.md`, `.ko.md` | wording conflicts with "not a standard" | reworded |
 | "agents write, only a human verifies" | `docs/ORCA_PARALLEL_DEV.md` | contradicted by this repo's own approval policy | exception stated in the doc; the policy itself is the maintainer's call |
-| "Why: … fewer tokens, fewer errors." | `llm-wiki help` (`src/cli.js`) | unqualified generalization from one benchmark | **not changed** (source change, separate PR) |
+| "Why: … fewer tokens, fewer errors." | `llm-wiki help` (`src/cli.js`) | unqualified generalization from one benchmark | changed in 1.35.0 to the conditional, measured wording (the gain comes from keeping the wiki current; an unenriched wiki measured worse than none) |
 | "~41% fewer input tokens" in a TL;DR | `launch-post.md`, `reddit-post.md` | conditional; the placement breaks "no figure in an opening line" | drafts superseded; new kit keeps the figure out of openings |
 | Zero-dependency; read-only MCP; OKF `type`/`aliases`/`tags` | README, `package.json` | verified | kept |
 | "An unenriched wiki measured worse than no wiki" | README | conditional: one repo, one model, six tasks; +14% is a lower bound; two of six tasks went the other way | kept, conditions now inline |

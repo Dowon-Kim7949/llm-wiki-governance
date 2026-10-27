@@ -64,6 +64,26 @@ related:
   - ROADMAP.md
 visibility: internal
 contains_sensitive_info: false
+source_digests:
+  - package.json sha256:f3f1cc9932fdcd62
+  - src/cli.js sha256:6c135d9a743008be
+  - src/index.js sha256:f0b6a250bdee4777
+  - src/commands.js sha256:11e10f20f5c64ced
+  - src/commands/scans.js sha256:44cceb62a46b999a
+  - src/commands/findings.js sha256:e540047ac0e9d3fc
+  - src/commands/wiki-files.js sha256:141842053b78cc2c
+  - src/commands/adapters.js sha256:1329c62a8fd74c06
+  - src/commands/skills.js sha256:b7ecf90972a2857b
+  - src/commands/fix-migrate.js sha256:2cd4fc4c009f26c6
+  - src/commands/references.js sha256:16ff5b183865242b
+  - src/mcp/tools.js sha256:e8cf84a9452b7c0e
+  - src/git.js sha256:88e9a9c9e901bffa
+  - .github/workflows/ci.yml sha256:0055dbb54de5761b
+  - .github/actions/validate/action.yml sha256:9318ae6872359fe7
+  - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
+  - templates/github-actions/llm-wiki-validate.yml sha256:309730f5a9ffd64e
+  - GATE_REVIEW.md sha256:1925d235d0b93b6a
+  - ROADMAP.md sha256:e10426fbb55b816f
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵
@@ -635,6 +655,8 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 1. 앵커 추출에서 로케이터가 버려진다 — `verifiedSourceAnchors`가 반환하는 `files`는 base 경로만의 dedup 리스트다(`scans.js:584-587`).
 2. 매칭은 그 집합의 문자열 비교뿐이다 — `anchors.files.filter((base) => changedSet.has(base))`(`scans.js:702`). `evidenceRefs[].locator`는 이 함수에서 한 번도 읽히지 않으며, 주석도 `File-level in v1 (line-range narrowing is out of scope)`라고 명시한다.
 3. **애초에 입력에 라인 정보가 없다** — `impactCommand`는 `changedFiles`만 호출하고 그것은 `git diff --name-only`다(`src/git.js:69-82`).
+
+> **후속(2026-10-27, 1.36.0)**: `impact`가 줄 범위와 `.md` 섹션 로케이터를 존중하게 됐다. diff hunk를 읽는 대신, 해당 파일이 `source_files`에 없고 evidence에서 그런 로케이터로만 인용될 때 기준 사본(`fileAtRef`)과 작업 트리에서 인용 영역을 잘라 비교한다. 위의 세 단계 중 1·2는 그 조건에서만 풀렸고, `#symbol:`·`#route:`·`source_files`는 여전히 파일 단위다(범위를 계산할 수 없어서). 위 인용의 코드 주석도 바뀌었다. 이 저장소 문서의 정밀 앵커는 대부분 `#symbol:`이라 로컬 해소 건수는 여전히 적다는 2026-08-04 관찰은 그대로 유효하다.
 
 보강 근거: `lineRangeChangedSince`의 **유일한 호출부는 `scanEvidenceDrift`**이며, `src/commands.js:16`의 import는 사용되지 않는 죽은 import다.
 
@@ -1747,6 +1769,11 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     같은 날 재스탬프만으로는 해소되지 않는 등 drift의 의미를 바꿉니다. 그래서 별도 설계 결정이
     필요합니다. 현재 동작은 `tests/known-gaps.test.js` GAP 5가 고정합니다. `--first-parent` 변이를
     넣으면 그 테스트가 실패하는 것을 확인했습니다.
+    **후속(2026-10-27, 1.36.0)**: 위의 "커밋 기준 비교"를 내용 기준으로 바꾼 섀도를 넣었습니다.
+    config `sourceDigests: true`이면 `review --approve`가 인용 소스의 내용 해시(`source_digests`)를
+    스탬프하고, `drift --anchor content`가 날짜 판정 옆에 내용 판정을 나란히 보입니다. 해시는 머지
+    방식과 무관하므로 늦은 머지와 같은 날 변경을 모두 "changed"로 봅니다. 동작은 바꾸지 않았고
+    finding도 만들지 않습니다. 두 판정의 차이를 실제 저장소에서 집계한 뒤에 활성화를 결정합니다.
 
 ### 1.35.0 처리 중 발견 (2026-10-26, 저장소 전면 검토)
 
@@ -2051,10 +2078,10 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 
 ## Review Notes
 
-Older review notes (18 entries, 2026-07-31 → 2026-09-08) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (19 entries, 2026-07-31 → 2026-09-14) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-09-14(1.32.0)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 3건을 재확인했다: `templates/github-actions/llm-wiki-validate.yml`·`.github/actions/validate/action.yml`·`ROADMAP.md`. 이번 변경은 출하 템플릿의 **러너 비용**을 깎은 것이다 — `npm ci`와 `npm test` 스텝 삭제, 게이트 3개를 `npx -y llm-wiki-governance@1.32`로 전환(패키지 전체명 + 버전 핀이라 devDependency가 불필요해졌다), `runs-on`의 `LLM_WIKI_RUNNER` 변수 폴백, `timeout-minutes: 10`과 `concurrency`의 `cancel-in-progress` 신설, 그리고 action.yml `version` 기본값 1.31 → 1.32. **본문은 불변이다.** 190~197줄의 배포 아티팩트 4종 표는 **Phase 0 측정 시점의 관측 기록**이고(당시 4종 전부 `impact --since --strict`를 실행하지 않았다는 것), 그 표가 적는 실행 명령 `validate-frontmatter`·`validate --strict`는 지금도 템플릿에 그대로 있다 — 바뀐 것은 호출 형태이지 명령이 아니다. 기록을 현재 상태로 덮어쓰면 측정 시점을 왜곡하므로 표는 건드리지 않았다. 이 노트로 6건이 되므로 가장 오래된 2026-08-03 저녁 항목을 `REVIEW_HISTORY.md`로 원문 그대로 옮겨 5건을 유지했다(아카이브 13 → 14건).
 - 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 6건을 대조했다: `src/cli.js`·`src/commands.js`·`.github/actions/validate/action.yml`·`templates/github-actions/llm-wiki-validate.yml`·`GATE_REVIEW.md`·`ROADMAP.md`. H장에 1.35.0 검토에서 찾은 항목 48~52(N-16~N-19와 관찰 2건)를 더했다. 이 문서의 액션 서술("하드코딩된 인자 배열")은 이미 종결 표시된 과거 기록이다. 새 입력 `summary`는 이 문서가 다루는 하네스 게이트의 동작(종료 코드)을 바꾸지 않으며, 템플릿의 핀 상승은 MINOR 릴리스 절차 그대로다.
 - 2026-10-27(보안 검토)에 `impact`가 인용 소스 `skills.js`·`fix-migrate.js`·`references.js`·`GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 소스 셋은 정규식을 같은 결과의 선형 스캔으로 바꾼 것이다. 이 문서가 근거로 삼는 `parseEvidenceReference`·`runMechanicalRemediation`·`isManagedUnmodified`는 바뀌지 않았다. `GATE_REVIEW.md`에는 "Security Review Batch" 절이 추가됐고 "Publish Credential Cleanup"이 결정됐다. 하네스 로드맵의 서술과 결함 등록부는 그대로 유효하며 본문은 **불변**이다.
 - 2026-10-27(정규식 감사 후속)에 `impact`가 인용 소스 `scans.js`·`GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. `scans.js`는 `enrichmentChecklist`의 제목 정규식을 선형 처리로 바꾼 것뿐이다. `GATE_REVIEW.md`에는 "Regex Audit Follow-up" 절과, 결정을 기다리는 "Link-Extraction False Negatives" 절이 추가됐다. 로드맵 서술과 결함 등록부는 그대로 유효하며 본문은 **불변**이다.
 - 2026-10-27(링크 추출 결함 수정)에 `impact`가 인용 소스 `references.js`·`scans.js`·`fix-migrate.js`·`GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 이 문서가 근거로 삼는 `parseEvidenceReference`·`runMechanicalRemediation`은 바뀌지 않았다. `GATE_REVIEW.md`에서는 "Link-Extraction False Negatives"가 결정·구현됐다. 본문은 **불변**이다.
+- 2026-10-27(1.36.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 6종을 대조했다. 이 문서의 기록은 시점 기록이라 소급해 고치지 않고, `scanReverseImpact`가 라인 범위를 존중하지 않는다는 관찰 아래와 N-15(47번) 아래에 1.36.0 후속을 한 단락씩 달았다.

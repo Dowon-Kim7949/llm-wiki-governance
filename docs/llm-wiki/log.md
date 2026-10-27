@@ -24,6 +24,17 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-27 - release: 1.36.0 준비 — 1.35.0 검토 후보 전부(로케이터·검색·check-run·섀도 기록)
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, bench, docs, wiki, release
+- changed: `src/cli.js`(`--version`/`-v`, 인자 없는 `help`, 도움말 문구) · `src/commands/scans.js`(`changedCitedSources`·`locatedRegion`, `scanReverseImpact`가 `{findings, locatorNarrowed}` 반환) · `src/commands.js`(impact `locatorNarrowed`, `review.unattested_promotion`, check-run `ignored`, `source_digests` 스탬프) · `src/commands/source-digests.js`(신규) · `src/commands/fix-migrate.js`(`upsertFrontmatterList`, `drift --anchor content`) · `src/commands/retrieval.js`(BM25·`searchTerms`·`matchedTerms`) · `src/config-file.js`(`checkRun`·`sourceDigests`) · 스키마 2종 · `src/mcp/tools.js` 설명 · `bench/search-eval/`(신규) · 테스트 6종 신규/갱신 · 위키 12종 · README·CHANGELOG·ROADMAP 각 2종 · GATE_REVIEW · 덱 · `outputs/distribution/CLAIMS.md` · 버전 1.36.0 · 이 저장소 config(`checkRun.ignore`, `sourceDigests: true`)
+- summary: 1.35.0 검토가 열어 둔 후보를 모두 만들었다. `impact`는 줄 범위·`.md` 섹션으로만 인용한 파일을 영역 단위로 비교하고, 비교할 수 없으면 파일 단위로 남긴다. `search-docs`는 AND를 버리고 BM25 any-term이 됐다(평가셋 hit@5 42.5% → 92.5%). `check-run`은 두 갭 규칙이 함께 읽는 산문 목록을 받는다. 내용 해시와 승인 출처는 섀도·opt-in이라 기본 결과를 바꾸지 않는다. 제안서의 `reviewed_via` 필드는 `reviewed_by`+`agentReviewers`에서 도출되는 값이라 만들지 않았다.
+- evidence: 테스트 683(1.35.0) → 724 · 1.35.0 순위기를 평가 실행기 안에 고정해 출시 코드와 같은 수치(42.5%, 0.272, 0건 18)를 재현함을 확인 · `review.unattested_promotion`을 이 저장소 이력 316커밋에 재생: 첫 구현은 승격 187건 중 43건 지목(전부 같은 날 재승인), 오늘 날짜 보류 후 0건 · 이 저장소 `check-run`에서 산문 6건이 경고 대신 `ignored`로
+- observed: 섀도 비교가 같은 날의 수정 두 건을 잡았다. GLOSSARY 승인 뒤 `llm-wiki.config.json`을, HARNESS 승인 뒤 그것이 인용하는 `GATE_REVIEW.md`를 고쳤고, 날짜 앵커는 둘 다 fresh였다. 두 문서를 다시 읽어 서술이 유효함을 확인하고 다시 승인했다. 그 전에 승인 순서 결함도 하나 드러났다(인용된 위키 문서를 frontmatter째 해시해서 같은 실행의 승인 스탬프가 내용 변경으로 보였다) — 마크다운 소스는 본문만 해시하도록 고쳤다.
+- caveats: 검색 평가셋은 에이전트가 라벨을 붙인 40개이고 순위기를 같은 셋으로 골랐다(held-out 없음). 승인 출처 규칙의 정답 사례는 이력에 없어 픽스처로만 확인했다. 내용 해시는 이 저장소에서 기록을 시작했을 뿐 날짜 앵커와의 비교 결과는 아직 없다. 공유 덱 Artifact는 재게시하지 않았다.
+
 ## 2026-10-27 - fix(links): 붙은 인라인 링크와 연속된 참조 정의의 거짓 음성 수정
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
