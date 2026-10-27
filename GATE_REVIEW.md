@@ -2830,7 +2830,7 @@ program — but it is a change, not a cleanup. `tests/verification.test.js` pinn
 strings and was updated in the same change, with an added assertion that **no** `npx` call in
 the template lacks `--no-install`, so the class cannot come back one line at a time.
 
-## Publish Credential Cleanup (open — recorded 2026-09-08, not decided)
+## Publish Credential Cleanup (recorded 2026-09-08 as open; decided 2026-10-27, see the end of this section)
 
 `.github/workflows/publish.yml` supplies `NODE_AUTH_TOKEN` from an `npm-release` environment
 secret. Registry metadata says that token is **not** what authenticates:
@@ -2854,6 +2854,33 @@ line that now has a correction beside it.
 re-registration happened before or after the v1.29.4 attempt, and whether a publish succeeds
 with the env removed. `npm publish --dry-run` issues no registry PUT and therefore verifies
 no credential. The cheap check after any future release is the `_npmUser` field above.
+
+**Decided 2026-10-27: the env is removed** (the maintainer's security-review instruction:
+rely on OIDC alone if the evidence supports it). Two facts the paragraphs above did not have:
+
+- The workflow carried **no** `NODE_AUTH_TOKEN` env from 1.16.1 through 1.29.2 — the archived
+  repository's `publish.yml` at `v1.16.1` and `v1.29.2` has `registry-url` and no token, and
+  the registry records OIDC for all nineteen of those versions. The shape this decision
+  returns to has published before.
+- Under the current registration (`oidc:a5a81843-…`) all eight releases from 1.29.5 to 1.35.0
+  are recorded as OIDC, so the stored token never authenticated a release.
+
+What changed: the `Publish to npm` step no longer receives the token; a preflight step fails
+the job early when npm is older than 11.5.1 or the job cannot request an OIDC token; both
+checkouts set `persist-credentials: false`; `tests/publish-workflow.test.js` fails if the
+workflow reads any `secrets.` value again. A broken registration now fails the release instead
+of falling back to a stored credential.
+
+**Still unproven, by construction:** that the next release succeeds. Only a real publish shows
+it, and none was run for this decision. If it fails with `E404` or `ENEEDAUTH`, check the
+Trusted Publisher registration first (repository, workflow file `publish.yml`, environment
+`npm-release`); putting the env back is a rollback, not a fix.
+
+**Manual follow-up, after that release succeeds and `_npmUser` again shows OIDC** (nothing
+here was done by the agent): delete the `NODE_AUTH_TOKEN` secret from the `npm-release`
+environment, revoke the matching granular token on npmjs.com, and consider the package
+setting that requires two-factor authentication and disallows tokens, which Trusted
+Publishing does not need.
 
 ## Gate-Consistency Batch Scope Decision (1.31.0, 2026-09-08 — built)
 
