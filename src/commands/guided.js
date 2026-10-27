@@ -322,9 +322,9 @@ export async function prepareCommand(options) {
   const byPath = new Map(kept.map((doc) => [doc.path, doc]));
   const graph = await collectWikiGraph(options.cwd);
 
-  // OR-ish recall: a free-text task sentence rarely has every word in one doc, so
-  // rank by any-term relevance (search-docs keeps its default AND semantics).
-  const ranked = rankDocsByQuery(kept, task, { requireAll: false }).slice(0, TOP_MATCHES);
+  // Any-term relevance, the ranker's default: a free-text task sentence rarely has
+  // every word in one doc.
+  const ranked = rankDocsByQuery(kept, task).slice(0, TOP_MATCHES);
   const topPaths = ranked.map((match) => match.path);
   const topDocs = resolveDocs(byPath, topPaths);
   const neighborPaths = neighborsOf(graph, topPaths);

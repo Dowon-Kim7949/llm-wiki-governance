@@ -1447,13 +1447,15 @@ Usage:
 Purpose:
   Read-only retrieval. Deterministic keyword/substring search over document
   titles, bodies, and frontmatter (tags/aliases) — NOT semantic/vector search.
-  Every query term must appear in a document (AND); results are ranked (title
-  hits weighted highest) and return a short snippet per match. Use get-doc for
-  full content. Restricted/sensitive docs are excluded unless --include-sensitive;
+  A document matches when any query term appears; results are ranked by BM25
+  relevance over the body, with title and tags/aliases hits weighted, and each
+  carries matchedTerms (how many distinct query terms it contains) and a short
+  snippet. English function words and trailing Korean particles ("로그를" ->
+  "로그") are dropped from the query. Use get-doc for full content. Restricted/sensitive docs are excluded unless --include-sensitive;
   snippets redact sensitive-looking lines. --limit caps results (default 20).
 
 JSON (--format json):
-  Top-level keys: schemaVersion, command, result, query, limit, filters, excludedSensitive, matchCount, matches[], findings[]. matches[] items are { path, title, status, score, snippet }.
+  Top-level keys: schemaVersion, command, result, query, limit, filters, excludedSensitive, matchCount, matches[], findings[]. matches[] items are { path, title, status, score, matchedTerms, snippet }.
 `,
   "get-doc": `llm-wiki get-doc
 
