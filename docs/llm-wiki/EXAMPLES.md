@@ -23,8 +23,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:6c135d9a743008be
-  - README.md sha256:4fadab45838c724d
+  - src/cli.js sha256:b1e74dfc0a415748
+  - README.md sha256:576b5eac7ebe5317
 ---
 
 # Examples
@@ -98,10 +98,10 @@ node bin/llm-wiki.js validate --type library
 # `npm ci`가 필요 없고(게이트가 쓰는 패키지는 런타임 의존성이 없는 이것 하나뿐이다) 이
 # 패키지를 devDependency로 둘 필요도 없다. 비공개 저장소에서 러너 분이 과금되는 쪽이라면
 # 그 의존성 설치가 보통 워크플로에서 가장 긴 스텝이다.
-npx -y llm-wiki-governance@1.35 validate-frontmatter
-npx -y llm-wiki-governance@1.35 validate --strict --agent codex
-npx -y llm-wiki-governance@1.35 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
-npx -y llm-wiki-governance@1.35 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
+npx -y llm-wiki-governance@1.37 validate-frontmatter
+npx -y llm-wiki-governance@1.37 validate --strict --agent codex
+npx -y llm-wiki-governance@1.37 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx -y llm-wiki-governance@1.37 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
 
 🚨 **패키지 이름을 줄여 `npx llm-wiki`라고 쓰면 안 된다.** 이 패키지의 bin 이름이 `llm-wiki`인데
@@ -133,6 +133,18 @@ llm-wiki drift --anchor content       # 1.36.0 섀도: 날짜 판정 옆에 내�
 ```
 
 `--watch-needs-review`는 **`drift`만** 받는다. `impact`에는 의도적으로 넓히지 않는데, 그 규칙은 결정 21 이후 error라 자문용 opt-in이 검토되지 않은 문서에게 빌드를 실패시킬 권한을 주게 되기 때문이다. `doc_type: release_notes` 문서는 `evidence.stale`·`impact.source_changed` 양쪽에서 면제되며, 이 면제가 위 opt-in보다 우선한다.
+
+1.37.0부터 `drift`도 `impact`처럼 `.md` 섹션 인용을 좁힌다. 문서가 `evidence`에만 `guide.md#section:Usage`로 인용했다면, 리뷰 뒤 그 파일의 다른 섹션만 바뀐 경우 드리프트 대신 요약에 `locator_narrowed: 1 (docs/llm-wiki/api.md -> guide.md)`가 찍힌다. 제목을 바꿔 섹션을 찾을 수 없게 되면 파일 단위로 다시 지목된다.
+
+## 위키 검색 (any-term 기본, --all-terms)
+
+```bash
+llm-wiki search-docs "로그를 보관하는 명령"                # 질의어 중 하나라도 있으면 매치, BM25 순위. 조사·기능어는 떼고 본다
+llm-wiki search-docs "archive-log keep-months" --all-terms  # 1.37.0: 모든 질의어를 포함한 문서만(1.36.0 이전 규칙)
+llm-wiki search-docs "impact locator" --format json        # terms[]: 실제로 쓴 질의어, matches[].matchedTerms: 문서가 가진 개수
+```
+
+문장형 질문은 기본(any-term)이 낫다. 순위기를 고른 뒤 만든 held-out 질의 40개에서 기본은 hit@5 85.0%, `--all-terms`는 17.5%였다(27개가 결과 0건). `--all-terms`는 규칙 id나 옵션 이름처럼 모두 들어 있어야 하는 키워드를 좁힐 때 쓴다.
 
 ## 평소에는 lite, 인수인계 전에 strict (거버넌스 모드, 1.30.0)
 

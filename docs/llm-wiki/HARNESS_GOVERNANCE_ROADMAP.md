@@ -9,7 +9,7 @@ tags:
 status: verified
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-10-21
+last_updated: 2026-10-27
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -65,23 +65,23 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:f3f1cc9932fdcd62
-  - src/cli.js sha256:6c135d9a743008be
-  - src/index.js sha256:f0b6a250bdee4777
+  - package.json sha256:592836e8b901c7be
+  - src/cli.js sha256:b1e74dfc0a415748
+  - src/index.js sha256:05abdc9f11ed6bb3
   - src/commands.js sha256:11e10f20f5c64ced
-  - src/commands/scans.js sha256:44cceb62a46b999a
+  - src/commands/scans.js sha256:58fa82b0dde38bd6
   - src/commands/findings.js sha256:e540047ac0e9d3fc
   - src/commands/wiki-files.js sha256:141842053b78cc2c
   - src/commands/adapters.js sha256:1329c62a8fd74c06
   - src/commands/skills.js sha256:b7ecf90972a2857b
-  - src/commands/fix-migrate.js sha256:2cd4fc4c009f26c6
+  - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
   - src/commands/references.js sha256:16ff5b183865242b
-  - src/mcp/tools.js sha256:e8cf84a9452b7c0e
-  - src/git.js sha256:88e9a9c9e901bffa
+  - src/mcp/tools.js sha256:b29ae9218ef87f1c
+  - src/git.js sha256:c6baa86ab48e2da1
   - .github/workflows/ci.yml sha256:0055dbb54de5761b
-  - .github/actions/validate/action.yml sha256:9318ae6872359fe7
+  - .github/actions/validate/action.yml sha256:e67cd91d4c1889d2
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
-  - templates/github-actions/llm-wiki-validate.yml sha256:309730f5a9ffd64e
+  - templates/github-actions/llm-wiki-validate.yml sha256:313bfc01306c01ed
   - GATE_REVIEW.md sha256:1925d235d0b93b6a
   - ROADMAP.md sha256:e10426fbb55b816f
 ---
@@ -657,6 +657,8 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 3. **애초에 입력에 라인 정보가 없다** — `impactCommand`는 `changedFiles`만 호출하고 그것은 `git diff --name-only`다(`src/git.js:69-82`).
 
 > **후속(2026-10-27, 1.36.0)**: `impact`가 줄 범위와 `.md` 섹션 로케이터를 존중하게 됐다. diff hunk를 읽는 대신, 해당 파일이 `source_files`에 없고 evidence에서 그런 로케이터로만 인용될 때 기준 사본(`fileAtRef`)과 작업 트리에서 인용 영역을 잘라 비교한다. 위의 세 단계 중 1·2는 그 조건에서만 풀렸고, `#symbol:`·`#route:`·`source_files`는 여전히 파일 단위다(범위를 계산할 수 없어서). 위 인용의 코드 주석도 바뀌었다. 이 저장소 문서의 정밀 앵커는 대부분 `#symbol:`이라 로컬 해소 건수는 여전히 적다는 2026-08-04 관찰은 그대로 유효하다.
+
+> **후속(2026-10-27, 1.37.0)**: 날짜 앵커 `drift`도 같은 조건(파일이 `source_files`에 없고 evidence에서 줄 범위나 `.md` 섹션으로만 인용)에서 `.md` 섹션을 영역 단위로 판정한다. 줄 범위는 원래 `git log -L`로 좁혀 왔고, 섹션은 리뷰 날짜가 끝나는 시점의 저장소 스냅샷(`commitAtEndOf`, `--since`와 같은 committer date 경계)과 `HEAD`에서 잘라 비교한다. 좁힌 인용은 `impact`와 같은 `locatorNarrowed`로 보고한다. 이 결함 등록부의 N-1(허브 파일 팬아웃)은 `#symbol:` 인용이 대부분인 한 이번에도 거의 줄지 않는다 — 위 표의 기준선은 그대로다. 스냅샷 방식은 N-15와 같은 한계를 물려받는다: 리뷰 날짜보다 오래된 커밋이 늦게 머지되면 그 스냅샷이 메인과 다를 수 있고, 그 경우 섹션이 달라 보여 **지목하는 쪽**(오탐)으로만 틀린다.
 
 보강 근거: `lineRangeChangedSince`의 **유일한 호출부는 `scanEvidenceDrift`**이며, `src/commands.js:16`의 import는 사용되지 않는 죽은 import다.
 

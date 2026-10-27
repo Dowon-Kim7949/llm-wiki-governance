@@ -2518,6 +2518,30 @@ test("retrieval: search ranks a doc covering more of the query first and strips 
   assert.deepEqual(again.matches, res.matches, "deterministic");
 });
 
+test("retrieval: --all-terms keeps only documents containing every term and echoes the terms used", async () => {
+  const cwd = await makeProject("retr-all-terms-");
+  await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "retr" }, null, 2)}\n`, { encoding: "utf8" });
+  await writeVerifiedSourceDoc(cwd, "index.md", "package.json", "2026-07-11");
+  await writeWikiDoc(cwd, "both.md", "Both", "The release flow publishes with provenance.");
+  await writeWikiDoc(cwd, "one.md", "One", "The release flow is described elsewhere. release release release.");
+
+  const any = await searchDocsCommand({ ...RETR_BASE, cwd, query: "the release provenance" });
+  assert.deepEqual(any.terms, ["release", "provenance"], "terms are the query as the ranker used it: the function word is gone");
+  assert.equal(any.allTerms, false);
+  assert.ok(any.matches.some((match) => match.path === "docs/llm-wiki/one.md"), "any-term stays the default");
+
+  const all = await searchDocsCommand({ ...RETR_BASE, cwd, query: "the release provenance", allTerms: true });
+  assert.equal(all.allTerms, true);
+  assert.deepEqual(all.matches.map((match) => match.path), ["docs/llm-wiki/both.md"]);
+  assert.ok(all.matches.every((match) => match.matchedTerms === all.terms.length));
+  assert.match(all.text, /terms: release, provenance \(all required\)/);
+  assert.deepEqual(
+    all.matches.map((match) => match.score),
+    any.matches.filter((match) => match.path === "docs/llm-wiki/both.md").map((match) => match.score),
+    "the flag filters; it does not rescore"
+  );
+});
+
 test("retrieval: search-docs deprioritizes the change log below reference docs (log.md scorer fix)", async () => {
   const cwd = await makeProject("retr-logrank-");
   await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "retr" }, null, 2)}\n`, { encoding: "utf8" });
@@ -2781,6 +2805,11 @@ test("parseArgs supports retrieval commands: positionals, filters, and required 
   assert.deepEqual(search.errors, []);
   assert.equal(search.options.query, "hello world");
   assert.equal(search.options.limit, 5);
+  assert.equal(search.options.allTerms, false);
+  const allTerms = parseArgs(["search-docs", "hello world", "--all-terms"]);
+  assert.deepEqual(allTerms.errors, []);
+  assert.equal(allTerms.options.allTerms, true);
+  assert.ok(parseArgs(["list-docs", "--all-terms"]).errors.some((error) => error.includes("--all-terms")), "search-docs only");
 
   const getDoc = parseArgs(["get-doc", "GLOSSARY.md"]);
   assert.deepEqual(getDoc.errors, []);
@@ -3661,7 +3690,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.36.0");
+  assert.equal(packageJson.version, "1.37.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");

@@ -163,3 +163,24 @@ export function fileAtRef(cwd, ref, relPath) {
     return null;
   }
 }
+
+// The commit HEAD's history had reached at the END of sinceDate — the newest one
+// whose committer date is not after it, the same clock and the same boundary
+// fileChangedSince uses — or null when there is none or git fails. Its tree is the
+// repository as a review dated sinceDate saw it, which is what the date-anchored
+// drift scan compares a cited Markdown section against (2026-10-27).
+export function commitAtEndOf(cwd, sinceDate) {
+  try {
+    const sha = runGit(cwd, ["rev-list", "-1", `--before=${sinceDate} 23:59:59`, "HEAD"]).trim();
+    return sha || null;
+  } catch {
+    return null;
+  }
+}
+
+// Stored content of a CWD-relative <file> at <ref>, or null like fileAtRef. The
+// `./` prefix makes git resolve the path against cwd instead of the repository
+// root, which is how wiki anchors are written.
+export function fileAtRefFromCwd(cwd, ref, file) {
+  return fileAtRef(cwd, ref, `./${file}`);
+}

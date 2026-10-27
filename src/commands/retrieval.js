@@ -192,11 +192,17 @@ export async function searchDocsCommand(options) {
   const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : DEFAULT_SEARCH_LIMIT;
   const docs = await loadContentDocs(options.cwd);
   const { kept, excludedSensitive } = applyFilters(docs, options);
-  const matches = rankDocsByQuery(kept, query);
+  // --all-terms (1.37.0) restores the pre-1.36.0 match rule — a document must
+  // contain every query term — on top of the same ranking. `terms` is echoed so a
+  // caller can read matchedTerms against the term list the ranker actually used.
+  const allTerms = options.allTerms === true;
+  const terms = searchTerms(query);
+  const matches = rankDocsByQuery(kept, query, { requireAll: allTerms });
   const limited = matches.slice(0, limit).map(({ deprioritized, ...rest }) => rest);
 
   const summary = [
     `query: ${query || "(empty)"}`,
+    `terms: ${terms.length ? terms.join(", ") : "(none)"} (${allTerms ? "all required" : "any"})`,
     `matches: ${matches.length}${matches.length > limited.length ? ` (showing ${limited.length})` : ""}`,
     `searched: ${kept.length} docs`,
     `excluded_sensitive: ${excludedSensitive}${options.includeSensitive ? " (included)" : ""}`
@@ -206,6 +212,8 @@ export async function searchDocsCommand(options) {
     command: "search-docs",
     result: "pass",
     query,
+    terms,
+    allTerms,
     limit,
     filters: filterPayload(options),
     excludedSensitive,

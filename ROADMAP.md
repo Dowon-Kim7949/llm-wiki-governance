@@ -1083,6 +1083,25 @@ from moving a gate the wrong way.
 content anchor decide anything; a second real benchmark with a stale-wiki arm and
 code-change tasks (needs a budget decision); a held-out query set before tuning search again.
 
+## Release Plan (post-1.36.0) — finish what 1.36.0 started — **shipped as 1.37.0 (2026-10-27)**
+
+Three of the four follow-ups 1.36.0 named, each kept small.
+
+- **Drift precision.** The date-based `drift` narrows Markdown-section citations the way
+  `impact` does, comparing the review-day snapshot with `HEAD`; anything it cannot compare
+  exactly stays file-level, and every narrowing is reported.
+- **Search.** `--all-terms` gives back the pre-1.36.0 match rule as an option. A held-out
+  set of 40 queries, written by an agent that never ran a search, put the shipped ranker at
+  hit@5 85.0% (92.5% on the selection set) and the 1.35.0 AND rule at 10.0%.
+- **Not done.** The second real benchmark (stale-wiki arm, code-change tasks, a grader from
+  another model family) cannot be run for free: it needs per-call token counts and a
+  cross-family grader, so it waits for a budget decision. Comparing the date and content
+  anchors needs `source_digests` to accumulate on real repositories first.
+
+**Next:** compare the two anchors once digests have accumulated; the paid benchmark when
+budgeted; a third query set before tuning search again, since the held-out set has now been
+looked at.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

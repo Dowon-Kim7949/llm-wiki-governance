@@ -4,7 +4,10 @@
 // shipped ranker and a few zero-dependency candidates. Read-only; prints a
 // Markdown table and, with --json, the per-query ranks.
 //
-//   node bench/search-eval/run.js [--cwd <repo>] [--json]
+//   node bench/search-eval/run.js [--cwd <repo>] [--queries <file>] [--json]
+//
+// --queries picks the query set (default queries.json, the set the 1.36.0 ranker
+// was chosen on; heldout.json is the set written afterwards, 1.37.0).
 //
 // The corpus is exactly what search-docs searches by default (loadContentDocs +
 // applyFilters). `shipped` calls the product's rankDocsByQuery, so this file can
@@ -21,9 +24,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const cwd = args.includes("--cwd") ? path.resolve(args[args.indexOf("--cwd") + 1]) : path.resolve(here, "..", "..");
 const asJson = args.includes("--json");
+const queriesFile = args.includes("--queries") ? path.resolve(args[args.indexOf("--queries") + 1]) : path.join(here, "queries.json");
 const K = 5;
 
-const { queries } = JSON.parse(readFileSync(path.join(here, "queries.json"), "utf8"));
+const { queries } = JSON.parse(readFileSync(queriesFile, "utf8"));
 const { kept: docs } = applyFilters(await loadContentDocs(cwd), normalizeOptions({ cwd }));
 
 // Korean particles and endings that glue onto a noun ("로그를", "문서는"), longest
@@ -137,7 +141,8 @@ const RANKERS = {
   "headings, any-term": (query) => substringScore(termsOf(query, { stopwords: true, stemming: true }), { headingWeight: 5 }),
   "bm25 (raw terms)": (query) => bm25(termsOf(query)),
   "bm25 + terms (candidate)": (query) => bm25(termsOf(query, { stopwords: true, stemming: true })),
-  "shipped (product rankDocsByQuery)": shipped
+  "shipped (product rankDocsByQuery)": shipped,
+  "shipped --all-terms": (query) => rankDocsByQuery(docs, query, { requireAll: true }).map((match) => match.path)
 };
 
 function evaluate(rank) {
@@ -166,10 +171,10 @@ function evaluate(rank) {
 const report = Object.fromEntries(Object.entries(RANKERS).map(([name, rank]) => [name, evaluate(rank)]));
 
 if (asJson) {
-  console.log(JSON.stringify({ cwd, corpus: docs.length, queries: queries.length, k: K, report }, null, 2));
+  console.log(JSON.stringify({ cwd, queriesFile: path.basename(queriesFile), corpus: docs.length, queries: queries.length, k: K, report }, null, 2));
 } else {
   const pct = (value) => `${(value * 100).toFixed(1)}%`;
-  console.log(`corpus: ${docs.length} docs · queries: ${queries.length} · k = ${K}\n`);
+  console.log(`queries: ${path.basename(queriesFile)} (${queries.length}) · corpus: ${docs.length} docs · k = ${K}\n`);
   console.log("| ranker | recall@5 | hit@5 | MRR | zero-result queries | ko hit@5 | en hit@5 |");
   console.log("| --- | --- | --- | --- | --- | --- | --- |");
   for (const [name, { all, ko, en }] of Object.entries(report)) {

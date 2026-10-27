@@ -188,6 +188,8 @@ test("buildToolOptions maps retrieval args (query/path/filters/includeSensitive/
     buildToolOptions(search, { query: "widget", status: "verified", includeSensitive: true, limit: 5 }),
     { query: "widget", status: "verified", includeSensitive: true, limit: 5 }
   );
+  assert.equal(search.inputSchema.properties.allTerms.type, "boolean");
+  assert.deepEqual(buildToolOptions(search, { query: "widget", allTerms: true }), { query: "widget", allTerms: true });
   const getDoc = TOOL_DEFS.find((t) => t.name === "get_doc");
   assert.deepEqual(buildToolOptions(getDoc, { path: "GLOSSARY.md" }), { docPath: "GLOSSARY.md" });
 });
