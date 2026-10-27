@@ -61,6 +61,14 @@ export async function main(argv) {
     return 0;
   }
 
+  // Only a leading --version/-v prints the package version: release-notes takes
+  // its own `--version <x.y.z>` option further along the argument list.
+  if (argv[0] === "--version" || argv[0] === "-v") {
+    console.log(packageVersion());
+    process.exitCode = 0;
+    return 0;
+  }
+
   if (argv[0] === "help") {
     const code = printCommandHelp(argv[1]);
     process.exitCode = code;
@@ -833,6 +841,7 @@ Exit codes / 종료 코드:
      · 사용법 오류(알 수 없는 명령/옵션, 또는 해당 명령이 거부하는 옵션)
 
 Use llm-wiki help <command> for command-specific guidance.
+Use llm-wiki --version (or -v) to print only the installed version.
 `;
 }
 
@@ -841,11 +850,17 @@ function printHelp() {
 }
 
 function printCommandHelp(command) {
+  // A bare `llm-wiki help` is a request for the general help, not a mistake.
+  if (!command) {
+    printHelp();
+    return 0;
+  }
+
   const text = COMMAND_HELP[command];
   if (!text) {
-    console.error(command ? `Unknown help topic: ${command}` : "Missing help topic.");
+    console.error(`Unknown help topic: ${command}`);
     printHelp();
-    return command ? 3 : 0;
+    return 3;
   }
 
   console.log(text);
