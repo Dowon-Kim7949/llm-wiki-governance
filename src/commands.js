@@ -64,7 +64,7 @@ import {
 } from "./commands/adapters.js";
 import {
   agentReviewerSet,
-  changedAnchorMatcher,
+  changedCitedSources,
   EVIDENCE_REFERENCE_RULES,
   evidenceTier,
   isAgentReviewer,
@@ -1143,10 +1143,10 @@ function stampOnlyRuleEnabled(options) {
 // scanReverseImpact applies). A stamp-only DOWNGRADE is deliberately not reported:
 // a needs_review document is never an impact target, and `drift --downgrade` is the
 // remediation this product recommends, so flagging it would punish the honest move.
-// The changed anchors are named with the matcher scanReverseImpact uses, so the two
-// cannot disagree about what "depends on a changed source" means.
-async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet) {
-  const anchorMatches = changedAnchorMatcher(changedSet);
+// The changed anchors are named by the function scanReverseImpact uses
+// (changedCitedSources, locator narrowing included), so the two cannot disagree
+// about what "depends on a changed source" means.
+async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet, since) {
   const findings = [];
   for (const relPath of stampOnlyDocs) {
     if (isTemplateDoc(relPath) || isAppendOnlyLog(relPath)) continue;
@@ -1158,7 +1158,7 @@ async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet) {
     }
     const anchors = verifiedSourceAnchors(parseFrontmatter(text).frontmatter);
     if (!anchors || anchors.files.length === 0) continue;
-    const changedSources = anchors.files.filter(anchorMatches);
+    const { changed: changedSources } = await changedCitedSources(cwd, anchors, changedSet, since);
     const stampOnly = "Only the review stamp changed in this diff (status / reviewed_by / reviewed_at / last_updated / status tag; no body or other frontmatter change), so impact counted this verified document as updated and excluded it from impact.source_changed";
     findings.push({
       severity: "warning",
@@ -1207,6 +1207,7 @@ export async function impactCommand(options) {
       changedPaths: [],
       impactedDocuments: [],
       versionOnlyExcluded: [],
+      locatorNarrowed: [],
       findingSummary,
       findings
     }, "LLM-WIKI Reverse-Impact", [
@@ -1223,9 +1224,11 @@ export async function impactCommand(options) {
   // Same cost gate as the drift scan above: scanReverseImpact is the only producer
   // of impact.source_changed. In lite the rule is off, so `impact` degrades to a
   // report of what changed instead of walking every document's anchors.
-  const findings = ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)
-    ? []
-    : applyRuleConfig(await scanReverseImpact(cwd, changedSet), options);
+  const reverseImpact = ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)
+    ? { findings: [], locatorNarrowed: [] }
+    : await scanReverseImpact(cwd, changedSet, { since: options.since });
+  const findings = applyRuleConfig(reverseImpact.findings, options);
+  const { locatorNarrowed } = reverseImpact;
   // Reported, not enforced — see stampOnlyDocExclusions and GATE_REVIEW.md.
   const stampOnlyExclusions = await stampOnlyDocExclusions(cwd, options.since, changed);
   // ...unless the project opted into impact.stamp_only. Skipped while
@@ -1235,7 +1238,7 @@ export async function impactCommand(options) {
   if (stampOnlyExclusions.length > 0
     && stampOnlyRuleEnabled(options)
     && !ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)) {
-    findings.push(...applyRuleConfig(await stampOnlyFindings(cwd, stampOnlyExclusions, changedSet), options));
+    findings.push(...applyRuleConfig(await stampOnlyFindings(cwd, stampOnlyExclusions, changedSet, options.since), options));
   }
 
   const result = findings.some((finding) => finding.severity === "blocked")
@@ -1254,6 +1257,7 @@ export async function impactCommand(options) {
     `changed_files: ${changed.length}`,
     `anchoring_files: ${changedSet.size}${versionOnlyExcluded.length ? ` (version-only manifest excluded: ${versionOnlyExcluded.join(", ")})` : ""}`,
     `impacted_verified_docs: ${findings.filter((finding) => finding.rule === "impact.source_changed").length}`,
+    `locator_narrowed: ${locatorNarrowed.length}${locatorNarrowed.length ? ` (${locatorNarrowed.map((entry) => `${entry.path} -> ${entry.source}`).join(", ")})` : ""}`,
     `findings: ${findings.length}`,
     `stamp_only_exclusions: ${stampOnlyExclusions.length}${stampOnlyExclusions.length ? ` (${stampOnlyExclusions.join(", ")})` : ""}`
   ];
@@ -1285,6 +1289,7 @@ export async function impactCommand(options) {
     impactedDocuments,
     versionOnlyExcluded,
     stampOnlyExclusions,
+    locatorNarrowed,
     findingSummary,
     findings
   }, "LLM-WIKI Reverse-Impact", [
@@ -1293,7 +1298,8 @@ export async function impactCommand(options) {
     { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: [
-      "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (file-level, git-diff based). Run it from the repo root.",
+      "Reverse-impact flags verified documents whose referenced source changed in this diff while the document did not (git-diff based). Run it from the repo root.",
+      "Anchors are file-level, with one exception: a file cited ONLY in evidence, and only through line ranges (#L10-L20, path:10-20) or sections of a Markdown file (#section:Heading), is compared region by region between the baseline (--since ref, else HEAD) and the working tree. If every cited region reads the same, the citation is listed under locator_narrowed instead of failing the document. A file also in source_files, also cited bare or by #symbol:/#route:, a directory anchor, a file with no baseline copy, or a region that cannot be located on both sides (a range past the end of the file, a section heading that matches zero or several headings) stays file-level.",
       `impact.source_changed is an error by default under governance mode strict, a warning under standard, and off under lite; this run resolved to ${effectiveGovernanceMode(options)} (from ${governanceModeSource(options)}). Under strict it fails a build on its own and --strict does not change that. Dial it down per project with "impact.source_changed": "warning" (or "info"/"off") in llm-wiki.config.json rules, or rulesPreset: "relaxed" — the precedence is mode floor < rulesPreset < explicit rules. This complements the date-anchored evidence.stale (drift), it does not replace it.`,
       "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release.",
       "A package.json whose diff moves nothing but the version value is reported as changed but not used for anchoring (N-13, 2026-08-04): every release bumps it and no document's claims depend on the number. Any other key, an unparseable manifest, a version field added or removed, or a manifest with no baseline to compare against all still count. Version-only exclusion is package.json only, and never applies to pyproject.toml or Cargo.toml.",

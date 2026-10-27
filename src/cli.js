@@ -1234,8 +1234,14 @@ Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
     with or without --strict. That is the point of the default.
   - Read-only: never writes. Remediation is re-review or drift --downgrade.
   - Toggle/override per project via llm-wiki.config.json rules
-    ("impact.source_changed": "off"|"error"|...). File-level, with one
-    content-aware carve-out: a package.json whose diff moves nothing but the
+    ("impact.source_changed": "off"|"error"|...).
+  - File-level, except a file cited ONLY in evidence through line ranges
+    (#L10-L20, path:10-20) or Markdown sections (#section:Heading): each cited
+    region is compared between the baseline and the working tree, and when all
+    read the same the citation is listed under locatorNarrowed instead of
+    failing. source_files, bare, #symbol: and #route: citations stay file-level,
+    as does any region that cannot be located on both sides.
+  - One more content-aware carve-out: a package.json whose diff moves nothing but the
     version value is reported as changed but not used for anchoring (N-13,
     2026-08-04) — every release bumps it and no document's claims depend on the
     number. Any other key, an added/removed version field, an unparseable

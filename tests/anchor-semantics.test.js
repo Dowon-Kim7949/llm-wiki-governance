@@ -182,7 +182,7 @@ async function impactRepoWithDirAnchor() {
 
 test("N-8: a directory anchor is flagged when a file under it changed", async () => {
   const cwd = await impactRepoWithDirAnchor();
-  const flagged = new Set((await scanReverseImpact(cwd, new Set(["src/commands/scans.js"]))).map((f) => f.path));
+  const flagged = new Set((await scanReverseImpact(cwd, new Set(["src/commands/scans.js"]))).findings.map((f) => f.path));
 
   assert.ok(flagged.has("docs/llm-wiki/dir.md"), "`src/commands` must match `src/commands/scans.js`");
   assert.ok(flagged.has("docs/llm-wiki/dirslash.md"), "a trailing slash must not change the answer");
@@ -197,7 +197,7 @@ test("N-8: prefix matching cannot fire on a partial path segment", async () => {
   await mkdir(path.join(cwd, "docs", "llm-wiki"), { recursive: true });
   await wikiDoc(cwd, "partial.md", ["src/command"], ["src/command"]);
   assert.deepEqual(
-    await scanReverseImpact(cwd, new Set(["src/commands/scans.js"])),
+    (await scanReverseImpact(cwd, new Set(["src/commands/scans.js"]))).findings,
     [],
     "`src/command` must not match `src/commands/...`"
   );
@@ -229,7 +229,7 @@ test("the append-only change log is out of scope for the freshness gates", async
     { encoding: "utf8" }
   );
   assert.deepEqual(
-    await scanReverseImpact(cwd, new Set(["src/cli.js"])),
+    (await scanReverseImpact(cwd, new Set(["src/cli.js"]))).findings,
     [],
     "impact must not flag a document review cannot stamp"
   );
