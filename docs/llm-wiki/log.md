@@ -24,6 +24,36 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-27 - docs(examples): 실행 가능한 Vue 3 + TypeScript 데모와 README 연결
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: examples, test, docs, wiki
+- changed: `examples/vue3-typescript-demo/**`(앱·보강 문서 2종·`scripts/demo.mjs`·README 영/한) · `tests/vue-demo-walkthrough.test.js` · `README.md`·`README.ko.md`("Try it on a demo app" 절, 문서 표 1행) · `examples/README.md`(링크) · 위키 `EXAMPLES.md`(머리말 단락)
+- summary: 핵심 주장(소스가 바뀌면 리뷰된 문서가 따라오는지 CI가 막는다)을 손으로 재현할 예제가 없었다. lite 모드에 `impact.source_changed`만 켠 Vue 앱에서 7단계(init → 보강 → 검증·승인 → 소스 변경 → `impact` exit 1 → 문서 갱신·재승인 → exit 0)를 `npm run demo`로 돌리고 종료 코드 11개를 확인한다. 수동 경로는 저장소 밖 작업 폴더에서 같은 단계를 밟는다.
+- evidence: 배포판 1.35.0과 이 체크아웃의 CLI 모두 11/11 · 수동 경로 전 단계 실행 · `npm run build` 통과 · headless Chrome으로 렌더링과 제목 규칙 확인 · `npm pack` 67개 파일로 `examples/` 미포함
+- caveats: CLI는 문서가 사실인지 검사하지 않는다(문서를 "100"으로 잘못 고쳐도 전 단계 통과, 실측). 날짜 기준 `drift`는 lite에서 꺼져 있고, 켜도 같은 날 커밋된 변경을 놓친다(실측). 둘 다 데모 README에 적었다.
+
+## 2026-10-27 - ci(publish): 인증에 쓰이지 않던 npm 토큰 폴백 제거
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: ci, test, docs, wiki
+- changed: `.github/workflows/publish.yml`(토큰 env 제거, 사전 점검 스텝, checkout 2곳 `persist-credentials` 끔) · `tests/publish-workflow.test.js` · `GATE_REVIEW.md`("Publish Credential Cleanup" 결정 문단) · 위키 `RELEASE_FLOW.md`(Prerequisites)
+- summary: 레지스트리 기록상 1.16.1–1.35.0 전 버전을 OIDC가 인증했고, archive 이력상 1.16.1–1.29.2는 토큰 env 없이 같은 형태로 게시됐다. 저장된 토큰은 인증에 쓰인 적이 없고, Trusted Publisher 등록이 깨질 때 조용한 폴백만 만들었으므로 걷어냈다.
+- evidence: 회귀 테스트가 1.35.0 워크플로에서 실패하고 이번 것에서 통과 · YAML 파싱 · 사전 점검 스크립트 3경로 로컬 실행
+- caveats: 다음 릴리스가 성공하는지는 실제 배포로만 증명된다. 환경 secret 삭제와 npmjs.com 토큰 폐기는 그 뒤 유지보수자가 한다(에이전트 미실행).
+
+## 2026-10-27 - fix(security): CodeQL 경보 7건 판정과 PR 입력 Markdown의 제곱 시간 정규식 제거
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/commands/references.js`·`wiki-hygiene.js`·`fix-migrate.js`·`import-memory.js`·`skills.js`(선형 스캔) · `tests/linear-markdown-scan.test.js` · `tests/verification.test.js`(RegExp 조립 → substring) · `GATE_REVIEW.md`("Security Review Batch") · 위키 `ARCHITECTURE_CONVENTIONS.md`(`references.js` 서술) 외 재확인 노트 7건, `REVIEW_HISTORY.md` 이관 9건
+- summary: 열린 경보 7건을 재현해 판정했다. 실제 제곱 시간 3건은 고쳤고(악용 경로는 약함), 주입 경보 1건과 테스트 URL 경보 2건은 오탐이다. 테스트 1건은 정리했다. 경보 밖에서 더 심한 것을 찾았다. 기본 `validate`·`audit`의 링크 추출 정규식이 PR이 고칠 수 있는 문서 한 줄에서 제곱으로 역추적했다(`[` 50,000자에 4.3초).
+- evidence: 차분 테스트(무작위 입력, 옛 정규식 대조) · 옛 정규식에서 4.7–34초로 실패하는 시간 상한 테스트 · 로컬 위키 9곳 300개 파일에서 옛/새 결과 차이 0, `validate`·`audit` JSON 동일 · 50만 자 병적 문서도 1초 이내
+- caveats: 정규식의 특이 동작 둘(붙은 링크 누락, 참조 정의의 다음 줄 삼킴)은 그대로 재현했고, 고치는 일은 도입처 finding이 늘어나는 별도 결정이다. `src/` 전체 정규식 전수 감사는 하지 않았다(블랙박스 52형태만 측정). 로컬 위키 비교에서 `roadmonitor`·`roadmonitor-frontend`는 뺐다(유지보수자 지시).
+
 ## 2026-10-26 - docs(deck): 1.35.0 정렬 — 배포 전에 PR에 함께 넣었다
 
 - status: needs_review (위키 문서 변경 없음 — 로그만)

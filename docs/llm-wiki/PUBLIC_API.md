@@ -10,7 +10,7 @@ last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-26
+reviewed_at: 2026-10-27
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -274,11 +274,10 @@ MCP 클라이언트 등록 예시:
 
 ## Review Notes
 
-Older review notes (42 entries, 2026-07-14 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
-
-- 2026-08-03(1.28.0 배포 준비)에 공개 계약 표의 미릴리스 표기 2건을 확정했다: `validate-frontmatter`의 `frontmatter.duplicate_key` 상속("미릴리스, main 한정" → **1.27.1**)과 `check-run`의 `testEvidence` 검증("2026-07-28(미릴리스)" → **1.27.1**). 둘 다 1.27.1 CHANGELOG에 등재된 항목이라 표기가 사실과 달랐던 경우다. 이번 배포로 바뀌는 계약(`impact`의 error 기본값·`harness-health`·`drift --watch-needs-review`·`monorepo` 옵션 검증)은 직전 노트들이 이미 등재했으므로 중복 기재하지 않았다.
+Older review notes (43 entries, 2026-07-14 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
 - 2026-09-07(1.30.0)에 거버넌스 모드를 공개 계약 표면에 반영했다: Commands 표에 `mode`·`backfill` 두 행을 추가하고, `prompt --task` 지원 값을 8종 → **9종**(`backfill`), MCP 노출 툴을 17 → **18종**(읽기 전용 `mode`)으로 고쳤으며, Configuration에 `governance` 블록 항목을 신설했다 — 레벨이 rule floor를 기여하고 `rulesPreset`·명시 `rules` **아래**에 키 단위로 깔린다는 우선순위, `strict`의 floor가 비어 있다는 마이그레이션 보증, `init`이 새 프로젝트와 레거시를 근거로 가른다는 규칙을 함께 적었다. `monorepo` 행의 “다른 29개 명령” 수치도 고쳤다 — **이 문서가 손으로 나열하는 수치는 새 명령이 생기면 반드시 낡는다**(이번에 세 곳이 그랬다: 명령 수·task 수·MCP 툴 수). **(이어서)** 같은 배치의 도그푸딩(이 저장소에 `backfill`을 실행)이 제품 결함 2건을 드러내 함께 고쳤다: ① 의사결정 기록 탐색이 `docs/llm-wiki/` 안만 보고서 “이 저장소에서 근거 복구 불가”라고 **증거보다 넓은 부정을 단언**했다 — 정작 루트에 자기 `project-profile.md`가 의사결정 기록으로 지목하는 196 KB `GATE_REVIEW.md`가 있다. 이제 git이 추적하는 관례 위치까지 찾고, 못 찾으면 자기가 뒤진 범위를 문장에 적는다. ② `review_backlog` 준비도 체크가 append-only 로그 때문에 **구조적으로 통과 불가**였다(`review`가 의도적으로 스탬프하지 않는 문서를 세었다 — N-14) — 로그를 쓰는 모든 저장소에서 `backfill --strict`가 영원히 실패했을 것이다. 회귀 테스트 3건으로 고정했다.
 - 2026-10-01(1.33.0 준비, 미출시)에 신규 명령 `archive-log`를 공개 계약 표면에 추가했다(유지보수자 승인): 명령 표 1행, 옵션 `--keep-months`(양의 정수, 아니면 exit 3), 고정된 `commands` 맵의 키 하나, config `wikiBudget` 블록, 규칙 5종(`markdown_link.anchor_missing`·`content.dated_heading`·`budget.log_over`·`budget.doc_over`는 기본 off, `archive.integrity`는 이 명령에서만 발화하는 blocked). 2026-10-20 같은 미출시 범위에 계약 변경을 더했다: `prompt --task issue`(10종), `--prompt-profile`/`promptProfile`, `agentReviewers`와 `evidenceTiers.agentVerified`, opt-in `impact.stamp_only`. **기본 동작이 바뀌는 곳은 셋이고 모두 이름을 붙인다**: ① `prompt`가 거버넌스 모드를 따른다(`lite`/`standard` 프로젝트의 출력이 바뀐다 — 버그 수정), ② `evidence`에서 파일 없는 `#anchor`는 이제 `evidence.shape`(error)다(공개 스키마는 원래 거부했다; 로컬 도입 위키 11곳의 1,292항목에서 해당 0건), ③ `stats` 텍스트 요약에 `agent_verified` 꼬리가 붙는다. 이름이 `log-YYYY-MM.md`인 기존 문서는 월별 권으로 취급되어 review/drift/impact/fix 대상에서 빠진다.
 - 2026-10-26에 `impact.source_changed`가 이 문서를 지목했다(인용 소스 `src/commands/retrieval.js`). 실제 변경은 **결함 수정**이다. `get-doc`의 기본 출력(CLI `--format json`과 MCP `get_doc`)은 frontmatter를 redaction 없이 그대로 돌려줬다. 그래서 본문 줄이었다면 가려졌을 값(예: `secret: "…"`)이 원문으로 나갔다. `list-docs`/`search-docs`는 같은 스캔 결과로 그 문서를 기본 제외했지만, `get-doc`은 경로를 지정하면 sensitivity 게이트가 없어 frontmatter가 그대로 노출됐다. 이 문서의 `get-doc` 행이 말하던 "민감 라인 redact"는 본문에만 참이었다. 지금은 frontmatter의 각 스칼라를 `key: value`로 재구성해 같은 `scanSensitiveInfo`에 걸고, 걸린 값만 redaction 표식으로 바꾼다. 키·구조는 유지하고, 깨끗한 문서는 원래 참조를 그대로 돌려줘 byte-identical이다. opt-in(`--include-sensitive`) 목록·검색의 제목·태그도 같은 뷰를 쓴다. `get-doc`·`list-docs`·`search-docs` 세 행을 그에 맞게 고쳤다. JSON 키·exit code·`schemaVersion`은 바뀌지 않았다. 탐지 패턴 자체는 건드리지 않았다(`api_token`처럼 `_token`으로 끝나는 키를 못 잡는 공백은 별건이다). **같은 날 두 번째 결함도 고쳤다**: redaction이 줄 단위라, 탐지기가 헤더만 잡는 PEM 블록은 헤더 한 줄만 가려지고 키 본문 줄이 `get-doc`·검색 스니펫·MCP로 그대로 나갔다(가짜 블록 재현에서 CLI 2줄·MCP 4회). 이제 탐지된 PEM 헤더부터 짝 END 줄까지 블록째 가린다. `get-doc` 행에 그 계약을 적었다. 에이전트(Claude Code) 편집이므로 `needs_review`로 둔 뒤 이 저장소 규칙대로 자체 승인한다.
 - 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `src/commands.js`·`src/cli.js`를 대조했다. 공개 계약 표면이 바뀌었으므로 `impact` 행에 적었다. `--format json`에 additive `changedPaths[]`·`impactedDocuments[{path, sources[]}]`가 붙었고(`changedFiles`·`findings`·`schemaVersion`은 불변), 텍스트에 `Documents to re-review` 절이 들어갔으며, 컴포지트 액션에 입력 `summary`가 생겼다. 명령·옵션·종료 코드는 그대로다. `cli.js` 변경은 도움말의 "Why" 문구뿐이다.
+- 2026-10-27(보안 검토)에 `impact`가 인용 소스 `import-memory.js`·`fix-migrate.js`의 변경으로 이 문서를 지목했다. 명령·옵션·JSON·종료 코드는 그대로다. 모듈 수준 export가 몇 개 늘었지만(`references.js`의 `nextStopTable`, `skills.js`의 `forArtifact`, `wiki-hygiene.js`의 제목 헬퍼 3개) `src/index.js`의 공개 API에는 들어가지 않는다. 본문은 **불변**이다.

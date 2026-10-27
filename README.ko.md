@@ -42,6 +42,19 @@ npx llm-wiki-governance quickstart --write --type frontend --agent claude   # �
 
 CLI를 돌리는 데는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단계 하나뿐이고 결과 품질도 거기서 갈립니다. 처음 위키를 만들 때는 쓰시는 에이전트의 가장 강한 추론 모델을 쓰고, 이후 `docs-sync` 같은 일상 작업은 값싼 모델로 돌리시면 됩니다.
 
+## 데모 앱으로 해 보기
+
+[`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo)는 작은 Vue 3 + TypeScript 할 일 목록 앱과, 그 소스를 보고 쓴 위키입니다. 전체 흐름을 한 번에 보여 줍니다. `init`, 소스 근거 문서 2개, `validate --strict`, `review --approve`를 거친 뒤 코드를 바꾸면(제목 상한 80 → 120), 문서를 고치고 다시 승인할 때까지 `impact`가 exit 1로 끝납니다.
+
+```bash
+git clone https://github.com/Dowon-Kim7949/llm-wiki-governance.git
+cd llm-wiki-governance/examples/vue3-typescript-demo
+npm install
+npm run demo    # 임시 git 저장소에서 모든 단계를 실행하고 "All 11 checks passed."로 끝납니다
+```
+
+Node.js 20.19+(Vite 요구사항)와 git이 필요하고, API 키나 AI 서비스는 필요 없습니다. 데모 README에 같은 단계를 직접 따라 하는 방법이 있고, 한계도 보여 줍니다. `impact`는 파일 단위라 문서를 *틀린* 숫자로 고쳐도 통과하고, 날짜 기준 `drift`는 리뷰와 같은 날 커밋된 변경을 놓칩니다.
+
 ## AGENTS.md나 CLAUDE.md만으로는 왜 부족한가
 
 그 파일들은 그대로 두세요. 이 도구가 그 파일들을 만들어 주고 위키를 가리키게 합니다. 지시 파일은 에이전트에게 일하는 방식을 알려 줍니다. 하지만 어떤 문장이 검토를 거쳤는지, 어떤 코드에서 나왔는지, 그 뒤로 그 코드가 바뀌었는지는 기록하지 않습니다. 이 도구가 더하는 것이 바로 그 기록입니다.
@@ -165,6 +178,7 @@ CLI를 돌리는 데는 모델이 필요 없습니다. 모델이 쓰이는 곳�
 | 모든 명령·옵션·exit code 찾아보기 | [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · `npx llm-wiki-governance help <command>`(영문) |
 | 신뢰 모델 이해하기, 취약점 제보하기 | [SECURITY.ko.md](./SECURITY.ko.md) |
 | 무엇을 쟀고 무엇은 재지 못했는지 보기 | [BENCHMARK.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/BENCHMARK.md) · [BENCHMARK_DISCLOSURE.ko.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/BENCHMARK_DISCLOSURE.ko.md) |
+| 데모를 처음부터 끝까지 실행하기 | [examples/vue3-typescript-demo](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo) |
 | 실사용 예시 따라 하기 | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) |
 | 출시 이력과 방향 보기 | [CHANGELOG.ko.md](./CHANGELOG.ko.md) · [ROADMAP.ko.md](./ROADMAP.ko.md) |
 | 승인된 안전 범위와 릴리스 게이트 확인하기 | [GATE_REVIEW.md](./GATE_REVIEW.md)(영문, 긴 결정 기록) |

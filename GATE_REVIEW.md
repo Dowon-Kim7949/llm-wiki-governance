@@ -3193,6 +3193,15 @@ it, so consecutive definitions are checked every other one. Fixing either adds
 `markdown_link.missing` findings to adopters' builds, which is a contract change, not a
 hardening.
 
+**Runnable example (built).** `examples/vue3-typescript-demo/` runs the whole loop on a Vue 3
+app: `init`, two source-backed documents, `review --approve`, a source change that makes
+`impact` exit 1, and the update that clears it. It uses `lite` with `impact.source_changed`
+switched on by an explicit rule, because `standard`/`strict` would demand four more frontend
+profile documents than a demo can keep current. It is outside `package.json` `files`, and
+`tests/vue-demo-walkthrough.test.js` runs the scenario against the current CLI so its README
+cannot drift. Its README states what the scenario showed: a document updated with the wrong
+number passes every check, and date-based `drift` misses a same-day change.
+
 **Not covered.** The black-box sweep timed `validate`, `audit` and `drift` on 31 body shapes
 and 21 frontmatter shapes; it did not cover other commands (prompt generation, release notes,
 graph), and no line-by-line audit of every regex in `src/` was done.

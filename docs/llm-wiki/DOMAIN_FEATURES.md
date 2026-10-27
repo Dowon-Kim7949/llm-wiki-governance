@@ -10,7 +10,7 @@ last_updated: 2026-10-21
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-26
+reviewed_at: 2026-10-27
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -182,12 +182,10 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (58 entries, 2026-07-14 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (59 entries, 2026-07-14 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-08-03에 기능 서술 4건을 사실에 맞췄다. `impact`는 이제 `--strict` 없이 빌드를 실패시키고, `drift`·`check-run`은 규칙이 여전히 warning이라 `--strict`가 필요하다 — 이 비대칭이 핵심이라 함께 적었다. `check-run`은 git 추적 매니페스트를 우선하고(N-6), 자기신고 `changedSource`를 git과 대조한다. **`release_notes` 면제의 대가를 숨기지 않고 적었다**: 릴리스 노트 33건이 이미 `verified`라 이 면제는 비용 상한이 아니라 커버리지 제거(52건 중 33건)이며, 그럼에도 옳은 이유는 이 저장소 `impact` 23건 중 16건이 바로 그 불변 문서였고 면제 후 23 → 9가 됐기 때문이다.
 - 2026-08-03(1.28.0 배포 준비)에 기능 등재의 **릴리스 표기를 확정했다.** 1.28.0으로 나가는 것: `harness-health`(Phase 1)·`doctor`의 `ci_governance`·어댑터 7종 v2 확장. 1.27.1로 **이미 나갔는데** "미릴리스"로 남아 있던 것: `import-memory`·`rulesPreset`·`testEvidence`·`estimated-tokens` 스탬프. 후자는 서술이 사실과 달랐던 경우이며 CHANGELOG 1.27.1 절로 대조해 확정했다. 기능 서술 자체는 불변 — 이번 배치는 버전 표기만 건드렸다. `HARNESS_GOVERNANCE_ROADMAP.md`의 "미릴리스라 지금이 최적기" 문장들은 **작성 시점의 판단 기록**이라 의도적으로 남겼다.
-
 - 2026-09-07(1.30.0)에 기능 2종을 신설해 Features 맨 앞에 적었다: **거버넌스 모드**(세 레벨이 하나의 엔진 위 정책이라는 것, `lite`가 억제가 아니라 구조로 가볍다는 것 — 계획하지 않은 문서는 누락이 아니고 유일한 산출이 꺼진 스캔 2종은 건너뛴다, `strict`의 빈 floor가 마이그레이션 보증이라는 것)과 **`backfill`**(불완전한 위키를 저장소 자체에서 재구성하되 이력은 발명하지 않는다는 계약). 프롬프트 블록 비용은 절감이 아니라 **비용으로** 적었다(추정 173–234 토큰, chars/4 프록시, 절감은 미측정). **(이어서)** 같은 배치의 도그푸딩(이 저장소에 `backfill`을 실행)이 제품 결함 2건을 드러내 함께 고쳤다: ① 의사결정 기록 탐색이 `docs/llm-wiki/` 안만 보고서 “이 저장소에서 근거 복구 불가”라고 **증거보다 넓은 부정을 단언**했다 — 정작 루트에 자기 `project-profile.md`가 의사결정 기록으로 지목하는 196 KB `GATE_REVIEW.md`가 있다. 이제 git이 추적하는 관례 위치까지 찾고, 못 찾으면 자기가 뒤진 범위를 문장에 적는다. ② `review_backlog` 준비도 체크가 append-only 로그 때문에 **구조적으로 통과 불가**였다(`review`가 의도적으로 스탬프하지 않는 문서를 세었다 — N-14) — 로그를 쓰는 모든 저장소에서 `backfill --strict`가 영원히 실패했을 것이다. 회귀 테스트 3건으로 고정했다.
-
 - 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 기능 서술 3곳을 고쳤다. **내용 수정**이다: (1) 거버넌스 모드 절이 `lite`가 건너뛰는 스캔 2종을 열거했지만 `drift` 명령 자체는 rule map을 보지 않아서, `lite`에서도 경고가 나오고 `drift --strict`가 자기 모드가 꺼 둔 규칙으로 빌드를 실패시킬 수 있었다 — 1.31.0이 그 게이트를 마지막 명령까지 넣었고 방향은 `lite`에서 exit 1 → 0이다. (2) reverse-impact 절이 규칙 severity는 적었지만 **앵커를 어떻게 매칭하는지**를 적지 않았고, 바로 거기에 N-8(디렉터리 앵커 위음성)이 있었다 — 경로 prefix 매칭과 `stamp_only_exclusions`(N-9, 보고 전용)를 더했다. (3) 스킬 토큰 예산 근거 줄이 refresh 판정을 content hash로만 적고 있었다.
 - 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `src/commands.js`·`src/cli.js`를 대조했다. 두 항목을 고쳤다. reverse-impact 항목에는 PR 리포트 출력(텍스트 표, JSON `changedPaths`·`impactedDocuments`)을 더했다. CI/CD 항목의 "읽기 전용 `validate`를 감싼다"는 문장은 액션이 명령 허용 목록(11종)으로 바뀐 뒤로 낡아 있었다. 그래서 그 문장을 고치면서 새 입력 `summary`도 적었다. `cli.js` 변경(도움말 문구)은 이 문서의 기능 서술에 영향이 없다.
+- 2026-10-27(보안 검토)에 `impact`가 인용 소스 5종(`import-memory.js`·`skills.js`·`wiki-hygiene.js`·`fix-migrate.js`·`references.js`)의 변경으로 이 문서를 지목했다. 다섯 파일 모두 정규식을 같은 결과의 선형 스캔으로 바꿨을 뿐이라 기능·출력·종료 코드가 그대로이고, 본문은 **불변**이다. 근거와 측정은 GATE_REVIEW "Security Review Batch"에 있다.

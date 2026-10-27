@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: release_flow
 project: llm-wiki-governance
-last_updated: 2026-10-21
+last_updated: 2026-10-27
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-26
+reviewed_at: 2026-10-27
 wiki_block_version: v1
 source_files:
   - package.json
@@ -53,11 +53,17 @@ contains_sensitive_info: false
   (`dowonk-7949`)으로 찍힌 것은 수동 배포한 1.16.0뿐이다. 새 버전을 낸 뒤 이 필드를 확인하는 것이
   인증 경로를 판정하는 가장 값싼 방법이며, `npm publish --dry-run`은 레지스트리 PUT을 하지 않으므로
   인증을 검증하지 못한다.
-- publish 잡의 `actions/setup-node`는 `registry-url`을 받고, `Publish to npm` 스텝의 `env`는
-  `NODE_AUTH_TOKEN`을 `npm-release` 환경 secret으로 채운다. ⚠️ **이 토큰은 위 실측 기준 인증에 쓰이지
-  않는다** — Trusted Publisher가 매칭되면 npm이 OIDC 교환 토큰을 쓴다. 남겨 둔 이유는 폴백이고, 제거는
-  별도 결정으로 다룬다(GATE_REVIEW "Publish Credential Cleanup"). `registry-url`을 주면 OIDC가
-  무력화된다는 1.29.4의 전제는 **거짓이다**(그 조합으로 지금도 OIDC가 인증한다).
+- publish 잡의 `actions/setup-node`는 `registry-url`을 받지만, **2026-10-27부터 어떤 스텝도 저장된
+  npm 토큰을 받지 않는다**(GATE_REVIEW "Publish Credential Cleanup" 결정). 인증은 Trusted Publishing만
+  한다. 등록이 깨지면 저장된 토큰으로 넘어가지 않고 릴리스가 실패한다. 근거는 두 가지다. 1.16.1–1.29.2
+  19개 버전이 토큰 env 없이 같은 형태로 게시됐고, 1.29.5–1.35.0 8개 버전도 레지스트리상 인증 주체가 전부
+  OIDC다. 사전 점검 스텝이 npm 11.5.1 미만이거나 OIDC 토큰 요청이 불가능하면 잡을 먼저 실패시키고,
+  `tests/publish-workflow.test.js`가 워크플로에 `secrets.` 참조가 다시 생기면 실패한다. `registry-url`을
+  주면 OIDC가 무력화된다는 1.29.4의 전제는 **거짓이다**.
+- **아직 증명되지 않은 것:** 토큰 없이 다음 릴리스가 성공하는지는 실제 배포로만 확인된다. 실패하면
+  Trusted Publisher 등록(저장소·`publish.yml`·환경 `npm-release`)부터 확인한다. env 복원은 롤백일 뿐
+  해결책이 아니다. 성공을 `_npmUser`로 확인한 뒤 유지보수자가 환경 secret을 지우고 npmjs.com에서 토큰을
+  폐기한다.
 - **1.29.3·1.29.4 실패의 원인은 워크플로가 아니라 등록이었다.** Trusted Publisher 등록은 저장소 이름이
   아니라 **저장소 객체**에 묶이므로, 2026-09-03 저장소 교체(옛 저장소를 private archive로 돌리고 같은
   이름으로 새 public 저장소를 만든 것)로 등록이 무효화됐다. 그 뒤 새 저장소로 재등록되면서
@@ -79,7 +85,7 @@ contains_sensitive_info: false
 
 ## Review Notes
 
-Older review notes (2 entries, 2026-07-14 → 2026-10-21) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
+Older review notes (3 entries, 2026-07-14 → 2026-10-21) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
 - 2026-09-08에 **이 문서가 배포 인증에 대해 적어 둔 것이 거짓임을 레지스트리 메타데이터로 확인하고 정정했다.**
   `npm view llm-wiki-governance@<v> --json`의 `_npmUser`를 1.29.5·1.30.0·1.30.1에 대해 조회한 결과 셋 다
@@ -93,7 +99,7 @@ Older review notes (2 entries, 2026-07-14 → 2026-10-21) are archived in [REVIE
   OIDC로 성공했고, 재등록 뒤 새 config id로 다시 성공했기 때문이다. **여전히 모르는 것:** 재등록 시각이
   v1.29.4 시도 전인지 후인지, 그리고 `NODE_AUTH_TOKEN` env를 제거해도 배포가 성공하는지는 확인하지 않았다
   (확인에는 실제 배포가 필요하다). 이 정정으로 "2027-01 토큰 폐지 전 OIDC 디버깅"은 **열린 작업이 아니다.**
-- 2026-07-15에 1.7.0 CI/CD 도입을 반영했다: `v*` 태그 push 시 `publish.yml`이 npm Trusted Publishing에 더해 격리된 `contents: write` GitHub Release 잡(`gh` CLI·`release-notes --body-only` 본문)을 실행한다(Gate 12). 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
 - 2026-09-07(1.29.5 배포)에 `impact.source_changed`가 인용 소스 `.github/workflows/publish.yml`의 변경으로 이 문서를 지목했고, **Prerequisites를 실측으로 정정했다.** 같은 내용을 두 번 태그했다가 배포에 실패했다: `v1.29.3`은 `registry-url`만 있고 토큰이 없어 setup-node의 플레이스홀더 `NODE_AUTH_TOKEN`으로 인증을 시도해 404, `v1.29.4`는 그 입력을 제거해 OIDC 폴백을 노렸으나 npm이 자격증명을 전혀 찾지 못해 `ENEEDAUTH`. Trusted Publisher 등록(저장소 **객체**에 묶임)을 새 저장소로 다시 해도 결과가 같아 **이 저장소에서 OIDC 토큰 교환은 완료되지 않는다**는 것이 확인됐다. 1.29.5는 `npm-release` 환경 secret의 패키지 한정 토큰으로 인증하고 provenance는 OIDC로 유지한다 — 1.29.2까지 실제로 쓰인 조합이다. 이 노트의 이전 판이 "`registry-url` 제거로 해소했다"고 적은 것은 **틀렸으며**, 그 판은 게시된 적이 없어 이 정정으로 대체한다. **1.29.3·1.29.4는 npm 결번.** 에이전트(Claude Code) 편집이라 `needs_review`로 강등 후 이 저장소 정책대로 에이전트 승격했다.
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `package.json`을 재확인했다. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서는 릴리스 절차(태그 push → Trusted Publishing → GitHub Release)를 서술하고 version을 “태그와 대조되는 단일 소스”로만 인용하므로 숫자 변경으로 서술이 낡지 않는다 — 본문 **불변**. 1.28.0도 이 절차를 그대로 따른다(버전 범프 커밋 → `v1.28.0` 태그 push → Trusted Publishing; 수동 `npm publish` 없음).
 - 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `templates/github-actions/llm-wiki-validate.yml`을 대조했다. 이번 diff에서 그 템플릿이 바뀐 것은 버전 핀 세 줄(`@1.34` → `@1.35`)이 전부이고, 이 문서가 적어 둔 MINOR 릴리스 절차(템플릿과 액션 기본값의 핀을 함께 올린다)를 그대로 따른 것이다. 본문 **불변**.
+- 2026-10-27에 `impact`가 인용 소스 `.github/workflows/publish.yml`의 변경으로 이 문서를 지목했고, **Prerequisites를 고쳤다.** publish 스텝이 더 이상 저장된 npm 토큰을 받지 않는다(GATE_REVIEW "Publish Credential Cleanup" 결정). 사전 점검 스텝과 `tests/publish-workflow.test.js`도 추가됐다. "남겨 둔 이유는 폴백"이라는 이전 서술은 사실이 아니게 됐다. 다음 릴리스의 성공 여부는 아직 증명되지 않았다고 명시했다.

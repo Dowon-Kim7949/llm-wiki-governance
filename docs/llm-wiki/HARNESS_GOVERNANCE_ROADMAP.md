@@ -13,7 +13,7 @@ last_updated: 2026-10-21
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-26
+reviewed_at: 2026-10-27
 wiki_block_version: v1
 source_files:
   - package.json
@@ -2051,19 +2051,10 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 
 ## Review Notes
 
-Older review notes (15 entries, 2026-07-31 → 2026-08-03) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
-
-- 2026-08-06(1.29.1 배포 직전)에 **46번(N-14) 배치의 테스트 6건 중 1건이 Windows에서만 참인 것을
-  단언했고 CI가 잡았다**. `isTemplateDoc("docs\\llm-wiki\\templates\\win.md")`가 true라는 단언은
-  `toPosix()`가 `path.sep`으로만 분리하므로 POSIX에서 거짓이며, ubuntu·macOS 8잡이 실패하고 windows
-  4잡만 통과했다. **제품은 옳았고 테스트가 과했다** — 모든 호출부가 `toPosix(path.relative(...))`를
-  넘기므로 낯선 구분자가 술어에 도달할 수 없어, 술어가 아니라 단언을 `path.join` 기반으로 고쳤다.
-  하네스 교훈은 46번 후기에 적었다: 로컬 게이트는 Windows 한 조합이고 CI는 12잡이므로 경로·대소문자·
-  EOL을 문자열로 다루는 테스트에서 "로컬 515/515"는 증거가 아니다. 이 노트를 남기는 이유는 5건
-  상한 때문에 오래된 1건을 `REVIEW_HISTORY.md`로 회전시켜야 했기 때문이며(10건 → 11건, 포인터 동기화),
-  재스탬프만으로는 해소되지 않는다(`reviewed_at`이 이미 오늘 — 결함 N-11).
+Older review notes (16 entries, 2026-07-31 → 2026-08-06) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
 - 2026-09-07(1.30.0)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 9건을 재확인했다: `package.json`·`src/cli.js`·`src/index.js`·`src/commands.js`·`src/commands/findings.js`·`src/commands/skills.js`·`src/mcp/tools.js`·`.github/actions/validate/action.yml`·`ROADMAP.md`. 이번 변경은 거버넌스 모드 추가이고 이 문서가 다루는 것은 **하네스 자체의 거버넌스**(자기관리 게이트·측정·결정 기록)이므로 본문 주장 중 낡은 것이 없다 — Phase 0 결함 목록·오탐률 실측·결정 기록은 모두 그 시점 사실 진술이다. 새로 알게 된 하네스 공백 하나는 [log.md](log.md)의 2026-09-07 항목 caveats에 적었다: **모드를 바꾼 뒤 생성 스킬이 낡는 것을 제품이 finding으로 잡지 못한다** — 스킬 본문은 작성 시점 모드의 워크플로를 담고, 블록이 자기 안에 갱신 명령(`init --write --skills --refresh`)을 적어 두는 것이 현재 유일한 방어다. 본문 **불변**. **(이어서)** 같은 배치의 도그푸딩이 하네스 공백 하나가 아니라 **제품 결함 2건**을 냈고, 발견 경로가 이 문서의 주제 그대로다 — 코드 리뷰가 아니라 **이 저장소에 새 명령을 실행해서** 나왔다. ① `backfill`이 `docs/llm-wiki/` 안만 뒤지고 “이 저장소에서 근거 복구 불가”라고 단언했다(루트에 196 KB `GATE_REVIEW.md`가 있는 저장소에 대해) — 증거보다 넓은 부정. ② `review_backlog` 준비도 체크가 append-only 로그 때문에 **구조적으로 통과 불가**였다 — 이 제품이 이미 두 번 고친 “해소 경로가 없는 finding” 계열의 세 번째다. 둘 다 같은 배치에서 고치고 회귀 테스트 3건으로 고정했다. 앞서 적은 하네스 공백(모드 변경 후 낡은 스킬을 finding으로 잡지 못함)은 **여전히 미해결**이다.
 - 2026-09-08에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `ROADMAP.md`를 재확인했다. 바뀐 것은 post-1.19 목록에서 **1.25가 1.24보다 앞에 있던 순서를 바로잡은 것**뿐이고, 항목 본문은 글자 하나 움직이지 않았다(순수 이동이라 파일 바이트 수가 같다). 국문판을 먼저 고치면서 생긴 영·국문 불일치를 닫은 것이며, `CONTRIBUTING`의 "한쪽을 고치면 짝도 함께" 규칙을 지킨 것이다. 이 문서가 `ROADMAP.md`에 대해 하는 말은 **소유 경계**(릴리스별 계획은 ROADMAP이 소유)와 **스캔 범위**(루트 문서는 `listTargetMarkdown` 밖)뿐이라 목록 순서와 무관하다 — 본문 **불변**.
 - 2026-09-14(1.32.0)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 3건을 재확인했다: `templates/github-actions/llm-wiki-validate.yml`·`.github/actions/validate/action.yml`·`ROADMAP.md`. 이번 변경은 출하 템플릿의 **러너 비용**을 깎은 것이다 — `npm ci`와 `npm test` 스텝 삭제, 게이트 3개를 `npx -y llm-wiki-governance@1.32`로 전환(패키지 전체명 + 버전 핀이라 devDependency가 불필요해졌다), `runs-on`의 `LLM_WIKI_RUNNER` 변수 폴백, `timeout-minutes: 10`과 `concurrency`의 `cancel-in-progress` 신설, 그리고 action.yml `version` 기본값 1.31 → 1.32. **본문은 불변이다.** 190~197줄의 배포 아티팩트 4종 표는 **Phase 0 측정 시점의 관측 기록**이고(당시 4종 전부 `impact --since --strict`를 실행하지 않았다는 것), 그 표가 적는 실행 명령 `validate-frontmatter`·`validate --strict`는 지금도 템플릿에 그대로 있다 — 바뀐 것은 호출 형태이지 명령이 아니다. 기록을 현재 상태로 덮어쓰면 측정 시점을 왜곡하므로 표는 건드리지 않았다. 이 노트로 6건이 되므로 가장 오래된 2026-08-03 저녁 항목을 `REVIEW_HISTORY.md`로 원문 그대로 옮겨 5건을 유지했다(아카이브 13 → 14건).
 - 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 6건을 대조했다: `src/cli.js`·`src/commands.js`·`.github/actions/validate/action.yml`·`templates/github-actions/llm-wiki-validate.yml`·`GATE_REVIEW.md`·`ROADMAP.md`. H장에 1.35.0 검토에서 찾은 항목 48~52(N-16~N-19와 관찰 2건)를 더했다. 이 문서의 액션 서술("하드코딩된 인자 배열")은 이미 종결 표시된 과거 기록이다. 새 입력 `summary`는 이 문서가 다루는 하네스 게이트의 동작(종료 코드)을 바꾸지 않으며, 템플릿의 핀 상승은 MINOR 릴리스 절차 그대로다.
+- 2026-10-27(보안 검토)에 `impact`가 인용 소스 `skills.js`·`fix-migrate.js`·`references.js`·`GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 소스 셋은 정규식을 같은 결과의 선형 스캔으로 바꾼 것이다. 이 문서가 근거로 삼는 `parseEvidenceReference`·`runMechanicalRemediation`·`isManagedUnmodified`는 바뀌지 않았다. `GATE_REVIEW.md`에는 "Security Review Batch" 절이 추가됐고 "Publish Credential Cleanup"이 결정됐다. 하네스 로드맵의 서술과 결함 등록부는 그대로 유효하며 본문은 **불변**이다.
