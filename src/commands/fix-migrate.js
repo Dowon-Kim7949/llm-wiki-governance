@@ -571,7 +571,7 @@ export function replaceFrontmatterScalar(inner, key, value) {
 // regex retried `\s*` from every line of a long blank run and went quadratic. Keys
 // are frontmatter identifiers, which never start with whitespace, so the
 // whitespace run before the key is always taken whole.
-const LINE_TERMINATORS = new Set(["\n", "\r", " ", " "]);
+const LINE_TERMINATORS = new Set(["\n", "\r", "\u2028", "\u2029"]);
 
 function scalarLineStart(inner, key) {
   const marker = `${key}:`;

@@ -116,7 +116,7 @@ export function isExternalSourceReference(source) {
 // tests/linear-markdown-scan.test.js compares them with the old regexes on
 // random input.
 const WHITESPACE = /\s/;
-const LINE_TERMINATORS = new Set(["\n", "\r", " ", " "]);
+const LINE_TERMINATORS = new Set(["\n", "\r", "\u2028", "\u2029"]);
 
 // table[i] = the first index >= i whose character satisfies `isStop`, or text.length.
 export function nextStopTable(text, isStop) {

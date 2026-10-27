@@ -181,7 +181,7 @@ const isSpaceCodePoint = (ch) => {
   if (code < 128) return code === 32 || (code >= 9 && code <= 13);
   return /\s/u.test(ch);
 };
-const isLineTerminator = (ch) => ch === "\n" || ch === "\r" || ch === " " || ch === " ";
+const isLineTerminator = (ch) => ch === "\n" || ch === "\r" || ch === "\u2028" || ch === "\u2029";
 
 function emphasisPass(text) {
   if (!text.includes("_")) return text;
