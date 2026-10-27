@@ -151,7 +151,8 @@ function excerpt(output) {
   return kept.join("\n");
 }
 
-const shellQuote = (arg) => (/[\s"]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg);
+// Display only: the command is run with an argument array, never through a shell.
+const shellQuote = (arg) => (/[\s"\\]/.test(arg) ? `"${arg.replace(/[\\"]/g, "\\$&")}"` : arg);
 
 function resolveCli(explicit) {
   if (explicit) return path.resolve(explicit);

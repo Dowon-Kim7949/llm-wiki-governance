@@ -43,6 +43,7 @@ const regexImpl = {
   closingHashes: (text) => text.replace(/\s+#+\s*$/, ""),
   imageLabels: (text) => text.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1"),
   linkLabels: (text) => text.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1"),
+  // Not a sanitizer: the old heading-slug step, kept verbatim as the oracle.
   inlineTags: (text) => text.replace(/<[^>]+>/g, ""),
   trailingBreaks: (inner) => inner.replace(/[\r\n]+$/, ""),
   replaceScalar(inner, key, value) {
