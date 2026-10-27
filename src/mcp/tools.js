@@ -176,7 +176,7 @@ export const TOOL_DEFS = [
     name: "search_docs",
     title: "Search wiki documents",
     description:
-      "Read-only keyword/substring search (deterministic, NOT semantic/vector) over document titles, bodies, and frontmatter. A document matches when any query term appears; matches are ranked by BM25 relevance (title and tags/aliases weighted), each with matchedTerms (how many distinct terms it contains) and a redacted snippet. English function words and trailing Korean particles are dropped from the query. Use get_doc for full content. Restricted/sensitive documents are excluded unless includeSensitive is set.",
+      "Read-only keyword/substring search (deterministic, NOT semantic/vector) over document titles, bodies, and frontmatter. A document matches when any query term appears (allTerms: only documents containing every term); matches are ranked by BM25 relevance (title and tags/aliases weighted), each with matchedTerms (how many distinct terms it contains) and a redacted snippet. English function words and trailing Korean particles are dropped from the query; the terms actually used are returned as terms. Use get_doc for full content. Restricted/sensitive documents are excluded unless includeSensitive is set.",
     command: "search-docs",
     inputSchema: schema({
       query: { type: "string", description: "Keyword query. Whitespace-separated terms; a document containing more of them ranks higher." },
@@ -185,6 +185,7 @@ export const TOOL_DEFS = [
       visibility: visibilityFilterProp,
       docType: docTypeFilterProp,
       includeSensitive: includeSensitiveProp,
+      allTerms: { type: "boolean", description: "Return only documents that contain every query term (default false: any term matches)." },
       limit: { type: "integer", minimum: 1, description: "Maximum results to return (default 20)." }
     }, ["query"])
   },
@@ -257,6 +258,7 @@ export function buildToolOptions(tool, args = {}) {
   if (typeof args.visibility === "string") options.visibility = args.visibility;
   if (typeof args.docType === "string") options.docType = args.docType;
   if (typeof args.includeSensitive === "boolean") options.includeSensitive = args.includeSensitive;
+  if (typeof args.allTerms === "boolean") options.allTerms = args.allTerms;
   if (Number.isInteger(args.limit)) options.limit = args.limit;
   if (Array.isArray(args.agents)) options.agents = args.agents;
 

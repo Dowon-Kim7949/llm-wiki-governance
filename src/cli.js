@@ -170,6 +170,7 @@ export function defaultOptions() {
     visibility: null,
     docType: null,
     includeSensitive: false,
+    allTerms: false,
     limit: null,
     section: null,
     version: null,
@@ -496,6 +497,9 @@ export function parseArgs(argv) {
     } else if (arg === "--include-sensitive") {
       usedOptions.add("include-sensitive");
       options.includeSensitive = true;
+    } else if (arg === "--all-terms") {
+      usedOptions.add("all-terms");
+      options.allTerms = true;
     } else if (arg === "--body-only") {
       usedOptions.add("body-only");
       options.bodyOnly = true;
@@ -638,7 +642,7 @@ const COMMAND_OPTION_RULES = {
   graph: new Set(["cwd", "format", "out"]),
   stats: new Set(["cwd", "type", "profile", "agent", "strict", "mode", "format", "out"]),
   "list-docs": new Set(["cwd", "status", "visibility", "doc-type", "include-sensitive", "format", "out"]),
-  "search-docs": new Set(["cwd", "status", "visibility", "doc-type", "include-sensitive", "limit", "format", "out"]),
+  "search-docs": new Set(["cwd", "status", "visibility", "doc-type", "include-sensitive", "all-terms", "limit", "format", "out"]),
   "get-doc": new Set(["cwd", "section", "strict-section", "compact", "max-chars", "format", "out"]),
   "get-related": new Set(["cwd", "format", "out"]),
   onboard: new Set(["cwd", "domain", "goal", "type", "profile", "format", "out"]),
@@ -811,7 +815,7 @@ Usage:
   llm-wiki graph [--format text|json|mermaid|dot] [--cwd <path>] [--out <path>]
   llm-wiki stats [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--strict] [--format text|json|markdown|html] [--out <path>]
   llm-wiki list-docs [--status <s>] [--visibility <v>] [--doc-type <t>] [--include-sensitive] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki search-docs <query> [--status <s>] [--visibility <v>] [--doc-type <t>] [--include-sensitive] [--limit <n>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki search-docs <query> [--status <s>] [--visibility <v>] [--doc-type <t>] [--include-sensitive] [--all-terms] [--limit <n>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki get-doc <path> [--section <terms>] [--strict-section] [--compact] [--max-chars <n>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki get-related <path> [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki onboard [--domain <name>] [--goal <text>] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--lang ko|en] [--format text|json|markdown|html] [--out <path>]
@@ -1198,9 +1202,19 @@ Usage:
   llm-wiki drift --downgrade [--watch-needs-review] [--strict] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
-  Reports evidence.stale drift on verified documents (line/symbol aware). Without
-  --downgrade it only reports; --downgrade flips drifted verified documents to
-  needs_review.
+  Reports evidence.stale drift on verified documents: a cited file committed to
+  after the review date (reviewed_at, else last_updated). Without --downgrade it
+  only reports; --downgrade flips drifted verified documents to needs_review.
+
+Narrowing:
+  File-level, except a file cited ONLY in evidence through line ranges
+  (#L10-L20, path:10-20) or sections of a Markdown file (#section:Usage):
+  line ranges are checked with git log -L, and sections (1.37.0) by comparing
+  the repository at the end of the review day with HEAD. When the file changed
+  but no cited region did, the citation is listed in JSON locatorNarrowed and
+  the summary line locator_narrowed instead of drifting. A source_files entry,
+  a bare path, #symbol: or #route:, or a region that cannot be located on
+  either side keeps the whole file watched.
 
 Options:
   --watch-needs-review  Widen the date-anchored freshness check to needs_review
@@ -1442,7 +1456,7 @@ JSON (--format json):
   "search-docs": `llm-wiki search-docs
 
 Usage:
-  llm-wiki search-docs <query> [--status <s>] [--visibility <v>] [--doc-type <t>] [--include-sensitive] [--limit <n>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki search-docs <query> [--status <s>] [--visibility <v>] [--doc-type <t>] [--include-sensitive] [--all-terms] [--limit <n>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Read-only retrieval. Deterministic keyword/substring search over document
@@ -1451,11 +1465,12 @@ Purpose:
   relevance over the body, with title and tags/aliases hits weighted, and each
   carries matchedTerms (how many distinct query terms it contains) and a short
   snippet. English function words and trailing Korean particles ("로그를" ->
-  "로그") are dropped from the query. Use get-doc for full content. Restricted/sensitive docs are excluded unless --include-sensitive;
+  "로그") are dropped from the query. --all-terms keeps only documents that
+  contain every term (the rule before 1.36.0), ranked the same way. Use get-doc for full content. Restricted/sensitive docs are excluded unless --include-sensitive;
   snippets redact sensitive-looking lines. --limit caps results (default 20).
 
 JSON (--format json):
-  Top-level keys: schemaVersion, command, result, query, limit, filters, excludedSensitive, matchCount, matches[], findings[]. matches[] items are { path, title, status, score, matchedTerms, snippet }.
+  Top-level keys: schemaVersion, command, result, query, terms[], allTerms, limit, filters, excludedSensitive, matchCount, matches[], findings[]. terms[] is the query as the ranker used it. matches[] items are { path, title, status, score, matchedTerms, snippet }.
 `,
   "get-doc": `llm-wiki get-doc
 

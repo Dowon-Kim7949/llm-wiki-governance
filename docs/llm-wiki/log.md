@@ -24,6 +24,17 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-27 - release: 1.37.0 준비 — drift 섹션 축소, search-docs --all-terms, held-out 검색 평가
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, bench, docs, wiki, release
+- changed: `src/commands/scans.js`(`scanEvidenceDriftDetailed`, date-앵커 drift가 `narrowingLocators`로 줄 범위·`.md` 섹션 축소, `locatorNarrowed`) · `src/git.js`(`commitAtEndOf`·`fileAtRefFromCwd`) · `src/commands/fix-migrate.js`(drift JSON `locatorNarrowed`·요약 `locator_narrowed`·Caveats) · `src/commands/retrieval.js`(`--all-terms` → `requireAll`, JSON `terms`·`allTerms`) · `src/cli.js`(`--all-terms` 파싱·옵션 규칙·도움말, drift 도움말 Narrowing 절) · `src/mcp/tools.js`(`allTerms` 스키마·매핑) · `src/index.js`(typedef) · `bench/search-eval/run.js`(`--queries`, `shipped --all-terms` 행) · `bench/search-eval/heldout.json`(신규) · 테스트 `tests/drift-section-narrowing.test.js`(신규 5건)와 search·MCP 단언 · 위키 13종 · README·CHANGELOG·ROADMAP 각 2종 · 액션·템플릿 핀 · 덱 · 버전 1.37.0
+- summary: 1.36.0에서 `impact`에 넣은 로케이터 축소를 날짜 앵커 `drift`에도 넣었다. 줄 범위는 원래 `git log -L`로 좁혀 왔으므로 새로 생긴 것은 `.md` 섹션이다. 리뷰 날짜가 끝나는 시점의 저장소 스냅샷과 `HEAD`에서 섹션을 꺼내 비교하고, 한쪽이라도 영역을 못 찾으면 파일 단위로 돌아간다. `search-docs --all-terms`는 1.36.0에서 미룬 AND 복귀 경로다(점수는 같고 거르기만 한다). 순위기를 고른 뒤 별도 에이전트가 검색을 돌리지 않고 만든 held-out 질의 40개로 검색을 다시 쟀다.
+- evidence: 테스트 725 → 731(실측) · held-out에서 출시 순위기 hit@5 85.0%, 1.35.0 AND 10.0%(결과 0건 34/40), `--all-terms` 17.5%(결과 0건 27/40) · 기존 drift 동등성 테스트(`drift-batched-listing`)와 줄 범위 테스트 무변경 통과
+- observed: 같은 날 위키 본문을 고치는 것만으로 held-out MRR이 0.589 → 0.600으로 움직였다. 그 전 측정에서 "기능어·조사 제거가 MRR은 못 올렸다"(0.606 대 0.589)고 적으려 했던 해석은 이 흔들림보다 작은 차이라 버렸다. 코퍼스가 위키 자신이라 수치마다 측정 시점을 적는다.
+- caveats: held-out도 에이전트 라벨이고 질의 40개·위키 하나다. 섹션 스냅샷은 committer date 기준이라 N-15(늦은 머지)의 한계를 물려받고, 틀리면 지목하는 쪽(오탐)으로만 틀린다. 벤치 v2(유료 실측)는 무료로 같은 것을 잴 수 없어 하지 않았다(다른 계열 채점자와 호출별 토큰이 필요하다).
+
 ## 2026-10-27 - docs(release): 1.36.0 검색 계약 변경을 MINOR로 확정, 테스트 수 정정
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

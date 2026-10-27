@@ -7,7 +7,7 @@ tags:
 status: verified
 doc_type: reference
 project: llm-wiki-governance
-last_updated: 2026-10-21
+last_updated: 2026-10-27
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -46,6 +46,24 @@ related:
   - ROADMAP.md
 visibility: internal
 contains_sensitive_info: false
+source_digests:
+  - bench/run.js sha256:3dba670f889038f4
+  - bench/lib/strategies.js sha256:82af26be3a4bbe49
+  - bench/tasks.json sha256:a90506a10bd7d410
+  - bench/tasks-external-vue-app.json sha256:75c947b9c050289d
+  - bench/real/runner.js sha256:ad9fdfbd7d30bd04
+  - bench/real/make-stub-wiki.mjs sha256:d7ec3f4bdf5824a5
+  - bench/real/aggregate.mjs sha256:9ab1ec76048324e9
+  - bench/results/baseline.json sha256:24e23076dba3034a
+  - bench/results/current.json sha256:4a58a26f840ed449
+  - bench/results/real-driver-external-vue-app-sdk-2026-07-24.md sha256:a7576dffb27f4e92
+  - bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27.md sha256:5c5ee2ee4bfa5897
+  - bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-grading.md sha256:205b4689a0273d3d
+  - bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-ratification.md sha256:0fb474a6a24f50f3
+  - bench/results/baseline.md sha256:3e59650aaf3dd51b
+  - bench/results/current.md sha256:04af0e8e3df6293a
+  - bench/results/real-driver-external-vue-app-sdk-2026-07-24-grading.md sha256:6e9e1678c4d871c9
+  - GATE_REVIEW.md#section:Impact Measurement Scope Decision sha256:ebc2d452c3b78016
 ---
 
 # Impact Measurement Baseline
@@ -305,6 +323,14 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   42,832 vs B 31,554). 실측 누적 **약 $17.10** / 런북 $19 캡 — 잔여 약 $1.90.
 
 상세·원자료: [`bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27.md`](../../bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27.md).
+
+## 검색 순위 · search-docs ranking, held-out (2026-10-27, 1.37.0)
+
+위의 측정들이 "위키를 쓰면 에이전트가 덜 읽는가"를 묻는다면, 이 절은 그 앞단 — `search-docs`가 맞는 문서를 위로 올리는가 — 만 잰다. 실행기와 질의셋은 `bench/search-eval/`에 있고 모델 호출이 없어 무료·결정적이다.
+
+- 1.36.0의 BM25 순위기는 `queries.json`(질의 40개)으로 골랐으므로 그 셋의 hit@5 92.5%는 **표본 안의 상한**이다. 1.37.0에서 순위기를 고른 뒤 별도 에이전트가 검색을 한 번도 돌리지 않고 만든 **held-out 질의 40개**(`heldout.json`, 한국어 20·영어 20, 절반가량은 커밋 제목·CHANGELOG에서 출발)로 다시 쟀다.
+- held-out 결과(코퍼스 52문서, 1.37.0 위키): 출시 순위기 hit@5 **85.0%**·MRR **0.600**·결과 0건 **0**, 1.35.0 AND 규칙 hit@5 **10.0%**·MRR 0.100·결과 0건 **34/40**, `--all-terms` hit@5 17.5%·결과 0건 27/40. 같은 위키로 `queries.json`을 다시 돌리면 출시 순위기 92.5%·MRR 0.688이다(1.36.0 발표 때는 0.660).
+- 읽는 법: 일반화 추정은 held-out 쪽이다. **코퍼스가 위키 자신이라 수치가 위키 편집에 따라 움직인다** — 이번 작업 중 위키 본문만 고쳤는데 held-out MRR이 0.589 → 0.600으로 바뀌었다. 그보다 작은 차이(예: 기능어·조사 제거 유무, MRR 0.591 대 0.600)는 해석하지 않는다. 이 절의 수치도 에이전트 라벨·질의 40개·위키 하나에 대한 것이고, **에이전트 작업 결과에 대한 주장이 아니다** — README·런치 카피의 헤드라인 금지 규율(아래)이 그대로 적용된다.
 
 ## 한계 · Caveats
 

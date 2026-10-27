@@ -21,7 +21,7 @@ import { hasRequiredField, parseFrontmatter } from "../frontmatter.js";
 import { schemaRequiredFields } from "../frontmatter-schema.js";
 import { renderWikiDocumentTemplate, todayIsoDate } from "../template-renderer.js";
 import { applyRuleConfig, formatFinding, withText } from "./findings.js";
-import { scanEvidenceDrift, verifiedSourceAnchors } from "./scans.js";
+import { scanEvidenceDriftDetailed, verifiedSourceAnchors } from "./scans.js";
 import { compareSourceDigests } from "./source-digests.js";
 import { ruleSuppressed, SCAN_GATING_RULES } from "../governance.js";
 import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
@@ -460,6 +460,7 @@ export async function driftCommand(options) {
       dryRun: !downgrade,
       result: "pass",
       driftFindings: [],
+      locatorNarrowed: [],
       applied: [],
       planned: [],
       skipped: [],
@@ -478,9 +479,11 @@ export async function driftCommand(options) {
   // Reads the EFFECTIVE map, so setting the rule off by hand behaves like lite.
   // applyRuleConfig then honours a configured severity ("info"/"error"), which
   // this command previously ignored because driftFinding hardcodes "warning".
-  const driftFindings = ruleSuppressed(options, SCAN_GATING_RULES.evidenceDrift)
-    ? []
-    : applyRuleConfig(await scanEvidenceDrift(cwd, options), options);
+  const drift = ruleSuppressed(options, SCAN_GATING_RULES.evidenceDrift)
+    ? { findings: [], locatorNarrowed: [] }
+    : await scanEvidenceDriftDetailed(cwd, options);
+  const driftFindings = applyRuleConfig(drift.findings, options);
+  const { locatorNarrowed } = drift;
   const driftedDocs = [];
   const seen = new Set();
   for (const finding of driftFindings) {
@@ -559,6 +562,7 @@ export async function driftCommand(options) {
     `run: ${downgrade ? "downgrade" : "report"}`,
     `evidence.stale: ${suppressed ? "off (scan skipped — governance mode or config)" : "on"}`,
     `drifted_verified_docs: ${driftedDocs.length}`,
+    `locator_narrowed: ${locatorNarrowed.length}${locatorNarrowed.length ? ` (${locatorNarrowed.map((entry) => `${entry.path} -> ${entry.source}`).join(", ")})` : ""}`,
     `${downgrade ? "downgraded" : "would_downgrade"}: ${changeList.length}`,
     `skipped: ${skipped.length}`,
     `blocked: ${blockedFindings.length}`
@@ -573,6 +577,7 @@ export async function driftCommand(options) {
     dryRun: !downgrade,
     result,
     driftFindings,
+    locatorNarrowed,
     applied,
     planned,
     skipped,
@@ -589,6 +594,7 @@ export async function driftCommand(options) {
       downgrade
         ? "Downgraded drifted verified documents to needs_review (status + last_updated, plus the tags: status tag when the document already carries one). Re-review and re-verify after updating; nothing else was changed."
         : "Report only; no files were written. Run drift --downgrade to flip drifted verified documents to needs_review.",
+      "A file cited only in evidence, and only through line ranges or sections of a Markdown file, is checked region by region: line ranges with git log -L, sections by comparing the repository at the end of the review day with HEAD (committed history only). When the file changed but no cited region did, the citation is listed under locator_narrowed instead of drifting; anything that cannot be compared exactly stays file-level.",
       "Documents under docs/llm-wiki/templates/ are out of scope (N-14, 2026-08-06): they are skeletons adopters copy, and review cannot promote or re-stamp them, so flagging them produced findings with no way to clear them."
     ] }
   ]);

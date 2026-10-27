@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: project_profile
 project: llm-wiki-governance
-last_updated: 2026-10-21
+last_updated: 2026-10-27
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -27,9 +27,9 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:f3f1cc9932fdcd62
+  - package.json sha256:592836e8b901c7be
   - bin/llm-wiki.js sha256:6af8af1e6a7df978
-  - src/cli.js sha256:6c135d9a743008be
+  - src/cli.js sha256:b1e74dfc0a415748
 ---
 
 # Project Profile
@@ -38,7 +38,7 @@ source_digests:
 
 - type: `library` (Node ESM CLI 패키지; 공개 계약은 `llm-wiki` 명령어 표면)
 - npm 패키지명: `llm-wiki-governance` (1.16.0에서 `@dowonk-7949/llm-wiki-standard`에서 개명; 옛 스코프드 패키지는 deprecate되어 새 이름을 가리킨다).
-- 버전: `package.json`의 `version`이 단일 소스다(이 문서는 특정 버전 숫자를 고정하지 않는다).
+- 버전: `package.json`의 `version`이 단일 소스다(이 문서는 특정 버전 숫자를 고정하지 않는다). 설치된 버전은 `llm-wiki --version`(또는 `-v`)이 그 값을 한 줄로 출력해 확인한다 — `main()`이 맨 앞 인자만 이렇게 읽고 exit 0으로 끝낸다(1.36.0). `release-notes --version <x.y.z>`는 별개의 옵션이다.
 
 ## Summary
 

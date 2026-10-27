@@ -11,7 +11,7 @@ import { listMarkdownFiles, pathExists, toPosix } from "../files.js";
 import { findMojibakeIndicators, hasUtf8Bom, readTextAuto, readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
-import { fileAtRef, fileChangedSince, lineRangeChangedSince, pathsChangedSince } from "../git.js";
+import { commitAtEndOf, fileAtRef, fileAtRefFromCwd, fileChangedSince, lineRangeChangedSince, pathsChangedSince } from "../git.js";
 import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
@@ -672,7 +672,8 @@ export function verifiedSourceAnchors(frontmatter) {
   }
 
   // evidence entries carry a locator (line/symbol/section/route) that can refine
-  // the drift check to a specific line range when it is a line locator.
+  // the drift and impact checks to a region: a line range, or a section of a
+  // Markdown file (see narrowingLocators).
   const evidenceRefs = [];
   for (const entry of Array.isArray(frontmatter.evidence) ? frontmatter.evidence : []) {
     if (typeof entry !== "string") continue;
@@ -718,15 +719,30 @@ export function driftTargets(frontmatter, options = {}) {
 }
 
 // Flags verified documents whose referenced files changed in git after the
-// review baseline. When a file is cited ONLY by exact line ranges in evidence
-// (no broad source_files/symbol/section/route anchor), the check narrows to
-// those line ranges so unrelated edits elsewhere in the file are not drift.
-// Best-effort: silently skips when git is unavailable, and falls back to the
-// file-level check if a line-range query fails (e.g. an out-of-range line).
+// review baseline. When a file is cited ONLY through narrowing locators in
+// evidence (see narrowingLocators: line ranges, or sections of a Markdown file,
+// and no source_files entry), the check narrows to those regions so unrelated
+// edits elsewhere in the file are not drift. A line range asks `git log -L`; a
+// section (2026-10-27) is compared between the repository as of the end of the
+// review day (commitAtEndOf) and HEAD — committed history only, like every other
+// date check here. Anything that cannot be compared exactly — a line query git
+// rejects (e.g. an out-of-range line), no review-day snapshot, a file absent on
+// either side, a heading that matches zero or several headings — falls back to
+// the file-level check, so narrowing only removes a finding whose cited text
+// provably did not move. Best-effort: silently skips when git is unavailable.
 // Template skeletons are out of scope (N-14, 2026-08-06): review cannot
 // re-stamp them, so flagging them produced findings with no way to clear them.
 export async function scanEvidenceDrift(cwd, options = {}) {
+  return (await scanEvidenceDriftDetailed(cwd, options)).findings;
+}
+
+// scanEvidenceDrift plus `locatorNarrowed`: one { path, source, locators } entry
+// per citation whose file changed after the baseline while none of its cited
+// regions did, so the drift command reports a skip instead of making it silently
+// (the impact command's rule since 1.36.0).
+export async function scanEvidenceDriftDetailed(cwd, options = {}) {
   const findings = [];
+  const locatorNarrowed = [];
   // One `git log` per (file, baseline) pair instead of per (document, file,
   // baseline): documents share both anchors and review dates, so the same query
   // was re-spawned many times per run. Pure memoization of a read-only query
@@ -744,6 +760,20 @@ export async function scanEvidenceDrift(cwd, options = {}) {
     fileChangedCache.set(key, answer);
     return answer;
   };
+  // Documents share review dates, so the review-day snapshot is resolved once per
+  // baseline, and a file's content once per (snapshot, file).
+  const snapshotCache = new Map();
+  const snapshotAt = (baseline) => {
+    if (!snapshotCache.has(baseline)) snapshotCache.set(baseline, commitAtEndOf(cwd, baseline));
+    return snapshotCache.get(baseline);
+  };
+  const contentCache = new Map();
+  const contentAt = (ref, base) => {
+    if (!ref) return null;
+    const key = `${ref}\u0000${base}`;
+    if (!contentCache.has(key)) contentCache.set(key, fileAtRefFromCwd(cwd, ref, base));
+    return contentCache.get(key);
+  };
   for (const file of await listTargetMarkdown(cwd)) {
     const rel = toPosix(path.relative(cwd, file));
     if (isTemplateDoc(rel)) continue;
@@ -752,54 +782,71 @@ export async function scanEvidenceDrift(cwd, options = {}) {
     const targets = driftTargets(parsed.frontmatter, options);
     if (!targets) continue;
 
-    // Split references into broad (whole-file) and line-range-only per file.
-    const broadFiles = new Set(targets.sources);
-    const lineRangesByFile = new Map();
-    for (const ref of targets.evidenceRefs) {
-      if (ref.locator && ref.locator.kind === "line") {
-        if (!lineRangesByFile.has(ref.base)) lineRangesByFile.set(ref.base, []);
-        lineRangesByFile.get(ref.base).push({ start: ref.locator.start, end: ref.locator.end });
-      } else {
-        broadFiles.add(ref.base); // bare file, symbol, section, or route → whole-file
-      }
-    }
-
     for (const base of targets.files) {
       if (!(await pathExists(path.join(cwd, base)))) continue;
-      const ranges = lineRangesByFile.get(base);
-      const lineOnly = !broadFiles.has(base) && Array.isArray(ranges) && ranges.length > 0;
 
-      // No commit touched the file, so no line range of it changed either, and the
-      // file-level fallback below would answer false too.
+      // No commit touched the file, so no cited region of it changed either, and
+      // the file-level fallback below would answer false too.
       if (!mayHaveChanged(base, targets.baseline)) continue;
 
-      if (lineOnly) {
-        let staleRange = null;
-        let fallbackFileLevel = false;
-        for (const range of ranges) {
-          try {
-            if (lineRangeChangedSince(cwd, base, range.start, range.end, targets.baseline)) {
-              staleRange = range;
-              break;
-            }
-          } catch {
-            fallbackFileLevel = true;
+      // Broad (whole-file) unless every citation of the file narrows: a
+      // source_files entry, a bare path, a symbol or route, or a section of a
+      // non-Markdown file keeps the whole file watched (the N-7 contract).
+      const locators = narrowingLocators(targets, base);
+      if (!locators) {
+        if (fileChangedMemo(base, targets.baseline)) {
+          findings.push(driftFinding(rel, `${base}`, targets.baseline));
+        }
+        continue;
+      }
+
+      let staleReference = null;
+      let fallbackFileLevel = false;
+      for (const range of locators.filter((locator) => locator.kind === "line")) {
+        try {
+          if (lineRangeChangedSince(cwd, base, range.start, range.end, targets.baseline)) {
+            staleReference = `${base}#L${range.start}-L${range.end}`;
             break;
           }
+        } catch {
+          fallbackFileLevel = true;
+          break;
         }
-        if (fallbackFileLevel) {
-          if (fileChangedMemo(base, targets.baseline)) {
-            findings.push(driftFinding(rel, `${base}`, targets.baseline));
+      }
+      const sections = locators.filter((locator) => locator.kind === "section");
+      if (!staleReference && !fallbackFileLevel && sections.length > 0 && fileChangedMemo(base, targets.baseline)) {
+        const before = contentAt(snapshotAt(targets.baseline), base);
+        const after = contentAt("HEAD", base);
+        if (before === null || after === null) {
+          fallbackFileLevel = true;
+        } else {
+          for (const section of sections) {
+            const was = locatedRegion(before, section);
+            const now = locatedRegion(after, section);
+            if (was === null || now === null) {
+              fallbackFileLevel = true;
+              break;
+            }
+            if (was !== now) {
+              staleReference = `${base}${locatorLabel(section)}`;
+              break;
+            }
           }
-        } else if (staleRange) {
-          findings.push(driftFinding(rel, `${base}#L${staleRange.start}-L${staleRange.end}`, targets.baseline));
         }
+      }
+
+      if (fallbackFileLevel) {
+        if (fileChangedMemo(base, targets.baseline)) {
+          findings.push(driftFinding(rel, `${base}`, targets.baseline));
+        }
+      } else if (staleReference) {
+        findings.push(driftFinding(rel, staleReference, targets.baseline));
       } else if (fileChangedMemo(base, targets.baseline)) {
-        findings.push(driftFinding(rel, `${base}`, targets.baseline));
+        locatorNarrowed.push({ path: rel, source: base, locators: locators.map(locatorLabel) });
       }
     }
   }
-  return findings;
+  return { findings, locatorNarrowed };
 }
 
 // A negative filter over pathsChangedSince: false only when no commit after the

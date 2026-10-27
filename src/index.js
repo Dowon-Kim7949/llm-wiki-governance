@@ -102,6 +102,7 @@ import { TOOL_DEFS as MCP_TOOLS } from "./mcp/tools.js";
  * @property {string|null} visibility list-docs/search-docs visibility filter.
  * @property {string|null} docType   list-docs/search-docs doc_type filter.
  * @property {boolean} includeSensitive Include restricted/sensitive docs in list/search.
+ * @property {boolean} allTerms      search-docs: require every query term (default any term).
  * @property {number|null} limit     search-docs max results.
  * @property {string|null} mode      Requested governance mode ("lite"|"standard"|"strict"), or null to resolve from config.
  * @property {string|null} modeAction `mode` command sub-action ("set"), or null to report.
