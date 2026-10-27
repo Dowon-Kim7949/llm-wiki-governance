@@ -12,6 +12,12 @@ For a runnable version of the same loop, see
 [`vue3-typescript-demo/`](./vue3-typescript-demo/README.md): a small Vue 3 app where
 `npm run demo` executes every step, including a source change that `impact` catches.
 
+For a project that has **no code yet**, see
+[`greenfield-vue-demo/`](./greenfield-vue-demo/README.md): it starts from an empty
+repository, records and approves requirements and an ADR as planned knowledge
+(`init --write --greenfield`), implements one requirement, links its code and
+tests as evidence, and then follows the same loop as below.
+
 The loop in one line: **the CLI scaffolds → an agent enriches from real code
 (stays `needs_review`) → a human reviews and promotes to `verified`.** No command
 the CLI runs can promote a document on its own.

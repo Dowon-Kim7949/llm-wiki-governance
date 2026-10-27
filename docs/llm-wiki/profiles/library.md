@@ -25,7 +25,7 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - package.json sha256:592836e8b901c7be
-  - src/cli.js sha256:b1e74dfc0a415748
+  - src/cli.js sha256:08f4397561e6c896
 ---
 
 # Library
@@ -34,7 +34,7 @@ source_digests:
 
 - 이 프로젝트는 `library` 프로필로 관리한다: 공개 계약(CLI 명령 표면), 버전 정책, 예시, 릴리스 흐름이 핵심 문서다.
 - 라이브러리형 문서 세트: [Public Api](../PUBLIC_API.md), [Versioning](../VERSIONING.md), [Examples](../EXAMPLES.md), [Release Flow](../RELEASE_FLOW.md).
-- 공개 계약은 CLI 명령 표면과 **프로그래매틱 import API** 두 가지다. 후자는 [Public Api](../PUBLIC_API.md)가 안정 계약으로 문서화한다. `commands`는 `src/cli.js`의 `COMMANDS`와 1:1인 동결 맵이라, 명령을 더하면 그 키 집합도 바뀐다. 1.33.0의 `archive-log`가 그런 경우이고, 유지보수자 승인을 받은 계약 변경으로 기록돼 있다(`GATE_REVIEW.md` "Change-Log Volume Scope Decision"). 기존 명령에 옵션만 더하는 변경(1.37.0의 `search-docs --all-terms`)은 이 맵을 바꾸지 않는다 — 옵션 허용 목록은 `COMMAND_OPTION_RULES`가 따로 가진다.
+- 공개 계약은 CLI 명령 표면과 **프로그래매틱 import API** 두 가지다. 후자는 [Public Api](../PUBLIC_API.md)가 안정 계약으로 문서화한다. `commands`는 `src/cli.js`의 `COMMANDS`와 1:1인 동결 맵이라, 명령을 더하면 그 키 집합도 바뀐다. 1.33.0의 `archive-log`가 그런 경우이고, 유지보수자 승인을 받은 계약 변경으로 기록돼 있다(`GATE_REVIEW.md` "Change-Log Volume Scope Decision"). 기존 명령에 옵션만 더하는 변경(1.37.0의 `search-docs --all-terms`, 미배포 `init`/`quickstart`/`handoff --greenfield`)은 이 맵을 바꾸지 않는다 — 옵션 허용 목록은 `COMMAND_OPTION_RULES`가 따로 가진다.
 
 ## Why library
 

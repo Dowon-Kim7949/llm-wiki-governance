@@ -100,6 +100,7 @@ const MESSAGE_CATALOG = {
     "evidence.section_empty": "본문 ## Evidence 섹션에는 최소 한 개의 불릿 항목이 있어야 합니다.",
     "evidence.section_unlisted": "frontmatter evidence 항목이 본문 ## Evidence에 언급되지 않았습니다: {reference}.",
     "evidence.ungrounded": "verified 문서에 source_files도 evidence도 없습니다(grounding 없는 verified).",
+    "evidence.planned_unlinked": "승인된 계획 문서(requirement 또는 decision)에 연결된 구현 근거가 아직 없습니다. 여기서 verified는 계획이 승인됐다는 뜻이지 구현됐다는 뜻이 아닙니다.",
     "evidence.stale": "verified 문서가 {reference}를 참조하는데 {baseline} 이후 변경되었습니다; 재검토·갱신하거나 needs_review로 강등하세요.",
     // impact
     "impact.source_changed": "verified 문서가 {sources}에 의존하는데 이번 diff에서 변경되었지만 문서 자신은 변경되지 않았습니다; 재검토·갱신하거나 needs_review로 강등하세요.",
@@ -235,6 +236,11 @@ const EXPLANATION_CATALOG = {
       meaning: "verified 문서에 source_files도 evidence도 없어, 코드 grounding 없이 'verified'입니다.",
       whyItMatters: "verified는 검토된 소스 기반 지식을 주장하기 위한 것인데, grounding이 전혀 없는 verified 문서는 코드와 대조할 수 없어 verified 상태의 신뢰를 약화시킵니다.",
       remediation: ["문서가 설명하는 코드를 가리키도록 source_files나 evidence를 추가하세요.", "실제로 소스 기반이 아니면 문서를 needs_review로 낮추세요.", "일부 verified 문서(예: 서술형 노트)에는 의도적일 수 있습니다; llm-wiki.config.json rules에서 \"evidence.ungrounded\": \"off\"로 프로젝트별로 끄세요.", "validate를 다시 실행하세요."]
+    },
+    "evidence.planned_unlinked": {
+      meaning: "승인된 계획 문서(doc_type requirement, decision, decision_log, adr)에 로컬 source_files나 evidence가 아직 없습니다. 계획은 승인됐지만 이 저장소에서 구현으로 연결된 것은 없습니다.",
+      whyItMatters: "계획 지식에서 verified는 계획 승인이지 구현 완료가 아닙니다. 이 차이를 info로 보고하면 검토된 계획과 검증된 구현이 섞이지 않으면서, 모든 신규 프로젝트가 출발하는 상태 때문에 빌드가 실패하지도 않습니다. 나중에 참조를 연결해도 그것은 구현 위치를 보여 줄 뿐 완료를 증명하지 않습니다 — 완료는 테스트와 검토가 판단합니다.",
+      remediation: ["코드가 생기면 구현 소스 파일과 수용 기준을 확인하는 테스트를 문서의 frontmatter evidence에 추가하고 ## Evidence 절에도 적으세요.", "요구사항이나 결정이 아직 구현되지 않았거나 의도적으로 보류된 것이면 그대로 두세요.", "validate를 다시 실행하세요. 연결한 참조가 해석되고, 그때부터 drift와 impact가 그 참조를 감시합니다."]
     },
     "changed.unavailable": {
       meaning: "--changed 범위가 git 이력을 읽을 수 없습니다.",

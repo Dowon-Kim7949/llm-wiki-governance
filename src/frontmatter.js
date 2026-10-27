@@ -45,6 +45,15 @@ export function parseFrontmatter(markdown) {
       currentArrayKey = key;
       continue;
     }
+    // `key: []` is YAML's empty list. It used to coerce to the string "[]", so the
+    // natural way to write "no source yet" on a planned document (source_files: [])
+    // failed as frontmatter.array. Only the empty flow sequence is read; any other
+    // inline list stays a scalar, as before.
+    if (/^\[\s*\]$/.test(rawValue.trim())) {
+      frontmatter[key] = [];
+      currentArrayKey = null;
+      continue;
+    }
 
     frontmatter[key] = coerceScalar(rawValue);
     currentArrayKey = null;

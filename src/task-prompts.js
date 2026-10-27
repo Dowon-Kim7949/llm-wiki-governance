@@ -93,7 +93,7 @@ export function governanceBudget(mode = LEGACY_GOVERNANCE_MODE) {
   if (policy.mode === "lite") {
     return [
       "Governance budget (lite — documentation is not the work here):",
-      "- Do NOT touch the wiki for an ordinary change. Update it only when a new domain concept appeared, an architectural decision was made, a constraint a future agent must know was introduced, or a critical document is now demonstrably wrong.",
+      "- Do NOT touch the wiki for an ordinary change. Update it only when a new domain concept appeared, an architectural decision was made, a constraint a future agent must know was introduced, the change implements a requirement document (link its source and tests in that document's evidence), or a critical document is now demonstrably wrong.",
       "- When none of those applies, finish at the code and the tests and say \"no wiki change needed (lite)\". That is a complete result, not a skipped step — do not append to the log either.",
       "- Never run a repository-wide audit, a drift scan, or document generation here; those are explicit on-demand commands.",
       "- The one override: knowledge an agent cannot re-derive from the code. If the next agent would get it wrong, record it — that is the only documentation lite keeps.",
@@ -104,7 +104,7 @@ export function governanceBudget(mode = LEGACY_GOVERNANCE_MODE) {
   if (policy.mode === "standard") {
     return [
       "Governance budget (standard — protect the knowledge that outlives this change):",
-      "- Update the wiki when the change moves a domain concept, an architectural boundary, a public contract, or a recorded constraint. Skip the doc work for a local refactor that leaves all four intact, and say you skipped it.",
+      "- Update the wiki when the change moves a domain concept, an architectural boundary, a public contract, or a recorded constraint, or implements a requirement document (link its source and tests in that document's evidence). Skip the doc work for a local refactor that leaves all of those intact, and say you skipped it.",
       "- Inspect only the documents this change affects — scope them with 'llm-wiki impact --since <ref>' or 'llm-wiki prepare --task \"<the task>\" --compact'. A repository-wide audit is a separate explicit action.",
       "- Keep the source_files and evidence anchors of the documents you touch accurate; leave the rest alone.",
       ...shared
@@ -113,7 +113,7 @@ export function governanceBudget(mode = LEGACY_GOVERNANCE_MODE) {
 
   return [
     "Governance budget (strict — completeness and verification are the deliverable):",
-    "- Update every affected document in the same task, and refresh its source_files and evidence anchors so the mapping still resolves.",
+    "- Update every affected document in the same task — a requirement document the change implements included — and refresh its source_files and evidence anchors so the mapping still resolves.",
     "- Verify each claim you leave behind against the actual source. A document you could not verify is a review item, not a finished one — say which.",
     "- Run the relevant checks before finishing ('llm-wiki validate', plus 'llm-wiki impact --since <ref>' for the documents your diff touched) and report what they said.",
     ...shared
@@ -273,6 +273,34 @@ export function initialEnrichmentWorkflow({ projectType = "unknown", entrypoints
     "10. Do not promote anything to verified — verified is human-approved only.",
     "11. Append docs/llm-wiki/log.md in append-only style with the changed files, evidence, caveats, and remaining review items.",
     "12. When finished, run the appropriate validate / audit / stats checks and summarize the results, and call out the areas with thin or missing evidence and the items a human must review before verified."
+  ].join("\n");
+}
+
+// The planning workflow for a project that has little or no source yet — the
+// handoff `--greenfield` prints instead of initialEnrichmentWorkflow, whose first
+// instruction ("investigate the actual code") has nothing to act on there. The
+// load-bearing lines are the two prohibitions: invent no requirement, criterion,
+// or decision the human did not state, and cite no source that does not exist —
+// the second is what keeps a reviewed plan from passing for a grounded document.
+// Neither budget block applies: there is no code to read, and the lite budget's
+// "documentation is not the work here" would contradict the only work this pass
+// does. One text for both prompt profiles; it is already the slim shape.
+export function greenfieldPlanningWorkflow({ entrypoints, docLang = null } = {}) {
+  const entry = entrypoints || "the nearest AGENTS.md (or your agent's instruction file) and docs/llm-wiki/index.md";
+  return [
+    documentLanguageDirective(docLang),
+    `1. Read ${entry} first. This repository has little or no application source yet: you are recording a plan, not describing code.`,
+    "2. Record only what the user states or what a document already in this repository says: the problem and its users, scope and non-goals, constraints, requirements with acceptance criteria, and decisions with their rationale. Do not invent a requirement, an acceptance criterion, a constraint, or a decision — ask, or list the gap as an open question.",
+    "3. Write the purpose, scope, non-goals, and constraints in docs/llm-wiki/project-profile.md.",
+    "4. Write one document per requirement: copy docs/llm-wiki/templates/REQUIREMENT.template.md to docs/llm-wiki/requirements/REQ-NNN-<slug>.md, set doc_type: requirement, give every acceptance criterion an observable, checkable condition, and list the document in docs/llm-wiki/requirements/00_overview.md.",
+    "5. Write each decision the user has made as docs/llm-wiki/decisions/ADR-NNNN-<slug>.md from docs/llm-wiki/templates/DECISION_LOG.template.md, with doc_type: decision and the alternatives considered, and link it from the requirements it shapes.",
+    "6. Cite no source that does not exist: planned documents keep source_files: [] and no evidence until code implements them. Never add a reference to make a document look grounded.",
+    "7. Do not write application code in this pass unless the user asks for it.",
+    "8. Never write sensitive raw values into documents or reports.",
+    "9. Keep every created or edited wiki document at status: needs_review. Do not promote anything to verified: approving the plan is the user's decision, and verified on a requirement means the plan was approved, not that it is implemented.",
+    "10. Append docs/llm-wiki/log.md in append-only style with the documents written and the open questions that remain.",
+    "11. Finish with 'llm-wiki validate' and 'llm-wiki stats', report what they said, and list the open questions the user must answer and the documents waiting for their review.",
+    "Once code exists, implement one requirement at a time ('llm-wiki prompt --task feature'), run the tests, then link the implementing files and the tests that check its acceptance criteria in that requirement's frontmatter evidence (mirrored in its ## Evidence section) and leave it at needs_review for the user to approve again. A linked file shows where a requirement is implemented, not that it is complete."
   ].join("\n");
 }
 
@@ -636,9 +664,9 @@ const SLIM_API_LINE = "- When a domain document mentions API usage, fill the API
 function slimGovernanceBudget(mode) {
   const policy = getGovernancePolicy(mode);
   const rule = {
-    lite: "- Governance budget (lite): Do NOT touch the wiki for an ordinary change — only for a new domain concept, an architectural decision, a constraint a future agent must know, or a critical document now demonstrably wrong (knowledge an agent cannot re-derive from the code). Otherwise finish at code and tests and report \"no wiki change needed (lite)\", without a log append. No repository-wide audit, drift scan, or document generation.",
-    standard: "- Governance budget (standard): update the wiki only when the change moves a domain concept, an architectural boundary, a public contract, or a recorded constraint; otherwise skip the doc work and say so. Scope the documents with 'llm-wiki impact --since <ref>' (no repository-wide audit) and keep their source_files and evidence anchors accurate.",
-    strict: "- Governance budget (strict): update every affected document in the same task and refresh its source_files and evidence anchors; verify each claim against the actual source and name any you could not; before finishing run 'llm-wiki validate' and 'llm-wiki impact --since <ref>' and report what they said."
+    lite: "- Governance budget (lite): Do NOT touch the wiki for an ordinary change — only for a new domain concept, an architectural decision, a constraint a future agent must know, an implemented requirement document (link its source and tests in its evidence), or a critical document now demonstrably wrong (knowledge an agent cannot re-derive from the code). Otherwise finish at code and tests and report \"no wiki change needed (lite)\", without a log append. No repository-wide audit, drift scan, or document generation.",
+    standard: "- Governance budget (standard): update the wiki only when the change moves a domain concept, an architectural boundary, a public contract, or a recorded constraint, or implements a requirement document (link its source and tests in its evidence); otherwise skip the doc work and say so. Scope the documents with 'llm-wiki impact --since <ref>' (no repository-wide audit) and keep their source_files and evidence anchors accurate.",
+    strict: "- Governance budget (strict): update every affected document in the same task, a requirement document the change implements included, and refresh its source_files and evidence anchors; verify each claim against the actual source and name any you could not; before finishing run 'llm-wiki validate' and 'llm-wiki impact --since <ref>' and report what they said."
   }[policy.mode];
   return [
     rule,

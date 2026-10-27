@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: policy
 project: llm-wiki-governance
-last_updated: 2026-10-20
+last_updated: 2026-10-27
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -27,7 +27,7 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - src/frontmatter-schema.js sha256:ec4476da72b5c2e2
-  - src/config.js sha256:1403eef64c1781a8
+  - src/config.js sha256:ef863d1307ba2dc9
   - src/sensitive-info.js sha256:43e55bad6b87aaff
 ---
 
@@ -43,6 +43,9 @@ Question("팀/조직 도입 시 visibility 경계 정책 문서가 필요하다"
 - **`internal`** (기본값) — 조직 내부 공유. 대부분의 wiki 문서가 여기에 해당한다. 조직 밖으로
   나가지 않는다는 전제이므로 내부 세부 구현·경로·의사결정을 담을 수 있으나, **비밀값(토큰·자격
   증명 등)은 어느 레벨에서도 raw로 기록하지 않는다**(기존 sensitive-info 불변식).
+  `init --greenfield`가 만드는 계획 문서(`requirements/00_overview.md`, `templates/REQUIREMENT.template.md`,
+  `src/config.js#symbol:GREENFIELD_DOCS`)도 다른 생성 문서처럼 `internal`로 만들어진다. 출시 전 요구사항은
+  대개 내부 계획이므로 공개 여부는 사람이 따로 정한다.
 - **`restricted`** — 더 좁은 범위(특정 팀/역할)만 접근. `internal`보다 민감한 맥락을 담을 수
   있으나 접근 통제는 저장소/조직 레이어의 책임이며, 이 CLI는 값의 선언만 검증한다.
 - **`public`** — 조직 밖 공개 가능. 공개해도 안전한 내용만 담아야 한다. **비밀값은 물론이고

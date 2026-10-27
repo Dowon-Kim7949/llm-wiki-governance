@@ -88,6 +88,7 @@ import { TOOL_DEFS as MCP_TOOLS } from "./mcp/tools.js";
  * @property {string[]} [agentReviewers] stats: reviewed_by names that are agents (config `agentReviewers`); verified docs they approved count as agent_verified, not human_verified.
  * @property {boolean} dryRun        Explicit preview toggle.
  * @property {boolean} minimal       Minimal doc set for init/quickstart.
+ * @property {boolean} greenfield    init/quickstart: add the planning documents (requirements, ADR template); handoff/quickstart: print the planning prompt.
  * @property {boolean} changed       validate --changed scope.
  * @property {string|null} since     Git ref baseline (validate/release-notes).
  * @property {string|null} version   release-notes version override.

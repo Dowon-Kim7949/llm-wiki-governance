@@ -16,15 +16,41 @@ import {
   projectProfileBody as localizedProjectProfileBody,
   defaultDocBody,
   domainApiServicesSection as localizedDomainApiServicesSection,
-  domainDocBody as localizedDomainDocBody
+  domainDocBody as localizedDomainDocBody,
+  greenfieldProjectProfileBody,
+  requirementsOverviewBody,
+  requirementTemplateBody,
+  decisionTemplateBody
 } from "./doc-content.js";
 
 // `docLang` selects the language of the generated document PROSE ("en" default,
 // "ko" opt-in). Only prose is localized; titles, headings, code spans, paths, JSON
 // keys, frontmatter fields, status values, and evidence locators stay verbatim.
-export function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext(), docLang = "en") {
+//
+// `detection.primaryManifest === null` means the caller checked and the manifest
+// file does not exist (an empty or manifest-less repository): documents then cite
+// no source instead of a file that is not there. Any other value — including a
+// detection object without the key — keeps the manifest anchor as before.
+// `greenfield` selects the planning variants (init --greenfield); see
+// greenfieldDocMetadata.
+export function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext(), docLang = "en", { greenfield = false } = {}) {
   const fallbackTitle = titleFromPath(rel);
   const commonRelated = ["docs/llm-wiki/index.md", "docs/llm-wiki/log.md"].filter((item) => item !== rel);
+  const manifestFound = detection.primaryManifest !== null;
+  const defaultSourceFiles = manifestFound ? [detection.primaryManifest ?? "package.json"] : [];
+
+  if (greenfield) {
+    const planned = greenfieldDocMetadata(rel, fallbackTitle, docLang);
+    if (planned) {
+      return {
+        title: planned.title,
+        docType: planned.docType,
+        sourceFiles: planned.sourceFiles ?? defaultSourceFiles,
+        related: planned.related,
+        body: planned.body.replaceAll(detectionProjectTypePlaceholder, detection.projectType)
+      };
+    }
+  }
 
   // A detected individual domain document: doc_type `domain`, source_files from
   // the detected directories, linked back to the overview and DOMAIN_FEATURES.
@@ -62,8 +88,8 @@ export function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domain
     "docs/llm-wiki/index.md": {
       title: "LLM-WIKI Index",
       docType: "wiki_index",
-      related: indexRelated,
-      body: indexBody(docLang, { indexDomainRead })
+      related: greenfield ? [...indexRelated, "docs/llm-wiki/requirements/00_overview.md"] : indexRelated,
+      body: indexBody(docLang, { indexDomainRead, greenfield })
     },
     "docs/llm-wiki/README.md": {
       title: "LLM-WIKI README",
@@ -75,7 +101,7 @@ export function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domain
       title: "LLM-WIKI Change Log",
       docType: "change_log",
       related: ["docs/llm-wiki/index.md"],
-      body: logBody(docLang, lastUpdated)
+      body: logBody(docLang, lastUpdated, { manifestFound })
     },
     "docs/llm-wiki/DOMAIN_FEATURES.md": {
       title: "Domain Features",
@@ -236,13 +262,51 @@ This guide explains how to convert selected LLM-WIKI documents into OKF v0.1-com
   return {
     title: meta.title,
     docType: meta.docType,
-    sourceFiles: meta.sourceFiles ?? [detection.primaryManifest ?? "package.json"],
+    sourceFiles: meta.sourceFiles ?? defaultSourceFiles,
     related: meta.related ?? commonRelated,
     body: generatedDocBody(rel, map[rel], fallbackTitle, docLang).replaceAll(detectionProjectTypePlaceholder, detection.projectType)
   };
 }
 
 const detectionProjectTypePlaceholder = "__PROJECT_TYPE__";
+
+// The documents `init --greenfield` writes differently, or adds. Returns null for
+// every other path, which then renders exactly as without the flag. The two
+// templates cite no source even when a manifest exists: a copy inherits its
+// template's frontmatter, and a requirement copied with `package.json` already in
+// source_files would read as implementation evidence linked on day one.
+function greenfieldDocMetadata(rel, fallbackTitle, docLang) {
+  const planned = {
+    "docs/llm-wiki/project-profile.md": {
+      title: "Project Profile",
+      docType: "project_profile",
+      related: ["docs/llm-wiki/index.md", "docs/llm-wiki/requirements/00_overview.md"],
+      body: greenfieldProjectProfileBody(docLang)
+    },
+    "docs/llm-wiki/requirements/00_overview.md": {
+      title: "Requirements",
+      docType: "requirements_overview",
+      sourceFiles: [],
+      related: ["docs/llm-wiki/index.md", "docs/llm-wiki/templates/REQUIREMENT.template.md"],
+      body: requirementsOverviewBody(docLang)
+    },
+    "docs/llm-wiki/templates/REQUIREMENT.template.md": {
+      title: "Requirement Template",
+      docType: "template",
+      sourceFiles: [],
+      related: ["docs/llm-wiki/requirements/00_overview.md", "docs/llm-wiki/templates/DECISION_LOG.template.md"],
+      body: requirementTemplateBody(docLang)
+    },
+    "docs/llm-wiki/templates/DECISION_LOG.template.md": {
+      title: fallbackTitle,
+      docType: "template",
+      sourceFiles: [],
+      related: ["docs/llm-wiki/index.md", "docs/llm-wiki/templates/REQUIREMENT.template.md"],
+      body: decisionTemplateBody(docLang)
+    }
+  };
+  return planned[rel] ?? null;
+}
 
 function generatedDocBody(rel, mappedMeta, fallbackTitle, docLang) {
   return mappedMeta?.body ?? defaultGeneratedDocBody(fallbackTitle, rel, docLang);

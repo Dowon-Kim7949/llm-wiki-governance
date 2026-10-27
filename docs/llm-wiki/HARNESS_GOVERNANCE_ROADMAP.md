@@ -66,11 +66,11 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - package.json sha256:592836e8b901c7be
-  - src/cli.js sha256:b1e74dfc0a415748
-  - src/index.js sha256:05abdc9f11ed6bb3
-  - src/commands.js sha256:11e10f20f5c64ced
-  - src/commands/scans.js sha256:58fa82b0dde38bd6
-  - src/commands/findings.js sha256:e540047ac0e9d3fc
+  - src/cli.js sha256:08f4397561e6c896
+  - src/index.js sha256:ee1d42734ade2f15
+  - src/commands.js sha256:25c2cad8160baa17
+  - src/commands/scans.js sha256:81a66b137b3d5209
+  - src/commands/findings.js sha256:45598b539e3a6a99
   - src/commands/wiki-files.js sha256:141842053b78cc2c
   - src/commands/adapters.js sha256:1329c62a8fd74c06
   - src/commands/skills.js sha256:b7ecf90972a2857b
@@ -83,7 +83,7 @@ source_digests:
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
   - templates/github-actions/llm-wiki-validate.yml sha256:313bfc01306c01ed
   - GATE_REVIEW.md sha256:1925d235d0b93b6a
-  - ROADMAP.md sha256:e10426fbb55b816f
+  - ROADMAP.md sha256:86f288f10b95ce2b
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵
@@ -143,6 +143,7 @@ source_digests:
 | 낡음(날짜 앵커) | `evidence.stale` — 리뷰 기준일 이후 참조 소스가 커밋됨 | `src/commands/scans.js#symbol:verifiedSourceAnchors` |
 | 낡음(diff 앵커) | `impact.source_changed` — 소스는 이 diff에 있고 문서는 없음 | 같은 앵커 추출기 공유 |
 | 완료 계약 | run manifest + `check-run`의 `run.*` 6룰 | `src/commands.js#symbol:checkRunCommand` |
+| 계획과 구현의 구분 (미배포) | `doc_type` `requirement`·결정 기록 타입의 승인은 계획 승인으로 취급: 근거 없이 승인되면 `evidence.planned_unlinked`(info), `stats.plannedKnowledge`가 따로 셈. 새 필드·status 없음. 빈 저장소의 `init`은 없는 매니페스트를 인용하지 않음 | `src/commands/scans.js#symbol:PLANNED_DOC_TYPES`, `src/commands.js#symbol:statsCommand` |
 | 사람 승인 | `review`(기본 읽기 전용, `--approve-all`에 `--yes` 강제, blocked/error 있으면 거부, 리뷰 스탬프만 = `status`·`reviewed_by`·`reviewed_at` + 이미 있는 경우 `tags` 상태 태그) | `src/commands.js` |
 | 위험 다이얼 | `rules` 토글 + `rulesPreset` 3종, 민감 카테고리는 비토글 | `src/commands/findings.js#symbol:RULE_PRESETS`, `#symbol:NON_TOGGLEABLE_CATEGORIES` |
 | 기계적 자동수정 | Tier A frontmatter 필드, `## Evidence` 정합, 깨진 링크 stub, block version 스탬프 | `src/commands/fix-migrate.js#symbol:runMechanicalRemediation` |

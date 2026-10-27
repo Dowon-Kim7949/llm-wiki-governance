@@ -32,7 +32,9 @@ function isKo(docLang) {
 
 // ---- index.md ----------------------------------------------------------
 // `indexDomainRead` is the localized read-order item 4 (see indexReadOrderItem).
-export function indexBody(docLang, { indexDomainRead }) {
+// `greenfield` appends the planning entries (items 5-6); without it the body is
+// byte-identical to the pre-greenfield one.
+export function indexBody(docLang, { indexDomainRead, greenfield = false }) {
   if (isKo(docLang)) {
     return `# LLM-WIKI Index
 
@@ -49,7 +51,9 @@ export function indexBody(docLang, { indexDomainRead }) {
 2. \`docs/llm-wiki/README.md\`
 3. \`docs/llm-wiki/project-profile.md\`
 4. ${indexDomainRead}
-`;
+${greenfield ? `5. [Requirements](./requirements/00_overview.md) — 프로젝트가 해야 할 일과 수용 기준(계획된 지식이며 구현 주장이 아닙니다)
+6. \`docs/llm-wiki/decisions/\` — 아키텍처 결정 기록(\`doc_type: decision\`)
+` : ""}`;
   }
   return `# LLM-WIKI Index
 
@@ -66,7 +70,9 @@ This document is the official entry point for the project's LLM-WIKI.
 2. \`docs/llm-wiki/README.md\`
 3. \`docs/llm-wiki/project-profile.md\`
 4. ${indexDomainRead}
-`;
+${greenfield ? `5. [Requirements](./requirements/00_overview.md) — what the project must do, with acceptance criteria (planned knowledge, not a claim about code)
+6. \`docs/llm-wiki/decisions/\` — architecture decision records (\`doc_type: decision\`)
+` : ""}`;
 }
 
 // Read-order item 4 of index.md — either a link to the domain overview (when
@@ -111,7 +117,16 @@ This directory is a shared documentation space where LLMs and developers referen
 }
 
 // ---- log.md ------------------------------------------------------------
-export function logBody(docLang, lastUpdated) {
+// `manifestFound` is false when the repository had no manifest to cite (an empty
+// or manifest-less repository): the entry then says so instead of naming a file
+// that is not there. True keeps the body byte-identical.
+export function logBody(docLang, lastUpdated, { manifestFound = true } = {}) {
+  if (!manifestFound) {
+    const evidenceLine = isKo(docLang)
+      ? "  - (없음: 생성 시점에 애플리케이션 소스나 매니페스트가 없었다)"
+      : "  - (none: no application source or manifest existed at creation)";
+    return logBody(docLang, lastUpdated).replace("  - package.json\n", `${evidenceLine}\n`);
+  }
   if (isKo(docLang)) {
     return `# LLM-WIKI Change Log
 
@@ -478,5 +493,289 @@ ${domainApiSection}
 
 - Keep this document as \`needs_review\` until human review is complete.
 - Do not promote this document to \`verified\`; verified status is human-approved only.
+`;
+}
+
+// ---- greenfield (init --greenfield) --------------------------------------
+// Bodies for a project that has little or no source yet. They record INTENT —
+// purpose, requirements, acceptance criteria, decisions — and say in every
+// document that intent is not evidence: none of them cites a source, and each
+// tells the reader when and how one gets linked. Generated documents carry an
+// ENRICHMENT_PLACEHOLDER_SENTINELS sentence (or KO_SENTINEL_DRAFT) so
+// content.not_enriched and review --approve treat an unfilled one as a scaffold;
+// the two templates carry it in the section a copy must replace.
+
+// project-profile.md, greenfield variant. `__PROJECT_TYPE__` as in projectProfileBody.
+export function greenfieldProjectProfileBody(docLang) {
+  if (isKo(docLang)) {
+    return `# Project Profile
+
+## Detected Project
+
+- type: \`__PROJECT_TYPE__\`
+- confidence: generated during init
+- stage: greenfield — 이 wiki를 만들 때 애플리케이션 소스가 거의 또는 전혀 없었습니다.
+
+## Summary
+
+- 한두 문장 요약: 이 프로젝트가 누구의 어떤 문제를 푸는지, 성공이 어떤 모습인지 프로젝트 소유자의 말로 기술합니다. ${KO_SENTINEL_DRAFT}
+
+## Scope
+
+- 범위: 첫 릴리스들이 제공해야 하는 기능. 각각을 [Requirements](./requirements/00_overview.md)의 요구사항 문서로 연결합니다.
+- 비목표: 이 프로젝트가 의도적으로 하지 않는 일.
+
+## Constraints
+
+- 모든 요구사항이 물려받는 비기능 제약: 런타임과 플랫폼, 성능, 보안과 개인정보, 접근성, 호환성, 예산, 일정.
+- 제약의 근거가 된 결정은 \`docs/llm-wiki/decisions/\`에 ADR로 남깁니다.
+
+## Evidence
+
+- 계획된 지식입니다. 애플리케이션 소스가 생기기 전까지 이 문서는 어떤 소스도 인용하지 않습니다(\`source_files: []\`). 존재하지 않는 파일을 넣지 않습니다.
+- 코드가 생기면 매니페스트와 진입점(예: \`package.json\`, \`src/main.ts\`)을 \`source_files\`에 넣고, 위의 계획 서술을 코드가 실제로 하는 일로 바꿉니다.
+
+## Open Questions
+
+- 열린 제품 질문, 확정되지 않은 제약, 아직 내리지 않은 결정을 추적합니다.
+
+## Review Notes
+
+- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 코드가 생기기 전에 승인하면 적힌 의도를 승인하는 것이지 구현을 승인하는 것이 아닙니다.
+`;
+  }
+  return `# Project Profile
+
+## Detected Project
+
+- type: \`__PROJECT_TYPE__\`
+- confidence: generated during init
+- stage: greenfield — little or no application source existed when this wiki was created.
+
+## Summary
+
+- Concise summary: describe the problem this project solves, for whom, and what success looks like, in the words of the people who own the project.
+
+## Scope
+
+- In scope: the capabilities the first releases must deliver. Link each one to its requirement document in [Requirements](./requirements/00_overview.md).
+- Non-goals: what this project deliberately does not do.
+
+## Constraints
+
+- Non-functional constraints every requirement inherits: runtime and platform, performance, security and privacy, accessibility, compatibility, budget, and deadlines.
+- Record the decision behind a constraint as an ADR in \`docs/llm-wiki/decisions/\`.
+
+## Evidence
+
+- Planned knowledge: until application source exists, this document cites no source (\`source_files: []\`). Do not add a file that is not there.
+- When code exists, add the manifest and entrypoints (for example \`package.json\`, \`src/main.ts\`) to \`source_files\` and replace the planned statements above with what the code actually does.
+
+## Open Questions
+
+- Track open product questions, unconfirmed constraints, and decisions not yet made.
+
+## Review Notes
+
+- Keep this document as \`needs_review\` until human review is complete.
+- Approving it before code exists approves the stated intent, not an implementation.
+`;
+}
+
+// docs/llm-wiki/requirements/00_overview.md — the requirements map.
+export function requirementsOverviewBody(docLang) {
+  if (isKo(docLang)) {
+    return `# Requirements
+
+이 문서는 요구사항 지도입니다. 요구사항 하나당 \`docs/llm-wiki/requirements/\` 아래 문서 하나를 두고, [requirement template](../templates/REQUIREMENT.template.md)으로 만듭니다.
+
+## Requirements
+
+- 아직 없습니다. 각 요구사항을 그 문서로 가는 Markdown 링크 한 줄로 나열합니다(예: 제목 \`REQ-001: <short title>\`, 대상 \`./REQ-001-<short-slug>.md\`). ${KO_SENTINEL_DRAFT}
+
+## Lifecycle
+
+- 계획: 요구사항 문서는 의도한 동작과 수용 기준을 적습니다. 소스를 인용하지 않으며 사람이 검토하기 전까지 \`needs_review\`입니다.
+- 승인: \`llm-wiki review --approve <path>\`가 계획을 \`verified\`로 표시합니다. 이것은 요구사항 승인이지 구현 주장이 아닙니다. \`llm-wiki validate\`는 연결된 근거가 없는 승인 요구사항을 \`evidence.planned_unlinked\`(info)로 보고합니다.
+- 연결: 코드가 생기면 구현 파일과 테스트를 요구사항의 frontmatter \`evidence\`에 넣습니다. \`validate\`는 각 참조가 실제로 있는지 확인합니다. 그 코드가 바뀌면 \`impact\`와 \`drift\`가 승인된 요구사항을 다시 검토 대상으로 지목합니다(이 두 검사를 켜는 모드에서만 — \`llm-wiki mode\`로 확인하며, lite는 둘 다 끕니다).
+- 변경: 요구사항이 바뀌면 문서를 고치고(다시 \`needs_review\`), 연결된 코드와 테스트는 사람이 다시 확인합니다. CLI는 요구사항 수정을 코드 쪽으로 추적하지 않습니다.
+- \`llm-wiki stats\`는 계획 문서를 승인 여부와 근거 연결 상태로 세고, \`llm-wiki list-docs --doc-type requirement\`는 목록을 보여 줍니다.
+
+## Review Notes
+
+- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+`;
+  }
+  return `# Requirements
+
+This is the requirements map: one document per requirement under \`docs/llm-wiki/requirements/\`, created from [the requirement template](../templates/REQUIREMENT.template.md).
+
+## Requirements
+
+- None yet. Concise summary: describe each requirement as one Markdown link to its document (for example the title \`REQ-001: <short title>\` pointing at \`./REQ-001-<short-slug>.md\`).
+
+## Lifecycle
+
+- Planned: a requirement document states intended behavior and its acceptance criteria. It cites no source and stays \`needs_review\` until a human reviews it.
+- Approved: \`llm-wiki review --approve <path>\` marks the plan \`verified\`. That approves the requirement; it does not claim an implementation. \`llm-wiki validate\` reports an approved requirement with nothing linked as \`evidence.planned_unlinked\` (info).
+- Linked: when code exists, add the implementing files and tests to the requirement's frontmatter \`evidence\`. \`validate\` checks that each reference exists; \`impact\` and \`drift\` flag the approved requirement for re-review when that code changes (in the modes that run them — \`llm-wiki mode\` shows which; lite turns both off).
+- Changed: when a requirement changes, edit its document (it returns to \`needs_review\`) and re-check the linked code and tests by hand — the CLI does not trace a requirement edit forward into code.
+- \`llm-wiki stats\` counts planned documents by approval and linked evidence; \`llm-wiki list-docs --doc-type requirement\` lists them.
+
+## Review Notes
+
+- Keep this document as \`needs_review\` until human review is complete.
+`;
+}
+
+// docs/llm-wiki/templates/REQUIREMENT.template.md — copied once per requirement.
+export function requirementTemplateBody(docLang) {
+  if (isKo(docLang)) {
+    return `# REQ-NNN: Requirement Title
+
+요구사항마다 이 템플릿을 \`docs/llm-wiki/requirements/REQ-NNN-<short-slug>.md\`로 복사합니다. 문서 하나에 요구사항 하나를 두어야 근거·drift·impact가 요구사항 단위로 유지됩니다. 복사본 frontmatter의 \`title\`과 \`doc_type: requirement\`를 정하고, [Requirements](../requirements/00_overview.md)에서 링크하고, 사람이 검토하기 전까지 \`status: needs_review\`로 둡니다.
+
+## Requirement
+
+- 한두 문장 요약: 의도한 동작 — 누가, 어떤 조건에서, 무엇을 필요로 하는지 — 을 프로젝트 소유자가 말한 대로 적습니다. 이것은 계획된 지식이지 기존 코드의 설명이 아닙니다. ${KO_SENTINEL_DRAFT}
+
+## Acceptance Criteria
+
+- AC-1: 관찰하고 확인할 수 있는 조건(given / when / then). 각 기준은 테스트나 이름 붙인 수동 확인으로 검사할 수 있어야 합니다.
+- AC-2: ...
+
+## Constraints
+
+- 이 요구사항에만 해당하는 비기능 제약(성능, 보안, 접근성, 호환성). 프로젝트 전체 제약은 project profile에 둡니다.
+
+## Related Decisions
+
+- 이 요구사항을 결정한 \`docs/llm-wiki/decisions/\`의 ADR을 링크합니다.
+
+## Evidence
+
+- 아직 없음: 코드가 이 요구사항을 구현하기 전까지 소스를 인용하지 않습니다(\`source_files: []\`, \`evidence\` 없음).
+- 코드가 생기면 구현 소스 파일과 수용 기준을 확인하는 테스트를 frontmatter \`evidence\`(예: \`src/<module>.ts#symbol:<function>\`, \`tests/<module>.test.ts\`)와 여기에 적고, 각 테스트가 어느 기준을 덮는지 밝힙니다.
+- 참조가 해석된다는 것은 구현 위치를 보여 줄 뿐 완료를 뜻하지 않습니다. 테스트를 돌리고, 판단은 검토가 합니다.
+
+## Open Questions
+
+- 소유자의 결정이 필요한 미해결 제품 질문과 가정.
+
+## Review Notes
+
+- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 승인(\`verified\`)은 요구사항을 승인하는 것이지 구현을 승인하는 것이 아닙니다. \`llm-wiki validate\`는 연결된 근거가 없는 승인 요구사항을 \`evidence.planned_unlinked\`(info)로 보고합니다.
+`;
+  }
+  return `# REQ-NNN: Requirement Title
+
+Copy this template to \`docs/llm-wiki/requirements/REQ-NNN-<short-slug>.md\` for each requirement — one requirement per document, so evidence, drift, and impact stay per requirement. Set \`title\` and \`doc_type: requirement\` in the copy's frontmatter, link it from [Requirements](../requirements/00_overview.md), and keep \`status: needs_review\` until a human reviews it.
+
+## Requirement
+
+- Concise summary: describe the intended behavior — who needs what, under which condition — as the project's owners stated it. This is planned knowledge, not a description of existing code.
+
+## Acceptance Criteria
+
+- AC-1: An observable, checkable condition (given / when / then). Each criterion should be checkable by a test or a named manual check.
+- AC-2: ...
+
+## Constraints
+
+- Non-functional constraints specific to this requirement (performance, security, accessibility, compatibility). Project-wide constraints live in the project profile.
+
+## Related Decisions
+
+- Link the ADRs in \`docs/llm-wiki/decisions/\` that shape this requirement.
+
+## Evidence
+
+- None yet: until code implements this requirement, it cites no source (\`source_files: []\`, no \`evidence\`).
+- When code exists, list the implementing source files and the tests that check the acceptance criteria in frontmatter \`evidence\` (for example \`src/<module>.ts#symbol:<function>\`, \`tests/<module>.test.ts\`) and here, naming which criteria each test covers.
+- A resolving reference shows where the requirement is implemented, never that it is complete. Run the tests; review decides.
+
+## Open Questions
+
+- Unresolved product questions and assumptions that need the owner's decision.
+
+## Review Notes
+
+- Keep this document as \`needs_review\` until human review is complete.
+- Approving it (\`verified\`) approves the requirement, not an implementation; \`llm-wiki validate\` reports an approved requirement with nothing linked as \`evidence.planned_unlinked\` (info).
+`;
+}
+
+// docs/llm-wiki/templates/DECISION_LOG.template.md, greenfield variant: an ADR
+// skeleton. The default (non-greenfield) template stays the generic body.
+export function decisionTemplateBody(docLang) {
+  if (isKo(docLang)) {
+    return `# ADR-NNNN: Decision Title
+
+아키텍처 결정마다 이 템플릿을 \`docs/llm-wiki/decisions/ADR-NNNN-<short-slug>.md\`로 복사합니다. 복사본 frontmatter의 \`title\`과 \`doc_type: decision\`을 정하고, 사람이 검토하기 전까지 \`status: needs_review\`로 둡니다.
+
+## Decision Status
+
+- Proposed | Accepted | Superseded by ADR-NNNN — 결정 자체의 상태이며, 문서의 검토 \`status\`와는 별개입니다.
+
+## Context
+
+- 결정이 필요했던 문제, 압력, 제약. 이 결정이 받치는 요구사항을 링크합니다.
+
+## Decision
+
+- 한두 문장 요약: 무엇을 결정했는지, 읽는 사람이 코드를 그 결정과 대조할 수 있게 적습니다. ${KO_SENTINEL_DRAFT}
+
+## Alternatives Considered
+
+- 기각한 선택지와 그 이유.
+
+## Consequences
+
+- 쉬워지는 것, 어려워지는 것, 앞으로 계속 참이어야 하는 것.
+
+## Evidence
+
+- 계획된 지식입니다. 결정이 아직 구현되지 않았다면 ADR은 소스를 인용하지 않아도 됩니다. 승인(\`verified\`)은 결정이 받아들여졌다는 기록이지 코드가 그것을 따른다는 뜻이 아닙니다.
+- 코드가 결정을 구현하면 그 파일을 frontmatter \`evidence\`(예: \`src/<module>.ts\`)와 여기에 적습니다. 그때부터 그 코드가 바뀌면 drift와 impact가 ADR을 지목합니다.
+
+## Review Notes
+
+- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+`;
+  }
+  return `# ADR-NNNN: Decision Title
+
+Copy this template to \`docs/llm-wiki/decisions/ADR-NNNN-<short-slug>.md\` for each architecture decision. Set \`title\` and \`doc_type: decision\` in the copy's frontmatter and keep \`status: needs_review\` until a human reviews it.
+
+## Decision Status
+
+- Proposed | Accepted | Superseded by ADR-NNNN — the decision's own state, separate from the document's review \`status\`.
+
+## Context
+
+- The problem, the forces, and the constraints that made a decision necessary. Link the requirements it serves.
+
+## Decision
+
+- Concise summary: describe what was decided, stated so a reader can check code against it.
+
+## Alternatives Considered
+
+- Each option that was rejected, and why.
+
+## Consequences
+
+- What becomes easier, what becomes harder, and what must now stay true.
+
+## Evidence
+
+- Planned knowledge: an ADR may cite no source while the decision is not implemented. Approving it (\`verified\`) records that the decision was accepted, not that code follows it.
+- When code implements the decision, list the implementing files in frontmatter \`evidence\` (for example \`src/<module>.ts\`) and here; drift and impact then flag the ADR when that code changes.
+
+## Review Notes
+
+- Keep this document as \`needs_review\` until human review is complete.
 `;
 }

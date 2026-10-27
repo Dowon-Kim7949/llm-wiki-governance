@@ -42,8 +42,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/commands.js sha256:11e10f20f5c64ced
-  - src/cli.js sha256:b1e74dfc0a415748
+  - src/commands.js sha256:25c2cad8160baa17
+  - src/cli.js sha256:08f4397561e6c896
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
   - src/commands/retrieval.js sha256:36e3f0e8b46fe723
   - src/commands/guided.js sha256:cc78b4eff07f93a7
@@ -61,7 +61,7 @@ source_digests:
 - **Diagnose (진단)** — `doctor`, `status`: 런타임/패키지 준비 상태, 초기화 여부, 문서 상태 카운트, CI 거버넌스 배선 여부. 근거: `src/commands.js` `doctor`, `statusCommand`, `describeCiGovernance`.
 - **Governance level (거버넌스 레벨)** — `mode`, `mode set <lite|standard|strict> [--write]`, `backfill [--write] [--strict]`: 이 저장소가 어느 정책 레벨에서 도는지 보고·변경하고(레벨은 config `governance.mode`), `lite`에서 `strict`로 올린 뒤 불완전한 위키를 **저장소 자체에서** 재구성한다. 세 레벨은 위키 레이아웃·frontmatter 계약·명령 표면·finding 레지스트리를 공유하므로 템플릿 셋이 아니라 **하나의 엔진 위의 정책 레벨**이다. 레벨은 rule-id → severity **floor**를 기여하고 `rulesPreset`·명시 `rules` 아래에 키 단위로 깔린다(`strict`의 floor는 비어 있어서 `governance` 블록이 없는 프로젝트는 모드 이전과 바이트 단위로 같다). `mode set`은 스캔도 문서 생성도 유발하지 않아 승격이 즉시 끝나고, 비싼 재구성은 `backfill`이 맡는다 — 그 명령은 저장소가 증명할 수 있는 것을 복구하고 나머지에 *verified*/*inferred*/*unknown* 라벨을 달며 **아무도 기록하지 않은 근거는 발명하지 않는다**(`unknown`은 부족함이 아니라 산출물이다). 근거: `src/governance.js#symbol:getGovernancePolicy`, `src/commands/governance-mode.js#symbol:modeCommand`, `src/commands.js#symbol:backfillCommand`.
 - **Validate (검증)** — `validate`, `validate-frontmatter`, `audit`: 구조/frontmatter/source_files/related/evidence/link/adapter/enrichment 스캔. `validate`는 `audit` 커버리지를 재사용한다.
-- **Generate (생성)** — `init --dry-run|--write`, `quickstart`: 누락 문서와 선택 adapter 파일 생성. `--write` 명시 시에만 실제 쓰기.
+- **Generate (생성)** — `init --dry-run|--write`, `quickstart`: 누락 문서와 선택 adapter 파일 생성. `--write` 명시 시에만 실제 쓰기. 매니페스트 파일이 없는 저장소에서는 생성 문서가 소스를 인용하지 않는다(`source_files` 빈 목록). `--greenfield`는 코드가 없는 신규 프로젝트용으로 계획 문서(`requirements/00_overview.md`, `templates/REQUIREMENT.template.md`)를 더하고, 새로 만드는 `project-profile.md`·ADR 템플릿·`index.md`에 계획용 본문을 쓴다. `handoff --greenfield`는 코드 보강 대신 계획 기록 프롬프트를 낸다(미배포). 근거: `src/commands.js#symbol:initCommand`, `src/commands/doc-templates.js#symbol:docMetadata`.
 - **Guide (안내)** — `handoff`, `prompt`, `next`, `explain`: 에이전트 인수인계 프롬프트, 반복 작업 프롬프트, 다음 조치 추천, finding 규칙 설명. 1.24부터 guided 표면 2개가 합류한다: `onboard [--domain <n>] [--goal <t>]`(신입용 도메인 학습 경로를 기존 위키에서 결정적으로 조립 — 읽을 문서·소스/테스트 진입점·불변조건·최신성 경고·이해도 점검), `prepare --task <text> [--compact]`(구현 착수 전 범위 조사 — 관련 문서·후보 소스/테스트·위험을 **후보 어법**으로 제시하며 원인·안전을 단정하지 않는다). 둘 다 완전 읽기 전용이고 CLI는 설명을 창작하지 않는다. 근거: `src/commands/guided.js` `onboardCommand`, `prepareCommand`.
 - **Knowledge (지식)** — `graph`, `stats`: 지식 그래프(문서→문서 링크)를 text/JSON/Mermaid/DOT로 출력, 위키 헬스 스냅샷(verified%/enrichment%/evidence coverage + 헬스 스코어). 둘 다 읽기 전용(1.4).
 - **Migrate & Repair (이관·자동수정)** — `migrate [--apply]`: 기본은 이관 계획 미리보기, `--apply` 시 `fix` 범위 재사용 + `wiki_block_version` 업그레이드로 문서를 현재 계약으로 올림(`verified` 내용 보존; GATE_REVIEW Gate 8). `fix [--write]`: 승인된 좁은 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 보완, 깨진 related/링크 `needs_review` 스텁, `last_updated` 갱신; 기본 미리보기). `drift [--downgrade] [--watch-needs-review]`: `evidence.stale` 드리프트를 리포트하고 `--downgrade` 시 드리프트된 `verified` 문서를 `needs_review`로 강등한다 — `status`·`last_updated`와 함께 `tags`의 상태 태그도 맞춘다(이미 있는 상태 태그만 고치고 없으면 만들지 않으며, `review --approve`와 같은 `syncStatusTag`를 쓴다; 2026-07-31 N-4 수정)(GATE_REVIEW Gate 9). 2026-08-03(결정 28)부터 **`drift`만** 받는 opt-in `--watch-needs-review`가 날짜 앵커 최신성 검사를 `needs_review` 문서까지 넓힌다(기본 off). `impact`에는 **의도적으로 넓히지 않는다** — 그 규칙은 이제 error이므로, 자문용 opt-in이 미검토 문서로 빌드를 실패시키게 두면 안 된다. release note 면제(Change tracking 항목 참조)가 이 opt-in보다 우선한다. 1.29.1(2026-08-06, N-14)부터 `drift`와 `impact` 양쪽이 `docs/llm-wiki/templates/` 하위 문서를 건너뛴다 — `review`가 그 문서들을 열거하지 못해 **강등도 재스탬프도 불가능**했으므로, 지목하는 것은 해소할 수 없는 finding을 만드는 일이었다. `verified` 내용·`docs/llm-wiki/` 밖은 건드리지 않는다. 근거: `src/commands.js` `fixCommand`.

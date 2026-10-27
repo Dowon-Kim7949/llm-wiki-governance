@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: glossary
 project: llm-wiki-governance
-last_updated: 2026-10-21
+last_updated: 2026-10-27
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
@@ -28,8 +28,8 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - src/frontmatter-schema.js sha256:ec4476da72b5c2e2
-  - src/commands.js sha256:11e10f20f5c64ced
-  - src/config.js sha256:1403eef64c1781a8
+  - src/commands.js sha256:25c2cad8160baa17
+  - src/config.js sha256:ef863d1307ba2dc9
   - llm-wiki.config.json sha256:16fa581c78b330eb
 ---
 
@@ -43,8 +43,9 @@ source_digests:
 - **status** — 문서 검토 상태. 허용값: `draft`, `needs_review`, `verified`, `deprecated`(`src/config.js` `VALID_STATUSES`). CLI/에이전트 **생성 시점** 산출물은 항상 `needs_review`(생성기에는 `verified` 경로가 없다).
 - **verified** — 검토가 끝난 문서에만 부여하며, 누가 검토했는지는 `reviewed_by`가 말한다. `--strict`에서는 `reviewed_by`/`reviewed_at`가 없으면 실패. 도구는 스스로 승격하지 않고 명시적 `review --approve`/`--approve-all --yes`만이 스탬프한다 — **누가 그 명령을 실행하는지는 저장소 정책이다.** 이 저장소는 2026-08-03부터 에이전트 승인을 허용하고 `reviewed_by`에 에이전트를 적는다([index.md](index.md) Status). 도입처 기본값은 사람 검토다.
 - **human_verified** (evidence tier) — `stats`가 계산하는 report-only 값이며 정의는 "`verified` + reviewer 메타 존재"다. **reviewer가 사람인지 검사하지 않으므로**, 이 저장소에서는 에이전트 승인분도 여기에 포함된다. 이름과 실제 의미가 어긋나 있고, 이 저장소의 수치를 인용할 때 그 사실을 함께 적어야 한다. 1.33.0부터 config `agentReviewers`에 에이전트 검토자 이름을 적으면 그 승인은 **agent_verified**로 분리된다(목록이 없으면 `null` = 구분 불가). 이 저장소는 2026-10-21에 config를 설정해 사람 4 / 에이전트 47로 갈라 센다.
-- **source_files** — 문서 주장이 근거로 삼는 파일 목록(넓은 범위 근거).
+- **source_files** — 문서 주장이 근거로 삼는 파일 목록(넓은 범위 근거). 키는 필수지만 빈 목록이 허용된다. 인라인 `source_files: []`도 빈 목록으로 읽는다(그 전에는 문자열 `"[]"`로 읽어 `frontmatter.array` 오류가 났다). `init`은 매니페스트 파일이 실제로 없으면 생성 문서에 빈 목록을 쓴다.
 - **evidence** — 파일/라인/심볼/섹션/라우트 단위의 정밀 근거 참조. 예: `src/cli.js#symbol:main`, `file#L10-L20`, `file#route:/users`. 본문 `## Evidence` 섹션과 정렬되어야 한다. 형식의 정의는 `src/frontmatter-schema.js#symbol:EVIDENCE_REFERENCE_PATTERN` 하나다(1.33.0). 파일 없는 `#anchor`는 아무 소스도 가리키지 않으므로 evidence가 아니다.
+- **계획된 지식(planned knowledge)** — 의도한 동작을 말하는 문서. `doc_type`이 `requirement`이거나 결정 기록 타입(`decision`·`decision_log`·`adr`)이면 해당한다(`src/commands/scans.js#symbol:PLANNED_DOC_TYPES`). 이런 문서의 `verified`는 **계획 승인**이지 구현 완료가 아니다. 근거 없이 승인된 계획 문서는 `evidence.ungrounded`(warning) 대신 `evidence.planned_unlinked`(info)로 보고되고, `stats`는 `plannedKnowledge`로 따로 센다. 로컬 참조가 모두 해석되면 "linked"인데, 이는 구현 위치를 가리킬 뿐 완료를 뜻하지 않는다. 새 필드나 status 값 없이 기존 `doc_type`만으로 표현한다. 요구사항 생성 경로는 `init --greenfield`가 깔아 주는 `templates/REQUIREMENT.template.md`다.
 - **related** — 연결된 다른 wiki 문서 경로. 존재하지 않으면 `related.missing` 경고(P0-2에서 추가).
 - **wikiGraph** — 위키 링크(이중 대괄호 표기) 기반 문서 그래프. 미해결 개념(unresolved concepts)·별칭(aliases)·고아 문서(orphans)를 집계한다.
 - **adapter** — 에이전트에게 wiki 진입점을 알리는 파일. `AGENTS.md`(Codex), `CLAUDE.md`(Claude Code), `.cursor/rules/llm-wiki.mdc`(Cursor), `.github/copilot-instructions.md`(GitHub Copilot), 후보 `ANTIGRAVITY.md`.

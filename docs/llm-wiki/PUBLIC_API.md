@@ -61,23 +61,23 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:b1e74dfc0a415748
-  - src/commands.js sha256:11e10f20f5c64ced
+  - src/cli.js sha256:08f4397561e6c896
+  - src/commands.js sha256:25c2cad8160baa17
   - src/commands/retrieval.js sha256:36e3f0e8b46fe723
   - src/release-notes.js sha256:7dcc7040f651c1b9
   - src/config-file.js sha256:637bb3db21188fbe
-  - src/index.js sha256:05abdc9f11ed6bb3
+  - src/index.js sha256:ee1d42734ade2f15
   - src/git.js sha256:c6baa86ab48e2da1
   - src/report.js sha256:9774daea9617572b
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
   - src/mcp/dispatch.js sha256:52e95374f2bc92a9
   - src/mcp/validate-args.js sha256:14568f590681aa53
-  - src/frontmatter.js sha256:868b466acbacfe6d
+  - src/frontmatter.js sha256:f03d0c07725dec3e
   - src/commands/import-memory.js sha256:36c43fde4eb90a81
   - package.json sha256:592836e8b901c7be
   - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
-  - src/commands/findings.js sha256:e540047ac0e9d3fc
-  - src/commands/scans.js sha256:58fa82b0dde38bd6
+  - src/commands/findings.js sha256:45598b539e3a6a99
+  - src/commands/scans.js sha256:81a66b137b3d5209
   - src/detector.js sha256:5ad2488c9692faa3
 ---
 
@@ -130,6 +130,7 @@ source_digests:
 - `--doc-lang <en|ko>`(전역 옵션, 1.24, 기본 `en`) — `init`/`quickstart`이 **생성하는 위키 문서 본문**과 handoff/`prompt`/생성 스킬의 **에이전트 문서 작성 지시** 언어를 고른다. config `docLanguage`로도 설정 가능(CLI 우선). `--lang`과 독립적이다(하나는 findings 언어, 하나는 생성 문서 언어). 잘못된 값은 usage error(exit 3). 기술 식별자(경로·코드 심볼·JSON 키·frontmatter 필드·status 값·CLI 명령·evidence locator)는 두 언어 모두 번역하지 않는다. `init`/`quickstart` 결과는 선택된 문서 언어를 `docLanguage` 필드(및 텍스트)로 표시한다. 기본 `en`은 이미 영어였던 문서에 대해 byte-identical.
 - `--prompt-profile <full|slim>`(1.33.0; `prompt`·`handoff`·`backfill`·`init`·`quickstart`) — 생성 에이전트 프롬프트와 `init --skills` 스킬의 렌더링. 기본 `full`은 출하 텍스트 그대로(바이트 동일), `slim`은 이 도구의 명령·경로·계약·멈춤 조건·완료 기준만 남기고 일반 작업 요령을 뺀다(문자 수로 full의 약 44–50%였고, 1.34.0에서 full이 위임 예산을 뺀 뒤로는 약 54–67%; chars 기준이며 효과는 미측정). config `promptProfile`로도 설정 가능(CLI 우선), 잘못된 값은 exit 3.
 - `--domain <name>`·`--goal <text>` (onboard — 학습할 업무 영역/목표), `--task <text>` (prepare/prompt — 필수).
+- `--greenfield`(미배포; `init`·`quickstart`·`handoff`, 다른 명령에서는 exit 3) — 코드가 거의 없는 신규 프로젝트용. `init`/`quickstart`는 빠진 계획 문서(`docs/llm-wiki/requirements/00_overview.md`, `docs/llm-wiki/templates/REQUIREMENT.template.md`)를 더하고, 새로 만드는 `project-profile.md`·`templates/DECISION_LOG.template.md`·`index.md`에 계획용 본문을 쓴다(기존 파일은 덮어쓰지 않음). `handoff`/`quickstart`는 코드 보강 프롬프트 대신 계획 기록 프롬프트를 낸다. JSON은 이 플래그가 있을 때만 `init`·`handoff` 결과에 `greenfield: true`를 더한다(부가). 함께 바뀐 관측 가능한 동작: (1) 매니페스트 파일이 없는 저장소에서 `init` 생성 문서의 `source_files`가 빈 목록이다(`detection.primaryManifest`의 값과 형태는 그대로). (2) `stats`에 부가 키 `plannedKnowledge { documents, approved, linked, unresolved, unlinked }`가 생기고, 계획 문서가 있을 때만 텍스트 `planned_knowledge:` 줄이 나온다. (3) 새 규칙 `evidence.planned_unlinked`(info): `doc_type`이 `requirement`·`decision`·`decision_log`·`adr`이고 `verified`인데 로컬 `source_files`/`evidence`가 없는 문서에 `evidence.ungrounded` 대신 붙는다. (4) frontmatter 인라인 `key: []`는 빈 목록이다.
 - `--write`, `--dry-run`, `--apply` (migrate/import-memory), `--anchor <date|content>` (drift — 1.36.0, 내용 해시 섀도 비교; 그 외 값은 exit 3), `--downgrade`·`--watch-needs-review` (drift — 후자는 **`drift`만** 수용하는 기본 off opt-in으로 date-앵커 최신성 검사를 `needs_review` 문서까지 넓힌다; `impact`에는 넓히지 않는다), `--existing <skip|overwrite>`, `--version <x.y.z>`, `--since <git-ref>` (release-notes/validate/impact), `--body-only` (release-notes), `--changed` (validate), `--run <path>` (check-run — 특정 run manifest 지정; 생략 시 `.llm-wiki/runs/`에서 **git이 추적하는 매니페스트를 우선**해 최신 하나를 고르고, 추적본이 없으면 디스크 집합으로 폴백하며 `run.manifest_untracked`(info)를 낸다), `--domains <a,b,c>` (init/quickstart — 도메인 수동 지정), `--approve <path>` (review — 반복·쉼표구분 가능; 지정 needs_review 문서를 verified로 승격), `--approve-all`+`--yes` (review — 승격 가능한 모든 needs_review 문서를 승격, `--yes` 없으면 거부), `--reviewer <name>` (review — `reviewed_by` 소스; 미지정 시 config `reviewer` → git `user.name`, 없으면 스탬프 거부), `--include-sensitive` (list-docs/search-docs/review — 제한/민감 문서 포함), `--all-terms` (search-docs — 1.37.0, 모든 질의어를 포함한 문서만; 다른 명령에서는 usage error), `--preload-budget <n>`·`--skill-token-cap <n>` (harness-health — 각각 항상 로드되는 컨텍스트 표면의 예산과 skill 본문 상한; 양의 정수만 수용하고 아니면 usage error(exit 3), 주지 않으면 해당 두 규칙은 침묵한다. config `harnessHealth`로도 설정 가능[CLI 우선]. 이 명령이 인쇄하는 모든 크기 수치는 제품 기존 chars/4 **PROXY**(`estimateTokens`)이지 측정된 토큰 수가 아니며 비영어 텍스트를 과소평가한다). `--strict`는 warning을 exit 1로 승격한다(대부분의 명령; `impact --strict`·`check-run --strict`·`harness-health --strict`는 CI 실패로 만든다).
 
 ## Exit Codes

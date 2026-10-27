@@ -24,6 +24,18 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-27 - feat(greenfield): 코드가 없는 프로젝트도 같은 위키로 시작한다 (미배포)
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, examples, docs, wiki
+- changed: `src/cli.js`(`--greenfield` 파싱·`COMMAND_OPTION_RULES`(init/quickstart/handoff)·도움말, stats JSON 키 목록) · `src/commands.js`(`resolveInitGovernanceMode`, `manifestPresent`·`startingPointLines`, greenfield 후보, quickstart 핸드오프 모드, `buildHandoff`/`handoffNextStep` greenfield, `stats.plannedKnowledge`) · `src/commands/doc-templates.js`(`greenfieldDocMetadata`, 매니페스트 없으면 `source_files` 빈 목록) · `src/commands/doc-content.js`(greenfield 본문 4종 en/ko, `indexBody` 읽기 순서, `logBody` 근거 줄) · `src/commands/scans.js`(`PLANNED_DOC_TYPES`·`isPlannedDoc`·`localReferencePaths`, `scanUngroundedVerified` 분기) · `src/commands/findings.js`·`src/i18n.js`(`evidence.planned_unlinked`) · `src/config.js`(`GREENFIELD_DOCS`) · `src/frontmatter.js`(인라인 `[]`) · `src/task-prompts.js`(`greenfieldPlanningWorkflow`, 거버넌스 예산 3모드 한 구절) · `src/index.js`(typedef) · `tests/greenfield.test.js`(16건)·`tests/greenfield-demo-walkthrough.test.js`(1건) · `examples/greenfield-vue-demo/`(신규) · `examples/README.md` · README 2종 · 위키 11종(index, project-profile, profiles/library, EXAMPLES, GLOSSARY, VISIBILITY, ARCHITECTURE_CONVENTIONS, domains/00_overview, DOMAIN_FEATURES, PUBLIC_API, HARNESS_GOVERNANCE_ROADMAP)
+- summary: 빈 저장소에서 v1.37.0 `quickstart`를 실제로 돌려 결함 셋을 찾았다. 생성 문서 10건이 없는 `package.json`을 인용했고(`validate` 경고 10건·`stats` 근거 100%), `quickstart`는 lite를 쓰면서 strict라고 안내했으며, ADR 템플릿은 일반 플레이스홀더였다. 셋을 고친 뒤, 새 엔진이나 필드 없이 기존 `doc_type`으로 "계획된 지식"(requirement + 결정 기록 타입)을 정의했다. 근거 없이 승인된 계획은 `evidence.planned_unlinked`(info)이고 `stats`가 따로 센다. 근거를 연결하면 기존 validate·impact·drift가 그대로 감시한다.
+- evidence: 테스트 731 → 748(실측) · lint·`validate --strict`·`audit` 통과 · 데모 워크스루 20/20(Node 22.14), 데모 앱 `npm install`·`vue-tsc`·`vite build`·테스트 4건 통과 · 수동 수명주기 스모크(빈 저장소 → 승인 → 연결 → 코드 변경 → impact exit 1)
+- decision: `evidence.ungrounded` 대신 info를 받는 대상에 기존 결정 기록 타입(`decision`·`decision_log`·`adr`)도 포함했다(유지보수자 승인, 2026-10-27). 도입처에서 `--strict`가 실패하던 경우가 통과로 바뀔 수 있는 완화이며, 같은 대상은 info로 계속 보고된다.
+- observed: 이 저장소가 커밋한 생성 스킬 20개(`.claude`·`.agents`·`.cursor`·`.llm-wiki`)는 1.34.0 이후 갱신되지 않아 제거된 Delegation budget 블록을 아직 담고 있다. `init --skills --refresh`를 돌리면 그 블록이 빠져 범위 밖 변경이 되므로 되돌렸고 별건으로 남긴다(유지보수자 결정).
+- caveats: 미배포이며 버전·CHANGELOG는 건드리지 않았다(CHANGELOG는 릴리스 때 쓴다). 연결된 참조는 구현 위치일 뿐 완료가 아니고, 요구사항 수정은 코드를 지목하지 않으며, 문서 안 수용 기준은 개별 추적되지 않는다. lite의 `stats` enriched가 꺼진 규칙 때문에 100%로 나오는 기존 결함은 고치지 않았다.
+
 ## 2026-10-27 - release: 1.37.0 준비 — drift 섹션 축소, search-docs --all-terms, held-out 검색 평가
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
