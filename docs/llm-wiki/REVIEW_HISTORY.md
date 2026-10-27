@@ -58,7 +58,7 @@ source_digests:
   - docs/llm-wiki/domains/00_overview.md sha256:9191d1cab31af70f
   - docs/llm-wiki/project-profile.md sha256:64f5e81758eda4db
   - docs/llm-wiki/profiles/library.md sha256:fd3bd182ebeb124b
-  - docs/llm-wiki/VERSIONING.md sha256:ad83b3a97bfa117d
+  - docs/llm-wiki/VERSIONING.md sha256:243ff87c6b418e58
 ---
 
 # Review History
@@ -442,9 +442,10 @@ source_digests:
 
 ## Versioning
 
-원문서: [VERSIONING.md](VERSIONING.md) — 1건(2026-07-14 → 2026-07-14), 2026-10-26 이전분.
+원문서: [VERSIONING.md](VERSIONING.md) — 2건(2026-07-14 → 2026-07-14), 2026-10-26 이전분 · 2026-10-27에 1건 추가 이관(5건 상한).
 
 - 2026-07-14에 버전 정책을 version-agnostic으로 전환하고(특정 버전 숫자 표기 제거 → `package.json` 단일 소스 참조) 사람 검토(reviewed_by: Dowon-Kim)를 거쳐 `verified`로 재승인했다.
+- 2026-07-15에 1.7.0 릴리스 준비로 인용 소스(`package.json` 버전 bump·`RELEASE_CHECKLIST.md` version-agnostic 갱신)가 바뀌어 evidence.stale이 떴으나, version-agnostic 정책 내용은 그대로 정확함을 확인하고 검토 기준일을 갱신해 해소했다(사람 검토 reviewed_by: Dowon-Kim). 내용 변경 없음.
 
 ## Visibility
 
