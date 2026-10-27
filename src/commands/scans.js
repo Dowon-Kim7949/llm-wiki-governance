@@ -878,7 +878,7 @@ export function changedAnchorMatcher(changedSet) {
 // broad citation keeps the whole file watched (the N-7 contract above). A symbol
 // or route locator stays file-level because its extent cannot be computed without
 // parsing the language, and a guess that is too small would be a false negative.
-function narrowingLocators(anchors, base) {
+export function narrowingLocators(anchors, base) {
   if (anchors.sources.includes(base)) return null;
   const refs = anchors.evidenceRefs.filter((ref) => ref.base === base);
   if (refs.length === 0) return null;
@@ -894,7 +894,7 @@ function narrowingLocators(anchors, base) {
   return locators;
 }
 
-function locatorLabel(locator) {
+export function locatorLabel(locator) {
   return locator.kind === "line"
     ? `#L${locator.start}${locator.end !== locator.start ? `-L${locator.end}` : ""}`
     : `#${locator.kind}:${locator.value}`;

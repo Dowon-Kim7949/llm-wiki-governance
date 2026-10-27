@@ -48,6 +48,7 @@ export const FRONTMATTER_SCHEMA = {
     contains_sensitive_info: { type: "boolean" },
     reviewed_by: { type: "string", minLength: 1 },
     reviewed_at: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+    source_digests: { type: "array", items: { type: "string", pattern: " sha256:[0-9a-f]{16}$" } },
     aliases: { type: "array", items: { type: "string" } },
     evidence: {
       type: "array",

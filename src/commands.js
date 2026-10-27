@@ -95,9 +95,11 @@ import {
   runMechanicalRemediation,
   splitFrontmatter,
   syncStatusTag,
+  upsertFrontmatterList,
   upsertFrontmatterScalar
 } from "./commands/fix-migrate.js";
 import { applyFilters, loadContentDocs } from "./commands/retrieval.js";
+import { currentSourceDigests, formatDigestEntry } from "./commands/source-digests.js";
 import { planSkillArtifacts, writeSkillArtifacts } from "./commands/skills.js";
 import {
   buildEvidenceLedger,
@@ -1063,9 +1065,10 @@ export async function versionOnlyManifestChanges(cwd, sinceRef, changed) {
 
 
 // Fields a review stamp writes, and nothing else. `review --approve` writes
-// status/reviewed_by/reviewed_at (plus the tags: status entry), and
-// `drift --downgrade` writes status/last_updated (plus the same tag).
-const REVIEW_STAMP_FIELDS = new Set(["status", "reviewed_by", "reviewed_at", "last_updated", "last_edited_by"]);
+// status/reviewed_by/reviewed_at (plus the tags: status entry, and source_digests
+// when the project opted into "sourceDigests"), and `drift --downgrade` writes
+// status/last_updated (plus the same tag).
+const REVIEW_STAMP_FIELDS = new Set(["status", "reviewed_by", "reviewed_at", "last_updated", "last_edited_by", "source_digests"]);
 const STATUS_TAG_VALUES = new Set(["verified", "needs-review", "needs_review"]);
 
 // Everything about a wiki document EXCEPT its review stamp, as a comparable
@@ -1173,6 +1176,58 @@ async function stampOnlyFindings(cwd, stampOnlyDocs, changedSet, since) {
   return findings;
 }
 
+// Opt-in `review.unattested_promotion` (P1-2, 2026-10-27): a wiki document that is
+// verified now, was not verified at the baseline, and whose review stamp did not
+// move with the promotion. `review --approve` always writes reviewed_by and a
+// fresh reviewed_at, so a promotion that keeps the old reviewed_at (or has none)
+// was most likely a hand edit of `status:` — the case validate cannot see (GAP 3)
+// because it reads one file at one point in time. A cheap signal, not proof: a
+// hand edit that also writes a new date passes. OFF unless named in config rules,
+// so a default run is unchanged; warning by default once enabled.
+const UNATTESTED_PROMOTION_RULE = "review.unattested_promotion";
+
+function unattestedPromotionEnabled(options) {
+  const setting = options && options.rules && options.rules[UNATTESTED_PROMOTION_RULE];
+  return Boolean(setting) && setting !== "off";
+}
+
+async function unattestedPromotionFindings(cwd, since, changed) {
+  const findings = [];
+  const isDate = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  for (const relPath of changed) {
+    if (!relPath.startsWith("docs/llm-wiki/") || !relPath.endsWith(".md")) continue;
+    if (isTemplateDoc(relPath) || isAppendOnlyLog(relPath)) continue;
+    let text;
+    try {
+      text = await readUtf8(path.join(cwd, ...relPath.split("/")));
+    } catch {
+      continue;
+    }
+    const now = parseFrontmatter(text).frontmatter;
+    if (!now || now.status !== "verified") continue;
+    const beforeText = fileAtRef(cwd, since || "HEAD", relPath);
+    const before = beforeText === null ? null : parseFrontmatter(beforeText).frontmatter;
+    if (before && before.status === "verified") continue;
+    const reviewer = typeof now.reviewed_by === "string" ? now.reviewed_by.trim() : "";
+    const problem = !reviewer
+      ? "reviewed_by is empty"
+      : !isDate(now.reviewed_at)
+        ? "reviewed_at is missing or not a date"
+        : before && before.reviewed_at === now.reviewed_at
+          ? `reviewed_at is still ${now.reviewed_at}, the value it had before the promotion`
+          : null;
+    if (!problem) continue;
+    findings.push({
+      severity: "warning",
+      rule: UNATTESTED_PROMOTION_RULE,
+      path: relPath,
+      message: `Became verified in this diff (was ${before ? before.status ?? "unset" : "absent"}), but its review stamp did not move with it: ${problem}. review --approve always writes a fresh stamp, so the status was likely edited by hand.`,
+      params: { before: before ? String(before.status ?? "unset") : "absent", problem }
+    });
+  }
+  return findings;
+}
+
 // Diff-anchored complement to the date-anchored drift: flags verified documents
 // whose referenced source changed in the current diff (working tree, or a
 // `--since <ref>` PR/CI baseline) while the document itself did not. Read-only;
@@ -1239,6 +1294,11 @@ export async function impactCommand(options) {
     && stampOnlyRuleEnabled(options)
     && !ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)) {
     findings.push(...applyRuleConfig(await stampOnlyFindings(cwd, stampOnlyExclusions, changedSet, options.since), options));
+  }
+  // Independent of impact.source_changed: a hand-promoted document is worth
+  // naming even in a project that has the reverse-impact gate switched off.
+  if (unattestedPromotionEnabled(options)) {
+    findings.push(...applyRuleConfig(await unattestedPromotionFindings(cwd, options.since, changed), options));
   }
 
   const result = findings.some((finding) => finding.severity === "blocked")
@@ -1824,7 +1884,12 @@ function resolveContentDocPath(docs, given) {
 // discipline in reverse: touches ONLY those fields, never body / source_files /
 // evidence / last_updated. Skips mojibake and re-scans the result for sensitive
 // content (blocking the write if it matches), like fix/drift.
-async function stampVerified(cwd, rel, reviewer, today) {
+//
+// With `digests` (config "sourceDigests": true, shadow mode) it also records what
+// the reviewer read: one `source_digests` entry per local anchor whose digest can
+// be computed (see source-digests.js). The list is replaced whole, so a stamp
+// never mixes digests from two reviews.
+async function stampVerified(cwd, rel, reviewer, today, { digests = false } = {}) {
   const abs = path.join(cwd, rel);
   const original = await readUtf8(abs);
   if (findMojibakeIndicators(original).length > 0) {
@@ -1838,6 +1903,11 @@ async function stampVerified(cwd, rel, reviewer, today) {
   inner = upsertFrontmatterScalar(inner, "reviewed_by", reviewer, split.eol);
   inner = upsertFrontmatterScalar(inner, "reviewed_at", today, split.eol);
   inner = syncStatusTag(inner, "verified");
+  if (digests) {
+    const entries = (await currentSourceDigests(cwd, parseFrontmatter(original).frontmatter ?? {}))
+      .filter((entry) => entry.digest !== null);
+    if (entries.length > 0) inner = upsertFrontmatterList(inner, "source_digests", entries.map(formatDigestEntry), split.eol);
+  }
 
   const newContent = `${split.bom}${split.open}${inner}${split.close}${split.body}`;
   if (newContent === original) return { changed: false, blocked: false, reason: "no change (already verified with this reviewer)" };
@@ -1957,7 +2027,7 @@ async function approveReview(options, { cwd, reviewed, docs, findingsByPath, app
       refused.push({ path: doc.path, reason: `unenriched scaffold: ${unenriched.map((finding) => finding.rule).join(", ")}` });
       continue;
     }
-    const stamp = await stampVerified(cwd, doc.path, reviewer, today);
+    const stamp = await stampVerified(cwd, doc.path, reviewer, today, { digests: options.sourceDigests === true });
     if (stamp.blocked) { blockedFindings.push(stamp.finding); refused.push({ path: doc.path, reason: stamp.reason }); continue; }
     if (!stamp.changed) { refused.push({ path: doc.path, reason: stamp.reason ?? "no change" }); continue; }
     approved.push(doc.path);

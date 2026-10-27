@@ -296,6 +296,17 @@ export async function loadProjectConfig(cwd) {
     }
   }
 
+  // Content-anchored freshness, shadow mode (source-digests.js): `review --approve`
+  // stamps source_digests only when this is true. A boolean, so "yes" or 1 is a
+  // config error instead of a stamp that silently never happens.
+  if ("sourceDigests" in parsed) {
+    if (typeof parsed.sourceDigests !== "boolean") {
+      errors.push(`${CONFIG_FILENAME}: "sourceDigests" must be true or false.`);
+    } else {
+      config.sourceDigests = parsed.sourceDigests;
+    }
+  }
+
   // Prompt profile (1.33.0): which rendering of the generated agent prompts and
   // skills this project wants. An unknown value is a config error, never a silent
   // fallback to `full` — a project that asked for the short text and quietly got
@@ -388,6 +399,9 @@ export function mergeConfigIntoOptions(options, config) {
   }
   if (Array.isArray(config.agentReviewers) && options.agentReviewers == null) {
     options.agentReviewers = [...config.agentReviewers];
+  }
+  if (typeof config.sourceDigests === "boolean" && options.sourceDigests == null) {
+    options.sourceDigests = config.sourceDigests;
   }
   if (config.checkRun && options.checkRunIgnore == null) {
     options.checkRunIgnore = [...config.checkRun.ignore];

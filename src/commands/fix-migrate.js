@@ -21,9 +21,10 @@ import { hasRequiredField, parseFrontmatter } from "../frontmatter.js";
 import { schemaRequiredFields } from "../frontmatter-schema.js";
 import { renderWikiDocumentTemplate, todayIsoDate } from "../template-renderer.js";
 import { applyRuleConfig, formatFinding, withText } from "./findings.js";
-import { scanEvidenceDrift } from "./scans.js";
+import { scanEvidenceDrift, verifiedSourceAnchors } from "./scans.js";
+import { compareSourceDigests } from "./source-digests.js";
 import { ruleSuppressed, SCAN_GATING_RULES } from "../governance.js";
-import { isAppendOnlyLog, listWikiContentDocs } from "./wiki-files.js";
+import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
 import {
   escapeRegex,
   extractMarkdownLinkTargets,
@@ -398,6 +399,50 @@ export async function fixCommand(options) {
   ]);
 }
 
+// `drift --anchor content` (shadow, P1-5): the date verdict next to the content
+// verdict for every verified document drift watches. Report-only by contract — it
+// is returned beside `findings`, never inside it, so it cannot change a result or
+// an exit code. A document without source_digests is counted as unstamped and
+// left out of the agree/disagree tally, because it has no content verdict yet.
+async function compareAnchors(cwd, driftedDocs, dateSuppressed) {
+  const documents = [];
+  for (const file of await listTargetMarkdown(cwd)) {
+    const rel = toPosix(path.relative(cwd, file));
+    if (isTemplateDoc(rel) || isAppendOnlyLog(rel)) continue;
+    const { frontmatter } = parseFrontmatter(await readUtf8(file));
+    if (!verifiedSourceAnchors(frontmatter)) continue;
+    const content = await compareSourceDigests(cwd, frontmatter);
+    const date = dateSuppressed ? "off" : (driftedDocs.has(rel) ? "stale" : "fresh");
+    const agree = content.verdict === "unstamped" || date === "off"
+      ? null
+      : (date === "stale") === (content.verdict === "changed");
+    documents.push({ path: rel, date, content: content.verdict, agree, changed: content.changed });
+  }
+  return {
+    documents,
+    agree: documents.filter((doc) => doc.agree === true).length,
+    disagree: documents.filter((doc) => doc.agree === false).length,
+    unstamped: documents.filter((doc) => doc.content === "unstamped").length
+  };
+}
+
+// A string body (rendered verbatim), not a bullet list, so the table survives.
+function formatContentAnchor(report) {
+  const lines = [
+    "- Shadow comparison only: it adds no finding and never changes the exit code.",
+    `- agree: ${report.agree} · disagree: ${report.disagree} · unstamped (no source_digests): ${report.unstamped}`
+  ];
+  const rows = report.documents.filter((doc) => doc.agree === false);
+  if (rows.length > 0) {
+    lines.push("", "| Document | Date anchor | Content anchor | Differing anchors |", "| --- | --- | --- | --- |");
+    for (const doc of rows) {
+      const differing = doc.changed.map((entry) => `\`${entry.key}\` (${entry.reason})`).join(", ") || "-";
+      lines.push(`| \`${doc.path}\` | ${doc.date} | ${doc.content} | ${differing} |`);
+    }
+  }
+  return lines.join("\n");
+}
+
 // ---- drift command (opt-in verified -> needs_review downgrade) ---------
 // The accepted scope is recorded in GATE_REVIEW.md ("Drift Downgrade Scope
 // Decision", Gate 9). drift reports evidence.stale drift on verified documents
@@ -507,6 +552,9 @@ export async function driftCommand(options) {
         ? "warning"
         : "pass";
   const suppressed = ruleSuppressed(options, SCAN_GATING_RULES.evidenceDrift);
+  const contentAnchor = options.anchor === "content"
+    ? await compareAnchors(cwd, new Set(driftedDocs), suppressed)
+    : null;
   const summary = [
     `run: ${downgrade ? "downgrade" : "report"}`,
     `evidence.stale: ${suppressed ? "off (scan skipped — governance mode or config)" : "on"}`,
@@ -515,6 +563,9 @@ export async function driftCommand(options) {
     `skipped: ${skipped.length}`,
     `blocked: ${blockedFindings.length}`
   ];
+  if (contentAnchor) {
+    summary.push(`anchor: content (shadow; agree ${contentAnchor.agree}, disagree ${contentAnchor.disagree}, unstamped ${contentAnchor.unstamped})`);
+  }
 
   return withText({
     command: "drift",
@@ -525,10 +576,12 @@ export async function driftCommand(options) {
     applied,
     planned,
     skipped,
+    ...(contentAnchor ? { contentAnchor } : {}),
     findings
   }, "LLM-WIKI Drift", [
     { title: "Summary", body: summary },
     { title: "Drift (evidence.stale)", body: driftFindings.map(formatFinding) },
+    ...(contentAnchor ? [{ title: "Content Anchor (shadow)", body: formatContentAnchor(contentAnchor) }] : []),
     { title: downgrade ? "Downgraded" : "Would Downgrade", body: changeList },
     { title: "Skipped", body: skipped },
     { title: "Blocked", body: blockedFindings.map(formatFinding) },
@@ -603,6 +656,32 @@ export function upsertFrontmatterScalar(inner, key, value, eol = "\n") {
   let end = inner.length;
   while (end > 0 && (inner[end - 1] === "\n" || inner[end - 1] === "\r")) end -= 1;
   return `${inner.slice(0, end)}${eol}${key}: ${value}`;
+}
+
+// Set a block-list key (`key:` followed by `  - item` lines): the existing block —
+// the key line plus every list item directly under it — is replaced whole, or the
+// block is appended at the end when the key is absent. Line-scanned with
+// indexOf, no regex over the frontmatter, and bytes outside the block are kept.
+// Used by `review --approve` to stamp source_digests.
+export function upsertFrontmatterList(inner, key, values, eol = "\n") {
+  const block = [`${key}:`, ...values.map((value) => `  - ${value}`)].join(eol);
+  const lines = [];
+  for (let start = 0; start <= inner.length;) {
+    let end = inner.indexOf("\n", start);
+    if (end === -1) end = inner.length;
+    lines.push({ start, end: end > start && inner[end - 1] === "\r" ? end - 1 : end });
+    start = end + 1;
+  }
+  const text = (line) => inner.slice(line.start, line.end);
+  const first = lines.findIndex((line) => text(line) === `${key}:` || text(line).startsWith(`${key}: `));
+  if (first === -1) {
+    let end = inner.length;
+    while (end > 0 && (inner[end - 1] === "\n" || inner[end - 1] === "\r")) end -= 1;
+    return `${inner.slice(0, end)}${eol}${block}`;
+  }
+  let last = first;
+  while (last + 1 < lines.length && /^\s*-\s/.test(text(lines[last + 1]))) last += 1;
+  return `${inner.slice(0, lines[first].start)}${block}${inner.slice(lines[last].end)}`;
 }
 
 // The status TAG and the status FIELD are two records of the same fact, and
