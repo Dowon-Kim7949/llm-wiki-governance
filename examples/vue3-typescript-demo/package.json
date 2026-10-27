@@ -1,0 +1,33 @@
+{
+  "name": "llm-wiki-vue3-typescript-demo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Runnable demo: LLM-WIKI Governance on a small Vue 3 + TypeScript task list.",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit",
+    "demo": "node scripts/demo.mjs walkthrough",
+    "demo:workspace": "node scripts/demo.mjs workspace",
+    "demo:enable-gate": "node scripts/demo.mjs enable-gate",
+    "demo:enrich": "node scripts/demo.mjs enrich",
+    "demo:change-source": "node scripts/demo.mjs change-source",
+    "demo:update-doc": "node scripts/demo.mjs update-doc"
+  },
+  "dependencies": {
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/tsconfig": "^0.9.1",
+    "llm-wiki-governance": "^1.35.0",
+    "typescript": "~6.0.0",
+    "vite": "^8.2.2",
+    "vue-tsc": "^3.3.11"
+  }
+}
