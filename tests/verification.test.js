@@ -4278,7 +4278,8 @@ test("HTML dashboard links resolve from the --out directory, not the repo root",
 
   const rebased = renderHtmlDashboard(result, { cwd: base, out });
   const expected = path.relative(path.dirname(out), path.join(base, "docs", "llm-wiki", "x.md")).split(path.sep).join("/");
-  assert.match(rebased, new RegExp(`<a href="${expected.replace(/[.]/g, "\\.")}"`));
+  // A substring check: a RegExp built from the path escaped "." and no other metacharacter.
+  assert.ok(rebased.includes(`<a href="${expected}"`), `expected an href to ${expected}`);
 
   // With no --out (stdout dashboard) the repo-root-relative path is unchanged.
   const plain = renderHtmlDashboard(result, {});

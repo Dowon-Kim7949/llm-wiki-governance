@@ -22,7 +22,7 @@ import path from "node:path";
 import { listMarkdownFiles, pathExists, toPosix } from "../files.js";
 import { readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
-import { extractMarkdownLinkTargets, resolveMarkdownLinkTarget } from "./references.js";
+import { extractMarkdownLinkTargets, nextStopTable, resolveMarkdownLinkTarget } from "./references.js";
 import { isAppendOnlyLog, isTemplateDoc, listWikiContentDocs } from "./wiki-files.js";
 import { estimateTokens } from "./retrieval.js";
 import { FRESHNESS_EXEMPT_DOC_TYPES } from "./scans.js";
@@ -172,11 +172,80 @@ function stripUnderscoreEmphasis(text) {
   }
 }
 
+// The heading helpers below replace four regexes that backtracked in quadratic
+// time on one long heading line (50,000 "<", "![" or spaces held validate for about
+// a second with the anchor rule on, growing with the square):
+//   closing hashes  /\s+#+\s*$/
+//   image, link     /!\[([^\]]*)\]\([^)]*\)/g, /\[([^\]]*)\]\([^)]*\)/g
+//   inline HTML     /<[^>]+>/g
+// Each scanner gives the same result as its regex (tests/linear-markdown-scan.test.js
+// compares them on random input). The tag remover is not an HTML sanitizer and does
+// not need to be one: its output only feeds headingSlug, which keeps letters,
+// numbers, "-", "_" and spaces, and is compared with link fragments, never rendered.
+const isWhitespace = (ch) => /\s/.test(ch);
+
+// /\s+#+\s*$/ removed: trailing whitespace, a run of "#", and the whitespace run
+// before it, at the very end of the text.
+export function trimClosingHashes(text) {
+  let end = text.length;
+  while (end > 0 && isWhitespace(text[end - 1])) end -= 1;
+  const hashesEnd = end;
+  while (end > 0 && text[end - 1] === "#") end -= 1;
+  if (end === hashesEnd) return text;
+  const hashesStart = end;
+  while (end > 0 && isWhitespace(text[end - 1])) end -= 1;
+  return end === hashesStart ? text : text.slice(0, end);
+}
+
+// `[label](destination)` -> `label`; with `image`, `![label](destination)` instead.
+export function keepLinkLabels(text, image) {
+  const opener = image ? "![" : "[";
+  if (!text.includes("](")) return text;
+  const bracketClose = nextStopTable(text, (ch) => ch === "]");
+  const parenClose = nextStopTable(text, (ch) => ch === ")");
+  let out = "";
+  let copied = 0;
+  let position = 0;
+  for (let open = text.indexOf(opener); open !== -1; open = text.indexOf(opener, position)) {
+    const labelStart = open + opener.length;
+    const close = bracketClose[labelStart];
+    const end = text[close] === "]" && text[close + 1] === "(" ? parenClose[close + 2] : text.length;
+    if (end < text.length) {
+      out += text.slice(copied, open) + text.slice(labelStart, close);
+      copied = end + 1;
+      position = end + 1;
+    } else {
+      position = open + 1;
+    }
+  }
+  return out + text.slice(copied);
+}
+
+// /<[^>]+>/g removed: from each "<" to the next ">" with at least one character between.
+export function dropInlineTags(text) {
+  let out = "";
+  let position = 0;
+  while (position < text.length) {
+    const open = text.indexOf("<", position);
+    if (open === -1) break;
+    const close = text.indexOf(">", open + 1);
+    if (close === -1) break;
+    if (close === open + 1) {
+      out += text.slice(position, close);
+      position = close;
+      continue;
+    }
+    out += text.slice(position, open);
+    position = close + 1;
+  }
+  return out + text.slice(position);
+}
+
 // Heading text as GitHub renders it for slugging: code span content kept literally,
 // link and image text kept, destinations, inline HTML, emphasis delimiters, and
 // code backticks dropped, closing #s trimmed.
 function headingPlainText(raw) {
-  const text = String(raw ?? "").replace(/\s+#+\s*$/, "");
+  const text = trimClosingHashes(String(raw ?? ""));
   const codes = [];
   let rest = "";
   let last = 0;
@@ -190,10 +259,7 @@ function headingPlainText(raw) {
     last = end;
   }
   rest += text.slice(last);
-  rest = rest
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/<[^>]+>/g, "");
+  rest = dropInlineTags(keepLinkLabels(keepLinkLabels(rest, true), false));
   rest = stripUnderscoreEmphasis(rest).replace(/`/g, "");
   return rest.replace(/(\d+)/g, (whole, position) => codes[Number(position)]).trim();
 }

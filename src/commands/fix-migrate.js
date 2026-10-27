@@ -558,9 +558,35 @@ export function splitFrontmatter(content) {
 }
 
 export function replaceFrontmatterScalar(inner, key, value) {
-  const pattern = new RegExp(`^(\\s*${escapeRegex(key)}:)[^\\r\\n]*$`, "m");
-  if (!pattern.test(inner)) return null;
+  const start = scalarLineStart(inner, key);
+  if (start === -1) return null;
+  // Sticky: the regex runs once, at the line already found, so it cannot backtrack
+  // across the document; the replacement string keeps its exact $-semantics.
+  const pattern = new RegExp(`^(\\s*${escapeRegex(key)}:)[^\\r\\n]*$`, "my");
+  pattern.lastIndex = start;
   return inner.replace(pattern, `$1 ${value}`);
+}
+
+// The first line start where /^\s*KEY:/m would match, or -1. Searching with that
+// regex retried `\s*` from every line of a long blank run and went quadratic. Keys
+// are frontmatter identifiers, which never start with whitespace, so the
+// whitespace run before the key is always taken whole.
+const LINE_TERMINATORS = new Set(["\n", "\r", " ", " "]);
+
+function scalarLineStart(inner, key) {
+  const marker = `${key}:`;
+  let lineStart = 0;
+  while (lineStart < inner.length) {
+    let keyAt = lineStart;
+    while (keyAt < inner.length && /\s/.test(inner[keyAt])) keyAt += 1;
+    if (inner.startsWith(marker, keyAt)) return lineStart;
+    // Every line start inside that whitespace run reaches the same keyAt and fails
+    // the same way, so the next candidate follows the next line terminator.
+    let next = keyAt;
+    while (next < inner.length && !LINE_TERMINATORS.has(inner[next])) next += 1;
+    lineStart = next + 1;
+  }
+  return -1;
 }
 
 // Set a scalar key: replace it in place when present, otherwise append it at the
@@ -572,8 +598,11 @@ export function replaceFrontmatterScalar(inner, key, value) {
 export function upsertFrontmatterScalar(inner, key, value, eol = "\n") {
   const replaced = replaceFrontmatterScalar(inner, key, value);
   if (replaced !== null) return replaced;
-  const trimmed = inner.replace(/[\r\n]+$/, "");
-  return `${trimmed}${eol}${key}: ${value}`;
+  // Trailing line breaks removed with a loop: /[\r\n]+$/ retried from every break
+  // in a long run and went quadratic (CodeQL js/polynomial-redos).
+  let end = inner.length;
+  while (end > 0 && (inner[end - 1] === "\n" || inner[end - 1] === "\r")) end -= 1;
+  return `${inner.slice(0, end)}${eol}${key}: ${value}`;
 }
 
 // The status TAG and the status FIELD are two records of the same fact, and

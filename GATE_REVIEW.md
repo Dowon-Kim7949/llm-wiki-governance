@@ -3126,6 +3126,50 @@ commit (no push, no tag).
 first), approval provenance from git history, a retrieval relevance set, and a second real
 benchmark. None is started.
 
+## Security Review Batch (2026-10-27 — built, unreleased)
+
+**Origin.** A maintainer-issued maintenance cycle on 1.35.0: review the open CodeQL alerts,
+fix what is real and document what is not, harden publish authentication (decided in
+"Publish Credential Cleanup" above), and add a runnable example. No release.
+
+**The seven open CodeQL alerts** (queried from the code-scanning API on 2026-10-27, all on
+`main` at `fb55190`). Every regex verdict below was reproduced, not inferred from the rule:
+
+| # | Rule | Location | Verdict | Action |
+| --- | --- | --- | --- | --- |
+| 1 | `js/polynomial-redos` | `src/commands/fix-migrate.js` trailing-break trim | Real, quadratic. Reached only by `review --approve`, a local write command. The key search in `replaceFrontmatterScalar`, which runs first on the same input, was quadratic too and was not flagged | Both rewritten as linear scans |
+| 2 | `js/polynomial-redos` | `src/commands/import-memory.js` stem trim | Quadratic, not exploitable: the input is a file name, capped at 255 bytes on common filesystems | Rewritten anyway (index scan) |
+| 3 | `js/polynomial-redos` | `src/commands/skills.js` agent-context strip | Quadratic, not reachable with hostile input: the prompt is generated from validated agent names | Rewritten anyway (one pass) |
+| 4, 5 | `js/incomplete-url-substring-sanitization` | `tests/verification.test.js` | False positive: negative assertions that a finding message does not mention an external URL; nothing is sanitized | Unchanged; dismiss as used in tests |
+| 6 | `js/incomplete-sanitization` | `tests/verification.test.js` | Not a security issue: a test built a RegExp from a path, escaping only `.` | Replaced by a substring check |
+| 7 | `js/incomplete-multi-character-sanitization` | `src/commands/wiki-hygiene.js` heading tag strip | False positive as injection: the text only feeds `headingSlug`, which keeps letters, numbers, `-`, `_` and spaces, and is compared with link fragments, never rendered. The same line was quadratic | Rewritten with the three other heading regexes for the time bound; the alert should close because the regex is gone, not because of a suppression |
+
+**Found during the review, not flagged by CodeQL, and the most exploitable.** The three link
+extraction regexes in `src/commands/references.js` (inline, reference definition, wiki link)
+run on every wiki document in default `validate` and `audit`, and a pull request controls that
+input. One 50,000-character line of `[` held `validate` for 4.3 s; 50,000 blank lines, 4.1 s;
+the cost grows with the square. That is a CI time sink for any adopter whose workflow runs
+only llm-wiki on pull-request content. Rewritten as scanners over precomputed next-stop tables.
+After the change, 500,000-character versions of every slow shape finish `validate` in under a
+second end to end.
+
+**Evidence that nothing moved.** Differential tests compare each scanner with the regex it
+replaced on seeded random input (`tests/linear-markdown-scan.test.js`); the time-bound cases
+in the same file take 4.7–34 s on the regexes and pass on the scanners. Across nine local
+wikis (300 files, 1,737 link targets, 946 wiki links, 5,062 heading anchors), the old and new
+functions return identical results and `validate` / `audit` JSON is byte-identical.
+
+**Kept on purpose, recorded as defects for a separate decision.** The scanners reproduce two
+false negatives of the regexes: an inline link glued to the end of the previous one is not
+extracted (`[a](b)[c](d)` yields only `b`), and a reference definition swallows the line after
+it, so consecutive definitions are checked every other one. Fixing either adds
+`markdown_link.missing` findings to adopters' builds, which is a contract change, not a
+hardening.
+
+**Not covered.** The black-box sweep timed `validate`, `audit` and `drift` on 31 body shapes
+and 21 frontmatter shapes; it did not cover other commands (prompt generation, release notes,
+graph), and no line-by-line audit of every regex in `src/` was done.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)
