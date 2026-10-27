@@ -48,7 +48,7 @@ test("bare help shows the general help without an error line", async () => {
   const { code, out, err } = await capture(["help"]);
   assert.equal(code, 0);
   assert.equal(err, "");
-  assert.match(out, new RegExp(`^llm-wiki v${PACKAGE_VERSION.replace(/\./g, "\\.")}`));
+  assert.ok(out.startsWith(`llm-wiki v${PACKAGE_VERSION}`), out.split("\n")[0]);
   assert.match(out, /--version/);
 });
 
