@@ -27,7 +27,8 @@ Python or Rust projects or npm-workspace repositories.
   file instead of a revision is refused too rather than read as a path; the run reports that
   it could not compute the change set (`changed.unavailable`, `impact.unavailable`). No
   revision git accepts starts with `-`. Upgrade if an MCP client, an agent, or code you do not
-  fully control can supply `since`.
+  fully control can supply `since`. Advisory:
+  [GHSA-qwp4-w8vx-r72r](https://github.com/Dowon-Kim7949/llm-wiki-governance/security/advisories/GHSA-qwp4-w8vx-r72r).
 - **`drift` trusts the review-stamp commit in fewer histories.** Re-checking the 1.39.0 fix
   found two that still hid a cited change the reviewer never saw. A body line starting with
   `reviewed_at:`, such as a fenced example, made a later edit of that line count as the stamp

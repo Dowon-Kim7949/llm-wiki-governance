@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - docs(security): N-25 보안 권고를 게시했고, 문서가 그것을 가리키게 했다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: CHANGELOG 2종(1.40.0 보안 항목에 권고 링크) · SECURITY 2종(MCP 절) · `docs/VALIDATION.md`(.ko) 공개 주장 표 한 행 · `outputs/distribution/launch-2026-10-28.md`(보안 문장의 조건부 표시 해제) · `outputs/distribution/CLAIMS.md`
+- summary: 1.40.0이 npm에 나간 뒤(04:45 UTC, provenance 있음) 보안 권고 GHSA-qwp4-w8vx-r72r를 게시했다(05:20 UTC). 영향 범위는 `llm-wiki-governance` 1.16.0~1.38.0(패치 1.40.0)과 옛 `@dowonk-7949/llm-wiki-standard` 1.5.0~1.15.1(패치 없음)이고, CVSS 3.1은 5.3이다. 저장소의 비공개 취약점 제보도 켰다. 그 전까지 `SECURITY.md`가 권장 채널로 안내하던 경로가 꺼져 있었다. 소개 초안의 보안 문장은 이 두 조건을 기다리며 대괄호로 묶여 있었는데, 이제 일반 문장이 됐다.
+- evidence: 권고 state `published` · 비공개 제보 `{"enabled":true}` · npm `latest` 1.40.0
+- caveats: 전역 GitHub Advisory Database에는 게시 직후 아직 없다(GitHub 검토 뒤에 반영되고, Dependabot 알림은 그다음이다). CVE는 요청하지 않았다. README에는 권고 링크를 넣지 않았다. 넣으면 README를 인용하는 위키 3종을 다시 승인해야 하는데, SECURITY와 CHANGELOG가 이미 가리키고 있다.
+
 ## 2026-10-28 - docs(deck): 1.40.0 배포 이후 정렬 — 발표 덱이 1.38에서 멈춰 있었고, MCP 슬라이드가 절대 표현을 쓰고 있었다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
