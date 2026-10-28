@@ -161,7 +161,8 @@ Every public surface was re-read against the source on 2026-10-26 (1.34.0). Verd
 | "Every citation is checked" | README | verified, with the existing limit (resolving ≠ true) | kept |
 | "Report a vulnerability through GitHub (preferred)" | SECURITY | **broken on 2026-10-28**: private vulnerability reporting is disabled on the repository | maintainer action: enable it in repository settings |
 | "Tested on Windows, macOS, Linux" | README | verified by CI for the 1.40.0 candidate: PR #8 at `4c37b20`, 12 of 12 jobs (three OS × Node 18.18 / 20 / 22 / 24) | may be said for 1.40.0; it describes CI tests, not production use on those platforms |
-| Security fix "shipped" | any post | forbidden until 1.40.0 is on npm and the advisory is public | posts carry it as a bracketed, conditional line |
+| Security fix "shipped" | any post | true since 2026-10-28: 1.40.0 on npm (provenance attested) and GHSA-qwp4-w8vx-r72r published | may be said, with the advisory link; never how it is triggered |
+| "Report a vulnerability through GitHub (preferred)" (row above) | SECURITY | fixed 2026-10-28: private vulnerability reporting is enabled | kept |
 
 **Added to Forbidden:** describing how the N-25 issue is triggered in any promotional text, and
 calling a release "fixed" or "secure" before the fixed package resolves from the registry.

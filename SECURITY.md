@@ -155,8 +155,9 @@ deployment. Understand its boundary before exposing it:
   stays a human CLI action; the `review` MCP tool exposes only the read-only
   backlog **list**. Before 1.40.0 this did not hold: the `since` argument of
   `validate` reached git unchecked, and a value git reads as an option could make
-  it write a file (see the 1.40.0 entry in [CHANGELOG.md](./CHANGELOG.md)). From
-  1.40.0 a revision that git could read as an option or a path is refused.
+  it write a file ([GHSA-qwp4-w8vx-r72r](https://github.com/Dowon-Kim7949/llm-wiki-governance/security/advisories/GHSA-qwp4-w8vx-r72r),
+  and the 1.40.0 entry in [CHANGELOG.md](./CHANGELOG.md)). From 1.40.0 a revision
+  that git could read as an option or a path is refused.
 - **`cwd` is a choice, not a boundary.** Every tool takes a `cwd`, and the server
   reads whatever its process can read there. A caller that can reach the server
   can read the wiki of any directory the server's user can read, not only the
