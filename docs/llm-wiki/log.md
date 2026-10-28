@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - docs(validation): 1.40.0 후보의 CI 매트릭스 결과를 기록했다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: `docs/VALIDATION.md`(.ko)의 실행 환경 문단과 공개 주장 표 한 행 · `outputs/distribution/CLAIMS.md` 한 행
+- summary: 바로 아래 항목을 쓸 때는 CI가 돌기 전이었다. PR #8의 `4c37b20`에서 18개 체크가 모두 통과했으므로(verify 12 = OS 셋 × Node 18.18/20/22/24, governance gate, consumer install 2, coverage, CodeQL 2), "이 브랜치는 Windows / Node 22뿐"이던 서술을 Recorded CI 결과로 바꿨다.
+- evidence: `gh pr checks 8` 18건 pass, PR mergeStateStatus `CLEAN`
+- caveats: 깨끗한 환경 재현은 여전히 로컬 Windows / Node 22에서만 했다. CI 결과는 이 문서를 위해 돌린 실행이 아니라 기록이다.
+
 ## 2026-10-28 - fix(security,drift,detector): N-25 재검증 — CLI는 영향 밖이었고, 스탬프 커밋과 TOML 배열 테이블에 결함이 더 있었다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

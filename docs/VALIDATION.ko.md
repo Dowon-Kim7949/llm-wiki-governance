@@ -14,7 +14,7 @@
 | **Proposed** | 구현하거나 측정하지 않았습니다. |
 | **Unknown** | 어느 쪽 근거도 없습니다. |
 
-이번 실행 환경은 Windows 11, Node.js 22.14.0, git 2.39.2입니다. CI 매트릭스(Ubuntu·Windows·macOS × Node 18.18/20/22/24)가 모든 PR에서 같은 테스트를 돌리지만, 이 문서를 쓸 때 이 브랜치에서는 아직 돌지 않았습니다. **다른 플랫폼은 이전 릴리스에 대해서는 Recorded, 이번 릴리스에 대해서는 CI가 돌기 전까지 Unknown**입니다.
+이번 실행 환경은 Windows 11, Node.js 22.14.0, git 2.39.2입니다. 그 뒤 CI 매트릭스(Ubuntu·Windows·macOS × Node 18.18/20/22/24)가 PR #8의 커밋 `4c37b20`에서 같은 테스트를 돌렸습니다(2026-10-28). 12개 잡이 모두 통과했고, governance gate와 Ubuntu·Windows의 consumer install도 통과했습니다. 이것은 이 문서를 위해 돌린 실행이 아니라 **Recorded** CI 결과입니다. 워크스루는 `npm test` 안에서 돌기 때문에 그 매트릭스의 모든 플랫폼에서 돌았습니다.
 
 ## 전부 재현하기
 
@@ -95,7 +95,7 @@ README의 각 주장이 무엇에 기대는지 정리했습니다. 근거가 여
 | 주장 | 근거 | 근거 내용과 한계 |
 | --- | --- | --- |
 | 런타임 의존성 없음 | 실행 | 패키지한 tarball을 깨끗한 환경에 설치했고 `dependencies`가 비어 있습니다 |
-| Node.js ≥ 18.18, Windows·macOS·Linux | CI 기록 | 이전 릴리스의 CI 매트릭스. 이 브랜치는 CI가 돌기 전까지 Windows / Node 22뿐입니다 |
+| Node.js ≥ 18.18, Windows·macOS·Linux | CI 기록 | PR #8(`4c37b20`)에서 12개 잡 모두 통과. OS 셋 × Node 18.18/20/22/24 |
 | Node·Python·Go·Rust·JVM·PHP·Ruby·.NET·모바일·인프라 감지 | 실행한 테스트. Vue·Python·React + Node는 스크립트 워크스루도 있음 | 감지는 프레임워크 지원이 아닙니다(위 스택 표) |
 | 에이전트 여섯 종의 어댑터 제공 | 실행한 테스트 | 파일이 생성되고 위키를 가리키는지까지 확인했습니다 |
 | 에이전트가 그 어댑터와 스킬을 따른다 | **검증하지 않음** | 모델을 돌리지 않았습니다 |

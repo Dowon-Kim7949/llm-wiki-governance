@@ -18,9 +18,11 @@ evidence labels below say which claims were run and which are only recorded.
 | **Unknown** | No evidence either way. |
 
 Runs for this page: Windows 11, Node.js 22.14.0, git 2.39.2. The CI matrix (Ubuntu,
-Windows, macOS × Node 18.18 / 20 / 22 / 24) runs the same tests on every pull request,
-but it had not run on this branch when this page was written: **other platforms are
-Recorded for earlier releases and Unknown for this one** until CI runs.
+Windows, macOS × Node 18.18 / 20 / 22 / 24) then ran the same tests on pull request #8 at
+commit `4c37b20` (2026-10-28). All 12 jobs passed, and so did the governance gate and the
+consumer install on Ubuntu and Windows. Those are **Recorded** CI results, not runs made for
+this page. The walkthroughs run inside `npm test`, so they ran on every platform in that
+matrix.
 
 ## Reproduce everything
 
@@ -143,7 +145,7 @@ class listed for it.
 | Claim | Evidence | Basis and limit |
 | --- | --- | --- |
 | No runtime dependencies | Executed | Packed tarball installed clean; `dependencies` is empty |
-| Node.js ≥ 18.18; Windows, macOS, Linux | Recorded CI | CI matrix on earlier releases; this branch: Windows / Node 22 until CI runs |
+| Node.js ≥ 18.18; Windows, macOS, Linux | Recorded CI | 12 of 12 jobs on PR #8 (`4c37b20`): three OS × Node 18.18 / 20 / 22 / 24 |
 | Detects Node, Python, Go, Rust, JVM, PHP, Ruby, .NET, mobile, infra | Executed tests; scripted walkthroughs for Vue, Python, React + Node | Detection is not framework support (stack matrix above) |
 | Ships adapters for six agents | Executed tests | The files are written and point at the wiki |
 | Agents follow those adapters and skills | **Not verified** | No model was run |
