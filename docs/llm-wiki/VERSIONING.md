@@ -87,6 +87,12 @@ source_digests:
   감지가 판단하지 못한 상태를 "차이"로 보고하던 것이라 정보가 없었다. 실제로 엇갈리는 type은 계속
   warning이다. 감지 결과(`detection.projectType`)는 의도적으로 바꾸지 않았다 — 바꾸면 type 없이 초기화된
   workspace 저장소의 필수 문서가 바뀌어 빌드가 깨질 수 있고, 그것은 major 판단이 필요한 변경이다.
+- **같은 버전에 들어간 수정 둘(재검증에서 추가).** 보안 수정(N-25)은 git이 옵션이나 경로로 읽었을
+  `since`만 거부하므로 정상 입력의 동작은 바뀌지 않는다. 그런 값은 이제 `changed.unavailable`·
+  `impact.unavailable`로 끝난다. `drift` 스탬프 커밋 판정의 보수화(N-26·N-27)는 `evidence.stale`을 더
+  낼 수만 있다. squash·rebase를 쓰는 저장소의 `drift --strict`를 새로 실패시킬 수 있으므로 CHANGELOG에
+  동작 변경으로 이름 붙였다. 둘 다 이미 약속한 계약(읽기 전용 MCP, "축소는 숨기지 않는다")을 되살리는
+  결함 수정이라 MINOR 판정을 바꾸지 않는다. 1.39.0은 보안 수정이 빠져 있어 단독으로 배포하지 않는다.
 
 ## Evidence
 

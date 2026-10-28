@@ -216,9 +216,12 @@ function tomlSectionName(content, sections) {
   let section = null;
   const names = new Map();
   for (const line of String(content).split(/\r?\n/)) {
-    const header = line.match(/^\s*\[([^\]]+)\]\s*(?:#.*)?$/);
+    // `[[bin]]` (an array of tables) is a header too. It used to fall through, so a
+    // `name` under it was credited to the section before it; keyed with its brackets,
+    // it can never be one of the wanted sections.
+    const header = line.match(/^\s*(\[\[?)([^[\]]+)\]\]?\s*(?:#.*)?$/);
     if (header) {
-      section = header[1].trim();
+      section = header[1] === "[[" ? `[[${header[2].trim()}]]` : header[2].trim();
       continue;
     }
     const value = line.match(/^\s*name\s*=\s*(["'])([^"'\n]+)\1\s*(?:#.*)?$/);

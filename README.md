@@ -75,7 +75,7 @@ Keep them: this tool generates them and points them at the wiki. An instruction 
 | `mcp` | Run the read-only MCP server. |
 | `fix` · `migrate` · `archive-log` · `handoff` · `prompt` · `check-run` · `harness-health` · `import-memory` | Scoped autofix, contract upgrade, change-log volumes, agent prompts, and harness checks. |
 
-Writes happen only with an explicit `--write`, `--apply`, or `--approve`. `--lang ko` gives Korean findings and `--doc-lang ko` generates Korean wiki content. The package can be imported instead of shelled out (`import { commands, run } from "llm-wiki-governance"`). `npx llm-wiki-governance help <command>` is the full offline reference; `--version` prints the installed version.
+Writes happen only with an explicit `--write`, `--apply`, `--approve`, `drift --downgrade`, or `--out <file>`; everything else, and every MCP tool, only reads. `--lang ko` gives Korean findings and `--doc-lang ko` generates Korean wiki content. The package can be imported instead of shelled out (`import { commands, run } from "llm-wiki-governance"`). `npx llm-wiki-governance help <command>` is the full offline reference; `--version` prints the installed version.
 
 ## Run it in CI
 
@@ -101,7 +101,7 @@ One engine, three policy levels, switchable at any time with `{ "governance": { 
 { "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-Every tool is read-only; promotion to `verified` stays a CLI action. The server has no authentication, so keep it a local subprocess ([SECURITY.md](./SECURITY.md#mcp-server-trust-model)).
+Every tool is read-only; promotion to `verified` stays a CLI action. The server has no authentication and its `cwd` argument is not a sandbox, so keep it a local subprocess ([SECURITY.md](./SECURITY.md#mcp-server-trust-model)). Versions before 1.40.0 could be made to write a file through `validate`; upgrade.
 
 ## What it takes to run
 
@@ -119,6 +119,7 @@ Runs on Windows, macOS, and Linux with no runtime dependencies. It detects Node,
 | are blocked by `sensitive.redacted` | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you) |
 | want every command, option, and exit code | `help <command>` · [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) (Korean prose) |
 | want the trust model, or to report a vulnerability | [SECURITY.md](./SECURITY.md) |
+| want security fixes | They ship in the latest release only: `npm install -D llm-wiki-governance@latest`, then check `--version`. |
 | want worked examples | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) (Korean prose) |
 | want history, direction, or the decision record | [CHANGELOG.md](./CHANGELOG.md) · [ROADMAP.md](./ROADMAP.md) · [GATE_REVIEW.md](./GATE_REVIEW.md) |
 

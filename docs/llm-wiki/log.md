@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - fix(security,drift,detector): N-25 재검증 — CLI는 영향 밖이었고, 스탬프 커밋과 TOML 배열 테이블에 결함이 더 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/git.js`(리비전 뒤 `--`, `commitsTouchingKey`·`committedBy` 신설, `lastCommitTouchingKey` 제거, `isPathIgnored`에 `--`) · `src/release-notes.js`(range 뒤 `--`) · `src/commands/scans.js`(`reviewStamp`) · `src/detector.js`(`tomlSectionName`의 배열 테이블) · 테스트 4파일(+9) · CHANGELOG 2종 · SECURITY 2종 · README 2종 · ROADMAP 2종 · `docs/VALIDATION.md`(.ko) · 신규 `docs/USABILITY_PROTOCOL.md`(.ko) · 위키 `PUBLIC_API`·`ARCHITECTURE_CONVENTIONS`·`DOMAIN_FEATURES`·`HARNESS_GOVERNANCE_ROADMAP`(59 정정, 60~63 신설)·`VERSIONING`
+- summary:
+  - N-25를 독립적으로 다시 검토했다. 배포 tarball 69개를 인터페이스별로 확인했다. CLI는 파서가 `-`로 시작하는 값을 거부해서 영향이 없었고, 영향받은 것은 MCP와 프로그래밍 API다(`llm-wiki-governance` 1.16.0~1.38.0, 옛 패키지 1.5.0~1.15.1). 앞선 기록의 "CLI 세 명령도 같다"는 틀린 서술이라 정정했다.
+  - 회귀 테스트에 측정 결함이 있었다. 정해진 파일 이름만 확인해서 `release-notes` 경로를 놓쳤는데, 이를 고쳤다.
+  - 정확성 결함도 하나 막았다. 리비전 뒤에 `--`가 없어서 파일 이름을 준 `since`가 pathspec으로 읽히고, 틀린 변경 집합이 오류 없이 반환됐다. 이제 `--`를 붙인다.
+  - N-20 재검증에서, 스탬프 커밋으로 리뷰보다 늦은 커밋이 골라지는 이력 두 가지(본문 예시 줄, 리뷰 브랜치의 squash·rebase)를 재현하고 막았다.
+  - N-24의 줄 단위 리더가 배열 테이블 헤더(대괄호를 두 겹 쓰는 `bin` 같은 헤더)를 섹션 경계로 읽지 못하던 결함을 고쳤다. 처음 쓴 위키 서술에는 그 헤더를 대괄호째 적어서 `wiki_link.missing` 5건이 났고, `validate --strict`가 그것을 잡아 표현을 바꿨다.
+  - 승인 게이트는 모드 floor가 심각도를 낮춘 규칙을 복원하지 않는다. floor에 그런 규칙이 새로 생기면 실패하는 가드 테스트를 넣었다.
+- evidence: 가드 테스트 7개 중 5개가 가드 없는 트리에서 실패하고 수정본에서는 통과 · 새 drift 테스트 2건이 `57ec108` 트리에서 실패 · TOML 테스트가 수정 전에는 `cli-tool`을 반환 · 깨끗한 환경(tarball 설치, 격리한 HOME·npm·git 설정)에서 README Quick Start와 워크스루 4종 통과 · 전체 테스트 수는 최종 실행 결과로 CHANGELOG에 기록
+- caveats:
+  - MCP `cwd`의 신뢰 경계와 git 로컬 설정은 고치지 않고 `SECURITY.md`에 문서화했다.
+  - 리뷰 당일의 squash·rebase는 여전히 위음성이다(테스트로 고정).
+  - 이 기록 시점에 CI 매트릭스는 아직 돌지 않았다.
+  - 재현 세부를 담은 내부 보안 평가와 보안 권고 초안은 이 저장소에 두지 않았다.
+
 ## 2026-10-28 - fix(security): 읽기 전용 MCP 서버가 git 옵션 주입으로 파일을 썼다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

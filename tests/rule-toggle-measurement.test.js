@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { initCommand, nextCommand, reviewCommand, statsCommand, validateCommand } from "../src/commands.js";
 import { scanEnrichment } from "../src/commands/scans.js";
-import { withRulesMeasured } from "../src/governance.js";
+import { GOVERNANCE_MODES, getGovernancePolicy, withRulesMeasured } from "../src/governance.js";
 import { normalizeOptions, resolveOptions } from "../src/index.js";
 
 function hasGit() {
@@ -261,4 +261,21 @@ test("stats lists verified documents that still carry scaffold placeholder text,
   const result = await statsCommand(await cliOpts(clean));
   assert.deepEqual(result.stats.verifiedNotEnriched, []);
   assert.doesNotMatch(result.text, /verified_not_enriched/, "the line is printed only when there is something to say");
+});
+
+// review restores, for its approval gate, only the rules a mode switched OFF. A
+// floor that DEMOTES a rule (error → warning) is not restored, so a demoted
+// document-level rule would let lite or standard approve what strict refuses — the
+// N-21 class again, by another route. Today the only demotions cannot decide the
+// approval of a needs_review document: structure.required_doc names a document that
+// does not exist, and impact.source_changed concerns verified documents. A new
+// demotion has to be added here, with its reason, or restored by review.
+test("a mode floor demotes a rule only where review's approval cannot depend on it", () => {
+  const demotable = new Set(["structure.required_doc", "impact.source_changed"]);
+  for (const mode of GOVERNANCE_MODES) {
+    for (const [rule, severity] of Object.entries(getGovernancePolicy(mode).rules)) {
+      if (severity === "off") continue;
+      assert.ok(demotable.has(rule), `${mode} floor sets ${rule} to ${severity}`);
+    }
+  }
 });

@@ -11,7 +11,7 @@ import { listMarkdownFiles, pathExists, toPosix } from "../files.js";
 import { findMojibakeIndicators, hasUtf8Bom, readTextAuto, readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
-import { commitAtEndOf, fileAtRef, fileAtRefFromCwd, fileChangedSince, lastCommitTouchingKey, lineRangeChangedBetween, lineRangeChangedSince, pathsChangedSince } from "../git.js";
+import { commitAtEndOf, committedBy, commitsTouchingKey, fileAtRef, fileAtRefFromCwd, fileChangedSince, lineRangeChangedBetween, lineRangeChangedSince, pathsChangedSince } from "../git.js";
 import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
@@ -805,10 +805,14 @@ export function driftTargets(frontmatter, options = {}) {
 // out-of-range line), no review-day snapshot, no stamp commit (the stamp is not
 // committed, or does not match what is committed), a file absent on either side, a
 // heading that matches zero or several headings — falls back to the file-level
-// check. Known limits that remain: a cited region changed only by commits the
-// date check cannot see (the late merge with no later edit, N-15) is not reported
-// at all, and a review written on one day but committed later is compared against
-// that later commit. Best-effort: silently skips when git is unavailable.
+// check, and so does a stamp commit dated after the review day (a review committed
+// later, or one squashed or rebased onto a newer branch). Known limits that remain:
+// a cited region changed only by commits the date check cannot see (the late merge
+// with no later edit, N-15) is not reported at all, and a squash or rebase on the
+// review day itself is still taken to be what was reviewed. Git history cannot name
+// the files a reviewer looked at; both baselines are approximations of it, and the
+// scan only ever narrows when they agree. Best-effort: silently skips when git is
+// unavailable.
 // Template skeletons are out of scope (N-14, 2026-08-06): review cannot
 // re-stamp them, so flagging them produced findings with no way to clear them.
 export async function scanEvidenceDrift(cwd, options = {}) {
@@ -947,19 +951,39 @@ export async function scanEvidenceDriftDetailed(cwd, options = {}) {
 }
 
 // The commit that wrote <rel>'s current review stamp: the newest commit in HEAD's
-// history whose diff touches its `<key>:` line, accepted only if the document as
-// committed there carries the same <key> value as the working tree. null when that
-// cannot be established — the stamp was never committed, the committed one differs
-// (an uncommitted re-stamp), or git fails — and the caller then refuses to narrow.
-// A later same-value re-stamp does not move it, so it can only be older than the
-// last review, which keeps more findings, not fewer.
+// history that changed the frontmatter <key> to the value the working tree carries,
+// or null when that cannot be established — the stamp was never committed, the
+// committed one differs (an uncommitted re-stamp), git fails, or the commit is dated
+// after the review day — and the caller then refuses to narrow. A later same-value
+// re-stamp does not move it, so it can only be older than the last review, which
+// keeps more findings, not fewer.
+//
+// Two ways the stamp commit read later than the review, both reproduced 2026-10-28
+// and both hiding a cited change the reviewer never saw:
+//   - `-G^<key>:` also matches a body line, such as a fenced example, so editing
+//     one named that later commit. A candidate counts only if its parent carried a
+//     different value (or no file).
+//   - a squash or rebase writes the stamp into a new commit on top of whatever the
+//     target branch held by then, so that commit's history includes changes made
+//     after the review. Such a commit is dated after the review day, and a stamp
+//     commit dated after the review day is not trusted to name what was reviewed.
+// What remains: a squash or rebase on the review day itself still counts, the
+// date-granularity limit every date check here shares.
 export function reviewStamp(cwd, rel, key, value) {
-  const sha = lastCommitTouchingKey(cwd, rel, key);
-  if (!sha) return null;
-  const committed = fileAtRefFromCwd(cwd, sha, rel);
-  if (committed === null) return null;
-  const frontmatter = parseFrontmatter(committed).frontmatter;
-  return frontmatter && frontmatter[key] === value ? sha : null;
+  const candidates = commitsTouchingKey(cwd, rel, key);
+  if (!candidates) return null;
+  const valueAt = (ref) => {
+    const committed = fileAtRefFromCwd(cwd, ref, rel);
+    return committed === null ? null : parseFrontmatter(committed).frontmatter?.[key] ?? null;
+  };
+  for (const sha of candidates) {
+    // Newest first: the first candidate that does not carry the value means the
+    // value the working tree reads was never committed after it.
+    if (valueAt(sha) !== value) return null;
+    if (valueAt(`${sha}^`) === value) continue;
+    return committedBy(cwd, sha, value) ? sha : null;
+  }
+  return null;
 }
 
 // Whether a citation's regions moved between the review stamp commit and HEAD:

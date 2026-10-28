@@ -236,6 +236,74 @@ test("squash and rebase merges of a branch reviewed before merging are over-repo
   }
 });
 
+// The other direction (2026-10-28 re-check): the review is on its own branch, and the
+// target branch changes the cited text after the review, unseen by the reviewer.
+// A merge commit keeps the stamp commit, so the change is after it by ancestry. A
+// squash or a rebase writes the stamp into a new commit on top of that change, and
+// both baselines then contain it; the stamp commit is dated after the review day,
+// which is now a reason not to narrow.
+async function reviewBranchLandsOnUnseenChange(evidence, mode, landAt = "2026-02-03T12:00:00+0000") {
+  const r = await repo();
+  r.commit("init", "2026-01-01T12:00:00+0000");
+  r.git(["checkout", "-q", "-b", "review"]);
+  await r.review([evidence], "2026-02-01T06:00:00+0000");
+  r.git(["checkout", "-q", "main"]);
+  await r.changeCited();
+  r.commit("main: after the review, unseen", "2026-02-01T08:00:00+0000");
+  if (mode === "merge") r.git(["merge", "-q", "--no-ff", "-m", "merge review", "review"], landAt);
+  if (mode === "squash") {
+    r.git(["merge", "-q", "--squash", "review"]);
+    r.commit("squash review", landAt);
+  }
+  if (mode === "rebase") r.git(["cherry-pick", "review"], landAt);
+  await r.changeUnrelated();
+  r.commit("unrelated edit", "2026-03-02T12:00:00+0000");
+  return r;
+}
+
+test("a review branch merged, squashed or rebased onto a change it never saw is not narrowed away", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  for (const evidence of [SECTION, LINE]) {
+    const merged = await reviewBranchLandsOnUnseenChange(evidence, "merge");
+    assert.deepEqual(await verdict(merged.cwd), { reference: evidence, narrowed: false }, `merge ${evidence}`);
+    for (const mode of ["squash", "rebase"]) {
+      const r = await reviewBranchLandsOnUnseenChange(evidence, mode);
+      // Before this re-check both read { reference: null, narrowed: true }.
+      assert.deepEqual(await verdict(r.cwd), { reference: "docs/guide.md", narrowed: false }, `${mode} ${evidence}`);
+    }
+  }
+});
+
+test("a squash on the review day itself is still taken as reviewed: the date-granularity limit", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  // Pinned so that a change to it is deliberate. Every date check here treats the
+  // whole review day as seen; the stamp commit is dated that day, so nothing
+  // distinguishes this history from one where the reviewer saw the change.
+  const r = await reviewBranchLandsOnUnseenChange(SECTION, "squash", "2026-02-01T10:00:00+0000");
+  assert.deepEqual(await verdict(r.cwd), { reference: null, narrowed: true });
+});
+
+test("a body line that starts with reviewed_at: does not stand in for the review stamp", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  // `git log -G^reviewed_at:` matched the fenced example, so editing it named a
+  // commit after the unseen change as the one that wrote the stamp.
+  for (const evidence of [SECTION, LINE]) {
+    const r = await repo();
+    r.commit("init", "2026-01-01T12:00:00+0000");
+    const example = (value) => ["Example:", "", "```yaml", `reviewed_at: ${value}`, "```"].join("\n");
+    await writeFile(path.join(r.cwd, ...DOC.split("/")), wikiDoc("2026-02-01", [evidence]).replace("Body.", example("2025-01-01")), { encoding: "utf8" });
+    r.commit("review", "2026-02-01T06:00:00+0000");
+    await r.changeCited();
+    r.commit("same day, after the review", "2026-02-01T10:00:00+0000");
+    await r.edit(DOC, "reviewed_at: 2025-01-01", "reviewed_at: 2025-01-02");
+    r.commit("fix the example", "2026-02-05T12:00:00+0000");
+    await r.changeUnrelated();
+    r.commit("unrelated edit", "2026-03-02T12:00:00+0000");
+    // Before this re-check both read { reference: null, narrowed: true }.
+    assert.deepEqual(await verdict(r.cwd), { reference: evidence, narrowed: false }, evidence);
+  }
+});
+
 test("an edit outside the cited region still narrows when both baselines agree", async (t) => {
   if (!hasGit()) { t.skip("git not available"); return; }
   for (const evidence of [SECTION, LINE]) {

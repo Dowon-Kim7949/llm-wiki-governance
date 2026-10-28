@@ -98,3 +98,16 @@ test("the project name comes from pyproject.toml or Cargo.toml when there is no 
   const unnamed = await project({ "pyproject.toml": "[tool.ruff]\nline-length = 100\n" });
   assert.equal((await detectProject(unnamed)).projectName, path.basename(unnamed), "no name: the directory, as before");
 });
+
+test("a name under an array-of-tables header is not the project name", async () => {
+  // `[[bin]]` did not match the header pattern, so the line below it was read as part
+  // of the section before it, and a binary's name became the package's (2026-10-28).
+  const cargo = await project({ "Cargo.toml": '[package]\nversion = "0.1.0"\n\n[[bin]]\nname = "cli-tool"\npath = "src/main.rs"\n' });
+  assert.equal((await detectProject(cargo)).projectName, path.basename(cargo));
+
+  const poetry = await project({ "pyproject.toml": '[tool.poetry]\nversion = "1.0.0"\n\n[[tool.poetry.source]]\nname = "private-mirror"\n' });
+  assert.equal((await detectProject(poetry)).projectName, path.basename(poetry));
+
+  const named = await project({ "Cargo.toml": '[[bin]]\nname = "cli-tool"\n\n[package]\nname = "ledger"\r\n' });
+  assert.equal((await detectProject(named)).projectName, "ledger", "the section after an array table, and CRLF, still read");
+});

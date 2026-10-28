@@ -4,13 +4,14 @@ export function runGit(cwd, args) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
 
-// A revision that came from a caller (a --since value, an MCP tool argument) must
-// not start with "-": git reads it as an option, and `--output=<path>` makes `git
-// diff`, `git log` and `git show` write a file. Reproduced 2026-10-28 through the
-// MCP validate tool (`changed: true, since: "--output=<path>"`), on a server whose
-// contract is read-only. No ref name or revision expression git accepts starts with
-// "-" (`@{-1}` starts with "@"), so nothing legitimate is refused. Throws, and every
-// caller already treats a git failure as "unknown".
+// A revision that came from a caller (an MCP tool argument, a programmatic `since`)
+// must not start with "-": git reads it as an option, and some git options write
+// files. Found 2026-10-28 through the MCP validate tool, whose contract is
+// read-only; the CLI was never exposed because its parser refuses a "-"-prefixed
+// --since value. No ref name or revision expression git accepts starts with "-"
+// (`@{-1}` starts with "@"), so nothing legitimate is refused. Callers also end the
+// revision with "--" so it cannot be read as a path. Throws, and every caller
+// already treats a git failure as "unknown".
 export function assertRevision(ref) {
   if (typeof ref !== "string" || ref.length === 0 || ref.startsWith("-")) {
     throw new Error(`not a git revision: ${JSON.stringify(ref)}`);
@@ -123,7 +124,7 @@ export function modifiedTrackedFiles(cwd) {
 
 export function isPathIgnored(cwd, relPath) {
   try {
-    runGit(cwd, ["check-ignore", "-q", relPath]);
+    runGit(cwd, ["check-ignore", "-q", "--", relPath]);
     return true;
   } catch {
     return false;
@@ -158,8 +159,11 @@ export function changedFiles(cwd, sinceRef) {
   // reported nothing to update. `--exclude-standard` keeps gitignored build
   // output and local scratch files out of the comparison.
   const untracked = toLines(runGit(cwd, ["ls-files", "--others", "--exclude-standard"]));
+  // The trailing "--" makes git take <sinceRef> as a revision or fail. Without it a
+  // value naming a file and no ref was read as a pathspec, and the run compared
+  // that one file against the index — a wrong change set, reported as a right one.
   const changed = sinceRef
-    ? [...toLines(runGit(cwd, ["diff", "--name-only", assertRevision(sinceRef)])), ...untracked]
+    ? [...toLines(runGit(cwd, ["diff", "--name-only", assertRevision(sinceRef), "--"])), ...untracked]
     : [...toLines(runGit(cwd, ["diff", "--name-only", "HEAD"])), ...untracked];
   return [...new Set(changed)];
 }
@@ -172,7 +176,7 @@ export function changedFiles(cwd, sinceRef) {
 // unquoted. An untracked file is not in this diff, so a rename is seen once the
 // new path is staged or committed. Best-effort: throws only if git fails.
 export function renamedPaths(cwd, sinceRef) {
-  const out = runGit(cwd, ["diff", "--name-status", "-M", "-z", assertRevision(sinceRef || "HEAD")]);
+  const out = runGit(cwd, ["diff", "--name-status", "-M", "-z", assertRevision(sinceRef || "HEAD"), "--"]);
   const parts = out.split("\0");
   const renames = new Map();
   for (let index = 0; index < parts.length; index += 1) {
@@ -217,18 +221,30 @@ export function commitAtEndOf(cwd, sinceDate) {
   }
 }
 
-// The newest commit in HEAD's history whose diff of the CWD-relative <file> adds or
-// removes a line starting with `<key>:` — for a wiki document and its review key,
-// the commit that wrote the review stamp it carries now — or null when there is
-// none or git fails. Callers must still check that the file at that commit holds
-// the stamp they expect: a stamp that was never committed has no such commit, and
-// this then names an older one.
-export function lastCommitTouchingKey(cwd, file, key) {
+// The commits in HEAD's history, newest first, whose diff of the CWD-relative <file>
+// adds or removes a line starting with `<key>:`, or null when git fails. These are
+// CANDIDATES for the commit that wrote a document's review stamp: `-G` matches any
+// such line, so a fenced example in the body, or a commit that rewrote the stamp
+// line without changing its value, is listed too. Callers must compare the value
+// at each candidate and at its parent to find the one that wrote it.
+export function commitsTouchingKey(cwd, file, key) {
   try {
-    const sha = runGit(cwd, ["log", "-1", "--format=%H", `-G^${key}:`, "HEAD", "--", file]).trim();
-    return sha || null;
+    const out = runGit(cwd, ["log", "--format=%H", `-G^${key}:`, "HEAD", "--", file]).trim();
+    return out ? out.split("\n").map((line) => line.trim()).filter(Boolean) : [];
   } catch {
     return null;
+  }
+}
+
+// True when commit <sha> has a committer date no later than the END of sinceDate —
+// the clock and boundary every other date check here uses, evaluated by git so the
+// time zone is the same one. False when it is later, and when git fails.
+export function committedBy(cwd, sha, sinceDate) {
+  try {
+    const out = runGit(cwd, ["rev-list", "-1", `--before=${sinceDate} 23:59:59`, assertRevision(sha), "--"]).trim();
+    return out === sha;
+  } catch {
+    return false;
   }
 }
 

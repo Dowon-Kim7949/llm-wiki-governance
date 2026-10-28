@@ -45,7 +45,7 @@ export function collectCommits(cwd, { since = null } = {}) {
     }
 
     const args = ["log", "--no-merges", "--pretty=format:%h%x1f%s"];
-    if (range) args.push(range);
+    if (range) args.push(range, "--");
     else args.push("--max-count=50");
 
     const out = runGit(cwd, args).trim();

@@ -40,6 +40,31 @@ Each walkthrough works in a temporary git repository, prints each command's real
 output, ends with a PASS/FAIL table, and deletes the repository (`--keep` keeps it).
 Expected: `All N checks passed.` and exit code 0.
 
+## Clean-environment reproduction (Verified)
+
+The runs above use the checkout's own `bin/llm-wiki.js`. A second run checked the
+package a user would install: `npm pack` (69 files, 325,944 bytes), installed into a
+new project outside the repository with an empty `HOME`, npm cache and npm config,
+and no global or system git config. Against that installed copy:
+
+- `--version` printed `1.40.0`, and the installed package declares no dependencies.
+- The README Quick Start ran as written: `quickstart --write --type frontend --agent
+  claude` on an existing project, and `quickstart --write --greenfield` in an empty
+  repository, then `validate`, `review`, `status`, `next`, `stats` and `explain`.
+  Every command exited 0.
+- All four walkthroughs passed with `--cli` pointing at the installed package, run
+  from a copy of `examples/` outside the repository.
+
+Kept apart, because they test the example applications rather than this tool:
+`python -I -m py_compile` on the FastAPI sources, `node --check` on the Express
+server, the greenfield implementation's own tests (`node --experimental-strip-types
+--test`, 4 passed), and `npm run build` (`vue-tsc` and `vite build`) for the Vue demo.
+That build used dependencies already installed in the example, not a fresh install.
+FastAPI, Express and React were never started.
+
+Windows 11 / Node.js 22.14.0 only. This is an automated reproduction, not a person
+following the README (see [Usability](#usability)).
+
 ## Stack matrix
 
 | Stack | How it was checked | Status |
@@ -81,6 +106,10 @@ Python function that the file merely mentions in a comment still resolves.
   Recorded since 1.30.0 and re-run in `npm test`).
 - **Every finding has a documented resolution**: re-read and re-approve, or
   `drift --downgrade` (each walkthrough resolves what it triggers).
+- **The read-only MCP server and the programmatic API refuse a `since` that git would
+  read as an option or a path** (1.40.0, `tests/git-revision-guard.test.js`). Five of
+  its seven tests fail when the guard is removed, and none of them writes outside a
+  temporary repository.
 
 ## What the checks do not show (also Verified, as limits)
 
@@ -95,13 +124,37 @@ Python function that the file merely mentions in a comment still resolves.
 - **Date-anchored drift has edge cases**: a change committed on the review day is not
   reported (Python step 8); a late merge with no later commit to the file is not
   reported at all (N-15, `tests/known-gaps.test.js` GAP 5); squash and rebase merges
-  of a branch reviewed before merging are over-reported.
+  of a branch reviewed before merging are over-reported; and a review branch squashed
+  or rebased on the review day itself is taken as having seen what it landed on
+  (`tests/drift-narrowing-baseline.test.js`). Git history cannot say what a reviewer
+  looked at.
 - **An agent-approved document is not human-reviewed.** `reviewed_by` records the
   name given to `review --approve`; this repository's own wiki is approved by an
   agent by a recorded maintainer decision (`AGENTS.md`), which is not a recommended
   policy for adopters.
 - **A clean CLI result does not replace application tests**, and the walkthroughs
   never run the applications.
+
+## Public claims and their evidence
+
+What each claim in the README rests on. A claim is only as strong as the weakest
+class listed for it.
+
+| Claim | Evidence | Basis and limit |
+| --- | --- | --- |
+| No runtime dependencies | Executed | Packed tarball installed clean; `dependencies` is empty |
+| Node.js ≥ 18.18; Windows, macOS, Linux | Recorded CI | CI matrix on earlier releases; this branch: Windows / Node 22 until CI runs |
+| Detects Node, Python, Go, Rust, JVM, PHP, Ruby, .NET, mobile, infra | Executed tests; scripted walkthroughs for Vue, Python, React + Node | Detection is not framework support (stack matrix above) |
+| Ships adapters for six agents | Executed tests | The files are written and point at the wiki |
+| Agents follow those adapters and skills | **Not verified** | No model was run |
+| Each citation is checked to resolve | Executed tests; scripted walkthroughs | Resolving does not make the sentence true |
+| `drift` / `impact` flag documents whose cited sources changed | Executed tests; scripted walkthroughs | A flag means "re-read", not "wrong"; date checks have the limits above |
+| An approved requirement is a plan, not an implementation | Executed tests; scripted walkthrough | `impact.plan_changed` lists files; it judges nothing |
+| Every MCP tool is read-only | Executed tests (1.40.0) | Was not true before 1.40.0 (CHANGELOG); `cwd` is not a sandbox ([SECURITY.md](../SECURITY.md#mcp-server-trust-model)) |
+| Keyword retrieval, hit@5 85.0% | Executed on this repository's own wiki | Held-out queries on one corpus; not a general accuracy figure |
+| A wiki that was never enriched measured worse than none | Real model runs, recorded | One external repository, one model, six tasks ([BENCHMARK_DISCLOSURE.md](./BENCHMARK_DISCLOSURE.md)) |
+| It saves development time or reduces hallucinations | **Not verified** | Not measured |
+| Someone new can adopt it from the README alone | **Not verified** | Automated reproduction only; no independent developer yet |
 
 ## AI agent integration
 
@@ -122,13 +175,21 @@ Python function that the file merely mentions in a comment still resolves.
   count). They do not show that this tool reduces defects or saves developer time.
 - **Not measured:** task completion, regressions, review effort, documentation repair
   effort, or time saved in a real team.
-- **Proposed protocol** for a controlled comparison, if it is ever budgeted: the same
-  set of coding tasks on the same repository at the same commit; arms with no wiki,
-  a stale wiki, and a maintained wiki; one agent configuration per arm, isolated
-  tool access per arm; a rubric written before the runs and graded by a model from a
-  different family plus a human sample; report completion, correct-file
-  identification, regressions caught by the project's own tests, wall time, and
-  per-call token counts from the API, not a proxy.
+- **Proposed protocol** for a controlled comparison, if it is ever budgeted:
+  - *Setup:* the same coding tasks on the same repository at a frozen commit; three
+    arms (no wiki, a deliberately stale wiki, a maintained wiki); one agent
+    configuration per arm with isolated tool access; tasks and their completion
+    criteria written before any run.
+  - *Grading:* the project's own tests decide completion where they can; the rest by
+    a rubric written in advance, graded blind by a model from a different family and
+    a human sample.
+  - *Report:* completion, correct-file identification, regressions caught by the
+    tests, wrong-claim rate in the agent's explanation, wall time, per-call token
+    counts from the API (not a proxy), and the time spent keeping the wiki current —
+    a wiki that costs more to maintain than it saves is a negative result.
+  - *Accounting:* a subscription CLI does not give per-call usage or isolation
+    between arms; only API runs can support cost claims. No run is made to produce a
+    promotional number.
 
 ## Usability
 
@@ -136,3 +197,7 @@ Python function that the file merely mentions in a comment still resolves.
   agent. **No independent developer has followed the README for this page.** Whether
   someone new can install, understand and validate the tool without help is
   **Unknown**.
+- **Protocol ready, not run:** [`USABILITY_PROTOCOL.md`](./USABILITY_PROTOCOL.md) is a
+  one-hour session for a developer who has never seen the project, with a greenfield
+  and a brownfield task, a checklist, and what to record. Results will be added here
+  only from real sessions.

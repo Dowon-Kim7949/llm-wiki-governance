@@ -15,16 +15,28 @@ walkthroughs now run in `npm test`. What has been shown on which stack, how to r
 and what has not is in [`docs/VALIDATION.md`](./docs/VALIDATION.md). Upgrade if you initialize
 Python or Rust projects or npm-workspace repositories.
 
-- **Security: a git revision can no longer be read as a git option.** A `since` value that
-  started with `-` reached git unchanged, and `--output=<path>` makes `git diff`, `git log`
-  and `git show` write a file. Through the MCP `validate` tool, whose contract is read-only,
-  `changed: true` with such a `since` wrote git's output to the given path. `impact --since`,
-  `validate --changed --since` and `release-notes --since` passed the value the same way. Every
-  caller-supplied revision is now refused when it starts with `-`; the run reports that it
-  could not compute the change set (`changed.unavailable`, `impact.unavailable`). No revision
-  git accepts starts with `-`, so nothing legitimate is refused. Present in every earlier
-  version with these options; upgrade if an MCP client you do not fully control can call the
-  server.
+- **Security: a caller-supplied git revision can no longer be read as a git option.** The MCP
+  `validate` tool (`changed` with `since`) and the programmatic API (`commands.validate` with
+  `changed`, `commands.impact` and `commands["release-notes"]`, each with `since`) passed
+  `since` to git unchecked. A value git reads as an option could make git write a file at a
+  path the caller chose, on an MCP server whose contract is read-only. The `llm-wiki` CLI was
+  not exposed: its parser refuses a `--since` value that starts with `-`. Affected: every
+  published `llm-wiki-governance` version (1.16.0–1.38.0) and `@dowonk-7949/llm-wiki-standard`
+  1.5.0–1.15.1 (MCP from 1.6.0), each checked against its published tarball. A revision that
+  starts with `-` is now refused, and every revision is followed by `--`, so a value naming a
+  file instead of a revision is refused too rather than read as a path; the run reports that
+  it could not compute the change set (`changed.unavailable`, `impact.unavailable`). No
+  revision git accepts starts with `-`. Upgrade if an MCP client, an agent, or code you do not
+  fully control can supply `since`.
+- **`drift` trusts the review-stamp commit in fewer histories.** Re-checking the 1.39.0 fix
+  found two that still hid a cited change the reviewer never saw. A body line starting with
+  `reviewed_at:`, such as a fenced example, made a later edit of that line count as the stamp
+  commit. A review branch squashed or rebased onto newer commits put the stamp on top of them.
+  A stamp commit now counts only if it changed the stamp's value and is dated on or before the
+  review day; otherwise the citation is checked at file level, as before 1.37.0. A squash or
+  rebase on the review day itself is still taken as reviewed (the date granularity every date
+  check shares), and N-15 is unchanged. Git history cannot name what a reviewer looked at;
+  both baselines approximate it, and narrowing happens only when they agree.
 - **`init` suggests a type for an npm-workspace repository.** When the root `package.json`
   declares workspaces and names no framework itself, detection says `unknown`. `init` (without
   `--type`) now reads the member manifests and suggests `--type fullstack`, `frontend` or
@@ -39,7 +51,8 @@ Python or Rust projects or npm-workspace repositories.
   is still reported.
 - **Python and Rust projects are named from their manifest.** Without a `package.json`,
   generated documents took the directory name for `project:`. They now read `name` from
-  `pyproject.toml` (`[project]` or `[tool.poetry]`) or `Cargo.toml` (`[package]`). No check
+  `pyproject.toml` (`[project]` or `[tool.poetry]`) or `Cargo.toml` (`[package]`). A `name`
+  under an array-of-tables header such as `[[bin]]` is not taken for the project's. No check
   compares the name, so existing documents are unaffected.
 - **Runnable stack walkthroughs.** `examples/python-fastapi-brownfield` (21 checks) and
   `examples/react-node-fullstack` (15 checks) each run with one command and need only Node.js
@@ -50,8 +63,11 @@ Python or Rust projects or npm-workspace repositories.
   measured (agent behaviour, efficacy, independent usability).
 
 **Behaviour changes, named:**
-- A `--since` (or MCP `since`) value that starts with `-` is refused instead of being passed
-  to git.
+- A `since` value (MCP or programmatic) that starts with `-`, or that names a file rather
+  than a revision, is refused instead of being passed to git.
+- In repositories that squash or rebase reviewed branches, a narrowed `drift` citation whose
+  stamp commit is dated after the review day is reported at file level: more findings, never
+  fewer.
 - `init` text gains a `hint:` line, and its JSON a `typeHint` key, only for an npm-workspace
   repository detected as `unknown` without `--type`.
 - `validate` and `audit` no longer report `project.review_item` for an explicit type when
@@ -67,9 +83,13 @@ to be followed. No independent developer has followed the README.
 
 Sized as a MINOR: one additive JSON key, one review item that no longer fires where it carried
 no information, and a generated-document field; the security fix refuses only input git would
-have read as an option. Tests: 783 → 792.
+have read as an option or a path, and the `drift` change can only add findings. Tests:
+783 → 801.
 
 ## 1.39.0 — 2026-10-28
+
+Prepared but not published on its own: it lacked the security fix above, so its changes
+reach npm in 1.40.0.
 
 A correctness release with one new signal. Two gates could pass something they exist to
 stop: `drift` narrowing could hide a cited region that had changed, and lite could approve a

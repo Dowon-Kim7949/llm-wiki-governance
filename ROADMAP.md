@@ -1162,9 +1162,19 @@ Show, reproducibly, that the tool works on projects that are not its own wiki.
   first, `init` suggests a type instead of changing detection, which would have changed the
   required documents of existing repositories.
 - **`docs/VALIDATION.md`** lists what was shown on which stack, how to reproduce it, and what
-  was not: agent behaviour, efficacy, and an independent developer following the README.
+  was not: agent behaviour, efficacy, and an independent developer following the README. It
+  now also maps each README claim to its evidence, and records a run of the packed tarball in
+  an isolated environment.
+- **Security.** The MCP `validate` tool and the programmatic API passed a caller-supplied
+  `since` to git unchecked, so a value git reads as an option could make it write a file. The
+  CLI was not exposed. Revisions are now validated and followed by `--`. 1.39.0 lacked the fix
+  and was not published on its own.
+- **`drift` narrowing, re-checked.** Two more histories hid a cited change: a body line shaped
+  like the review stamp, and a review branch squashed or rebased onto newer commits. Both now
+  fall back to file level. A squash on the review day itself remains a pinned limit.
 - **Not done.** Go, JVM, PHP, Ruby, .NET, mobile and infrastructure remain detection-only;
-  pnpm workspaces are not parsed; no model was run.
+  pnpm workspaces are not parsed; no model was run; no independent developer has run
+  `docs/USABILITY_PROTOCOL.md` yet.
 
 **Next:** an independent developer following the README from a clean machine; detection that
 can improve without changing the type of repositories already initialized; the paid benchmark

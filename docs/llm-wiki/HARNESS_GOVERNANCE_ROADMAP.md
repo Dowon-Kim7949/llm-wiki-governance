@@ -69,7 +69,7 @@ source_digests:
   - src/cli.js sha256:b4c407f857f2de78
   - src/index.js sha256:ee1d42734ade2f15
   - src/commands.js sha256:e15de888dff84f03
-  - src/commands/scans.js sha256:9d32671b86e6b28a
+  - src/commands/scans.js sha256:5a46d1c79c3d3410
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/wiki-files.js sha256:141842053b78cc2c
   - src/commands/adapters.js sha256:1329c62a8fd74c06
@@ -77,13 +77,13 @@ source_digests:
   - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
   - src/commands/references.js sha256:16ff5b183865242b
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
-  - src/git.js sha256:308dc12f8a16abe3
+  - src/git.js sha256:f077117fb943b9aa
   - .github/workflows/ci.yml sha256:0055dbb54de5761b
   - .github/actions/validate/action.yml sha256:55453d995d842d12
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
   - templates/github-actions/llm-wiki-validate.yml sha256:bf1e993d255fdac5
   - GATE_REVIEW.md sha256:1925d235d0b93b6a
-  - ROADMAP.md sha256:8a958b26716ca71f
+  - ROADMAP.md sha256:d44816d7f72a00c9
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵
@@ -1866,12 +1866,44 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     검사는 없어 기존 저장소에는 영향이 없습니다. Go(`go.mod`의 module 경로)·JVM·.NET은 그대로입니다.
 59. ~~**N-25 읽기 전용 MCP 서버가 git 옵션 주입으로 파일을 썼다**~~ — **1.40.0에서 수정(보안).** 미션의
     "읽기 전용 MCP 동작 보존" 항목을 확인하다가 찾았습니다. MCP `validate` 툴의 `since`는 스키마상
-    문자열일 뿐이라 `--output=<경로>`가 그대로 `git diff`의 옵션이 됐고, git이 그 경로에 diff를
-    썼습니다(임시 저장소에서 재현, 파일 생성 확인). CLI의 `impact --since`·`validate --changed --since`·
-    `release-notes --since`도 같은 형태였습니다. `runGit`이 셸을 쓰지 않아 셸 주입은 없었지만 옵션
-    주입은 막지 못했습니다. 호출자가 준 리비전은 이제 `assertRevision`을 지나며 `-`로 시작하면
-    거부됩니다. 이 옵션이 생긴 뒤의 배포 버전 전부에 있던 문제이고, 1.39.0만 따로 내면 이 수정이
-    빠집니다. 고정 테스트는 `tests/git-revision-guard.test.js`(MCP 경로를 실제로 호출)입니다.
+    문자열일 뿐이라 git이 옵션으로 읽는 값이 그대로 git에 닿았고, git이 호출자가 고른 경로에 파일을
+    썼습니다(임시 저장소에서 재현, 파일 생성 확인). 프로그래밍 API(`commands.impact`·`commands.validate`·
+    `commands["release-notes"]`)도 같은 경로였습니다. **CLI는 해당하지 않았습니다.** 파서
+    (`readOptionValue`)가 `-`로 시작하는 `--since` 값을 거부합니다. 처음 기록은 CLI 세 명령도 같다고
+    적었지만, 배포 tarball 69개 실측에서 CLI는 한 번도 쓰지 않았습니다(2026-10-28 정정). `runGit`이
+    셸을 쓰지 않아 셸 주입은 없었지만 옵션 주입은 막지 못했습니다. 호출자가 준 리비전은 이제
+    `assertRevision`을 지나며 `-`로 시작하면 거부되고, 리비전 뒤에는 `--`가 붙습니다. 영향 범위는
+    `llm-wiki-governance` 1.16.0~1.38.0 전부와 옛 `@dowonk-7949/llm-wiki-standard` 1.5.0~1.15.1이고,
+    1.39.0만 따로 내면 이 수정이 빠집니다. 고정 테스트는 `tests/git-revision-guard.test.js`입니다. MCP와
+    API를 실제로 호출하고, 정해진 파일 이름이 아니라 저장소에 새 항목이 생겼는지를 봅니다. 첫 테스트는
+    정해진 이름만 확인해서 `<값>..HEAD` 이름으로 쓰는 `release-notes` 경로를 수정 전에도 통과시켰습니다.
+60. ~~**N-26 본문의 `reviewed_at:` 줄이 `drift`의 스탬프 커밋을 앞당겼다**~~ — **1.40.0에서 수정.** 1.39.0
+    수정을 다시 검증하다 찾았습니다. 스탬프 커밋은 `git log -1 -G^reviewed_at:`로 골랐는데, `-G`는
+    펜스 안 예시처럼 본문에서 같은 모양의 줄에도 걸립니다. 그 줄을 리뷰 뒤에 고치면 그 커밋이 스탬프
+    커밋이 되고, 리뷰 당일 리뷰 뒤의 인용 변경이 다시 숨었습니다. 이제 후보마다 부모 커밋의 값과
+    비교해, 값을 실제로 바꾼 커밋만 인정합니다(`tests/drift-narrowing-baseline.test.js`).
+61. ~~**N-27 리뷰 브랜치의 squash·rebase가 스탬프를 리뷰 뒤 변경 위에 놓았다**~~ — **1.40.0에서 보수화.**
+    리뷰가 자기 브랜치에 있고 대상 브랜치가 그 사이 인용 영역을 바꾸면, merge 커밋은 스탬프 커밋을
+    보존해 그 변경이 조상 관계상 리뷰 뒤로 남습니다. squash와 rebase는 스탬프를 그 변경 위의 새 커밋에
+    씁니다. 그러면 날짜 스냅샷과 스탬프 커밋 둘 다 변경을 포함해 축소가 finding을 지웠습니다(1.38.0
+    이전부터 같았습니다). 스탬프 커밋의 committer date가 리뷰일 끝을 넘으면 이제 축소하지 않고 파일
+    단위로 봅니다. **남은 한계**: 리뷰 당일에 squash·rebase하면 여전히 리뷰한 것으로 봅니다. 모든 날짜
+    검사가 공유하는 날짜 단위 한계이고, 테스트가 현재 동작을 고정합니다. git 이력은 리뷰어가 무엇을
+    봤는지 알려 주지 못하므로 두 기준선은 근사일 뿐이고, 둘이 동의할 때만 축소합니다.
+62. ~~**N-28 TOML 배열 테이블 아래 `name`이 프로젝트 이름이 됐다**~~ — **1.40.0에서 수정.** N-24의
+    줄 단위 리더가 배열 테이블 헤더(대괄호를 두 겹 쓰는 `bin` 같은 헤더)를 섹션 경계로 읽지 못했습니다.
+    그래서 `[package]`에 `name`이 없으면 그 아래 바이너리 이름이 패키지 이름이 됐습니다. 배열 테이블은 이제
+    자기 섹션입니다(`tests/cross-stack-detection.test.js`). 이 항목을 처음 쓸 때 헤더를 대괄호째 적었더니
+    위키 링크로 읽혀 `wiki_link.missing`이 났습니다. 인라인 코드 안의 이중 대괄호도 위키 링크로 보는 스캐너
+    동작은 바꾸지 않았고, 표현을 바꿨습니다.
+63. **관찰 2건(이번에 고치지 않음)** — (a) MCP `cwd`는 서버 프로세스가 읽을 수 있는 어느 디렉터리든
+    고를 수 있고, 거기서 실행되는 git은 그 저장소의 로컬 설정을 따릅니다. 문서화된 로컬 단일 사용자
+    모델 안의 신뢰 경계라 `SECURITY.md`에 배포 지침으로 적었습니다. git 설정 기반 동작을 끄는 방어적
+    하드닝은 설계와 테스트가 먼저 필요해 넣지 않았습니다. (b) 승인 게이트는 모드가 `off`로 끈 규칙만
+    복원하고, 모드 floor가 심각도를 낮춘 규칙은 복원하지 않습니다. 지금 낮추는 두 규칙
+    (`structure.required_doc`, `impact.source_changed`)은 `needs_review` 문서의 승인과 무관합니다.
+    floor에 새로 낮추는 규칙이 생기면 실패하도록 `tests/rule-toggle-measurement.test.js`에 가드를
+    넣었습니다.
 
 ### 사람의 결정이 필요함
 

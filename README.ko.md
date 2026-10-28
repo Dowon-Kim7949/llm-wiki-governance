@@ -75,7 +75,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 | `mcp` | 읽기 전용 MCP 서버를 띄웁니다. |
 | `fix` · `migrate` · `archive-log` · `handoff` · `prompt` · `check-run` · `harness-health` · `import-memory` | 범위를 한정한 자동 수정, 문서 계약 업그레이드, 변경 로그 월별 보관, 에이전트 프롬프트, 하네스 점검입니다. |
 
-쓰기는 `--write`나 `--apply`, `--approve`를 직접 줬을 때만 일어납니다. `--lang ko`는 findings를 한국어로, `--doc-lang ko`는 생성되는 위키 본문을 한국어로 만듭니다. CLI를 spawn하는 대신 패키지를 import해서 쓸 수도 있습니다(`import { commands, run } from "llm-wiki-governance"`). 전체 참조는 `npx llm-wiki-governance help <command>`(영문, 오프라인)이고, `--version`은 설치된 버전만 출력합니다.
+쓰기는 `--write`, `--apply`, `--approve`, `drift --downgrade`, `--out <파일>`을 직접 줬을 때만 일어납니다. 그 밖의 명령과 모든 MCP 툴은 읽기만 합니다. `--lang ko`는 findings를 한국어로, `--doc-lang ko`는 생성되는 위키 본문을 한국어로 만듭니다. CLI를 spawn하는 대신 패키지를 import해서 쓸 수도 있습니다(`import { commands, run } from "llm-wiki-governance"`). 전체 참조는 `npx llm-wiki-governance help <command>`(영문, 오프라인)이고, `--version`은 설치된 버전만 출력합니다.
 
 ## CI에서 돌리기
 
@@ -101,7 +101,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 { "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-툴은 전부 읽기 전용이고 `verified` 승격은 CLI에서만 일어납니다. 인증 기능이 없으니 로컬 서브프로세스로만 쓰세요([SECURITY.ko.md](./SECURITY.ko.md#mcp-서버-신뢰-모델)).
+툴은 전부 읽기 전용이고 `verified` 승격은 CLI에서만 일어납니다. 인증 기능이 없고 `cwd` 인자도 샌드박스가 아니니 로컬 서브프로세스로만 쓰세요([SECURITY.ko.md](./SECURITY.ko.md#mcp-서버-신뢰-모델)). 1.40.0 이전 버전은 `validate`를 통해 파일을 쓰게 만들 수 있었으니 올리세요.
 
 ## 도입과 운영에 드는 것
 
@@ -119,6 +119,7 @@ Windows·macOS·Linux에서 런타임 의존성 없이 돕니다. Node·Python·
 | `sensitive.redacted`가 문서를 막음 | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you)(영문) |
 | 모든 명령·옵션·exit code | [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · `help <command>`(영문) |
 | 신뢰 모델, 취약점 제보 | [SECURITY.ko.md](./SECURITY.ko.md) |
+| 보안 수정 받기 | 보안 수정은 최신 릴리스에만 들어갑니다. `npm install -D llm-wiki-governance@latest` 후 `--version`으로 확인하세요. |
 | 실사용 예시 | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) |
 | 출시 이력, 방향, 결정 기록 | [CHANGELOG.ko.md](./CHANGELOG.ko.md) · [ROADMAP.ko.md](./ROADMAP.ko.md) · [GATE_REVIEW.md](./GATE_REVIEW.md)(영문) |
 

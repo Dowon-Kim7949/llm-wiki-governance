@@ -8,24 +8,28 @@
 
 검증 릴리스입니다. 이 도구를 이 저장소 밖에서, 기존 Python(FastAPI) 서비스와 React + Express npm workspace에서 처음부터 끝까지 돌렸고, 이 저장소의 테스트로는 보이지 않던 감지 결함 셋이 나왔습니다. 셋 다 고쳤고, 워크스루는 이제 `npm test`에서 돕니다. 어떤 스택에서 무엇을 보였는지, 어떻게 재현하는지, 무엇을 못 보였는지는 [`docs/VALIDATION.ko.md`](./docs/VALIDATION.ko.md)에 있습니다. Python이나 Rust 프로젝트, npm workspace 저장소를 초기화한다면 올리세요.
 
-- **보안: git 리비전이 더는 git 옵션으로 읽히지 않습니다.** `-`로 시작하는 `since` 값이 그대로 git에 전달됐고, `--output=<경로>`는 `git diff`·`git log`·`git show`가 파일을 쓰게 합니다. 계약상 읽기 전용인 MCP `validate` 툴에 `changed: true`와 그런 `since`를 주면 git 출력이 지정한 경로에 쓰였습니다. `impact --since`, `validate --changed --since`, `release-notes --since`도 같은 방식으로 값을 넘겼습니다. 이제 호출자가 준 리비전이 `-`로 시작하면 거부하고, 실행은 변경 집합을 구하지 못했다고 보고합니다(`changed.unavailable`, `impact.unavailable`). git이 받아들이는 리비전 중 `-`로 시작하는 것은 없어 정상 입력은 거부되지 않습니다. 이 옵션이 있는 이전 버전 전부에 있던 문제입니다. 완전히 통제하지 못하는 MCP 클라이언트가 서버를 호출할 수 있다면 올리세요.
+- **보안: 호출자가 준 git 리비전이 더는 git 옵션으로 읽히지 않습니다.** MCP `validate` 툴(`changed`와 `since`)과 프로그래밍 API(`changed`를 준 `commands.validate`, `since`를 준 `commands.impact`와 `commands["release-notes"]`)가 `since`를 검사 없이 git에 넘겼습니다. git이 옵션으로 읽는 값을 주면 계약상 읽기 전용인 MCP 서버에서 git이 호출자가 고른 경로에 파일을 쓸 수 있었습니다. `llm-wiki` CLI는 해당하지 않습니다. 파서가 `-`로 시작하는 `--since` 값을 거부하기 때문입니다. 영향 범위는 배포된 `llm-wiki-governance` 전 버전(1.16.0~1.38.0)과 `@dowonk-7949/llm-wiki-standard` 1.5.0~1.15.1(MCP는 1.6.0부터)이고, 배포된 tarball마다 확인했습니다. 이제 `-`로 시작하는 리비전을 거부하고, 모든 리비전 뒤에 `--`를 붙여 리비전 대신 파일 이름을 준 값도 경로로 읽지 않고 거부합니다. 실행은 변경 집합을 구하지 못했다고 보고합니다(`changed.unavailable`, `impact.unavailable`). git이 받아들이는 리비전 중 `-`로 시작하는 것은 없습니다. 완전히 통제하지 못하는 MCP 클라이언트나 에이전트, 코드가 `since`를 줄 수 있다면 올리세요.
+- **`drift`가 검토 스탬프 커밋을 믿는 경우를 줄였습니다.** 1.39.0 수정을 다시 검증하다가, 검토자가 보지 못한 인용 변경을 여전히 숨기는 이력 두 가지를 찾았습니다. 본문에 `reviewed_at:`으로 시작하는 줄(펜스 안 예시 등)이 있으면, 그 줄을 나중에 고친 커밋이 스탬프 커밋으로 잡혔습니다. 검토 브랜치를 더 새로운 커밋 위로 squash하거나 rebase하면 스탬프가 그 커밋들 위에 놓였습니다. 이제 스탬프 커밋은 스탬프 값을 실제로 바꿨고 날짜가 검토일 이전일 때만 인정합니다. 그렇지 않으면 1.37.0 이전처럼 그 인용을 파일 단위로 검사합니다. 검토 당일에 한 squash나 rebase는 여전히 검토한 것으로 봅니다(모든 날짜 검사가 공유하는 날짜 단위 한계). N-15는 바뀌지 않았습니다. git 이력은 검토자가 무엇을 봤는지 알려 주지 못하고, 두 기준선은 그것을 근사할 뿐이며, 둘이 동의할 때만 축소합니다.
 - **`init`이 npm workspace 저장소에 type을 제안합니다.** 루트 `package.json`이 workspaces를 선언하고 자신은 프레임워크를 갖지 않으면 감지 결과는 `unknown`입니다. 이제 `--type` 없는 `init`이 멤버 매니페스트를 읽어 `--type fullstack`·`frontend`·`backend`를 제안합니다(Detected Project 아래 `hint:` 줄과 JSON `typeHint` 키). 감지 결과는 바꾸지 않습니다. `init`은 type이 `unknown`이 아닐 때만 config에 기록하므로 그런 저장소는 `validate`마다 다시 감지하고, 거기서 type이 바뀌면 새 문서가 필수가 되기 때문입니다.
 - **감지가 아무것도 찾지 못했을 때 명시 type을 review item으로 내지 않습니다.** 힌트대로 `--type fullstack`을 기록하면 `validate`마다 `project.review_item`("Explicit type 'fullstack' differs from detected 'unknown'")이 나왔고, 이 warning이 `--strict`를 실패시켰습니다. 실제로 엇갈리는 경우(config는 `library`인데 감지는 `frontend`)는 계속 보고합니다.
-- **Python과 Rust 프로젝트 이름을 매니페스트에서 가져옵니다.** `package.json`이 없으면 생성 문서의 `project:`가 디렉터리 이름이었습니다. 이제 `pyproject.toml`(`[project]`나 `[tool.poetry]`)이나 `Cargo.toml`(`[package]`)의 `name`을 읽습니다. 이 이름과 대조하는 검사는 없어 기존 문서에는 영향이 없습니다.
+- **Python과 Rust 프로젝트 이름을 매니페스트에서 가져옵니다.** `package.json`이 없으면 생성 문서의 `project:`가 디렉터리 이름이었습니다. 이제 `pyproject.toml`(`[project]`나 `[tool.poetry]`)이나 `Cargo.toml`(`[package]`)의 `name`을 읽습니다. `[[bin]]` 같은 배열 테이블 헤더 아래의 `name`은 프로젝트 이름으로 쓰지 않습니다. 이 이름과 대조하는 검사는 없어 기존 문서에는 영향이 없습니다.
 - **실행 가능한 스택 워크스루.** `examples/python-fastapi-brownfield`(검사 21개)와 `examples/react-node-fullstack`(검사 15개)가 명령 한 줄로 돌고 Node.js와 git만 필요합니다. greenfield 데모에는 코드보다 먼저 바뀐 요구사항 단계가 더해져, 연결 파일이 그대로인 상태의 `impact.plan_changed`를 보입니다(검사 20 → 23).
 - **`docs/VALIDATION.md`**(영어·한국어): 근거 라벨을 붙인 스택별 검증 현황, 각 주장을 재현하는 명령, 워크스루가 보이는 한계, 측정하지 않은 것(에이전트 동작, 효과, 독립 사용성).
 
 **바뀐 동작:**
-- `-`로 시작하는 `--since`(또는 MCP `since`) 값은 git에 넘기지 않고 거부합니다.
+- `-`로 시작하거나 리비전 대신 파일 이름을 가리키는 `since` 값(MCP·프로그래밍 API)은 git에 넘기지 않고 거부합니다.
+- 검토한 브랜치를 squash하거나 rebase하는 저장소에서, 스탬프 커밋 날짜가 검토일 뒤인 축소 `drift` 인용은 파일 단위로 보고됩니다. finding이 늘 수는 있어도 줄지는 않습니다.
 - `--type` 없이 `unknown`으로 감지된 npm workspace 저장소에서만 `init` 텍스트에 `hint:` 줄이, JSON에 `typeHint` 키가 붙습니다.
 - 감지 결과가 `unknown`이면 `validate`와 `audit`가 명시 type에 대해 `project.review_item`을 내지 않으므로, 그것 하나로 실패하던 `--strict` 실행이 통과할 수 있습니다.
 - Python이나 Rust 프로젝트에서 새로 생성하는 문서의 `project:`에 매니페스트의 이름이 들어갑니다.
 
 **한계.** 그런 workspace를 감지만으로는 여전히 `unknown`이라고 하고, 힌트는 조언일 뿐입니다. Go·JVM·PHP·Ruby·.NET·모바일·인프라 프로젝트는 감지 테스트만 있고 처음부터 끝까지는 돌리지 않았으며, pnpm workspaces는 파싱하지 않습니다. 워크스루는 애플리케이션을 실행하지 않습니다. 모델은 돌리지 않았습니다. 에이전트 어댑터와 스킬은 있고 위키를 가리키는지까지만 확인했고, 에이전트가 따르는지는 확인하지 않았습니다. README를 따라 해 본 독립 개발자는 없습니다.
 
-MINOR입니다. 부가 JSON 키 하나, 정보가 없는 곳에서 더는 나오지 않는 review item 하나, 생성 문서 필드 하나입니다. 보안 수정은 git이 옵션으로 읽었을 입력만 거부합니다. 테스트: 783 → 792.
+MINOR입니다. 부가 JSON 키 하나, 정보가 없는 곳에서 더는 나오지 않는 review item 하나, 생성 문서 필드 하나입니다. 보안 수정은 git이 옵션이나 경로로 읽었을 입력만 거부하고, `drift` 변경은 finding을 늘릴 수만 있습니다. 테스트: 783 → 801.
 
 ## 1.39.0 — 2026-10-28
+
+준비했지만 단독으로는 배포하지 않았습니다. 위 보안 수정이 빠져 있어, 이 변경은 1.40.0으로 npm에 나갑니다.
 
 정확성 릴리스이고, 새 신호가 하나 있습니다. 막으라고 있는 것을 통과시키던 게이트가 둘 있었습니다. `drift`의 축소는 바뀐 인용 영역을 숨길 수 있었고, lite는 strict와 standard가 거부하는 문서를 승인할 수 있었습니다. 둘 다 고쳤고, 1.38.0에서 실패하는 테스트로 고정했습니다. `impact`에는 반대 방향이 생겼습니다. 승인된 요구사항이나 결정이 바뀌면 그 계획이 연결한 파일을 알려 줍니다. 위키가 줄 범위나 마크다운 섹션을 인용하거나, lite에 `"strict": true`를 둔 저장소가 있거나, 요구사항 문서로 계획한다면 올리세요.
 
