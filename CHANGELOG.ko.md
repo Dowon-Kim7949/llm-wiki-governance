@@ -4,6 +4,16 @@
 
 `llm-wiki-governance`(옛 이름 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. [유의적 버전](https://semver.org/)을 따르며, 항목은 최신 릴리스가 위로 옵니다.
 
+## 1.40.1 — 2026-10-28
+
+하드닝 패치입니다. 출력은 바뀌지 않습니다.
+
+- **git 조회가 저장소의 `core.fsmonitor`를 끕니다.** 이 패키지가 실행하는 git 명령은 모두 읽기이고, 그중 일부는 작업 트리와 비교합니다. 이때 git은 그 설정이 가리키는 명령을 실행합니다. 이제 CLI나 MCP 서버를 그런 명령이 설정된 저장소에 가리켜도 그 명령을 실행하지 않습니다. 남는 것은 [SECURITY.ko.md](./SECURITY.ko.md#mcp-서버-신뢰-모델)에 적었습니다. 저장소가 설정한 clean·process 필터는 여전히 실행됩니다(필터를 끄면 Git LFS 파일을 잘못 보고합니다). 그러니 직접 `git status`를 실행해도 괜찮은 저장소만 가리키세요.
+- **기록만 하고 바꾸지 않은 것:** 검토 브랜치를 검토 당일에 squash하거나 rebase하면 `drift` 축소가 놓치는 경우가 있습니다. 선택지와 대가는 `GATE_REVIEW.md`의 "Same-Day Squash Narrowing"에 있고, 현재 동작은 테스트로 고정돼 있습니다.
+- `docs/USABILITY_PROTOCOL.ko.md`에 초대 문구와 세션 기록 양식을 더했습니다. 진행한 세션은 아직 없습니다.
+
+테스트: 801 → 802.
+
 ## 1.40.0 — 2026-10-28
 
 검증 릴리스입니다. 이 도구를 이 저장소 밖에서, 기존 Python(FastAPI) 서비스와 React + Express npm workspace에서 처음부터 끝까지 돌렸고, 이 저장소의 테스트로는 보이지 않던 감지 결함 셋이 나왔습니다. 셋 다 고쳤고, 워크스루는 이제 `npm test`에서 돕니다. 어떤 스택에서 무엇을 보였는지, 어떻게 재현하는지, 무엇을 못 보였는지는 [`docs/VALIDATION.ko.md`](./docs/VALIDATION.ko.md)에 있습니다. Python이나 Rust 프로젝트, npm workspace 저장소를 초기화한다면 올리세요.

@@ -3334,6 +3334,48 @@ recorded above (more `markdown_link.missing` findings on glued links and consecu
 reference definitions), `--version` exiting 0, and the publish workflow no longer passing
 a token (decided in "Publish Credential Cleanup").
 
+## Same-Day Squash Narrowing (open — recorded 2026-10-28, not decided)
+
+`drift` narrows a line-range or section citation away only when two baselines agree that
+the cited region did not change: the repository at the end of the review day, and the
+commit that wrote the review stamp (1.39.0, tightened in 1.40.0). One history still defeats
+both. A review is stamped on its own branch on day D; the target branch changes the cited
+region later that day; the review branch is squashed or rebased onto it, also on day D.
+The stamp now sits in a commit whose history contains the change, and the end-of-day
+snapshot contains it too. When an unrelated edit later makes the file drift, the citation
+is narrowed away and the change the reviewer never saw is not reported. Pinned by
+`tests/drift-narrowing-baseline.test.js` ("a squash on the review day itself is still taken
+as reviewed").
+
+**What git can establish.** Nothing that separates this history from one in which the
+reviewer did see the change. Committer dates resolve to the day, a squash or rebase
+rewrites the stamp commit, and a recorded commit id would not survive the rewrite either.
+
+**Options.**
+
+- **A — keep (status quo).** No new findings. The gap stays, documented and pinned.
+- **B — do not narrow when a cited region changed on the review day.** Closes this
+  history. Cost: the common workflow of editing code, its document and the review stamp on
+  the same day loses narrowing whenever the file later changes elsewhere, so `drift`
+  reports more. It changes default behaviour, so it needs a deliberate release decision.
+  This repository has no narrowed citations today (`drift` reports `locatorNarrowed: 0`),
+  so its cost cannot be measured here.
+- **C — let recorded content decide.** With `"sourceDigests": true` (1.36.0, shadow only),
+  `review --approve` records a hash of each cited region. A citation whose recorded hash
+  still matches is unchanged since approval, whatever the git history, and one that does
+  not match changed. That answers the question exactly. Cost: only documents approved with
+  digests on are covered. The shadow comparison is also not yet trustworthy: on this
+  repository `drift --anchor content` disagrees with the date verdict on 6 of 16 documents
+  (2026-10-28), and why has not been examined.
+- **Not an option — record the reviewed commit id in frontmatter.** A squash or rebase
+  replaces that commit, so the id names nothing on the target branch.
+
+**Recommendation.** Keep A for now and work toward C. First explain the 6 disagreements. If
+they are date over-reports that content anchors correctly clear, let digests, where
+present, decide narrowing (an opt-in behaviour change for projects that turned digests on).
+Revisit B only if adopters report this history, and measure its cost on a repository that
+narrows before deciding.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

@@ -1,7 +1,17 @@
 import { execFileSync } from "node:child_process";
 
+// Every query runs with the repository's core.fsmonitor switched off: a diff against
+// the working tree otherwise runs the command that setting names (measured 2026-10-28,
+// git 2.39). An empty value means "no monitor" in every git that has the setting.
+// Not switched off: a clean or process filter the repository configures, because that
+// would report unchanged Git LFS files as changed; and git's own refresh of
+// .git/index, which `git diff` writes even with GIT_OPTIONAL_LOCKS=0 and which changes
+// no project file. SECURITY.md tells users not to point the tool at a repository they
+// would not run `git status` in.
+const READ_ONLY_CONFIG = ["-c", "core.fsmonitor="];
+
 export function runGit(cwd, args) {
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  return execFileSync("git", [...READ_ONLY_CONFIG, ...args], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
 
 // A revision that came from a caller (an MCP tool argument, a programmatic `since`)

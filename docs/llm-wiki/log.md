@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - fix(git): 읽기 조회가 대상 저장소의 fsmonitor 명령을 실행했다 — 리뷰 당일 squash는 결정으로 남겼다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/git.js`(`runGit`에 `-c core.fsmonitor=`) · `tests/git-hardening.test.js`(신규 1) · SECURITY 2종 · CHANGELOG 2종(1.40.1) · `GATE_REVIEW.md`("Same-Day Squash Narrowing", open) · `docs/USABILITY_PROTOCOL.md`(.ko)(초대 문구·기록 양식) · 위키 `ARCHITECTURE_CONVENTIONS`·`PUBLIC_API`·`HARNESS_GOVERNANCE_ROADMAP`(63 갱신, 64 신설)
+- summary: MCP `cwd`의 신뢰 경계를 이어서 다뤘다. 대상 저장소의 로컬 설정이 우리 git 명령에 닿는지 실측했고, 측정에는 존재하지 않는 명령만 설정해 아무것도 실행되지 않았다. 닿는 것은 `core.fsmonitor`와 clean 필터였고, textconv와 외부 diff 드라이버는 닿지 않았다. fsmonitor는 모든 조회에서 끈다. 필터는 끄면 Git LFS 파일을 잘못 보고하므로 남기고 문서화했다. `GIT_OPTIONAL_LOCKS=0`이 `git diff`의 인덱스 캐시 기록을 막지 못한다는 것도 실측으로 확인해 넣지 않았다. 리뷰 당일 squash의 drift 위음성은 사용자 결정대로 결정 문서까지만 썼다.
+- evidence: 새 테스트가 수정 전 코드에서 실패하고 수정 후 통과 · 내용 앵커 섀도 불일치 6/16, 축소 인용 0(이 저장소)
+- caveats: 필터 실행과 인덱스 캐시 갱신은 남은 위험이다. 실측은 Windows / git 2.39에서만 했다. 사용성 세션은 아직 진행하지 않았다.
+
 ## 2026-10-28 - docs(security): N-25 보안 권고를 게시했고, 문서가 그것을 가리키게 했다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
