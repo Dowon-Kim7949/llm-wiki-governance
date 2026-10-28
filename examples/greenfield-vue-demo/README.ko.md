@@ -10,7 +10,7 @@ Language: [English](./README.md) | **한국어**
 
 [Vue 3 데모](../vue3-typescript-demo/README.ko.md)는 이 데모의 Brownfield 판입니다. 그쪽은 앱이 먼저 있고 위키를 앱에서 써 냅니다. 두 데모는 아래 5단계에서 만나고, 그 뒤로는 같은 근거 기반 위키입니다.
 
-> `--greenfield`는 아직 배포된 릴리스에 없습니다. 워크스루는 이 체크아웃에서 실행하세요. 스크립트가 `examples/` 옆의 `bin/llm-wiki.js`를 알아서 찾습니다.
+> `--greenfield`는 1.38.0에 들어 있습니다. 워크스루는 이 체크아웃의 CLI를 씁니다. 스크립트가 `examples/` 옆의 `bin/llm-wiki.js`를 알아서 찾고, 다른 CLI는 `--cli <path>`로 지정합니다.
 
 ## 실행
 

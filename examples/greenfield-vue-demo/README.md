@@ -13,8 +13,8 @@ The [Vue 3 demo](../vue3-typescript-demo/README.md) is the brownfield
 counterpart: there the app exists first and the wiki is written from it. The two
 meet at step 5 below: from then on both are the same evidence-backed wiki.
 
-> `--greenfield` is not in a published release yet. Run the walkthrough from this
-> checkout: it finds `bin/llm-wiki.js` next to `examples/` on its own.
+> `--greenfield` ships in 1.38.0. The walkthrough runs the CLI of this checkout,
+> which it finds next to `examples/` on its own; `--cli <path>` selects another.
 
 ## Run it
 

@@ -6,6 +6,90 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.38.0 — 2026-10-28
+
+Start a project before its code exists, on the same wiki and the same engine.
+`--greenfield` records requirements and decisions as planned knowledge; once code exists,
+the same documents link implementation evidence and join the existing checks. Building it
+surfaced a gate that lite had been switching off since 1.30.0: `review --approve-all`
+promoted untouched scaffolds. Upgrade if you start new projects with this tool, or if any
+repository runs in lite.
+
+- **`init` / `quickstart` / `handoff --greenfield`.**
+  - `init` and `quickstart` add `docs/llm-wiki/requirements/00_overview.md` and
+    `docs/llm-wiki/templates/REQUIREMENT.template.md`, and write planning bodies into a
+    new `project-profile.md` (purpose, scope, non-goals, constraints) and `index.md`.
+    Existing files are never overwritten, and the two added documents are not required
+    documents.
+  - `handoff --greenfield` (and `quickstart --greenfield`) prints a planning prompt instead
+    of the code-enrichment one: record what the user states and nothing else, cite no
+    source that does not exist, keep everything `needs_review`, approve nothing.
+  - Requirements live one per document (`requirements/REQ-NNN-<slug>.md`,
+    `doc_type: requirement`), decisions as `decisions/ADR-NNNN-<slug>.md`
+    (`doc_type: decision`).
+- **Planned knowledge.** A document whose `doc_type` is `requirement`, `decision`,
+  `decision_log` or `adr` states intended behaviour; approving it approves the plan, not an
+  implementation. An approved one with no local `source_files` or `evidence` gets
+  `evidence.planned_unlinked` (info) instead of `evidence.ungrounded` (warning). `stats`
+  counts these documents in `plannedKnowledge { documents, approved, linked, unresolved,
+  unlinked }`, where linked means every local reference resolves: it shows where a plan is
+  implemented, not that it is complete. `review` labels such a document `planned` instead
+  of `no-evidence`. No new frontmatter field and no new status value.
+- **No fabricated source in an empty repository.** When the detected manifest does not
+  exist, `init` writes `source_files: []` instead of citing `package.json`; an empty
+  repository used to get 10 `validate` warnings and 100% evidence coverage.
+  `detection.primaryManifest` keeps its value and shape. The first `log.md` entry now
+  cites the manifest that was detected (`pyproject.toml`, `go.mod`, ...) instead of always
+  `package.json`.
+- **The decision template is an ADR skeleton for every `init`** (Decision Status, Context,
+  Decision, Alternatives Considered, Consequences, Evidence). It and the requirement
+  template cite no source, so a copied document does not count as linked on day one.
+- **`quickstart` names the mode it writes.** On a new repository it recorded `lite` in the
+  config and told the handoff prompt `strict`. The mode is now resolved before `init`
+  writes.
+- **A rule a mode switches off stops being reported, not being true.** Lite turns
+  `content.not_enriched`, `evidence.missing` and `evidence.stale` off, and three commands
+  read facts from those findings. On an empty repository in lite, `stats` reported 12 of 12
+  documents enriched, `next` an empty enrichment checklist, and `review --approve-all
+  --yes` promoted 8 of 8 `needs_review` documents, scaffolds included (standard on the same
+  repository: 6 of 12, 6, and 2). `stats`, `next` and `review` now restore just the rules
+  they read, for that one audit run, the way `backfill` already measured drift.
+  `validate`, `audit`, `status` and `drift` still report what the mode says.
+- Inline `key: []` in frontmatter is read as an empty list. It used to be the string
+  `"[]"`, a `frontmatter.array` error.
+- The governance budget in generated prompts (all three modes) tells the agent to update
+  the evidence of a requirement document its change implements.
+- `examples/greenfield-vue-demo/` runs the whole path: an empty repository, the plan and
+  its approval, a Vue 3 + TypeScript implementation, linked evidence, a code change that
+  `impact` flags, and re-approval, with 20 checks
+  (`node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough`; the app's own tests
+  need Node 22.6+ and are reported as skipped below it).
+
+**Behaviour changes, named:**
+- In lite, or with `content.not_enriched` set to `off` in `rules`, `review --approve
+  <scaffold>` now exits 1 with `review.not_enriched`, and `--approve-all` skips scaffolds.
+  This restores the documented gate; it is the one exit-code change in this release.
+- In lite, `stats` reports what is true for `enriched`, `evidenceTiers` and
+  `staleVerified`, so the numbers drop, and `stats` now pays for the drift scan the way
+  `backfill` does. `next` lists the documents to fill, and its `auditFindings` include
+  them.
+- An approved decision record (`decision`, `decision_log`, `adr`) with no linked evidence
+  moves from `evidence.ungrounded` (warning) to `evidence.planned_unlinked` (info), so a
+  `--strict` run that failed on it can pass. It is still reported.
+- A new `init` writes the ADR-shaped decision template with `source_files: []`.
+- Additive JSON: `stats.plannedKnowledge`, `planned` on `review` entries, and
+  `greenfield: true` on `init` and `handoff` results when the flag is given.
+
+**Limits.** A linked reference shows where a requirement is implemented, not that it is
+done; no command runs your tests or judges a requirement. Editing a requirement does not
+flag code (`impact` works from code to documents). Acceptance criteria inside a document
+are not traced one by one. A new project starts in lite, where `impact` and `drift` are
+off. Whether an agent follows the planning prompt was not measured.
+
+Sized as a MINOR: one new option and additive JSON. The lite approval refusal is a named
+exception: it changes an exit code, and it restores a contract the code already stated.
+Tests: 731 → 757.
+
 ## 1.37.0 — 2026-10-27
 
 A follow-through release for 1.36.0. The date-based `drift` reads a cited Markdown section

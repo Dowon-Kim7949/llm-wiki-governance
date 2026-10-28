@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - release: 1.38.0 준비 — 코드보다 먼저 시작하는 프로젝트
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.37.0 → 1.38.0) · `tests/verification.test.js`(버전 단언) · `.github/actions/validate/action.yml`(기본값 1.38) · `templates/github-actions/llm-wiki-validate.yml`(핀 3줄) · `CHANGELOG.md`·`CHANGELOG.ko.md`(1.38.0 절) · `ROADMAP.md`·`ROADMAP.ko.md`(출시 절) · README 2종(액션 핀, `--greenfield` 표기, 모드 절에 "꺼진 규칙은 보고만 안 한다" 한 문장) · `examples/greenfield-vue-demo/README*.md`("미배포" 안내 교체) · `outputs/team-briefing/`(대상 버전, 22장 타임라인에 1.38 행·`.now` 이동, 발표 노트) · 위키 `EXAMPLES`(CI 예시 핀 4줄)·`RELEASE_FLOW`(Checklist에 "미배포 표기 정리" 항목)
+- summary: 같은 PR의 세 커밋(greenfield, 꺼진 규칙 측정 + P2, 스킬 갱신)을 1.38.0 MINOR로 묶는다. 새 옵션 하나와 부가 JSON이고, lite에서 스캐폴드를 명시 승인할 때 exit 0 → 1로 바뀌는 것이 이름 붙인 예외다(문서화된 게이트 복구). 브랜치에서 "미배포"로 적어 둔 표기 열두 곳을 버전으로 바꿨다.
+- evidence: 테스트 757/757 · lint 102 files OK · `impact --since origin/main --strict` pass(PR 전체, CI와 같은 기준)
+- caveats: 커밋 단위 `impact --since HEAD~1`은 이 릴리스 커밋만 놓고 보면 index·위키 README·HARNESS_GOVERNANCE_ROADMAP·REVIEW_HISTORY 4건을 지목한다. 넷 다 같은 PR의 앞선 커밋에서 본문을 고쳤고, CI는 PR 전체(`origin/main`, 병합 뒤에는 병합 커밋의 `HEAD~1` = 이전 main)로 본다(1.37.0과 같은 구성). 공유 덱 Artifact는 재게시하지 않았다(유지보수자 지시, 파일만 정렬).
+
 ## 2026-10-28 - chore(skills): 이 저장소의 생성 스킬 20개를 현재 생성기로 다시 만들었다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

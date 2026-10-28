@@ -33,7 +33,7 @@ npx llm-wiki-governance quickstart --write --type frontend --agent claude   # �
 
 CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단계뿐이고 품질도 거기서 갈리므로, 처음 위키를 만들 때는 가장 강한 추론 모델을 쓰세요.
 
-**코드가 아직 없는 프로젝트를 시작할 때**(`--greenfield`, 아직 배포된 릴리스에 없음): `quickstart --write --greenfield`가 요구사항·결정(ADR) 문서를 만들고 계획용 프롬프트를 출력합니다. 에이전트는 사용자가 말한 목적·요구사항·수용 기준·결정만 기록하고, 지어내지 않으며, 소스를 인용하지 않습니다. 요구사항 승인은 계획 승인이지 구현 승인이 아닙니다. `validate`는 연결된 근거가 없는 승인 계획을 info로 보고하고, `stats`는 계획 문서를 따로 셉니다. 코드가 생기면 요구사항마다 소스 파일과 테스트를 `evidence`에 연결하세요. 그때부터는 다른 문서와 똑같이 검사받고, 위의 기존 프로젝트 절차가 그대로 적용됩니다. [`examples/greenfield-vue-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/greenfield-vue-demo)가 빈 저장소에서 이 경로를 돌려 봅니다.
+**코드가 아직 없는 프로젝트를 시작할 때**(`--greenfield`, 1.38.0): `quickstart --write --greenfield`가 요구사항·결정(ADR) 문서를 만들고 계획용 프롬프트를 출력합니다. 에이전트는 사용자가 말한 목적·요구사항·수용 기준·결정만 기록하고, 지어내지 않으며, 소스를 인용하지 않습니다. 요구사항 승인은 계획 승인이지 구현 승인이 아닙니다. `validate`는 연결된 근거가 없는 승인 계획을 info로 보고하고, `stats`는 계획 문서를 따로 셉니다. 코드가 생기면 요구사항마다 소스 파일과 테스트를 `evidence`에 연결하세요. 그때부터는 다른 문서와 똑같이 검사받고, 위의 기존 프로젝트 절차가 그대로 적용됩니다. [`examples/greenfield-vue-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/greenfield-vue-demo)가 빈 저장소에서 이 경로를 돌려 봅니다.
 
 **데모.** [`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo)는 작은 Vue 3 앱으로 전체 흐름을 임시 git 저장소에서 돌립니다(`npm install && npm run demo`, Node.js 20.19+, API 키 불필요). 소스 근거 문서 2개, `validate --strict`, `review --approve`를 거친 뒤 코드를 바꾸면 문서를 고칠 때까지 `impact`가 exit 1로 끝납니다. 한계도 보여 줍니다. 문서를 *틀린* 숫자로 고쳐도 통과하고, 날짜 기준 `drift`는 검토와 같은 날 커밋된 변경을 놓칩니다.
 
@@ -77,7 +77,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 
 ## CI에서 돌리기
 
-[`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 쓰세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.37.0`. 리포트를 job summary에 붙이고, 거기에 `impact`가 다시 검토하라는 문서 목록도 들어갑니다(`summary: "false"`로 끔). 비공개 저장소라면 러너 없이 도는 `templates/git-hooks/pre-commit` 훅과 `LLM_WIKI_RUNNER` 변수(self-hosted 러너)로 조직이 나눠 쓰는 러너 시간을 아낄 수 있습니다. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)(영문)에 있습니다.
+[`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 쓰세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.38.0`. 리포트를 job summary에 붙이고, 거기에 `impact`가 다시 검토하라는 문서 목록도 들어갑니다(`summary: "false"`로 끔). 비공개 저장소라면 러너 없이 도는 `templates/git-hooks/pre-commit` 훅과 `LLM_WIKI_RUNNER` 변수(self-hosted 러너)로 조직이 나눠 쓰는 러너 시간을 아낄 수 있습니다. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)(영문)에 있습니다.
 
 ## 거버넌스 모드
 
@@ -89,7 +89,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 | 코드를 고친 뒤 문서 작업 | 코드만 봐서는 알 수 없는 것만 | 도메인·아키텍처·계약이 움직였을 때 | 영향받은 문서 전부 |
 | 드리프트와 문서 누락 게이트 | 끕니다 | 보고만 합니다(warning) | 빌드를 실패시킵니다(error) |
 
-`quickstart`는 `lite`를 깔아 둡니다. `governance` 블록이 없는 설정은 `strict`로 해소되며, 모드가 생기기 전 규칙 집합과 같습니다. 구조 검사와 안전 검사는 어느 모드에서도 돕니다. 의도한 사용법은 몇 달을 `lite`로 지내다 인수인계 전에 `mode set strict --write`와 `backfill`을 돌리는 것입니다. **`impact`를 필수 체크에 넣기 전에:** `strict`에서는 `impact.source_changed`가 `error`라서 `impact --since <ref>`만으로 빌드가 실패합니다. `standard`를 쓰거나 `rules`에 `"impact.source_changed": "warning"`을 넣으세요.
+`quickstart`는 `lite`를 깔아 둡니다. `governance` 블록이 없는 설정은 `strict`로 해소되며, 모드가 생기기 전 규칙 집합과 같습니다. 구조 검사와 안전 검사는 어느 모드에서도 돕니다. 모드가 끈 규칙은 보고하지 않을 뿐입니다. `stats`와 `next`는 보강 여부와 근거를 그대로 측정하고, `review`는 채우지 않은 뼈대 문서를 여전히 승인하지 않습니다. 의도한 사용법은 몇 달을 `lite`로 지내다 인수인계 전에 `mode set strict --write`와 `backfill`을 돌리는 것입니다. **`impact`를 필수 체크에 넣기 전에:** `strict`에서는 `impact.source_changed`가 `error`라서 `impact --since <ref>`만으로 빌드가 실패합니다. `standard`를 쓰거나 `rules`에 `"impact.source_changed": "warning"`을 넣으세요.
 
 ## 에이전트 연동 (MCP)
 

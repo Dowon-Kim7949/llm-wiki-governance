@@ -1102,6 +1102,27 @@ Three of the four follow-ups 1.36.0 named, each kept small.
 budgeted; a third query set before tuning search again, since the held-out set has now been
 looked at.
 
+## Release Plan (post-1.37.0) — projects that start before their code — **shipped as 1.38.0 (2026-10-28)**
+
+Support a project from its first planning day, on the same engine and without a second
+document model.
+
+- **Greenfield path.** `init`/`quickstart`/`handoff --greenfield` add a requirements
+  overview and a requirement template and print a planning prompt. Requirements and
+  decisions are planned knowledge, told apart by `doc_type` alone: an approved plan with
+  nothing linked is info, and `stats` counts plans apart. Once code exists the same
+  documents link source and tests and the existing `validate`, `impact` and `drift` take
+  over. A runnable demo goes from an empty repository to a flagged code change.
+- **Defects found on the way.** An empty repository's scaffold cited a `package.json` that
+  did not exist; `quickstart` recorded lite and announced strict; and lite's switched-off
+  rules made `stats`, `next` and `review` read silence as fact, so `review --approve-all`
+  promoted untouched scaffolds. All three are fixed.
+- **Not done.** Editing a requirement does not flag code, acceptance criteria are not
+  traced one by one, and the planning prompt's effect on an agent was not measured.
+
+**Next:** whether a requirement edit can point at code without guessing; the anchor
+comparison, the paid benchmark, and a third query set, as before.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.
