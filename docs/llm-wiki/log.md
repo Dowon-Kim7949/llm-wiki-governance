@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - chore(skills): 이 저장소의 생성 스킬 20개를 현재 생성기로 다시 만들었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: harness
+- changed: `.claude/skills/llm-wiki-{bootstrap,feature,fix,docs-sync,backfill}/SKILL.md` · `.agents/skills/…`(같은 5종) · `.cursor/rules/llm-wiki-*.mdc`(5종) · `.llm-wiki/prompts/llm-wiki-*.md`(5종)
+- summary: 2026-10-27 greenfield 항목이 "observed"로 남긴 별건이다. 커밋된 관리 스킬이 1.34.0 이후 갱신되지 않아 그때 제거한 Delegation budget 블록을 아직 담고 있었다. `init --write --skills --refresh`로 사용자 미수정 관리 아티팩트만 다시 썼다. 바뀐 것은 그 블록 삭제와, 직전 커밋까지의 거버넌스 예산 한 구절("요구사항 문서를 구현했으면 그 근거도 갱신")이며 `estimated-tokens`가 줄었다(feature 1584 → 1269, chars/4 프록시). onboard·prepare는 이미 최신이었다.
+- evidence: 20 files, +56/−176 · `harness-health` findings 0 · `impact --since HEAD --strict` pass · 테스트 757/757
+- caveats: 내용 변경은 생성기 출력 그대로이며 손으로 고친 줄은 없다.
+
 ## 2026-10-28 - fix(governance): 꺼진 규칙이 사실까지 지우고 있었다 — lite의 스캐폴드 일괄 승인 · P2 3건
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
