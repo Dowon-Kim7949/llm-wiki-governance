@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - docs(decision): 내용 앵커가 날짜 판정과 어긋난 이유 — 전부 내용 쪽이 더 엄격했다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs, wiki
+- changed: `GATE_REVIEW.md`("Same-Day Squash Narrowing": C′ 추가, 불일치 분석, 권고 수정) · 위키 `HARNESS_GOVERNANCE_ROADMAP`(64)
+- summary: `drift --anchor content`의 불일치를 두 시점 모두 재현해 설명했다. 오전 6/16은 `b0211da`에 커밋하지 않은 `src/git.js`를 얹어 그대로 다시 나왔고, 1.40.1 뒤에는 4/16이다. 원인은 커밋하지 않은 편집 3건, 같은 날 버전 값만 바뀐 `package.json` 2건(1.40.1 뒤에는 4건), 같은 날 고친 위키 문서 인용 1건이다. 기록된 `package.json` digest는 v1.38.0과 v1.40.0 시점 파일과 정확히 일치했고, 그 뒤 바뀐 것은 `version` 한 줄뿐이었다. 모든 불일치에서 날짜는 `fresh`, 내용은 `changed`였고 내용 쪽 판정은 사실이었다. 날짜의 과잉 보고를 내용이 바로잡은 사례는 없다. 그래서 내용 해시를 대체가 아니라 세 번째 동의 조건으로만 쓰는 C′를 권고했다.
+- evidence: 재구성한 worktree에서 6/16 재현 · digest와 커밋별 `package.json` 해시 대조 · `git diff`로 버전 한 줄만 바뀐 것을 확인
+- caveats: 이 저장소는 모든 문서가 오늘 재승인돼 날짜가 전부 `fresh`이고, 영역 digest와 축소된 인용이 0건이다. 그래서 날짜의 과잉 보고 방향과 축소 판정 효과는 여기서 잴 수 없다.
+
 ## 2026-10-28 - docs(deck): 1.40.1 배포 이후 라벨 정렬
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
