@@ -125,7 +125,7 @@ test("init on an empty repository cites no source instead of a package.json that
   assert.equal(stats.stats.evidenceBacked, 0, "an empty repository is not 100% evidence-backed");
 });
 
-test("brownfield: with a manifest and no --greenfield the scaffold is unchanged", async () => {
+test("brownfield: with a manifest and no --greenfield the scaffold is unchanged (the decision template aside)", async () => {
   const cwd = await emptyRepo("llm-wiki-brownfield-");
   await writeFile(path.join(cwd, "package.json"), `${JSON.stringify({ name: "bf", dependencies: { vue: "^3.0.0" } }, null, 2)}\n`, "utf8");
   const result = await initCommand(opts(cwd, { write: true, minimal: true }));
@@ -138,8 +138,17 @@ test("brownfield: with a manifest and no --greenfield the scaffold is unchanged"
   assert.doesNotMatch(index, /requirements\/00_overview\.md/);
   const log = await readFile(path.join(cwd, "docs", "llm-wiki", "log.md"), "utf8");
   assert.match(log, /^  - package\.json$/m);
+  // 1.38.0: every init writes the ADR skeleton, citing no source, so a decision
+  // copied from it in an existing codebase starts unlinked too.
   const decision = await readFile(path.join(cwd, "docs", "llm-wiki", "templates", "DECISION_LOG.template.md"), "utf8");
-  assert.doesNotMatch(decision, /ADR-NNNN/, "the default decision template keeps its generic body");
+  assert.match(decision, /# ADR-NNNN/);
+  assert.match(decision, /## Alternatives Considered/);
+  assert.deepEqual((await frontmatterOf(cwd, "docs/llm-wiki/templates/DECISION_LOG.template.md")).source_files, []);
+  assert.deepEqual(
+    (await frontmatterOf(cwd, "docs/llm-wiki/templates/DECISION_LOG.template.md")).related,
+    ["docs/llm-wiki/index.md", "docs/llm-wiki/log.md"],
+    "no link to a requirement template that a non-greenfield init does not create"
+  );
   const stats = await statsCommand(opts(cwd));
   assert.deepEqual(stats.stats.plannedKnowledge, { documents: 0, approved: 0, linked: 0, unresolved: 0, unlinked: 0 });
   assert.doesNotMatch(stats.text, /planned_knowledge/, "no planned line for a wiki without planned documents");
@@ -207,6 +216,17 @@ test("templates cite no source even when a manifest exists, so a copied requirem
   assert.deepEqual((await frontmatterOf(cwd, "docs/llm-wiki/project-profile.md")).source_files, ["package.json"], "a real manifest is still cited");
 });
 
+test("the first log entry cites the manifest that was detected, not package.json", async () => {
+  const cwd = await emptyRepo("llm-wiki-pyproject-");
+  await writeFile(path.join(cwd, "pyproject.toml"), "[project]\nname = \"py-demo\"\n", "utf8");
+  const result = await initCommand(opts(cwd, { write: true }));
+  assert.equal(result.detection.primaryManifest, "pyproject.toml", "guard: the Python manifest is the primary one");
+  const log = await readFile(path.join(cwd, "docs", "llm-wiki", "log.md"), "utf8");
+  assert.match(log, /^  - pyproject\.toml$/m);
+  assert.doesNotMatch(log, /package\.json/);
+  assert.deepEqual((await frontmatterOf(cwd, "docs/llm-wiki/project-profile.md")).source_files, ["pyproject.toml"]);
+});
+
 test("init --greenfield --doc-lang ko writes Korean prose under verbatim headings", async () => {
   const cwd = await emptyRepo();
   await initCommand(opts(cwd, { write: true, greenfield: true, docLang: "ko" }));
@@ -270,6 +290,23 @@ test("stats counts planned documents by approval and by linked, unresolved, or n
   assert.deepEqual(stats.stats.plannedKnowledge, { documents: 4, approved: 1, linked: 2, unresolved: 1, unlinked: 1 });
   assert.match(stats.text, /planned_knowledge: 4 \(approved 1\); implementation evidence linked 2, unresolved 1, none 1/);
   assert.match(stats.text, /verified means the plan was approved, not that it is implemented/);
+});
+
+test("review labels a requirement without evidence planned, not no-evidence", async () => {
+  const cwd = await emptyRepo();
+  await initCommand(opts(cwd, { write: true, greenfield: true }));
+  await writeDoc(cwd, "docs/llm-wiki/requirements/REQ-001-a.md", plannedDoc());
+  const listed = await reviewCommand(await cliOpts(cwd));
+  const requirement = listed.documents.find((doc) => doc.path === "docs/llm-wiki/requirements/REQ-001-a.md");
+  assert.equal(requirement.planned, true);
+  assert.equal(requirement.evidenceBacked, false, "the evidence fact itself is unchanged");
+  const line = listed.text.split("\n").find((text) => text.includes("REQ-001-a.md"));
+  assert.match(line, /planned/);
+  assert.doesNotMatch(line, /no-evidence/);
+  assert.match(listed.text, /approving it approves the plan, not an implementation/);
+  // A descriptive document with no evidence keeps the old flag.
+  const profile = listed.text.split("\n").find((text) => text.includes("docs/llm-wiki/project-profile.md"));
+  assert.match(profile, /no-evidence/);
 });
 
 test("the frontmatter parser reads `key: []` as an empty list and leaves other inline lists alone", () => {

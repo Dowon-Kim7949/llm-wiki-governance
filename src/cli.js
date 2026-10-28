@@ -990,9 +990,10 @@ Usage:
 Purpose:
   Previews or creates missing LLM-WIKI documents and selected adapter files. Existing adapter files are never overwritten.
   When the detected manifest does not exist (an empty or manifest-less repository), generated documents cite no source (source_files: []) instead of a file that is not there.
+  templates/DECISION_LOG.template.md is an ADR skeleton (context, decision, alternatives, consequences) and cites no source, so a copied decision starts with no implementation evidence linked.
 
 Starting a new project (--greenfield):
-  Also plans docs/llm-wiki/requirements/00_overview.md and docs/llm-wiki/templates/REQUIREMENT.template.md, and — only for files it creates — writes a planning-oriented project-profile.md (purpose, scope, non-goals, constraints), an ADR-shaped templates/DECISION_LOG.template.md, and an index.md read order that names the requirements and decisions.
+  Also plans docs/llm-wiki/requirements/00_overview.md and docs/llm-wiki/templates/REQUIREMENT.template.md, and — only for files it creates — writes a planning-oriented project-profile.md (purpose, scope, non-goals, constraints) and an index.md read order that names the requirements and decisions.
   Requirements live one per document as docs/llm-wiki/requirements/REQ-NNN-<slug>.md with doc_type: requirement; decisions as docs/llm-wiki/decisions/ADR-NNNN-<slug>.md with doc_type: decision. Those doc types are planned knowledge: approving one (verified) approves the plan, not an implementation, and validate reports an approved one with no linked evidence as evidence.planned_unlinked (info) instead of evidence.ungrounded.
   Link implementation evidence (source files and tests) in the requirement's frontmatter evidence once code exists; from then on drift and impact watch it like any other verified document. A resolving reference shows where the requirement is implemented, never that it is complete.
 `,
@@ -1046,7 +1047,9 @@ Purpose:
               switches the completeness/freshness rules off, so an ordinary change
               needs no documentation work: evidence.stale, impact.source_changed,
               content.not_enriched, evidence.missing and evidence.ungrounded are
-              off, and a missing planned document is info, not a warning.
+              off, and a missing planned document is info, not a warning. Off
+              means not reported: stats and next still measure enrichment and
+              evidence, and review still refuses to approve an unfilled scaffold.
     standard  Balance speed and knowledge. Plans profile + per-domain documents and
               keeps the detection, but demotes impact.source_changed to a warning so
               governance reports an omission instead of failing the build.

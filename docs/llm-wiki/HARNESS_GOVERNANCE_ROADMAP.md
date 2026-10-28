@@ -9,11 +9,11 @@ tags:
 status: verified
 doc_type: roadmap
 project: llm-wiki-governance
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - package.json
@@ -66,9 +66,9 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - package.json sha256:592836e8b901c7be
-  - src/cli.js sha256:08f4397561e6c896
+  - src/cli.js sha256:7cfa335ece8b01a7
   - src/index.js sha256:ee1d42734ade2f15
-  - src/commands.js sha256:25c2cad8160baa17
+  - src/commands.js sha256:a708cf502b526bda
   - src/commands/scans.js sha256:81a66b137b3d5209
   - src/commands/findings.js sha256:45598b539e3a6a99
   - src/commands/wiki-files.js sha256:141842053b78cc2c
@@ -143,9 +143,9 @@ source_digests:
 | 낡음(날짜 앵커) | `evidence.stale` — 리뷰 기준일 이후 참조 소스가 커밋됨 | `src/commands/scans.js#symbol:verifiedSourceAnchors` |
 | 낡음(diff 앵커) | `impact.source_changed` — 소스는 이 diff에 있고 문서는 없음 | 같은 앵커 추출기 공유 |
 | 완료 계약 | run manifest + `check-run`의 `run.*` 6룰 | `src/commands.js#symbol:checkRunCommand` |
-| 계획과 구현의 구분 (미배포) | `doc_type` `requirement`·결정 기록 타입의 승인은 계획 승인으로 취급: 근거 없이 승인되면 `evidence.planned_unlinked`(info), `stats.plannedKnowledge`가 따로 셈. 새 필드·status 없음. 빈 저장소의 `init`은 없는 매니페스트를 인용하지 않음 | `src/commands/scans.js#symbol:PLANNED_DOC_TYPES`, `src/commands.js#symbol:statsCommand` |
-| 사람 승인 | `review`(기본 읽기 전용, `--approve-all`에 `--yes` 강제, blocked/error 있으면 거부, 리뷰 스탬프만 = `status`·`reviewed_by`·`reviewed_at` + 이미 있는 경우 `tags` 상태 태그) | `src/commands.js` |
-| 위험 다이얼 | `rules` 토글 + `rulesPreset` 3종, 민감 카테고리는 비토글 | `src/commands/findings.js#symbol:RULE_PRESETS`, `#symbol:NON_TOGGLEABLE_CATEGORIES` |
+| 계획과 구현의 구분 (1.38.0) | `doc_type` `requirement`·결정 기록 타입의 승인은 계획 승인으로 취급: 근거 없이 승인되면 `evidence.planned_unlinked`(info), `stats.plannedKnowledge`가 따로 셈. 새 필드·status 없음. 빈 저장소의 `init`은 없는 매니페스트를 인용하지 않음 | `src/commands/scans.js#symbol:PLANNED_DOC_TYPES`, `src/commands.js#symbol:statsCommand` |
+| 사람 승인 | `review`(기본 읽기 전용, `--approve-all`에 `--yes` 강제, blocked/error 있으면 거부, 보강 안 된 스캐폴드는 규칙이 꺼진 lite에서도 거부(1.38.0), 리뷰 스탬프만 = `status`·`reviewed_by`·`reviewed_at` + 이미 있는 경우 `tags` 상태 태그) | `src/commands.js` |
+| 위험 다이얼 | `rules` 토글 + `rulesPreset` 3종, 민감 카테고리는 비토글. `off`는 보고만 끈다: 사실을 읽는 `stats`·`next`·`review`는 꺼진 규칙도 읽는다(1.38.0) | `src/commands/findings.js#symbol:RULE_PRESETS`, `#symbol:NON_TOGGLEABLE_CATEGORIES`, `src/governance.js#symbol:withRulesMeasured` |
 | 기계적 자동수정 | Tier A frontmatter 필드, `## Evidence` 정합, 깨진 링크 stub, block version 스탬프 | `src/commands/fix-migrate.js#symbol:runMechanicalRemediation` |
 | 사용자 수정 보호 | 생성 스킬의 sha256 마커 — 한 글자만 고쳐도 영구 보존 | `src/commands/skills.js#symbol:isManagedUnmodified` |
 | 에이전트 표면 | MCP가 쓰기 옵션을 **구조적으로 만들지 않음** | `src/mcp/tools.js#symbol:buildToolOptions` |

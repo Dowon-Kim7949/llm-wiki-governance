@@ -240,6 +240,30 @@ export function ruleSuppressed(options, rule) {
   return rules[rule] === "off";
 }
 
+// A rule toggle decides what a command REPORTS, not what is TRUE. `off` drops the
+// finding, and a reader that derives a fact from it then reads the silence as
+// "nothing wrong": in lite (content.not_enriched, evidence.missing and
+// evidence.stale off) the untouched scaffolds of a fresh wiki counted as enriched
+// in stats, `next` said there was nothing to fill, and `review --approve-all`
+// promoted them to verified past the gate that exists to refuse exactly that.
+// Returns options with the named rules restored to their registry severity when
+// they are off, for the one audit run whose job is to read those facts. Every
+// other rule, and a rule dialed to another severity, is left as configured.
+// backfill already measures this way (`rules: {}` for its drift scan).
+export function withRulesMeasured(options, rules) {
+  const current = options && options.rules;
+  if (!current || typeof current !== "object") return options;
+  const measured = { ...current };
+  let changed = false;
+  for (const rule of rules) {
+    if (measured[rule] === "off") {
+      delete measured[rule];
+      changed = true;
+    }
+  }
+  return changed ? { ...options, rules: measured } : options;
+}
+
 // The document set a mode PLANS — and therefore also the set it treats as
 // "required" when one is missing. Moved here from commands.js because it is a
 // policy decision, not an init detail, and because init and the missing-document

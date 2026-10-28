@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: glossary
 project: llm-wiki-governance
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -28,7 +28,7 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - src/frontmatter-schema.js sha256:ec4476da72b5c2e2
-  - src/commands.js sha256:25c2cad8160baa17
+  - src/commands.js sha256:a708cf502b526bda
   - src/config.js sha256:ef863d1307ba2dc9
   - llm-wiki.config.json sha256:16fa581c78b330eb
 ---
@@ -43,9 +43,9 @@ source_digests:
 - **status** — 문서 검토 상태. 허용값: `draft`, `needs_review`, `verified`, `deprecated`(`src/config.js` `VALID_STATUSES`). CLI/에이전트 **생성 시점** 산출물은 항상 `needs_review`(생성기에는 `verified` 경로가 없다).
 - **verified** — 검토가 끝난 문서에만 부여하며, 누가 검토했는지는 `reviewed_by`가 말한다. `--strict`에서는 `reviewed_by`/`reviewed_at`가 없으면 실패. 도구는 스스로 승격하지 않고 명시적 `review --approve`/`--approve-all --yes`만이 스탬프한다 — **누가 그 명령을 실행하는지는 저장소 정책이다.** 이 저장소는 2026-08-03부터 에이전트 승인을 허용하고 `reviewed_by`에 에이전트를 적는다([index.md](index.md) Status). 도입처 기본값은 사람 검토다.
 - **human_verified** (evidence tier) — `stats`가 계산하는 report-only 값이며 정의는 "`verified` + reviewer 메타 존재"다. **reviewer가 사람인지 검사하지 않으므로**, 이 저장소에서는 에이전트 승인분도 여기에 포함된다. 이름과 실제 의미가 어긋나 있고, 이 저장소의 수치를 인용할 때 그 사실을 함께 적어야 한다. 1.33.0부터 config `agentReviewers`에 에이전트 검토자 이름을 적으면 그 승인은 **agent_verified**로 분리된다(목록이 없으면 `null` = 구분 불가). 이 저장소는 2026-10-21에 config를 설정해 사람 4 / 에이전트 47로 갈라 센다.
-- **source_files** — 문서 주장이 근거로 삼는 파일 목록(넓은 범위 근거). 키는 필수지만 빈 목록이 허용된다. 인라인 `source_files: []`도 빈 목록으로 읽는다(그 전에는 문자열 `"[]"`로 읽어 `frontmatter.array` 오류가 났다). `init`은 매니페스트 파일이 실제로 없으면 생성 문서에 빈 목록을 쓴다.
+- **source_files** — 문서 주장이 근거로 삼는 파일 목록(넓은 범위 근거). 키는 필수지만 빈 목록이 허용된다. 인라인 `source_files: []`도 빈 목록으로 읽는다(그 전에는 문자열 `"[]"`로 읽어 `frontmatter.array` 오류가 났다). `init`은 매니페스트 파일이 실제로 없으면 생성 문서에 빈 목록을 쓰고, 요구사항·결정 템플릿에는 매니페스트가 있어도 빈 목록을 쓴다(복사본이 첫날부터 근거 연결됨으로 보이지 않게).
 - **evidence** — 파일/라인/심볼/섹션/라우트 단위의 정밀 근거 참조. 예: `src/cli.js#symbol:main`, `file#L10-L20`, `file#route:/users`. 본문 `## Evidence` 섹션과 정렬되어야 한다. 형식의 정의는 `src/frontmatter-schema.js#symbol:EVIDENCE_REFERENCE_PATTERN` 하나다(1.33.0). 파일 없는 `#anchor`는 아무 소스도 가리키지 않으므로 evidence가 아니다.
-- **계획된 지식(planned knowledge)** — 의도한 동작을 말하는 문서. `doc_type`이 `requirement`이거나 결정 기록 타입(`decision`·`decision_log`·`adr`)이면 해당한다(`src/commands/scans.js#symbol:PLANNED_DOC_TYPES`). 이런 문서의 `verified`는 **계획 승인**이지 구현 완료가 아니다. 근거 없이 승인된 계획 문서는 `evidence.ungrounded`(warning) 대신 `evidence.planned_unlinked`(info)로 보고되고, `stats`는 `plannedKnowledge`로 따로 센다. 로컬 참조가 모두 해석되면 "linked"인데, 이는 구현 위치를 가리킬 뿐 완료를 뜻하지 않는다. 새 필드나 status 값 없이 기존 `doc_type`만으로 표현한다. 요구사항 생성 경로는 `init --greenfield`가 깔아 주는 `templates/REQUIREMENT.template.md`다.
+- **계획된 지식(planned knowledge)** — 의도한 동작을 말하는 문서. `doc_type`이 `requirement`이거나 결정 기록 타입(`decision`·`decision_log`·`adr`)이면 해당한다(`src/commands/scans.js#symbol:PLANNED_DOC_TYPES`). 이런 문서의 `verified`는 **계획 승인**이지 구현 완료가 아니다. 근거 없이 승인된 계획 문서는 `evidence.ungrounded`(warning) 대신 `evidence.planned_unlinked`(info)로 보고되고, `stats`는 `plannedKnowledge`로 따로 센다. 로컬 참조가 모두 해석되면 "linked"인데, 이는 구현 위치를 가리킬 뿐 완료를 뜻하지 않는다. 새 필드나 status 값 없이 기존 `doc_type`만으로 표현한다. 요구사항 생성 경로는 `init --greenfield`가 깔아 주는 `templates/REQUIREMENT.template.md`다. `review` 목록은 이런 문서를 `no-evidence` 대신 `planned`로 표시한다(1.38.0).
 - **related** — 연결된 다른 wiki 문서 경로. 존재하지 않으면 `related.missing` 경고(P0-2에서 추가).
 - **wikiGraph** — 위키 링크(이중 대괄호 표기) 기반 문서 그래프. 미해결 개념(unresolved concepts)·별칭(aliases)·고아 문서(orphans)를 집계한다.
 - **adapter** — 에이전트에게 wiki 진입점을 알리는 파일. `AGENTS.md`(Codex), `CLAUDE.md`(Claude Code), `.cursor/rules/llm-wiki.mdc`(Cursor), `.github/copilot-instructions.md`(GitHub Copilot), 후보 `ANTIGRAVITY.md`.
@@ -54,9 +54,9 @@ source_digests:
 - **locatorNarrowed** — (1.36.0) `impact` JSON 키. 줄 범위나 `.md` 섹션으로만 인용된 파일이 diff에 들었지만 인용된 영역은 그대로라 실패시키지 않은 인용의 목록. 건너뛴 사실을 숨기지 않으려고 보고한다.
 - **llm-wiki.config.json** — 프로젝트 루트의 선택적 설정 파일. 인식하는 키는 `type`·`profiles`·`agents`·`strict`·`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage`·`harnessHealth`·`wikiBudget`(1.33.0, `{ "logTokens", "docTokens" }`)·`agentReviewers`(1.33.0, 이름 배열)·`promptProfile`(1.33.0, `"full"|"slim"`)·`governance`(1.30.0, `{ "mode": "lite"|"standard"|"strict" }`)·`checkRun`(1.36.0, `{ "ignore": ["dir/", "*.ext", "경로"] }`)·`sourceDigests`(1.36.0, boolean)이며, unknown 키는 무시돼 옛 파일이 계속 동작한다. **1.31.0부터 값 어휘도 검증한다**: `type`은 `KNOWN_TYPES`에, `agents`는 `SUPPORTED_AGENTS`에 대조하고 위반은 config 오류(exit 3), `agents`의 `all`은 CLI와 같이 세 이름으로 펼쳐진다 — 그 전에는 타입만 봐서 `{"type": "frontendd"}`가 조용히 통과했다. 적용 우선순위는 CLI 플래그 > config > 자동감지(`strict`는 additive라 config가 켤 수만 있다). `src/config-file.js`. 키별 의미는 [PUBLIC_API](PUBLIC_API.md)의 Configuration 절이 소유한다.
 - **월별 권(log volume)** — `docs/llm-wiki/log-YYYY-MM.md`. `archive-log`(1.33.0)가 `log.md`에서 보존 기간을 넘긴 항목을 고치지 않고 통째로 옮겨 두는 파일이다(기존 권에 덧붙일 때는 줄끝만 그 권을 따른다). 집계(`stats`·orphan)에서는 `log.md` 하나로 센다. `log.md`와 같은 변경 로그 기록으로 취급된다(`isAppendOnlyLog`): 다시 쓰이지 않고 review·drift·impact 대상이 아니며, 민감정보·링크 스캔은 받는다.
-- **rules / rulesPreset** — finding 규칙의 severity를 프로젝트 단위로 조정하는 수단. `rules`는 규칙 id → `off`/`blocked`/`error`/`warning`/`info` 맵이고, `rulesPreset`은 `relaxed`/`standard`/`strict` 명명 번들(`src/commands/findings.js` `RULE_PRESETS`)을 바닥값으로 깐다 — 명시적 `rules` 항목이 항상 프리셋을 이긴다. `sensitive.*`는 어느 쪽으로도 끌 수 없다. 둘 다 finding severity만 바꾸며 `--strict`(exit code 의미론)와는 별개다.
+- **rules / rulesPreset** — finding 규칙의 severity를 프로젝트 단위로 조정하는 수단. `rules`는 규칙 id → `off`/`blocked`/`error`/`warning`/`info` 맵이고, `rulesPreset`은 `relaxed`/`standard`/`strict` 명명 번들(`src/commands/findings.js` `RULE_PRESETS`)을 바닥값으로 깐다 — 명시적 `rules` 항목이 항상 프리셋을 이긴다. `sensitive.*`는 어느 쪽으로도 끌 수 없다. 둘 다 finding severity만 바꾸며 `--strict`(exit code 의미론)와는 별개다. **`off`는 보고를 끌 뿐 사실을 끄지 않는다**(1.38.0): finding으로 사실을 판정하는 `stats`(보강률·`reference_checked`·`stale_verified`)·`next`(Enrichment Checklist)·`review`(스캐폴드 승인 거부)는 자기가 읽는 규칙을 꺼진 상태에서도 읽는다(`src/governance.js#symbol:withRulesMeasured`).
 - **OKF v0.1** — 외부 지식 포맷 호환 프로필. `type`/`aliases`/`tags`와 위키 링크를 검증한다.
-- **not_enriched** — 생성 후 아직 실제 내용으로 보강되지 않은 문서 신호(`content.not_enriched`, P0-3에서 추가).
+- **not_enriched** — 생성 후 아직 실제 내용으로 보강되지 않은 문서 신호(`content.not_enriched`, P0-3에서 추가). lite는 이 규칙의 보고를 끄지만 `review`는 그래도 이런 문서의 승인을 거부한다(1.38.0 전에는 lite에서 거부가 빠졌다).
 - **템플릿 문서(template doc)** — `docs/llm-wiki/templates/` 하위 문서. **도입처가 복사해 쓰는 뼈대이지 그 저장소를 서술하는 문서가 아니므로** 검토(`review`) 대상도, 최신성 게이트(`evidence.stale`/`impact.source_changed`) 대상도 아니다. 판정의 단일 소스는 `src/commands/wiki-files.js#symbol:isTemplateDoc`이며 `listWikiContentDocs`가 쓰던 경계와 같다. 1.29.1(2026-08-06) 이전에는 이 경계가 명령마다 달라서(N-14) 게이트는 지목하는데 `review`로는 손댈 수 없는 문서가 존재했다 — **해소 경로가 없는 finding**. 승격 대상이 아니라는 사실과 최신성 검사 대상이 아니라는 사실이 이제 같은 술어에서 나온다.
 - **거버넌스 모드(governance mode)** — 이 저장소가 도는 운영 레벨. `lite`/`standard`/`strict` 세 값이며 config `governance.mode`(또는 `--mode`)로 정한다. **프로젝트 템플릿이 아니라 하나의 엔진 위의 정책 레벨**이라 세 레벨이 위키 레이아웃·frontmatter 계약·명령 표면·finding 레지스트리를 공유하고, 같은 저장소에서 제자리로 옮긴다. `lite`=개발 속도, `standard`=속도와 지식의 균형, `strict`=완전성·검증·인수인계. `governance` 블록이 없는 프로젝트는 `strict`로 해소된다(모드 이전 동작과 동일). 단일 소스는 `src/governance.js#symbol:getGovernancePolicy`.
 - **rule floor** — 거버넌스 모드가 기여하는 rule-id → severity 바닥값. `rules`가 받는 것과 **같은 어휘**이며 `rulesPreset`·명시 `rules` **아래**에 키 단위로 깔린다(mode floor < `rulesPreset` < `rules`). `strict`의 floor는 **비어 있다** — 레지스트리의 기본 severity가 이미 strict 베이스라인이기 때문이고, 그것이 기존 프로젝트의 마이그레이션 보증이다. 어떤 모드도 `sensitive.*`를 건드릴 수 없고 기본이 `blocked`인 규칙도 만지지 않는다.

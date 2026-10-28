@@ -117,14 +117,19 @@ This directory is a shared documentation space where LLMs and developers referen
 }
 
 // ---- log.md ------------------------------------------------------------
-// `manifestFound` is false when the repository had no manifest to cite (an empty
-// or manifest-less repository): the entry then says so instead of naming a file
-// that is not there. True keeps the body byte-identical.
-export function logBody(docLang, lastUpdated, { manifestFound = true } = {}) {
-  if (!manifestFound) {
-    const evidenceLine = isKo(docLang)
-      ? "  - (없음: 생성 시점에 애플리케이션 소스나 매니페스트가 없었다)"
-      : "  - (none: no application source or manifest existed at creation)";
+// `manifest` is the file the first entry cites as evidence: the detected primary
+// manifest (pyproject.toml, go.mod, ...), which the entry used to name as
+// package.json whatever the ecosystem. null means the repository had no manifest
+// to cite (an empty or manifest-less repository), and the entry then says so
+// instead of naming a file that is not there. package.json keeps the body
+// byte-identical.
+export function logBody(docLang, lastUpdated, { manifest = "package.json" } = {}) {
+  if (manifest !== "package.json") {
+    const evidenceLine = manifest === null
+      ? (isKo(docLang)
+        ? "  - (없음: 생성 시점에 애플리케이션 소스나 매니페스트가 없었다)"
+        : "  - (none: no application source or manifest existed at creation)")
+      : `  - ${manifest}`;
     return logBody(docLang, lastUpdated).replace("  - package.json\n", `${evidenceLine}\n`);
   }
   if (isKo(docLang)) {
@@ -707,8 +712,9 @@ Copy this template to \`docs/llm-wiki/requirements/REQ-NNN-<short-slug>.md\` for
 `;
 }
 
-// docs/llm-wiki/templates/DECISION_LOG.template.md, greenfield variant: an ADR
-// skeleton. The default (non-greenfield) template stays the generic body.
+// docs/llm-wiki/templates/DECISION_LOG.template.md: an ADR skeleton, for every
+// init. --greenfield only changes its related list (it also links the requirement
+// template).
 export function decisionTemplateBody(docLang) {
   if (isKo(docLang)) {
     return `# ADR-NNNN: Decision Title

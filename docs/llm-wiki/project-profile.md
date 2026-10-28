@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: project_profile
 project: llm-wiki-governance
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - package.json
@@ -29,7 +29,7 @@ contains_sensitive_info: false
 source_digests:
   - package.json sha256:592836e8b901c7be
   - bin/llm-wiki.js sha256:6af8af1e6a7df978
-  - src/cli.js sha256:08f4397561e6c896
+  - src/cli.js sha256:7cfa335ece8b01a7
 ---
 
 # Project Profile
@@ -43,7 +43,7 @@ source_digests:
 ## Summary
 
 - `llm-wiki-governance`는 Codex·Claude Code·CI·로컬 터미널에서 **AI가 쓴 프로젝트 문서를 검증·드리프트 감지·CI 강제**하는 거버넌스 CLI다(초기 문서 생성도 함께 제공). 1.16.0에서 포지셔닝을 "공통 표준"에서 **거버넌스 레이어(OKF-compatible)**로 옮겼다.
-- 기존 코드베이스(Brownfield)와 코드가 아직 없는 신규 프로젝트(Greenfield) 둘 다에서 시작할 수 있다. 신규 프로젝트는 `init`/`quickstart`/`handoff --greenfield`로 요구사항·결정을 **계획된 지식**으로 기록하고, 코드가 생기면 같은 문서에 구현 근거를 연결해 기존 근거 검증으로 합류한다(미배포, `feat/greenfield`). 두 경로가 같은 엔진·frontmatter 계약·명령을 쓴다.
+- 기존 코드베이스(Brownfield)와 코드가 아직 없는 신규 프로젝트(Greenfield) 둘 다에서 시작할 수 있다. 신규 프로젝트는 `init`/`quickstart`/`handoff --greenfield`로 요구사항·결정을 **계획된 지식**으로 기록하고, 코드가 생기면 같은 문서에 구현 근거를 연결해 기존 근거 검증으로 합류한다(1.38.0). 두 경로가 같은 엔진·frontmatter 계약·명령을 쓴다.
 - 특정 도구 전용이 아니라 여러 adapter(`AGENTS.md`, `CLAUDE.md`, 후보 `ANTIGRAVITY.md`)에서 함께 쓰는 도구-중립 거버넌스를 지향한다.
 - 보수적 쓰기 정책이 핵심이다: 기본은 미리보기, 실제 쓰기는 명시적 `--write`/`--apply` 시에만(예: `init --write`, `migrate --apply`, `archive-log --write`). 모든 쓰기는 `verified` 문서 내용을 보존하고 결과를 `needs_review`로 남긴다.
 

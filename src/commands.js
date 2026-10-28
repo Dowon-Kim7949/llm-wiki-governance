@@ -124,6 +124,7 @@ import {
   plannedWikiDocs,
   ruleSuppressed,
   suppressDomainDocs,
+  withRulesMeasured,
   SCAN_GATING_RULES
 } from "./governance.js";
 export { detectDomainDirectories, domainDisplayName, normalizeDomainSlug, planDomainDocs } from "./commands/domains.js";
@@ -554,7 +555,9 @@ export async function statusCommand(options) {
 }
 
 export async function nextCommand(options) {
-  const auditResult = await audit(options);
+  // Measured even when content.not_enriched is off (lite): otherwise the checklist
+  // of a fresh lite wiki is empty and says there is nothing to fill.
+  const auditResult = await audit(withRulesMeasured(options, ["content.not_enriched"]));
   const actions = buildNextActions(auditResult, options);
   const result = actions.some((action) => action.priority === "blocked")
     ? "blocked"
@@ -1770,7 +1773,10 @@ export async function reviewCommand(options) {
 
   // One audit run supplies per-document findings for both risk ranking and the
   // promotion gate (a doc with any blocked/error finding cannot be approved).
-  const auditResult = await audit(options);
+  // NEVER_APPROVE_RULES are measured even when switched off: the enrichment gate
+  // below is a fact about the document, and lite turning content.not_enriched off
+  // used to let --approve-all promote every untouched scaffold.
+  const auditResult = await audit(withRulesMeasured(options, NEVER_APPROVE_RULES));
   const findingsByPath = new Map();
   for (const finding of auditResult.findings) {
     if (!finding.path || finding.path === ".") continue;
@@ -1822,6 +1828,10 @@ function buildReviewEntry(doc, findings) {
     visibility: doc.visibility,
     lastUpdated: typeof doc.frontmatter.last_updated === "string" ? doc.frontmatter.last_updated : null,
     evidenceBacked,
+    // A requirement or decision (PLANNED_DOC_TYPES): the list labels it "planned"
+    // instead of "no-evidence", because a plan with nothing linked yet is the
+    // expected state, not a gap. The risk score is unchanged.
+    planned: isPlannedDoc(doc.frontmatter),
     riskScore,
     // Also gates --approve-all, so a bulk approval cannot sweep up scaffolds.
     approvable: blocking.length === 0 && unenriched.length === 0,
@@ -1845,7 +1855,8 @@ function renderReviewList(reviewed, totalScanned, includeSensitive) {
   const docLines = reviewed.map((doc) => {
     const flags = [];
     if (!doc.approvable) flags.push("BLOCKED");
-    if (!doc.evidenceBacked) flags.push("no-evidence");
+    if (doc.planned) flags.push("planned");
+    else if (!doc.evidenceBacked) flags.push("no-evidence");
     const severity = doc.findingCount ? ` (${formatCountMap(doc.findingsBySeverity)})` : "";
     return `${doc.path} — ${doc.title ?? "(no title)"} [risk ${doc.riskScore}${flags.length ? `, ${flags.join(", ")}` : ""}] findings: ${doc.findingCount}${severity}`;
   });
@@ -1862,6 +1873,7 @@ function renderReviewList(reviewed, totalScanned, includeSensitive) {
     { title: "Needs Review (risk-ranked)", body: docLines.length ? docLines : ["none"] },
     { title: "Caveats", body: [
       "Read-only list. Risk-ranks needs_review docs (never-enriched / thin / no-evidence / broken-link first) for fast spot-checking. Restricted/sensitive docs are excluded unless --include-sensitive.",
+      ...(reviewed.some((doc) => doc.planned) ? ["planned marks a requirement or decision (doc_type requirement, decision, decision_log, or adr): approving it approves the plan, not an implementation, so it may have no evidence linked yet."] : []),
       "Scope: content documents under docs/llm-wiki, excluding docs/llm-wiki/templates/ (skeletons adopters copy) and the append-only log. The freshness gates (drift, impact) skip templates too, so this boundary no longer produces findings you cannot clear (N-14).",
       "Promotion to verified is never automatic: run review --approve <path> (or review --approve-all --yes) to stamp verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one. Docs with blocking/structural findings are refused until fixed. Human review is the default; if your project delegates the approval run, set llm-wiki.config.json \"reviewer\" so reviewed_by names whoever actually approves."
     ] }
@@ -2852,6 +2864,8 @@ export async function graphCommand(options) {
 // Read-only. Aggregates a health snapshot: document status mix, verified %,
 // enrichment %, evidence coverage %, staleness, and orphans. Reuses the audit
 // findings (content.not_enriched, evidence.stale) and the wiki graph.
+const STATS_MEASURED_RULES = ["content.not_enriched", "evidence.stale", ...EVIDENCE_REFERENCE_RULES];
+
 export async function statsCommand(options) {
   const cwd = options.cwd;
   // The change-log record counts once, as log.md: monthly volumes written by
@@ -2889,7 +2903,12 @@ export async function statsCommand(options) {
     });
   }
 
-  const auditResult = await audit(options);
+  // The rules the numbers below are read from are measured even when the project
+  // switched them off (lite turns content.not_enriched, evidence.missing and
+  // evidence.stale off): a silenced rule read as a fact made a fresh lite wiki 100%
+  // enriched. That includes the drift scan, so stats pays for it in lite the way
+  // backfill does.
+  const auditResult = await audit(withRulesMeasured(options, STATS_MEASURED_RULES));
   const findings = auditResult.findings ?? [];
   const uniquePathsFor = (rule) => new Set(findings.filter((finding) => finding.rule === rule).map((finding) => finding.path)).size;
   const notEnriched = uniquePathsFor("content.not_enriched");
@@ -2998,7 +3017,7 @@ export async function statsCommand(options) {
   }, "LLM-WIKI Stats", [
     { title: "Summary", body: summaryLines },
     { title: "Document Status", body: statusLines.length ? statusLines : ["none"] },
-    { title: "Caveats", body: [...(plannedKnowledge.documents > 0 ? ["planned_knowledge counts doc_type requirement, decision, decision_log, and adr documents. For them verified means the plan was approved, not that it is implemented; linked means every local reference they cite resolves, which shows where a plan is implemented, not that it is complete. They are also included in verified, evidence_coverage, and evidence_tiers above."] : []), "Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata. " + (agentVerified === null
+    { title: "Caveats", body: [...(plannedKnowledge.documents > 0 ? ["planned_knowledge counts doc_type requirement, decision, decision_log, and adr documents. For them verified means the plan was approved, not that it is implemented; linked means every local reference they cite resolves, which shows where a plan is implemented, not that it is complete. They are also included in verified, evidence_coverage, and evidence_tiers above."] : []), "Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; enriched, evidence_tiers, and stale_verified are measured even when their rules are switched off (lite, or config), because off stops a rule being reported, not being true. evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata. " + (agentVerified === null
       ? "Who the reviewer was is not checked: an agent's approval counts toward human_verified here. Name your agent reviewers in llm-wiki.config.json \"agentReviewers\" to report them as agent_verified instead; until then agent_verified is unknown (null in JSON), not 0."
       : "Documents whose reviewed_by matches llm-wiki.config.json \"agentReviewers\" (trimmed, case-insensitive) are counted as agent_verified instead of human_verified; a reviewer name not on that list still counts as human, so the split is only as accurate as the list.")] }
   ]);

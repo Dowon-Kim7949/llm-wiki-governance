@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: architecture_conventions
 project: llm-wiki-governance
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -65,8 +65,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:08f4397561e6c896
-  - src/commands.js sha256:25c2cad8160baa17
+  - src/cli.js sha256:7cfa335ece8b01a7
+  - src/commands.js sha256:a708cf502b526bda
   - src/frontmatter.js sha256:f03d0c07725dec3e
   - src/report.js sha256:9774daea9617572b
   - src/index.js sha256:ee1d42734ade2f15
@@ -156,7 +156,8 @@ source_digests:
 - 새 rule은 `FINDING_EXPLANATIONS`에 등록해 `explain` 명령이 조치법을 안내하게 한다. `defaultSeverity`가 rule→severity 단일 소스다(push 지점과 일치 감사됨).
 - config `rules` 토글은 중앙 `applyRuleConfig`가 `audit`/`status`/`validate-frontmatter`의 findings에 적용한다(off 드롭·severity override, idempotent). `sensitive.*` 같은 안전 카테고리는 `NON_TOGGLEABLE_CATEGORIES`로 토글에서 제외한다. opt-in lint(예: `content.thin_body`)는 config로 활성화될 때만 findings를 낸다(1.8). 신규 `harness.*` 카테고리(`harness-health`)도 다른 명령과 똑같이 `applyRuleConfig`를 거치므로 config 토글·severity override가 그대로 적용되고 지역화 seam도 같은 지점을 지난다(`i18n.js` 카탈로그는 명시적 allowlist라 `import.*`·`review.*`처럼 아직 항목이 없어 KO에서도 EN fallback이다), `NON_TOGGLEABLE_CATEGORIES`에는 들어가지 않는다.
 - **검사에서 통째로 빠지는 경로/유형은 하드코딩하고, 그 목록은 짧게 유지한다.** 제품에 그런 skip은 두 개뿐이다: append-only 변경 로그(`wiki-files.js`의 `isAppendOnlyLog`)와 2026-08-03에 더한 `FRESHNESS_EXEMPT_DOC_TYPES`(= `release_notes`, `scans.js`). 후자를 config 키로 열지 않은 이유는 앞의 선례와 같다 — 이것은 프로젝트가 조율할 임계값이 아니라 **문서 유형의 성질**에 대한 판정이다. 릴리스 노트는 이미 출하된 릴리스의 불변 기록이면서 매 릴리스마다 바뀌는 `package.json`을 앵커로 삼으므로, 최신성 검사 안에 두면 구조적으로 영원히 발화한다. 설정 가능하게 만들면 "어떤 문서를 거버넌스에서 빼도 되는가"를 도입처가 임의로 넓힐 수 있는 손잡이가 되고, 그건 이 skip이 사려는 것과 정반대다. 새 면제를 더하려면 규칙 severity를 바꿀 때와 같은 결정 절차를 거친다.
-- **문서의 지식 종류는 새 필드가 아니라 `doc_type`으로 판정한다**(미배포, Greenfield). `PLANNED_DOC_TYPES`(`scans.js`)는 `requirement`와 `DECISION_DOC_TYPES`(`commands/governance-mode.js`, backfill과 `content.dated_heading`이 이미 쓰는 집합)의 합이고, 판정 술어는 `isPlannedDoc` 하나다. 계획 문서는 `scanUngroundedVerified`에서 `evidence.ungrounded` 대신 `evidence.planned_unlinked`(info)를 받고 `stats`에서 `plannedKnowledge`로 따로 세진다. drift·impact·search는 계획 문서를 다르게 다루지 않는다 — 근거를 연결하면 같은 엔진이 감시한다. status enum이나 필수 frontmatter를 늘리지 않은 이유는 그것이 MAJOR 계약 변경이고 검토 축과 지식 종류 축을 한 필드에 섞기 때문이다. `stats`의 연결 판정은 규칙 finding이 아니라 파일 존재를 직접 확인한다. lite가 `evidence.missing`을 끄기 때문이다.
+- **규칙 토글은 보고를 정하고 사실을 정하지 않는다**(1.38.0). `applyRuleConfig`의 `off`는 finding을 지우므로, finding에서 사실을 읽는 코드가 그 결과를 그대로 쓰면 꺼진 규칙의 침묵을 "문제없음"으로 읽는다. lite가 그렇게 `stats`(보강률 100%)·`next`(빈 체크리스트)·`review`(스캐폴드 일괄 승인)를 틀리게 만들었다. 사실을 읽는 명령은 `audit(withRulesMeasured(options, [읽는 규칙]))`로 그 규칙만 기본 severity로 되돌려 읽는다(`src/governance.js`; 다른 규칙과 `info` 같은 다른 severity 설정은 건드리지 않는다). `backfill`의 `rules: {}` 드리프트 스캔이 먼저 있던 같은 원칙이다. 보고하는 명령(`validate`·`audit`·`status`·`drift`)은 계속 토글을 따른다.
+- **문서의 지식 종류는 새 필드가 아니라 `doc_type`으로 판정한다**(1.38.0, Greenfield). `PLANNED_DOC_TYPES`(`scans.js`)는 `requirement`와 `DECISION_DOC_TYPES`(`commands/governance-mode.js`, backfill과 `content.dated_heading`이 이미 쓰는 집합)의 합이고, 판정 술어는 `isPlannedDoc` 하나다. 계획 문서는 `scanUngroundedVerified`에서 `evidence.ungrounded` 대신 `evidence.planned_unlinked`(info)를 받고 `stats`에서 `plannedKnowledge`로 따로 세진다. drift·impact·search는 계획 문서를 다르게 다루지 않는다 — 근거를 연결하면 같은 엔진이 감시한다. status enum이나 필수 frontmatter를 늘리지 않은 이유는 그것이 MAJOR 계약 변경이고 검토 축과 지식 종류 축을 한 필드에 섞기 때문이다. `stats`의 연결 판정은 규칙 finding이 아니라 파일 존재를 직접 확인한다. lite가 `evidence.missing`을 끄기 때문이다.
 - **프리셋(`RULE_PRESETS`)은 기본 severity가 `blocked`인 규칙과 안전 규칙(`sensitive.*`)을 절대 건드리지 않는다.** 기본이 `error`인 규칙은 `PRESET_DIALABLE_ERROR_RULES`(frozen 허용 목록)에 올라 있을 때만 프리셋이 움직일 수 있다 — 목록에 항목을 더하는 것은 리팩터가 아니라 결정이며, 배경은 `src/commands/findings.js` 모듈 항목에 적었다.
 - config `requiredDocs`(커스텀 문서셋)는 `findMissingDocs`가 core/profile 필수 목록에 병합해 `structure.required_doc`로 검사한다. config `templates` 오버라이드는 `renderOverriddenDoc`가 **body만** 취하고 frontmatter는 항상 `renderWikiDocumentTemplate`(status: needs_review)가 생성해, 오버라이드가 `status: verified`를 만들 수 없다(구조적 가드레일)(1.8).
 - 안전 우선: 기존 wiki/adapter 파일은 기본 보존, `log.md`는 append-only, 민감정보 의심값은 redaction.

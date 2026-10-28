@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: examples
 project: llm-wiki-governance
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -23,7 +23,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:08f4397561e6c896
+  - src/cli.js sha256:7cfa335ece8b01a7
   - README.md sha256:3f78da30bac25e58
 ---
 
@@ -50,7 +50,7 @@ llm-wiki review --approve docs/llm-wiki/requirements/REQ-001-<slug>.md   # 계�
 llm-wiki stats                                            # planned_knowledge: 승인 수 · 근거 연결 linked/unresolved/none
 ```
 
-`init`은 매니페스트 파일이 없으면 생성 문서에 소스를 적지 않습니다(그 전에는 없는 `package.json`을 적었습니다). 요구사항은 문서 하나에 하나씩 `requirements/REQ-NNN-*.md`(`doc_type: requirement`), 결정은 `decisions/ADR-NNNN-*.md`(`doc_type: decision`)로 둡니다. 코드가 생기면 그 요구사항의 frontmatter `evidence`에 구현 파일과 테스트를 적고 다시 승인합니다. 그때부터 `impact`가 그 코드의 변경을 지목합니다(lite에서는 꺼져 있으니 `mode set standard --write`나 `rules`로 켭니다). 처음부터 끝까지 돌려 보는 예제는 `examples/greenfield-vue-demo/`(`node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough`, 검사 20개)이고 `tests/greenfield-demo-walkthrough.test.js`가 CI에서 같은 시나리오를 실행합니다.
+`init`은 매니페스트 파일이 없으면 생성 문서에 소스를 적지 않습니다(그 전에는 없는 `package.json`을 적었습니다). 요구사항은 문서 하나에 하나씩 `requirements/REQ-NNN-*.md`(`doc_type: requirement`), 결정은 `decisions/ADR-NNNN-*.md`(`doc_type: decision`)로 둡니다. 코드가 생기면 그 요구사항의 frontmatter `evidence`에 구현 파일과 테스트를 적고 다시 승인합니다. 그때부터 `impact`가 그 코드의 변경을 지목합니다(lite에서는 꺼져 있으니 `mode set standard --write`나 `rules`로 켭니다). lite에서도 `llm-wiki next`는 아직 채우지 않은 섹션을 문서별로 보여 주고, 손대지 않은 스캐폴드는 `review --approve-all --yes`가 승인하지 않습니다(1.38.0 전에는 lite에서 둘 다 빠졌습니다). 처음부터 끝까지 돌려 보는 예제는 `examples/greenfield-vue-demo/`(`node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough`, 검사 20개)이고 `tests/greenfield-demo-walkthrough.test.js`가 CI에서 같은 시나리오를 실행합니다.
 
 ## 생성 문서 언어 선택 (--doc-lang, 1.24)
 

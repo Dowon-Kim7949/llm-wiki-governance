@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: domain_overview
 project: llm-wiki-governance
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -60,8 +60,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/commands.js sha256:25c2cad8160baa17
-  - src/cli.js sha256:08f4397561e6c896
+  - src/commands.js sha256:a708cf502b526bda
+  - src/cli.js sha256:7cfa335ece8b01a7
   - src/detector.js sha256:5ad2488c9692faa3
   - src/encoding.js sha256:6d9c6a75f032f525
   - src/index.js sha256:ee1d42734ade2f15
@@ -88,11 +88,12 @@ source_digests:
 
 ## Features
 
-- **신규 프로젝트에서 시작하기 — `--greenfield`(미배포, `feat/greenfield`)** — 코드가 아직 없는 저장소에서도 같은 위키로 시작하고, 코드가 생기면 기존 근거 검증으로 합류하게 한다. 엔진을 둘로 나누지 않고 기존 `doc_type`·명령·규칙 위에 얹었다.
-  - **가짜 근거 제거**(모든 프로젝트): 빈 저장소에서 `init`이 생성 문서 10건 모두에 존재하지 않는 `package.json`을 인용해 `validate` 경고 10건과 `stats` 근거 커버리지 100%가 나왔다. 이제 매니페스트 파일이 없으면 `source_files`를 빈 목록으로 쓰고 로그 항목도 "없음"이라고 적는다. 매니페스트가 있으면 산출물은 그대로다(`tests/greenfield.test.js`).
+- **신규 프로젝트에서 시작하기 — `--greenfield`(1.38.0)** — 코드가 아직 없는 저장소에서도 같은 위키로 시작하고, 코드가 생기면 기존 근거 검증으로 합류하게 한다. 엔진을 둘로 나누지 않고 기존 `doc_type`·명령·규칙 위에 얹었다.
+  - **가짜 근거 제거**(모든 프로젝트): 빈 저장소에서 `init`이 생성 문서 10건 모두에 존재하지 않는 `package.json`을 인용해 `validate` 경고 10건과 `stats` 근거 커버리지 100%가 나왔다. 이제 매니페스트 파일이 없으면 `source_files`를 빈 목록으로 쓰고 로그 항목도 "없음"이라고 적는다. 매니페스트가 있으면 산출물은 그대로이고, 첫 로그 항목은 감지된 주 매니페스트(`pyproject.toml` 등)를 적는다 — 그 전에는 생태계와 무관하게 `package.json`이라고 적었다(`tests/greenfield.test.js`).
   - **`quickstart` 모드 오표기 수정**: 새 저장소에서 config에는 `lite`를 쓰면서 Next Step과 handoff 프롬프트는 `strict`라고 말했다. init이 쓰기 전에 같은 근거로 모드를 정한다(`resolveInitGovernanceMode`).
-  - **`init`/`quickstart --greenfield`**: `requirements/00_overview.md`와 `templates/REQUIREMENT.template.md`를 더하고(`GREENFIELD_DOCS`, 필수 문서가 아니라 `structure.required_doc`과 무관), 새로 만드는 `project-profile.md`(목적·범위·비목표·제약)·`templates/DECISION_LOG.template.md`(ADR 형식)·`index.md`(읽기 순서)에 계획용 본문을 쓴다. 템플릿 두 개는 매니페스트가 있어도 소스를 인용하지 않는다 — 복사한 요구사항이 첫날부터 "근거 연결됨"으로 보이면 안 되기 때문이다. `handoff --greenfield`는 계획 기록 프롬프트를 낸다: 사용자가 말하지 않은 요구사항·기준·결정을 만들지 말 것, 없는 소스를 인용하지 말 것, 승인하지 말 것.
-  - **계획된 지식**: `doc_type: requirement`와 결정 기록 타입은 의도를 말하는 문서다. 이들의 `verified`는 계획 승인이며, 근거 없이 승인되면 `evidence.ungrounded`(warning) 대신 `evidence.planned_unlinked`(info)를 받는다. 기존 도입처의 결정 문서도 같은 판정을 받으므로 `--strict`가 실패하던 경우가 통과로 바뀔 수 있다(완화, 같은 대상은 info로 계속 보고). `stats.plannedKnowledge`는 승인 수와 연결 상태(linked/unresolved/none)를 세며, 연결 판정은 파일 존재를 직접 확인해 lite에서도 맞다.
+  - **`init`/`quickstart --greenfield`**: `requirements/00_overview.md`와 `templates/REQUIREMENT.template.md`를 더하고(`GREENFIELD_DOCS`, 필수 문서가 아니라 `structure.required_doc`과 무관), 새로 만드는 `project-profile.md`(목적·범위·비목표·제약)·`index.md`(읽기 순서)에 계획용 본문을 쓴다. 결정 템플릿 `templates/DECISION_LOG.template.md`는 이 플래그와 무관하게 모든 `init`에서 ADR 골격이다(그 전에는 일반 플레이스홀더 본문이었다). 요구사항·결정 템플릿은 매니페스트가 있어도 소스를 인용하지 않는다 — 복사한 문서가 첫날부터 "근거 연결됨"으로 보이면 안 되기 때문이다. `handoff --greenfield`는 계획 기록 프롬프트를 낸다: 사용자가 말하지 않은 요구사항·기준·결정을 만들지 말 것, 없는 소스를 인용하지 말 것, 승인하지 말 것.
+  - **계획된 지식**: `doc_type: requirement`와 결정 기록 타입은 의도를 말하는 문서다. 이들의 `verified`는 계획 승인이며, 근거 없이 승인되면 `evidence.ungrounded`(warning) 대신 `evidence.planned_unlinked`(info)를 받는다. 기존 도입처의 결정 문서도 같은 판정을 받으므로 `--strict`가 실패하던 경우가 통과로 바뀔 수 있다(완화, 같은 대상은 info로 계속 보고). `stats.plannedKnowledge`는 승인 수와 연결 상태(linked/unresolved/none)를 세며, 연결 판정은 파일 존재를 직접 확인해 lite에서도 맞다. `review` 목록은 근거 없는 계획 문서를 `no-evidence` 대신 `planned`로 표시하고 JSON 항목에 `planned`를 더한다(위험 점수는 그대로).
+  - **규칙을 꺼도 사실은 남는다**(모든 프로젝트, Greenfield 작업 중 lite에서 발견): `off`는 finding을 지우는데 세 명령이 그 finding으로 사실을 판정했다. lite의 새 위키에서 `stats`는 보강률 100%와 `stale_verified 0`을 보고했고, `next`는 채울 문서가 없다고 했으며, `review --approve-all --yes`는 손대지 않은 스캐폴드를 **전부** `verified`로 올렸다(실측 8건 중 8건, standard는 2건). 마지막 것은 "일괄 승인이 스캐폴드를 쓸어 담지 못한다"는 문서화된 게이트가 lite에서 빠져 있었다는 뜻이다(1.30.0부터). 이제 세 명령은 자기가 읽는 규칙만 그 audit 한 번에서 기본 severity로 되돌린다(`src/governance.js#symbol:withRulesMeasured`, `backfill`이 이미 쓰던 방식). `validate`·`audit`가 lite에서 보고하는 것은 그대로다. 대가: lite에서 스캐폴드를 명시 승인하면 exit 1이고, lite의 `stats`가 드리프트 스캔을 돈다(`tests/rule-toggle-measurement.test.js`).
   - **수렴**: 요구사항에 구현 파일과 테스트를 `evidence`로 연결하면 그때부터 `validate`·`impact`·`drift`·`search-docs`가 다른 문서와 똑같이 다룬다. 생성 프롬프트의 거버넌스 예산(세 모드 모두)에 "요구사항을 구현했으면 그 근거를 연결하라"는 구절을 넣었다.
   - **한계**: 연결된 참조는 구현 위치일 뿐 완료가 아니고, 요구사항 수정이 코드를 지목하지는 않으며(impact는 코드 → 문서 방향), 문서 안의 수용 기준은 개별 추적되지 않는다. 신규 프로젝트 기본값인 lite에서는 `impact`/`drift`가 꺼져 있다. 실행 예제는 `examples/greenfield-vue-demo/`(검사 20개)다.
 
@@ -103,7 +104,7 @@ source_digests:
 - **frontmatter 계약 검증** — 필수 필드/status enum/날짜 형식/배열 형태를 검증하고, `verified`는 `--strict`에서 리뷰 메타를 요구한다. 2026-07-27 감사부터 **중복 frontmatter 키**도 잡는다: 파서는 last-wins 의미론을 유지하되(기존 문서 형태 불변) 같은 키가 두 번 이상 나타나면 `frontmatter.duplicate_key`(warning, config `rules`로 off/escalate 가능)를 낸다 — 중복 키는 눈에 보이는 오류 없이 grounding(앞선 `source_files`/`evidence` 리스트)을 버리거나 `status`/`contains_sensitive_info`를 뒤집을 수 있어서다. finding에는 키 이름만 표시되고 값은 절대 노출되지 않는다(`--lang ko` 지역화 포함). 근거: `src/frontmatter.js#symbol:parseFrontmatter`.
 - **근거 추적** — `source_files`(넓은 근거)와 `evidence`(파일/라인/심볼/섹션/라우트 정밀 근거)를 검증하고 본문 `## Evidence` 정렬을 확인한다. 1.14.2부터 `evidence`는 `파일#L10` 외에 콜론-라인 표기(`파일:10`·`파일:10-20`)도 동등하게 수용한다(에디터/grep 스타일 근거가 헛 `evidence.missing`을 내지 않음). 본문 `## Evidence` 정렬 검사(`evidence.section_unlisted`)도 verbatim 문자열이 아니라 **소스 경로 기준**으로 매칭한다: frontmatter가 `파일#L60-L70`이고 본문이 `파일:60-70`이거나(또는 `#symbol:`/`#section:` locator 차이) 같은 경로만 언급해도 통과 — locator 형식 차이로 인한 헛 경고를 없앴다(외부 `http(s)`/`repo:` 참조는 여전히 verbatim 매칭; 경로 경계 검사로 `src/cli.js`가 `src/cli.js.map`에 오매칭되지 않음).
 - **연결성 검증** — 로컬 markdown 링크, 위키 링크(이중 대괄호 표기), `related` 항목의 존재성을 검증한다(`related.missing`).
-- **enrichment 신호** — placeholder만 남은 미보강 문서를 `content.not_enriched`로 표시해 "빈 스캐폴드가 통과"하는 것을 막는다.
+- **enrichment 신호** — placeholder만 남은 미보강 문서를 `content.not_enriched`로 표시해 "빈 스캐폴드가 통과"하는 것을 막는다. 1.38.0부터 이 규칙을 꺼도(lite) `stats`·`next`·`review`는 이 신호를 읽는다 — 끄는 것은 보고를 멈출 뿐이다.
 - **지식 그래프** — `wikiGraph`가 문서→문서 엣지(wiki/related/markdown 링크)·미해결 개념·별칭·고아 문서를 집계한다. `llm-wiki graph`가 이를 text/JSON/Mermaid/DOT로 내보내고, `llm-wiki stats`가 헬스 스코어(verified%/enrichment%/evidence coverage/staleness)를 보고한다. `--format html` 대시보드에는 탐색용 Document Index가 있다.
 - **에이전트 인수인계** — `handoff`/`prompt`가 코드 근거로 문서를 보강하도록 유도하는 반복 프롬프트를 출력한다. 1.14.1부터 `handoff` 진입점은 명시적으로 선택된 에이전트의 어댑터 파일만 나열하고, 미선택 시 `docs/llm-wiki/index.md`만 가리켜 setup이 생성하지 않은 `AGENTS.md`/`CLAUDE.md`를 먼저 읽으라고 하지 않는다. 같은 1.14.1에서 `Next Step`이 "이 프롬프트는 CLI가 실행하는 게 아니라 코딩 에이전트(Claude Code/Codex)에 붙여넣는 지시문"임을 3단계(붙여넣기→코드 근거 보강→사람 검토·verified)로 설명하도록 명료화했다. 외부 피드백 P5로 `next`가 미완(`content.not_enriched`) 문서별 **Enrichment Checklist**를 추가로 출력한다: 각 문서에서 아직 placeholder가 남은 `##` 섹션과 채울 힌트를 나열해(순수 헬퍼 `enrichmentChecklist`, audit finding의 additive `checklist` 필드) 에이전트가 "무엇을 어디에 채울지"를 즉시 안다. `next`에 `enrich-placeholder-docs` 액션도 추가됐다.
 - **스킬 생성(자동화 프롬프트)** — 1.15부터 `init`/`quickstart`이 `bootstrap`/`feature`/`fix`/`docs-sync` 위키-그라운디드 워크플로를 각 에이전트 네이티브 형식의 **호출 가능한 아티팩트**로 생성한다: Claude 스킬(`.claude/skills/llm-wiki-<task>/SKILL.md`, `/llm-wiki-feature`로 호출)·**Codex 스킬(`.agents/skills/llm-wiki-<task>/SKILL.md`)**·Cursor 룰(`.cursor/rules/llm-wiki-<task>.mdc`)·에이전트-중립 프롬프트(`.llm-wiki/prompts/llm-wiki-<task>.md`, 그 외 에이전트). 각 본문은 `src/task-prompts.js` 워크플로를 재사용한다. 도메인 맵은 1.25.0부터 **`bootstrap`만** 생성 시점 스냅샷(`docs/llm-wiki/domains/`)을 주입하고, **`feature`/`fix`/`docs-sync`는 실행 시점에** `llm-wiki prepare --task ... --compact`(또는 `onboard`)로 현재 맵을 조립해 고정 본문이 stale되지 않고 도메인 수와 무관하게 유지된다. 1.25.0의 `--refresh`(`init`/`quickstart`)는 content-hash 마커로 **사용자가 수정하지 않은 관리 스킬만** 갱신하고 사용자·커스텀 스킬은 절대 덮어쓰지 않는다. `--skills`(모든 네이티브 형식) 또는 `--agent claude|codex|cursor`(해당 에이전트의 네이티브 형식)로 opt-in, preview-first, 기존 파일 미덮어씀, **recognize-don't-run**(도구는 생성만, 실행은 에이전트), needs_review 규율 본문 내장. `bootstrap` 태스크는 `init --write`가 만든 뼈대를 **실제 코드 근거로 최초 보강**하는 전용 워크플로로, 지금까지 `handoff` 프롬프트가 일회성으로 하던 그 절차를 반복·일관 실행하게 만든다 — 규칙은 단일 소스(`src/task-prompts.js#symbol:initialEnrichmentWorkflow`)에서 `handoff`와 **공유**해 둘이 절대 갈라지지 않는다. 생성한 위키가 실제 기능 작업에 쓰이도록 하는 진입점이다. **재시작 요건**: Claude Code는 스킬을 세션 시작 시점에 로드(hot-reload 아님)하므로, 갓 생성한 스킬은 에이전트를 재시작해야 `/llm-wiki-*`로 나타난다 — 이 때문에 생성 직후 명령이 "unknown"으로 보일 수 있어, `init`/`quickstart` 출력이 스킬을 실제로 만들었을 때만 재시작 안내 한 줄을 표시한다. 2026-07-28(ECC 기법 추출, 1.27.1)부터 모든 생성 아티팩트가 **토큰 예산 메타**를 갖는다: Claude/Codex SKILL.md는 frontmatter `estimated-tokens: <N>`(값이 chars/4 **PROXY**임을 인라인 주석으로 항상 동반 — 실측 토큰 주장 금지 정책), Cursor `.mdc`·중립 프롬프트는 서드파티 frontmatter 계약을 깨지 않도록 본문 선두 HTML 코멘트로 같은 수치를 싣는다(`retrieval.js#estimateTokens` 재사용). 에이전트/사람이 스킬을 **로드하기 전에** 비용을 가늠하게 하는 ECC 차용 기법이며, 구세대(예산 없는) 관리 스킬은 `--refresh`가 정상 갱신한다(마커 v2→v3). 근거: `src/commands/skills.js#symbol:writeSkillArtifacts`(생성), `src/commands.js#symbol:quickstartInitSummary`(재시작 안내), 범위는 `GATE_REVIEW.md`(Gate 21, accepted).

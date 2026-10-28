@@ -24,6 +24,17 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - fix(governance): 꺼진 규칙이 사실까지 지우고 있었다 — lite의 스캐폴드 일괄 승인 · P2 3건
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/governance.js`(`withRulesMeasured`) · `src/commands.js`(`statsCommand`·`nextCommand`·`reviewCommand`가 읽는 규칙만 되살려 audit, `STATS_MEASURED_RULES`, review 항목 `planned`·`planned` 플래그·조건부 caveat) · `src/cli.js`(`help mode`의 lite 설명 한 문장, `help init`의 결정 템플릿 문장) · `src/commands/doc-templates.js`(결정 템플릿을 모든 init에서 ADR 골격·`source_files: []`, `logBody`에 감지된 매니페스트 전달) · `src/commands/doc-content.js`(`logBody({ manifest })`) · `tests/rule-toggle-measurement.test.js`(신규 7건) · `tests/greenfield.test.js`(brownfield 단언 갱신, 신규 2건) · 위키 10종(PUBLIC_API, DOMAIN_FEATURES, GLOSSARY, ARCHITECTURE_CONVENTIONS, HARNESS_GOVERNANCE_ROADMAP, domains/00_overview, EXAMPLES, index, project-profile, profiles/library)
+- summary: 지난 항목이 caveat로 남긴 "lite의 `stats` enriched 100%"를 고치려다 같은 원인이 더 무거운 결함을 내고 있음을 확인했다. lite는 `content.not_enriched`·`evidence.missing`·`evidence.stale`을 `off`로 두고 `off`는 finding을 지우는데, `stats`·`next`·`review`가 그 finding으로 사실을 판정했다. 빈 저장소 실측(`init --greenfield`, lite): `stats` 보강 12/12, `next` 체크리스트 0, `review --approve-all --yes`가 스캐폴드 포함 8건 중 8건 승인. 같은 저장소 standard는 6/12, 6, 2건. 이제 세 명령이 자기가 읽는 규칙만 audit 한 번에서 기본 severity로 되돌리고(`backfill`의 `rules: {}`와 같은 원칙), lite와 standard의 수치가 같다. P2 3건: 결정 템플릿을 모든 init에서 ADR 골격으로, 첫 로그 항목이 감지된 매니페스트를 적도록, `review`가 계획 문서를 `planned`로 표시하도록 했다. 같은 PR에서 1.38.0으로 내므로 위키의 "미배포" 표기를 1.38.0으로 바꿨다.
+- evidence: 테스트 748 → 757(실측) · 신규 7건은 수정을 끈 상태(`withRulesMeasured`가 입력을 그대로 반환)에서 7건 모두 실패함을 확인 · lint 102 files OK · PR #7 CI 18/18(greenfield 커밋, 3 OS × Node 18.18/20/22/24)
+- decision: lite에서 스캐폴드를 명시 승인하면 exit 0 → 1이 된다. 문서화된 게이트("일괄 승인이 스캐폴드를 쓸어 담지 못한다", 2026-07-31)를 되살리는 수정이라 이름 붙인 예외로 MINOR에 싣는다. lite의 `stats`는 이제 드리프트 스캔 비용을 치른다(`backfill`과 같다). `validate`·`audit`·`drift`가 lite에서 보고하는 것은 그대로다.
+- caveats: 결정 템플릿 변경은 새로 만드는 파일에만 적용된다(init은 기존 파일을 덮어쓰지 않는다). `review`의 위험 점수는 계획 문서에도 그대로 "근거 없음" 가산(+25)을 준다 — 표시만 바꿨다.
+
 ## 2026-10-27 - feat(greenfield): 코드가 없는 프로젝트도 같은 위키로 시작한다 (미배포)
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

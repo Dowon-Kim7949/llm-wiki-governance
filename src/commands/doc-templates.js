@@ -101,7 +101,7 @@ export function docMetadata(rel, detection, lastUpdated = todayIsoDate(), domain
       title: "LLM-WIKI Change Log",
       docType: "change_log",
       related: ["docs/llm-wiki/index.md"],
-      body: logBody(docLang, lastUpdated, { manifestFound })
+      body: logBody(docLang, lastUpdated, { manifest: defaultSourceFiles[0] ?? null })
     },
     "docs/llm-wiki/DOMAIN_FEATURES.md": {
       title: "Domain Features",
@@ -251,6 +251,16 @@ This guide explains how to convert selected LLM-WIKI documents into OKF v0.1-com
       title: "Project Profile",
       docType: "project_profile",
       body: localizedProjectProfileBody(docLang)
+    },
+    // The ADR skeleton, for every init (it was the generic placeholder body before
+    // 1.38.0). No source for the same reason as the greenfield templates: a copy
+    // inherits this frontmatter, and an ADR copied with the manifest already in
+    // source_files would count as implementation evidence linked on day one.
+    "docs/llm-wiki/templates/DECISION_LOG.template.md": {
+      title: fallbackTitle,
+      docType: "template",
+      sourceFiles: [],
+      body: decisionTemplateBody(docLang)
     }
   };
 
