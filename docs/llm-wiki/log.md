@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - docs(deck): 1.40.0 배포 이후 정렬 — 발표 덱이 1.38에서 멈춰 있었고, MCP 슬라이드가 절대 표현을 쓰고 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: `outputs/team-briefing/llm-wiki-briefing.html`(제목·표지·마무리 라벨 v1.40.0, 발전 스토리 ② 범위 1.30 → 1.40, 1.40 타임라인 행 추가와 `.now` 이동, MCP 슬라이드 문장) · `SPEAKER_NOTES.md`(대상 버전, 22장 범위·서술·1.40 한 줄 설명, 8장 MCP 문장) · `README.md`(대상 버전)
+- summary: 1.40.0이 npm에 나간 뒤 덱을 맞췄다. 1.39는 단독 배포하지 않았으므로 타임라인에는 1.40 한 행에 함께 적었다. 라벨만 바꾸지 않고 사실 주장도 소스와 대조했다. MCP 툴 18개와 명령 32개는 맞았다. "AI가 들여다볼 순 있어도 절대 못 고칩니다"는 1.38까지 사실이 아니었으므로(N-25), "고치는 명령은 없고, 1.38까지 있던 구멍을 1.40에서 막았다"로 바꿨다. 비밀정보 탐지를 "절대 못 끈다"는 서술은 토글 불가 규칙과 맞아 그대로 뒀다.
+- evidence: `src/mcp/tools.js` 툴 18개, `commands` 32개(소스에서 계수)
+- caveats: 공유 Artifact는 재게시하지 않았다(유지보수자 지시). 덱은 브라우저로 렌더해 확인하지 않았고, 타임라인 행이 하나 늘어 슬라이드가 길어졌다. 보안 문제를 일으키는 방법은 덱과 노트 어디에도 적지 않았다.
+
 ## 2026-10-28 - docs(validation): 1.40.0 후보의 CI 매트릭스 결과를 기록했다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
