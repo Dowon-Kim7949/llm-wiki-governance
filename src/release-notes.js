@@ -1,4 +1,4 @@
-import { runGit } from "./git.js";
+import { assertRevision, runGit } from "./git.js";
 
 const UNIT_SEPARATOR = "\x1f";
 
@@ -34,7 +34,7 @@ export function collectCommits(cwd, { since = null } = {}) {
   try {
     let range = null;
     if (since) {
-      range = `${since}..HEAD`;
+      range = `${assertRevision(since)}..HEAD`;
     } else {
       try {
         const tag = runGit(cwd, ["describe", "--tags", "--abbrev=0", "--match", "v*"]).trim();

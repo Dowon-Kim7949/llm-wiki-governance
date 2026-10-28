@@ -4,6 +4,20 @@ export function runGit(cwd, args) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
 
+// A revision that came from a caller (a --since value, an MCP tool argument) must
+// not start with "-": git reads it as an option, and `--output=<path>` makes `git
+// diff`, `git log` and `git show` write a file. Reproduced 2026-10-28 through the
+// MCP validate tool (`changed: true, since: "--output=<path>"`), on a server whose
+// contract is read-only. No ref name or revision expression git accepts starts with
+// "-" (`@{-1}` starts with "@"), so nothing legitimate is refused. Throws, and every
+// caller already treats a git failure as "unknown".
+export function assertRevision(ref) {
+  if (typeof ref !== "string" || ref.length === 0 || ref.startsWith("-")) {
+    throw new Error(`not a git revision: ${JSON.stringify(ref)}`);
+  }
+  return ref;
+}
+
 // True when <file> has commits after the END of the given YYYY-MM-DD date.
 // Anchoring to end-of-day means a document reviewed on date D "covers" every
 // commit made on day D, so a same-day review reports no drift; only commits on a
@@ -145,7 +159,7 @@ export function changedFiles(cwd, sinceRef) {
   // output and local scratch files out of the comparison.
   const untracked = toLines(runGit(cwd, ["ls-files", "--others", "--exclude-standard"]));
   const changed = sinceRef
-    ? [...toLines(runGit(cwd, ["diff", "--name-only", sinceRef])), ...untracked]
+    ? [...toLines(runGit(cwd, ["diff", "--name-only", assertRevision(sinceRef)])), ...untracked]
     : [...toLines(runGit(cwd, ["diff", "--name-only", "HEAD"])), ...untracked];
   return [...new Set(changed)];
 }
@@ -158,7 +172,7 @@ export function changedFiles(cwd, sinceRef) {
 // unquoted. An untracked file is not in this diff, so a rename is seen once the
 // new path is staged or committed. Best-effort: throws only if git fails.
 export function renamedPaths(cwd, sinceRef) {
-  const out = runGit(cwd, ["diff", "--name-status", "-M", "-z", sinceRef || "HEAD"]);
+  const out = runGit(cwd, ["diff", "--name-status", "-M", "-z", assertRevision(sinceRef || "HEAD")]);
   const parts = out.split("\0");
   const renames = new Map();
   for (let index = 0; index < parts.length; index += 1) {
@@ -181,7 +195,7 @@ export function renamedPaths(cwd, sinceRef) {
 // must be posix and relative to the git root, which is what changedFiles yields.
 export function fileAtRef(cwd, ref, relPath) {
   try {
-    return runGit(cwd, ["show", `${ref}:${relPath}`]);
+    return runGit(cwd, ["show", `${assertRevision(ref)}:${relPath}`]);
   } catch {
     return null;
   }
@@ -229,7 +243,7 @@ export function lineRangeChangedBetween(cwd, file, start, end, fromRef) {
     "--pretty=format:%h",
     "-s",
     `-L${start},${end}:${file}`,
-    `${fromRef}..HEAD`
+    `${assertRevision(fromRef)}..HEAD`
   ]).trim();
   return out.length > 0;
 }

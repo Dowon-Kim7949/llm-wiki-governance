@@ -46,13 +46,13 @@ reviewed_by: Claude Code (delegated by Dowon-Kim)
 reviewed_at: 2026-10-28
 source_digests:
   - docs/llm-wiki/VISIBILITY.md sha256:52b9d54834606505
-  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:bc3ad827cfbc402b
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:51231320fbd30913
   - docs/llm-wiki/BENCHMARK.md sha256:ec7d0470a48bc7c6
   - docs/llm-wiki/DOMAIN_FEATURES.md sha256:cb61ab7ac59cfb4d
   - docs/llm-wiki/EXAMPLES.md sha256:afcfe3a4ff0582f1
   - docs/llm-wiki/GLOSSARY.md sha256:7caf06d61e51c6d1
-  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:05fab278bb4079d0
-  - docs/llm-wiki/PUBLIC_API.md sha256:11deeace7465e0b4
+  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:1c45c02c46498d3f
+  - docs/llm-wiki/PUBLIC_API.md sha256:4b81602b8c5db27c
   - docs/llm-wiki/README.md sha256:155784a313bd4fda
   - docs/llm-wiki/RELEASE_FLOW.md sha256:fa4ee454b12332a1
   - docs/llm-wiki/domains/00_overview.md sha256:9e863529085c6a5d
@@ -78,6 +78,7 @@ source_digests:
 - 2026-10-28(1.39.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.39.0 MINOR 판정 절 추가)와 `EXAMPLES.md`(CI 예시 핀 `@1.39`)가 고쳐져 이 문서를 다시 지목했습니다. `index.md`·위키 `README.md`·`RELEASE_FLOW.md`·`HARNESS_GOVERNANCE_ROADMAP.md`는 인용 소스(루트 README·CI 템플릿·액션·ROADMAP)가 버전 핀과 기능 한 문장만 바뀌어 본문이 그대로 맞고, 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 - 2026-10-28(다른 스택 검증): 원문서들이 workspace 힌트·프로젝트 이름·type review item(N-22~N-24)과 새 워크스루를 반영하느라 본문이 고쳐지거나(7종) 인용한 루트 README가 "다른 스택" 문단 하나만 바뀌어 재스탬프돼(`index.md`·위키 `README.md`) 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 - 2026-10-28(1.40.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.40.0 MINOR 판정 절)와 `EXAMPLES.md`(CI 예시 핀 `@1.40`)가 고쳐져 이 문서를 다시 지목했습니다. 인용 소스가 버전 핀만 바뀐 문서는 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
+- 2026-10-28(보안 수정 N-25): 원문서 `PUBLIC_API.md`(MCP 절)·`ARCHITECTURE_CONVENTIONS.md`(git.js)·`HARNESS_GOVERNANCE_ROADMAP.md`(59번)가 git 옵션 주입 수정을 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 
 ## Architecture Conventions
 

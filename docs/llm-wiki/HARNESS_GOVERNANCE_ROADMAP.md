@@ -77,7 +77,7 @@ source_digests:
   - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
   - src/commands/references.js sha256:16ff5b183865242b
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
-  - src/git.js sha256:a2d03f544b55cfd3
+  - src/git.js sha256:308dc12f8a16abe3
   - .github/workflows/ci.yml sha256:0055dbb54de5761b
   - .github/actions/validate/action.yml sha256:55453d995d842d12
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
@@ -1864,6 +1864,14 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     없으면 생성 문서의 `project:`가 디렉터리 이름이었습니다(워크스루에서는 임시 디렉터리 이름).
     `pyproject.toml`·`Cargo.toml`의 `name`을 줄 단위로 읽습니다. 프로젝트 이름과 문서를 대조하는
     검사는 없어 기존 저장소에는 영향이 없습니다. Go(`go.mod`의 module 경로)·JVM·.NET은 그대로입니다.
+59. ~~**N-25 읽기 전용 MCP 서버가 git 옵션 주입으로 파일을 썼다**~~ — **1.40.0에서 수정(보안).** 미션의
+    "읽기 전용 MCP 동작 보존" 항목을 확인하다가 찾았습니다. MCP `validate` 툴의 `since`는 스키마상
+    문자열일 뿐이라 `--output=<경로>`가 그대로 `git diff`의 옵션이 됐고, git이 그 경로에 diff를
+    썼습니다(임시 저장소에서 재현, 파일 생성 확인). CLI의 `impact --since`·`validate --changed --since`·
+    `release-notes --since`도 같은 형태였습니다. `runGit`이 셸을 쓰지 않아 셸 주입은 없었지만 옵션
+    주입은 막지 못했습니다. 호출자가 준 리비전은 이제 `assertRevision`을 지나며 `-`로 시작하면
+    거부됩니다. 이 옵션이 생긴 뒤의 배포 버전 전부에 있던 문제이고, 1.39.0만 따로 내면 이 수정이
+    빠집니다. 고정 테스트는 `tests/git-revision-guard.test.js`(MCP 경로를 실제로 호출)입니다.
 
 ### 사람의 결정이 필요함
 

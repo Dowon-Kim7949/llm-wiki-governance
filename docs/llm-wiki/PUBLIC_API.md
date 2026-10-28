@@ -57,6 +57,7 @@ evidence:
   - src/commands/plan-changes.js#symbol:scanPlanChanges
   - src/commands/scans.js#symbol:reviewStamp
   - src/detector.js#symbol:workspaceTypeHint
+  - src/git.js#symbol:assertRevision
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -67,17 +68,17 @@ source_digests:
   - src/cli.js sha256:b4c407f857f2de78
   - src/commands.js sha256:e15de888dff84f03
   - src/commands/retrieval.js sha256:36e3f0e8b46fe723
-  - src/release-notes.js sha256:7dcc7040f651c1b9
+  - src/release-notes.js sha256:89eae59c5d4bf86b
   - src/config-file.js sha256:762011b8afa322f6
   - src/index.js sha256:ee1d42734ade2f15
-  - src/git.js sha256:a2d03f544b55cfd3
+  - src/git.js sha256:308dc12f8a16abe3
   - src/report.js sha256:9774daea9617572b
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
   - src/mcp/dispatch.js sha256:52e95374f2bc92a9
   - src/mcp/validate-args.js sha256:14568f590681aa53
   - src/frontmatter.js sha256:f03d0c07725dec3e
   - src/commands/import-memory.js sha256:36c43fde4eb90a81
-  - package.json sha256:363aafcd2545dc99
+  - package.json sha256:7c299ceb0ae61c09
   - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/scans.js sha256:9d32671b86e6b28a
@@ -238,7 +239,7 @@ MCP 클라이언트 등록 예시:
 
 ### 노출 툴 (모두 읽기 전용)
 
-`validate` · `audit` · `next` · `status` · `doctor` · `stats` · `graph` · `explain` · `mode` · `handoff` · `prompt` · `list_docs` · `search_docs` · `get_doc` · `get_related` · `onboard` · `prepare` · `review`(1.30.0에서 `mode`가 합류해 **18종**이며, 이 툴은 스키마가 `cwd`만 공표하므로 `mode set`의 쓰기 경로에 **구조적으로 도달할 수 없다** — `additionalProperties: false`가 dispatch 전에 강제된다. `list_docs`/`search_docs`/`get_doc`/`get_related`는 1.18 읽기 전용 retrieval — 거버넌스 리포트가 아니라 문서 **본문**을 반환; `onboard`/`prepare`는 1.24 guided; `review`는 Gate 20 needs_review 백로그의 **LIST만** 노출. MCP 툴 이름은 snake_case, CLI 명령은 kebab-case `list-docs` 등). **쓰기/변경 명령(init/fix/migrate/drift/quickstart/archive-log)과 `review`의 승격(`--approve`)은 MCP로 노출하지 않는다** — 에이전트는 위키를 조회·점검할 뿐 바꾸지 않는다(`annotations.readOnlyHint: true`); `verified` 승격은 사람의 CLI 액션으로만 일어난다. 각 툴 인자는 `inputSchema`(JSON Schema)로 선언되며 `cwd`(기본=서버 실행 위치)·`type`·`profiles`·`strict`, retrieval 툴은 `query`/`path`/`status`/`visibility`/`docType`/`includeSensitive`/`limit` 등을 받는다. **2026-07-27 감사부터 이 스키마가 실제로 강제된다**: 위반 호출(잘못된 type, enum 밖 값, 필수 인자 누락, `minimum` 미만, unknown 인자[`additionalProperties:false`], 비객체 `arguments`)은 명령 실행 **전에** JSON-RPC `-32602 Invalid params`(`error.data = {tool, errors}`)로 거부된다 — 이전에는 조용히 강제 변환/무시돼 그대로 실행됐다(예: `validate {strict:"true"}`가 non-strict로 실행). `type` enum은 `KNOWN_TYPES` 단일 소스에서 파생돼 mobile/infra를 포함한다(이전 enum은 stale). `agents`는 명시 나열만 수용한다 — CLI 전용 `all` 별칭은 MCP에서 미수용(확장 경로 없음). 검증기는 순수·zero-dep `src/mcp/validate-args.js`.
+`validate` · `audit` · `next` · `status` · `doctor` · `stats` · `graph` · `explain` · `mode` · `handoff` · `prompt` · `list_docs` · `search_docs` · `get_doc` · `get_related` · `onboard` · `prepare` · `review`(1.30.0에서 `mode`가 합류해 **18종**이며, 이 툴은 스키마가 `cwd`만 공표하므로 `mode set`의 쓰기 경로에 **구조적으로 도달할 수 없다** — `additionalProperties: false`가 dispatch 전에 강제된다. `list_docs`/`search_docs`/`get_doc`/`get_related`는 1.18 읽기 전용 retrieval — 거버넌스 리포트가 아니라 문서 **본문**을 반환; `onboard`/`prepare`는 1.24 guided; `review`는 Gate 20 needs_review 백로그의 **LIST만** 노출. MCP 툴 이름은 snake_case, CLI 명령은 kebab-case `list-docs` 등). **쓰기/변경 명령(init/fix/migrate/drift/quickstart/archive-log)과 `review`의 승격(`--approve`)은 MCP로 노출하지 않는다** — 에이전트는 위키를 조회·점검할 뿐 바꾸지 않는다(`annotations.readOnlyHint: true`); `verified` 승격은 사람의 CLI 액션으로만 일어난다. 각 툴 인자는 `inputSchema`(JSON Schema)로 선언되며 `cwd`(기본=서버 실행 위치)·`type`·`profiles`·`strict`, retrieval 툴은 `query`/`path`/`status`/`visibility`/`docType`/`includeSensitive`/`limit` 등을 받는다. **2026-07-27 감사부터 이 스키마가 실제로 강제된다**: 위반 호출(잘못된 type, enum 밖 값, 필수 인자 누락, `minimum` 미만, unknown 인자[`additionalProperties:false`], 비객체 `arguments`)은 명령 실행 **전에** JSON-RPC `-32602 Invalid params`(`error.data = {tool, errors}`)로 거부된다 — 이전에는 조용히 강제 변환/무시돼 그대로 실행됐다(예: `validate {strict:"true"}`가 non-strict로 실행). `type` enum은 `KNOWN_TYPES` 단일 소스에서 파생돼 mobile/infra를 포함한다(이전 enum은 stale). `agents`는 명시 나열만 수용한다 — CLI 전용 `all` 별칭은 MCP에서 미수용(확장 경로 없음). 검증기는 순수·zero-dep `src/mcp/validate-args.js`. **1.40.0 보안 수정(N-25)**: 스키마 검증은 타입만 보므로 `validate`의 `since`(문자열)는 그대로 git에 닿았고, `changed: true, since: "--output=<경로>"`가 git diff 출력을 그 경로에 **썼다** — 읽기 전용 계약을 깨는 쓰기 경로였다(2026-10-28 재현, 이전 버전 전부). 이제 호출자가 준 리비전은 `src/git.js#symbol:assertRevision`에서 `-`로 시작하면 거부되고 실행은 `changed.unavailable`로 끝난다. CLI의 `impact --since`·`validate --changed --since`·`release-notes --since`도 같은 경로라 같은 가드를 지난다.
 
 ### 툴 결과 형태
 
@@ -298,6 +299,7 @@ MCP 클라이언트 등록 예시:
 - `src/git.js#symbol:changedFiles` — 변경집합 프리미티브(working tree / `--since <ref>`); `impact`와 `validate --changed`가 공유.
 - `src/commands/plan-changes.js#symbol:scanPlanChanges` — `impact.plan_changed`(1.39.0): diff 안의 승인된 계획 문서를 절 단위로 비교하고 연결 파일의 변경 여부를 표시한다(`changedPlans`). 이름 변경은 `src/git.js#symbol:renamedPaths`로 따라간다.
 - `src/commands/scans.js#symbol:reviewStamp` — 문서의 현재 리뷰 스탬프를 쓴 커밋(1.39.0). `drift`의 축소가 이 커밋과 리뷰일 스냅샷 둘 다에 동의를 구한다.
+- `src/git.js#symbol:assertRevision` — 호출자가 준 git 리비전이 `-`로 시작하면 거부한다(1.40.0, N-25). `--output=<경로>` 같은 값이 git 옵션으로 읽혀 읽기 전용 명령과 MCP 서버에서 파일을 쓰던 경로를 막는다.
 - `src/detector.js#symbol:workspaceTypeHint` — `init`의 workspace 힌트(1.40.0). 멤버 매니페스트의 프레임워크 의존성으로 `--type`을 제안할 뿐 `detectProject`의 결과에는 들어가지 않는다.
 - `src/commands.js#symbol:reviewCommand` — `review` 명령: needs_review 백로그를 위험도 정렬해 나열(read-only)하고 `--approve`/`--approve-all --yes`로 지정 문서에 `status: verified`+`reviewed_by`+`reviewed_at`+`tags`의 상태 태그(이미 있는 경우만)를 스탬프(자동 승격 없음; blocking/구조적 finding 문서 거부; `drift --downgrade`의 역방향). reviewed_by는 `--reviewer`>config>`gitUserName`. seam 재사용: `src/git.js#symbol:gitUserName`·`src/commands/fix-migrate.js#symbol:upsertFrontmatterScalar`·`syncStatusTag`·`src/commands/findings.js`의 `review.reviewer_unresolved`/`review.confirmation_required` 규칙(Gate 20).
 

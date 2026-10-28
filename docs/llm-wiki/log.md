@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - fix(security): 읽기 전용 MCP 서버가 git 옵션 주입으로 파일을 썼다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/git.js`(`assertRevision`, 호출자 리비전을 받는 네 함수에 적용) · `src/release-notes.js`(`collectCommits`) · `tests/git-revision-guard.test.js`(신규 3) · CHANGELOG 2종(1.40.0 절에 보안 항목, 테스트 수 789 → 792) · 위키 `PUBLIC_API`(MCP 절)·`ARCHITECTURE_CONVENTIONS`(git.js)·`HARNESS_GOVERNANCE_ROADMAP`(N-25)
+- summary: 최종 보고의 보안 절을 쓰려고 `--since` 검증 여부를 확인하다 찾았다. MCP `validate`의 `since`가 git에 그대로 닿아 `--output=<경로>`가 diff를 그 경로에 썼다(임시 저장소에서 재현). CLI 세 명령도 같은 형태였다. `-`로 시작하는 리비전을 거부한다. git이 받는 리비전 중 `-`로 시작하는 것은 없다.
+- evidence: 재현 스크립트가 수정 전 `true`(파일 생성), 수정 후 `false` · 신규 테스트 3건 통과 · 전체 테스트 792
+- caveats: 1.38.0까지 배포된 버전에 있는 문제다. 1.39.0만 따로 배포하면 이 수정이 빠진다(브랜치 `feat/1-39-correctness`에는 없다). 공개 저장소에 이 커밋을 push하면 문제의 형태가 드러나므로, 배포 순서와 GitHub 보안 권고 여부는 유지보수자 결정이다.
+
 ## 2026-10-28 - release: 1.40.0 준비 — 이 저장소 밖에서도 같은 검사
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

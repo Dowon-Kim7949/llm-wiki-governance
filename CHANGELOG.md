@@ -15,6 +15,16 @@ walkthroughs now run in `npm test`. What has been shown on which stack, how to r
 and what has not is in [`docs/VALIDATION.md`](./docs/VALIDATION.md). Upgrade if you initialize
 Python or Rust projects or npm-workspace repositories.
 
+- **Security: a git revision can no longer be read as a git option.** A `since` value that
+  started with `-` reached git unchanged, and `--output=<path>` makes `git diff`, `git log`
+  and `git show` write a file. Through the MCP `validate` tool, whose contract is read-only,
+  `changed: true` with such a `since` wrote git's output to the given path. `impact --since`,
+  `validate --changed --since` and `release-notes --since` passed the value the same way. Every
+  caller-supplied revision is now refused when it starts with `-`; the run reports that it
+  could not compute the change set (`changed.unavailable`, `impact.unavailable`). No revision
+  git accepts starts with `-`, so nothing legitimate is refused. Present in every earlier
+  version with these options; upgrade if an MCP client you do not fully control can call the
+  server.
 - **`init` suggests a type for an npm-workspace repository.** When the root `package.json`
   declares workspaces and names no framework itself, detection says `unknown`. `init` (without
   `--type`) now reads the member manifests and suggests `--type fullstack`, `frontend` or
@@ -40,6 +50,8 @@ Python or Rust projects or npm-workspace repositories.
   measured (agent behaviour, efficacy, independent usability).
 
 **Behaviour changes, named:**
+- A `--since` (or MCP `since`) value that starts with `-` is refused instead of being passed
+  to git.
 - `init` text gains a `hint:` line, and its JSON a `typeHint` key, only for an npm-workspace
   repository detected as `unknown` without `--type`.
 - `validate` and `audit` no longer report `project.review_item` for an explicit type when
@@ -54,7 +66,8 @@ No model was run: agent adapters and skills are checked to exist and to point at
 to be followed. No independent developer has followed the README.
 
 Sized as a MINOR: one additive JSON key, one review item that no longer fires where it carried
-no information, and a generated-document field. Tests: 783 → 789.
+no information, and a generated-document field; the security fix refuses only input git would
+have read as an option. Tests: 783 → 792.
 
 ## 1.39.0 — 2026-10-28
 
