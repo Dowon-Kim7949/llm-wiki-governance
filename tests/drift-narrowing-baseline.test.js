@@ -24,6 +24,8 @@ import os from "node:os";
 import path from "node:path";
 
 import { scanEvidenceDriftDetailed } from "../src/commands/scans.js";
+import { currentSourceDigests, formatDigestEntry } from "../src/commands/source-digests.js";
+import { parseFrontmatter } from "../src/frontmatter.js";
 
 function hasGit() {
   try {
@@ -52,12 +54,13 @@ const SECTION = "docs/guide.md#section:Usage";
 const LINE = "docs/guide.md#L5-L5";
 const DOC = "docs/llm-wiki/api.md";
 
-const wikiDoc = (reviewedAt, evidence) => [
+const wikiDoc = (reviewedAt, evidence, digests = []) => [
   "---", "title: api", "tags:", "  - llm-wiki", "  - verified", "status: verified",
   "doc_type: public_api", "project: baseline", `last_updated: ${reviewedAt}`,
   "author: cli-generated", "last_edited_by: t", "reviewed_by: t", `reviewed_at: ${reviewedAt}`,
   "wiki_block_version: v1", "source_files:", "  - package.json",
   "evidence:", ...evidence.map((entry) => `  - ${entry}`),
+  ...(digests.length ? ["source_digests:", ...digests.map((entry) => `  - ${entry}`)] : []),
   "related:", "  - docs/llm-wiki/index.md", "visibility: internal",
   "contains_sensitive_info: false", "---", "", "# api", "", "Body.", ""
 ].join("\n");
@@ -89,8 +92,14 @@ async function repo() {
     assert.ok(before.includes(from), `fixture: ${rel} must contain ${JSON.stringify(from)}`);
     await writeFile(file, before.replace(from, to), { encoding: "utf8" });
   };
-  const review = async (evidence, at = "2026-02-01T06:00:00+0000") => {
-    await writeFile(path.join(cwd, ...DOC.split("/")), wikiDoc("2026-02-01", evidence), { encoding: "utf8" });
+  // { digests: true } stamps source_digests the way `review --approve` does with
+  // "sourceDigests": true: from the files as they are when the review is written.
+  const review = async (evidence, at = "2026-02-01T06:00:00+0000", { digests = false } = {}) => {
+    const stamp = digests
+      ? (await currentSourceDigests(cwd, parseFrontmatter(wikiDoc("2026-02-01", evidence)).frontmatter))
+        .filter((entry) => entry.digest !== null).map(formatDigestEntry)
+      : [];
+    await writeFile(path.join(cwd, ...DOC.split("/")), wikiDoc("2026-02-01", evidence, stamp), { encoding: "utf8" });
     commit("review", at);
   };
   const changeCited = () => edit("docs/guide.md", "Call the tool.", "Call the tool twice.");
@@ -98,8 +107,8 @@ async function repo() {
   return { cwd, git, commit, edit, review, changeCited, changeUnrelated };
 }
 
-async function verdict(cwd) {
-  const { findings, locatorNarrowed } = await scanEvidenceDriftDetailed(cwd, {});
+async function verdict(cwd, options = {}) {
+  const { findings, locatorNarrowed } = await scanEvidenceDriftDetailed(cwd, options);
   // Only the guide citation: the document also cites package.json, which drifts in
   // fixtures whose first commit postdates the review.
   const finding = findings.find((entry) => entry.path === DOC && entry.params.reference.startsWith("docs/guide.md"));
@@ -242,11 +251,11 @@ test("squash and rebase merges of a branch reviewed before merging are over-repo
 // squash or a rebase writes the stamp into a new commit on top of that change, and
 // both baselines then contain it; the stamp commit is dated after the review day,
 // which is now a reason not to narrow.
-async function reviewBranchLandsOnUnseenChange(evidence, mode, landAt = "2026-02-03T12:00:00+0000") {
+async function reviewBranchLandsOnUnseenChange(evidence, mode, landAt = "2026-02-03T12:00:00+0000", { digests = false } = {}) {
   const r = await repo();
   r.commit("init", "2026-01-01T12:00:00+0000");
   r.git(["checkout", "-q", "-b", "review"]);
-  await r.review([evidence], "2026-02-01T06:00:00+0000");
+  await r.review([evidence], "2026-02-01T06:00:00+0000", { digests });
   r.git(["checkout", "-q", "main"]);
   await r.changeCited();
   r.commit("main: after the review, unseen", "2026-02-01T08:00:00+0000");
@@ -281,6 +290,54 @@ test("a squash on the review day itself is still taken as reviewed: the date-gra
   // distinguishes this history from one where the reviewer saw the change.
   const r = await reviewBranchLandsOnUnseenChange(SECTION, "squash", "2026-02-01T10:00:00+0000");
   assert.deepEqual(await verdict(r.cwd), { reference: null, narrowed: true });
+});
+
+// C′ (1.41.0): with "sourceDigests": true, a digest stamped at approval is a third
+// condition before narrowing. It was taken from what the reviewer read, so a squash
+// or rebase cannot rewrite it.
+test("with sourceDigests, a stamped digest keeps the same-day squash reported", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  for (const evidence of [SECTION, LINE]) {
+    const r = await reviewBranchLandsOnUnseenChange(evidence, "squash", "2026-02-01T10:00:00+0000", { digests: true });
+    assert.deepEqual(await verdict(r.cwd, { sourceDigests: true }), { reference: evidence, narrowed: false }, evidence);
+    // The project setting decides, not the stamp: with digests off, the stamped
+    // values are ignored and the pinned limit above still holds.
+    assert.deepEqual(await verdict(r.cwd, {}), { reference: null, narrowed: true }, `${evidence} with digests off`);
+  }
+});
+
+test("with sourceDigests, a matching digest still narrows, and no digest narrows as before", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  for (const evidence of [SECTION, LINE]) {
+    const stamped = await repo();
+    stamped.commit("init", "2026-01-01T12:00:00+0000");
+    await stamped.review([evidence], "2026-02-01T06:00:00+0000", { digests: true });
+    await stamped.changeUnrelated();
+    stamped.commit("unrelated edit", "2026-03-02T12:00:00+0000");
+    assert.deepEqual(await verdict(stamped.cwd, { sourceDigests: true }), { reference: null, narrowed: true }, evidence);
+
+    const unstamped = await repo();
+    unstamped.commit("init", "2026-01-01T12:00:00+0000");
+    await unstamped.review([evidence]);
+    await unstamped.changeUnrelated();
+    unstamped.commit("unrelated edit", "2026-03-02T12:00:00+0000");
+    assert.deepEqual(await verdict(unstamped.cwd, { sourceDigests: true }), { reference: null, narrowed: true }, `${evidence} unstamped`);
+  }
+});
+
+test("with sourceDigests, a line-range citation whose lines moved is reported", async (t) => {
+  if (!hasGit()) { t.skip("git not available"); return; }
+  // `git log -L` follows the cited line to its new position and finds no change, so
+  // without digests this narrows. The cited line numbers now point at different
+  // text, and the digest says so: more findings than before for line ranges, and a
+  // citation that needs its numbers updated.
+  const r = await repo();
+  r.commit("init", "2026-01-01T12:00:00+0000");
+  await r.review([LINE], "2026-02-01T06:00:00+0000", { digests: true });
+  await r.edit("docs/guide.md", "# Manual\n", "# Manual\n\nIntro.\n");
+  r.commit("insert above the cited line", "2026-03-02T12:00:00+0000");
+  assert.deepEqual(await verdict(r.cwd, {}), { reference: null, narrowed: true }, "digests off: as before");
+  assert.deepEqual(await verdict(r.cwd, { sourceDigests: true }), { reference: LINE, narrowed: false });
 });
 
 test("a body line that starts with reviewed_at: does not stand in for the review stamp", async (t) => {

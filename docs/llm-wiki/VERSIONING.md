@@ -24,7 +24,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:c2c8bd08741c512b
+  - package.json sha256:a18a7e2bc101d0dd
   - RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
 ---
 
@@ -101,6 +101,17 @@ source_digests:
   fsmonitor 명령이 더는 실행되지 않는다는 점뿐이다. fsmonitor는 성능 최적화라 결과는 같다.
 - **넣지 않은 것.** clean·process 필터는 끄지 않았다. 끄면 Git LFS 파일이 바뀐 것으로 보고되므로
   그것은 동작 변경이 된다. 리뷰 당일 squash의 drift 위음성도 결정 문서만 썼고, 동작은 그대로다.
+
+## 기록된 판정 — 1.41.0 (MINOR, 2026-10-28)
+
+- **minor 근거.** 옵트인 설정 `"sourceDigests": true`가 처음으로 판정에 쓰인다. 그 전에는 "아무것도
+  결정하지 않는다"가 섀도 모드의 계약이었다. 이제 `drift`가 축소하려던 인용을 보고할 수 있고, 방향은
+  finding이 느는 쪽뿐이다. 명령·옵션·JSON 키 제거나 이름 변경은 없고 `schemaVersion`도 그대로다.
+- **함께 바뀐 것.** `drift --anchor content`가 작업 트리 대신 `HEAD`를 읽는다. 매니페스트 digest는
+  `version`을 빼고 계산한다(새로 기록하는 값이 이전과 다르다). 이전 digest도 받아들인다. 셋 다
+  CHANGELOG에 동작 변경으로 이름 붙였다.
+- **옵트인이 아닌 사용자에게는 변화가 없다.** `sourceDigests`를 켜지 않은 프로젝트에서는 `drift`의
+  finding이 그대로다. 바뀌는 것은 `--anchor content` 보고의 비교 기준뿐이다.
 
 ## Evidence
 

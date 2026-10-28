@@ -23,8 +23,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:c2c8bd08741c512b
-  - README.md sha256:c8dec7da23c37dec
+  - package.json sha256:a18a7e2bc101d0dd
+  - README.md sha256:536dd7dd59614670
 ---
 
 # LLM-WIKI README

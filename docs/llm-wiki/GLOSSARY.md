@@ -28,7 +28,7 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - src/frontmatter-schema.js sha256:ec4476da72b5c2e2
-  - src/commands.js sha256:e15de888dff84f03
+  - src/commands.js sha256:9de9e64b3a165a88
   - src/config.js sha256:ef863d1307ba2dc9
   - llm-wiki.config.json sha256:16fa581c78b330eb
 ---
@@ -50,7 +50,7 @@ source_digests:
 - **wikiGraph** — 위키 링크(이중 대괄호 표기) 기반 문서 그래프. 미해결 개념(unresolved concepts)·별칭(aliases)·고아 문서(orphans)를 집계한다.
 - **adapter** — 에이전트에게 wiki 진입점을 알리는 파일. `AGENTS.md`(Codex), `CLAUDE.md`(Claude Code), `.cursor/rules/llm-wiki.mdc`(Cursor), `.github/copilot-instructions.md`(GitHub Copilot), 후보 `ANTIGRAVITY.md`.
 - **profile** — 프로젝트 유형별 추가 문서 집합(`frontend`/`backend`/`fullstack`/`library`/`okf-v0.1`). `src/config.js` `PROFILE_DOCS`.
-- **source_digests / 내용 앵커** — (1.36.0, 섀도) `review --approve`가 config `sourceDigests: true`일 때 스탬프하는 선택 frontmatter 리스트. 항목은 `<경로[로케이터]> sha256:<16 hex>`이고, 검토 시점에 인용 소스가 어떤 내용이었는지를 날짜·SHA·머지 방식과 무관하게 기록한다. `drift --anchor content`가 지금 내용과 비교해 날짜 판정 옆에 보인다.
+- **source_digests / 내용 앵커** — (1.36.0, 섀도) `review --approve`가 config `sourceDigests: true`일 때 스탬프하는 선택 frontmatter 리스트. 항목은 `<경로[로케이터]> sha256:<16 hex>`이고, 검토 시점에 인용 소스가 어떤 내용이었는지를 날짜·SHA·머지 방식과 무관하게 기록한다. `drift --anchor content`가 지금 내용과 비교해 날짜 판정 옆에 보인다. 1.41.0부터 비교 대상은 작업 트리가 아니라 `HEAD`이고, 루트·workspace `package.json`은 `version` 값을 빼고 digest를 계산한다(그 전 전체 파일 digest도 받아들인다). 같은 릴리스부터 `sourceDigests: true`이면 `drift`가 줄 범위·섹션 인용을 축소하기 전에 기록된 영역 digest가 `HEAD`와 같은지도 본다(C′) — finding을 남길 수만 있고 지우지 않는다.
 - **locatorNarrowed** — (1.36.0) `impact` JSON 키. 줄 범위나 `.md` 섹션으로만 인용된 파일이 diff에 들었지만 인용된 영역은 그대로라 실패시키지 않은 인용의 목록. 건너뛴 사실을 숨기지 않으려고 보고한다. 1.37.0부터 `drift`에도 같은 키가 있고, 1.39.0부터 `drift`는 **리뷰 스탬프 커밋**도 동의할 때만 인용을 이 목록으로 보낸다.
 - **리뷰 스탬프 커밋(review stamp commit)** — (1.39.0) 문서의 현재 `reviewed_at`(없으면 `last_updated`) 줄을 쓴 가장 최근 커밋. 그 커밋에 커밋된 값이 작업 트리의 값과 같을 때만 인정한다(`src/commands/scans.js#symbol:reviewStamp`). 리뷰일 끝 스냅샷은 날짜 순서로 고른 커밋이라 리뷰어가 보지 않은 곁가지 커밋일 수 있었고, 그래서 `drift`의 축소가 바뀐 인용을 숨겼다(N-20). 이 커밋을 정할 수 없으면 축소하지 않는다.
 - **workspace 힌트(typeHint)** — (1.40.0) `init`이 `--type` 없이 `unknown`으로 감지한 npm/yarn workspace 저장소에서 멤버 매니페스트의 프레임워크 의존성을 보고 내는 `--type` 제안. 텍스트 `hint:` 줄과 JSON `typeHint`로만 나오고 감지 결과(`detection.projectType`)는 바꾸지 않는다(`src/detector.js#symbol:workspaceTypeHint`).

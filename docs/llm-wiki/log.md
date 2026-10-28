@@ -24,6 +24,26 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - release: 1.41.0 준비 — 내용 digest가 처음으로 판정에 쓰인다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.41.0) · `tests/verification.test.js`(버전 단언) · README 2종(액션 핀 `@v1.41.0`) · `.github/actions/validate/action.yml`(기본 `1.41`) · `templates/github-actions/llm-wiki-validate.yml`(`@1.41`) · ROADMAP 2종(1.41.0 절) · 위키 `VERSIONING`(MINOR 판정)·`EXAMPLES`(`@1.41`) · 재승인(`index`·`README`·`RELEASE_FLOW`·`HARNESS_GOVERNANCE_ROADMAP`·`REVIEW_HISTORY`)
+- summary: 바로 아래 커밋의 C′를 MINOR로 낸다. 옵트인 설정이 판정에 쓰이기 시작했고, 방향은 finding이 느는 쪽뿐이다. 마이너 핀(`@1.41`)이 바뀌는 MINOR라 CI 템플릿·액션 기본값·EXAMPLES를 함께 바꿨다.
+- evidence: 게이트 결과는 커밋 메시지에 남긴다.
+- caveats: CI 매트릭스와 npm 배포는 이 기록 뒤의 일이다. 병합은 사용자가 한다.
+
+## 2026-10-28 - feat(drift): C′ — 기록된 digest가 축소의 세 번째 조건이 됐다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: 신규 leaf `src/commands/manifests.js`(N-13 헬퍼 이동, `versionNeutralManifest`)·`src/commands/digest-text.js` · `src/commands/source-digests.js`(`{ ref }` 읽기, 매니페스트 version 제외 digest와 옛 digest 수용) · `src/git.js`(`blobAtRefFromCwd`) · `src/commands/scans.js`(C′, `citationDigestKey`) · `src/commands/fix-migrate.js`(`--anchor content`가 `HEAD`) · `src/commands.js`(import 교체) · `src/cli.js`(도움말) · 테스트 2파일(+5) · CHANGELOG 2종(1.41.0) · `GATE_REVIEW.md`(결정 기록) · 위키 `ARCHITECTURE_CONVENTIONS`·`DOMAIN_FEATURES`·`GLOSSARY`·`PUBLIC_API`·`domains/00_overview`·`HARNESS_GOVERNANCE_ROADMAP`(64)
+- summary: 사용자 결정으로 C′를 선행 작업 둘과 함께 구현했다. 내용 비교는 `HEAD`를 읽고, 루트·workspace `package.json`은 `version` 없이 digest한다. `sourceDigests: true`이면 축소 직전에 기록된 영역 digest가 `HEAD`와 같아야 한다. 테스트를 쓰다 보니, 위에 줄이 끼어 밀린 줄 범위도 보고된다는 것을 확인했다. 처음에는 대가로 봤지만, 인용한 줄 번호가 다른 텍스트를 가리키므로 고쳐야 할 인용이다. C′ 보고 표기는 drift의 다른 판정과 같은 `#L5-L5`로 맞췄다(digest 키 표기 `#L5`를 그대로 내보내다가 테스트에서 잡았다).
+- evidence: 테스트 807/807 · 새 테스트 5개 중 4개가 수정 전 코드에서 실패 · 이 저장소 drift finding 0 그대로(영역 digest가 없다) · 내용 앵커 불일치 4건은 1.41.0 이전에 기록된 `package.json` 전체 digest라 재승인 전까지 남는다(전환 동작, 테스트 고정)
+- caveats: digest가 없는 문서에서는 리뷰 당일 squash 위음성이 남는다. `impact`의 축소에는 C′를 넣지 않았다(날짜 문제가 아니다).
+
 ## 2026-10-28 - docs(decision): 내용 앵커가 날짜 판정과 어긋난 이유 — 전부 내용 쪽이 더 엄격했다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

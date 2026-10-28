@@ -102,6 +102,7 @@ import {
 } from "./commands/fix-migrate.js";
 import { applyFilters, loadContentDocs } from "./commands/retrieval.js";
 import { currentSourceDigests, formatDigestEntry } from "./commands/source-digests.js";
+import { MANIFEST_BASENAME, parseJsonObject, workspacePrefixes } from "./commands/manifests.js";
 import { PLAN_CHANGED_RULE, scanPlanChanges } from "./commands/plan-changes.js";
 import { planSkillArtifacts, writeSkillArtifacts } from "./commands/skills.js";
 import {
@@ -975,40 +976,8 @@ export async function validateCommand(options) {
 }
 
 // ---- impact command (Gate 23 reverse-impact, read-only) ----------------
-const MANIFEST_BASENAME = "package.json";
-
-function parseJsonObject(text) {
-  if (typeof text !== "string") return null;
-  try {
-    // A BOM-prefixed manifest is valid on disk but not to JSON.parse; treating it
-    // as unparseable would only mean "not excluded", but it would do so for the
-    // wrong reason. Arrays and scalars are not manifests.
-    const value = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
-    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-// Directory prefixes a nested manifest must sit under to count as a package
-// manifest of record: the literal head of each `workspaces` glob in the ROOT
-// manifest. Without a declaration, a nested package.json is a fixture, a vendored
-// copy, or a sample — and its `version` may be test input rather than a release
-// number, which is exactly the case the exclusion below must not swallow.
-function workspacePrefixes(rootManifest) {
-  const declared = Array.isArray(rootManifest?.workspaces)
-    ? rootManifest.workspaces
-    : Array.isArray(rootManifest?.workspaces?.packages)
-      ? rootManifest.workspaces.packages
-      : [];
-  return declared
-    .filter((entry) => typeof entry === "string" && entry.trim())
-    .map((entry) => {
-      const head = entry.includes("*") ? entry.slice(0, entry.indexOf("*")) : `${entry}/`;
-      return head.endsWith("/") ? head : `${head.slice(0, head.lastIndexOf("/") + 1)}`;
-    })
-    .filter(Boolean);
-}
+// MANIFEST_BASENAME, parseJsonObject and workspacePrefixes live in
+// commands/manifests.js, which content digests share (1.41.0).
 
 // Paths in <changed> that are a package manifest whose only difference from the
 // baseline is the `version` value. N-13, decision (c) (maintainer, 2026-08-04):

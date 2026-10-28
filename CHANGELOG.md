@@ -6,6 +6,40 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.41.0 — 2026-10-28
+
+Content digests take their first decision. Upgrade if your project sets
+`"sourceDigests": true` and squashes or rebases reviewed branches.
+
+- **`drift` narrowing checks the stamped digest (opt-in).** With `"sourceDigests": true`, a
+  line-range or section citation is narrowed away only if the digest `review --approve`
+  stamped for it still matches the region at `HEAD`. Both git baselines can contain a change the
+  reviewer never saw when the review branch was squashed or rebased on the review day itself;
+  the digest was taken from what the reviewer read. If it differs, the region is reported as
+  `evidence.stale`. Without a stamped digest the citation narrows as before. This can only add
+  findings.
+- **`drift --anchor content` compares against `HEAD`,** not the working tree, so both verdicts
+  read committed history. An uncommitted edit no longer shows as a disagreement.
+- **A root or workspace `package.json` is digested without its `version`,** as `impact` already
+  treats it (N-13). A whole-file digest stamped by an earlier version is still accepted while the
+  file is unchanged, and reads as changed after the next version bump until the document is
+  approved again.
+
+**Behaviour changes, named:**
+- With `"sourceDigests": true`, `drift` can report a citation it used to narrow: the cited region
+  differs from the stamped digest. That includes a line range whose lines moved because text was
+  inserted above it, since its line numbers now point at different text.
+- `drift --anchor content` reports `HEAD`, not the working tree. Its JSON shape is unchanged.
+- Newly stamped digests of a manifest of record differ from earlier ones for the same file.
+
+Why: on this repository every content-versus-date disagreement was the content verdict being
+right where the date verdict could not see (same-day changes, version-only manifests,
+uncommitted edits), and none was a date over-report that content cleared. `GATE_REVIEW.md`,
+"Same-Day Squash Narrowing", records the analysis and the options not taken.
+
+Sized as a MINOR: an opt-in setting starts deciding something, and only in the direction of more
+findings. Tests: 802 → 807.
+
 ## 1.40.1 — 2026-10-28
 
 A hardening patch. No output changes.

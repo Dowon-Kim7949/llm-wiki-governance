@@ -3334,7 +3334,14 @@ recorded above (more `markdown_link.missing` findings on glued links and consecu
 reference definitions), `--version` exiting 0, and the publish workflow no longer passing
 a token (decided in "Publish Credential Cleanup").
 
-## Same-Day Squash Narrowing (open — recorded 2026-10-28, not decided)
+## Same-Day Squash Narrowing (recorded 2026-10-28; C′ decided by the maintainer and built the same day for 1.41.0)
+
+**Decision (2026-10-28, maintainer):** build C′ with both preconditions. The content comparison
+now reads `HEAD`, a manifest of record is digested without its `version` (a whole-file digest
+stamped earlier is still accepted), and with `"sourceDigests": true` a stamped region digest
+must match at `HEAD` before `drift` narrows a citation away. Documents without digests keep the
+gap below. A line-range citation whose lines moved under it is now reported, because its line
+numbers point at different text. The analysis that led here follows unchanged.
 
 `drift` narrows a line-range or section citation away only when two baselines agree that
 the cited region did not change: the repository at the end of the review day, and the

@@ -280,3 +280,14 @@ export function lineRangeChangedBetween(cwd, file, start, end, fromRef) {
 export function fileAtRefFromCwd(cwd, ref, file) {
   return fileAtRef(cwd, ref, `./${file}`);
 }
+
+// Like fileAtRefFromCwd, but only for a file: `git cat-file blob` refuses a tree,
+// where `git show` would print a directory listing. null when the path is not a
+// file at <ref>, does not exist there, or git fails.
+export function blobAtRefFromCwd(cwd, ref, file) {
+  try {
+    return runGit(cwd, ["cat-file", "blob", `${assertRevision(ref)}:./${file}`]);
+  } catch {
+    return null;
+  }
+}

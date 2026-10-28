@@ -13,6 +13,7 @@ import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
 import { commitAtEndOf, committedBy, commitsTouchingKey, fileAtRef, fileAtRefFromCwd, fileChangedSince, lineRangeChangedBetween, lineRangeChangedSince, pathsChangedSince } from "../git.js";
 import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
+import { digestRegions, normalizeDigestContent, parseDigestEntries } from "./digest-text.js";
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
 import { DECISION_DOC_TYPES } from "./governance-mode.js";
@@ -875,6 +876,8 @@ export async function scanEvidenceDriftDetailed(cwd, options = {}) {
       }
       return stamp;
     };
+    let digests = null;
+    const stampedDigests = () => (digests ??= parseDigestEntries(parsed.frontmatter?.source_digests));
 
     for (const base of targets.files) {
       if (!(await pathExists(path.join(cwd, base)))) continue;
@@ -936,6 +939,27 @@ export async function scanEvidenceDriftDetailed(cwd, options = {}) {
         else if (verdict.staleReference) staleReference = verdict.staleReference;
       }
 
+      // The third condition (C′, 1.41.0): with "sourceDigests": true and a digest
+      // stamped for this citation, the cited regions at HEAD must still match what
+      // was approved. Both git baselines can contain a change the reviewer never saw
+      // when the review branch was squashed or rebased on the review day; the digest
+      // was taken from what the reviewer read. Only consulted when about to narrow,
+      // so it can keep a finding and never removes one. Without a stamped digest the
+      // citation narrows as before.
+      if (!staleReference && !fallbackFileLevel && fileChangedMemo(base, targets.baseline) && options.sourceDigests === true) {
+        const key = citationDigestKey(base, locators);
+        const stamped = stampedDigests().get(key);
+        if (stamped) {
+          const head = contentAt("HEAD", base);
+          const now = head === null
+            ? null
+            : digestRegions(locators.map((locator) => locatedRegion(normalizeDigestContent(head), locator)));
+          // Named the way the date and stamp checks name a stale region, so one
+          // command does not spell the same citation two ways.
+          if (now !== stamped) staleReference = `${base}${locators.map(driftLocatorSuffix).join("")}`;
+        }
+      }
+
       if (fallbackFileLevel) {
         if (fileChangedMemo(base, targets.baseline)) {
           findings.push(driftFinding(rel, `${base}`, targets.baseline));
@@ -948,6 +972,19 @@ export async function scanEvidenceDriftDetailed(cwd, options = {}) {
     }
   }
   return { findings, locatorNarrowed };
+}
+
+// How a drift finding names one narrowed locator: `#L<start>-L<end>` for a line
+// range, the locator label for a section — the spelling the checks above use.
+function driftLocatorSuffix(locator) {
+  return locator.kind === "line" ? `#L${locator.start}-L${locator.end}` : locatorLabel(locator);
+}
+
+// The key a content digest is stamped under for a citation narrowed to <locators>:
+// the source path followed by each locator's label, in locator order. Shared with
+// source-digests.js so the stamp and the drift check name the same thing.
+export function citationDigestKey(source, locators) {
+  return `${source}${locators.map(locatorLabel).join("")}`;
 }
 
 // The commit that wrote <rel>'s current review stamp: the newest commit in HEAD's

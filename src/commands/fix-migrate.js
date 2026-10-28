@@ -411,7 +411,10 @@ async function compareAnchors(cwd, driftedDocs, dateSuppressed) {
     if (isTemplateDoc(rel) || isAppendOnlyLog(rel)) continue;
     const { frontmatter } = parseFrontmatter(await readUtf8(file));
     if (!verifiedSourceAnchors(frontmatter)) continue;
-    const content = await compareSourceDigests(cwd, frontmatter);
+    // HEAD, not the working tree: the date verdict beside it reads committed history
+    // only, and an uncommitted edit made the two disagree for no reason (measured
+    // 2026-10-28: 3 of 6 disagreements on this repository).
+    const content = await compareSourceDigests(cwd, frontmatter, { ref: "HEAD" });
     const date = dateSuppressed ? "off" : (driftedDocs.has(rel) ? "stale" : "fresh");
     const agree = content.verdict === "unstamped" || date === "off"
       ? null
