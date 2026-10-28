@@ -26,9 +26,9 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:11bfea7c81c52615
+  - package.json sha256:363aafcd2545dc99
   - RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
-  - templates/github-actions/llm-wiki-validate.yml sha256:df6901aedc5225c5
+  - templates/github-actions/llm-wiki-validate.yml sha256:4d271658638b683a
   - .github/workflows/publish.yml sha256:c3c6a88cb36e80aa
 ---
 

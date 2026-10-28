@@ -10,7 +10,7 @@ last_updated: 2026-10-27
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - package.json
@@ -24,7 +24,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:f3f1cc9932fdcd62
+  - package.json sha256:363aafcd2545dc99
   - RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
 ---
 
@@ -56,6 +56,22 @@ source_digests:
   2종·README 2종·ROADMAP 2종에 모두 적었다.
 - **선례로 삼지 않는다.** 다음에 같은 형태의 변경이 오면 기본은 major이며, 이 항목은 "규칙을
   바꾼 기록"이 아니라 "규칙을 어긴 기록"이다.
+
+## 기록된 판정 — 1.39.0 (MINOR, 2026-10-28)
+
+- **minor 근거.** 새 info 규칙 `impact.plan_changed` 하나와 부가 JSON 키 둘(`impact.changedPlans`,
+  `stats.verifiedNotEnriched`)이다. 명령·옵션·JSON 키를 제거하거나 이름을 바꾸지 않았고
+  `schemaVersion`도 그대로다. 텍스트 출력은 계획이 diff에 있을 때만 줄과 절이 붙는다.
+- **종료 코드.** `impact.plan_changed`는 모든 모드에서 info라 `result`와 종료 코드를 바꾸지 않는다.
+  `findingSummary.info`와 `findings:` 수는 늘 수 있다 — finding 개수를 세는 소비자에게는 관측 가능한
+  변화이므로 CHANGELOG에 이름 붙여 적었다. 프로젝트가 `rules`로 이 규칙을 올리면 빌드를 실패시킬 수
+  있고, 그것은 그 프로젝트의 선택이다.
+- **게이트 수정 두 건은 1.28.0식 예외가 아니라 결함 수정이다.** `drift` 축소의 두 번째 기준선(N-20)은
+  `evidence.stale`을 더 낼 수만 있고, lite의 승인 판정 측정(N-21)은 strict·standard가 이미 거부하던
+  문서를 lite에서도 거부한다. 둘 다 문서가 이미 약속한 계약("축소는 숨기지 않는다", "일괄 승인이
+  게이트를 우회하지 못한다")을 되살린다. 그래도 `--strict` 파이프라인을 새로 실패시키거나 승인을
+  거부할 수 있으므로, 1.31.0의 N-8과 1.38.0의 lite 승인 거부처럼 CHANGELOG에 동작 변경으로 이름을
+  붙였다.
 
 ## Evidence
 

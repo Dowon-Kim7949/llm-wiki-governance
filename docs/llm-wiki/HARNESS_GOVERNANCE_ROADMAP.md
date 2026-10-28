@@ -65,7 +65,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:11bfea7c81c52615
+  - package.json sha256:363aafcd2545dc99
   - src/cli.js sha256:b4c407f857f2de78
   - src/index.js sha256:ee1d42734ade2f15
   - src/commands.js sha256:b68f27a10f5c28d3
@@ -79,11 +79,11 @@ source_digests:
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
   - src/git.js sha256:a2d03f544b55cfd3
   - .github/workflows/ci.yml sha256:0055dbb54de5761b
-  - .github/actions/validate/action.yml sha256:92de72b3ba5ebc26
+  - .github/actions/validate/action.yml sha256:59b741f7ac44ac08
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
-  - templates/github-actions/llm-wiki-validate.yml sha256:df6901aedc5225c5
+  - templates/github-actions/llm-wiki-validate.yml sha256:4d271658638b683a
   - GATE_REVIEW.md sha256:1925d235d0b93b6a
-  - ROADMAP.md sha256:8ef6f3652afe66a6
+  - ROADMAP.md sha256:21f1d83249166030
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵

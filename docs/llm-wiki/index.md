@@ -26,9 +26,9 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:11bfea7c81c52615
+  - package.json sha256:363aafcd2545dc99
   - src/cli.js sha256:b4c407f857f2de78
-  - README.md sha256:14fc22598dde8a49
+  - README.md sha256:cf48ba1ff3d3e5d6
 ---
 
 # LLM-WIKI Index

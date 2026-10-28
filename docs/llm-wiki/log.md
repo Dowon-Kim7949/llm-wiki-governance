@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - release: 1.39.0 준비 — 막으라고 있는 것을 통과시키던 게이트 두 개와 계획 → 코드 방향
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.38.0 → 1.39.0) · `tests/verification.test.js`(버전 단언) · `.github/actions/validate/action.yml`(기본값 1.39) · `templates/github-actions/llm-wiki-validate.yml`(핀 3줄) · `CHANGELOG.md`·`CHANGELOG.ko.md`(1.39.0 절, 1.37.0 절의 거짓 주장 두 곳에 정정 표기) · `ROADMAP.md`·`ROADMAP.ko.md`(출시 절) · README 2종(액션 핀, greenfield 문단에 `impact.plan_changed` 한 문장, "변경 감지" 항목에 축소 조건 한 구절) · 위키 `VERSIONING`(1.39.0 MINOR 판정 절)·`EXAMPLES`(CI 예시 핀)·`REVIEW_HISTORY`(서문 한 줄)
+- summary: 앞 커밋(`63310ff`)을 1.39.0 MINOR로 묶는다. info 규칙 하나와 부가 JSON 키 둘이고, 게이트 수정 두 건(N-20, N-21)은 finding을 더하거나 승인을 거부할 수 있어 CHANGELOG에 동작 변경으로 이름 붙였다. 1.37.0 CHANGELOG의 "숨기지 않는다"는 지우지 않고 취소선과 정정 표기를 달았다 — 이력은 당시 주장을 보여 주고, 틀렸다는 사실도 같은 자리에서 보여야 한다.
+- evidence: `impact --since HEAD --strict` pass(재승인 후) · 테스트 수는 CHANGELOG에 적은 783을 실제 실행으로 확인
+- caveats: 공유 덱(`outputs/team-briefing/`)의 대상 버전 표기(v1.38.0 다섯 곳)는 **고치지 않았다** — 덱은 배포된 최신 버전을 가리키고 1.39.0은 배포 전이다(push·태그·배포는 유지보수자 승인 대기). 배포할 때 정렬한다. 위키 `README.md`의 `evidence.stale`(10-28의 1.38.0 릴리스 커밋이 원인, 이 브랜치 이전부터 있던 상태)도 이번 재승인으로 해소했다.
+
 ## 2026-10-28 - fix(drift,review) + feat(impact): 축소가 바뀐 인용을 숨겼고, lite가 strict의 승인 거부를 비켜 갔다 · impact.plan_changed
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

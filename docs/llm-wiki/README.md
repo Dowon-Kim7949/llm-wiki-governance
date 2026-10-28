@@ -10,7 +10,7 @@ last_updated: 2026-10-27
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - package.json
@@ -23,8 +23,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:592836e8b901c7be
-  - README.md sha256:3f78da30bac25e58
+  - package.json sha256:363aafcd2545dc99
+  - README.md sha256:cf48ba1ff3d3e5d6
 ---
 
 # LLM-WIKI README

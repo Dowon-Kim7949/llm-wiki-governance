@@ -1123,6 +1123,31 @@ document model.
 **Next:** whether a requirement edit can point at code without guessing; the anchor
 comparison, the paid benchmark, and a third query set, as before.
 
+## Release Plan (post-1.38.0) — gates that let through what they exist to stop, and the plan-to-code direction — **shipped as 1.39.0 (2026-10-28)**
+
+An external review asked whether `drift` narrowing could hide a change. It could, and
+reproducing it led to a second gate that depended on the governance mode.
+
+- **`drift` narrowing needs the review's own commit to agree.** The review-day snapshot is
+  chosen by date and can be a side-branch commit merged after the review, a later commit on
+  the review day, or a backdated commit; a changed citation then read as unchanged and was
+  dropped. Line-range narrowing (older than 1.37.0) did the same. A citation is now dropped
+  only when the commit that wrote the current review stamp also shows no change, and is
+  checked at file level when that commit cannot be found.
+- **A mode no longer changes what `review` can approve.** With `"strict": true`, lite
+  approved a document strict and standard refuse. `review` now measures the rules the mode
+  alone switched off; `stats` lists approved documents that still carry scaffold text.
+- **`impact.plan_changed` (info).** When an approved requirement or decision changes, `impact`
+  lists the files it links and whether each changed in the same diff. It names candidates
+  for review and judges nothing.
+- **Not done.** The file-level late-merge gap (N-15) stays a recorded limit; acceptance
+  criteria are still not traced one by one; whether agents follow the plan-change list was
+  not measured.
+
+**Next:** cross-stack validation outside this repository (a Python backend and a React +
+Node full-stack fixture next to the Vue demos), and a first-time developer path through
+the README that is checked by script.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

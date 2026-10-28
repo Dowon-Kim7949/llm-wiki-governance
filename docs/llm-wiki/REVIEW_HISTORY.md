@@ -49,7 +49,7 @@ source_digests:
   - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:0ba6f613d84baa1a
   - docs/llm-wiki/BENCHMARK.md sha256:ec7d0470a48bc7c6
   - docs/llm-wiki/DOMAIN_FEATURES.md sha256:d65ef51cbc3e4102
-  - docs/llm-wiki/EXAMPLES.md sha256:b0b2bc6323e78c6d
+  - docs/llm-wiki/EXAMPLES.md sha256:cdd3819fa57a417f
   - docs/llm-wiki/GLOSSARY.md sha256:a4255ae6a7097ef8
   - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:e5876ebaa64fd042
   - docs/llm-wiki/PUBLIC_API.md sha256:3d5621935279b292
@@ -58,7 +58,7 @@ source_digests:
   - docs/llm-wiki/domains/00_overview.md sha256:a4cad3200d8b3661
   - docs/llm-wiki/project-profile.md sha256:e02dd90aff818438
   - docs/llm-wiki/profiles/library.md sha256:f0d952a92e8621ae
-  - docs/llm-wiki/VERSIONING.md sha256:1d126c18fd851e56
+  - docs/llm-wiki/VERSIONING.md sha256:c6b29cc69fa9e765
 ---
 
 # Review History
@@ -75,6 +75,7 @@ source_digests:
 - 2026-10-27(greenfield, 미배포): 원문서 10종이 Greenfield 지원(`--greenfield`, 계획된 지식, `evidence.planned_unlinked`)을 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. 위키 `README.md`만 Review Note를 더해 1건(2026-09-14)을 이 아카이브로 옮겼고, 나머지는 본문을 고쳤으므로 5건 상한을 넘지 않았습니다.
 - 2026-10-28(1.38.0 준비): 원문서 9종이 꺼진 규칙의 측정(`withRulesMeasured`)·결정 템플릿 통일·`review`의 `planned` 표시를 반영하고 "미배포" 표기를 1.38.0으로 바꾸느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — Review Note를 더하지 않고 본문을 고쳤으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
 - 2026-10-28(1.39.0 준비): 원문서들이 `drift` 축소의 두 번째 기준선(N-20), 모드가 승인 가능 여부를 바꾸지 않는 `review`(N-21), `stats.verifiedNotEnriched`, `impact.plan_changed`를 반영하느라 본문이 고쳐지거나(7종) 인용 소스의 내용 해시가 바뀌어 다시 스탬프돼(`index.md`·`project-profile.md`·`profiles/library.md`) 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — Review Note를 더하지 않았으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
+- 2026-10-28(1.39.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.39.0 MINOR 판정 절 추가)와 `EXAMPLES.md`(CI 예시 핀 `@1.39`)가 고쳐져 이 문서를 다시 지목했습니다. `index.md`·위키 `README.md`·`RELEASE_FLOW.md`·`HARNESS_GOVERNANCE_ROADMAP.md`는 인용 소스(루트 README·CI 템플릿·액션·ROADMAP)가 버전 핀과 기능 한 문장만 바뀌어 본문이 그대로 맞고, 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 
 ## Architecture Conventions
 
