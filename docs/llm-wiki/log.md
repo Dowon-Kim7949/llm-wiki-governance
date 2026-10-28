@@ -24,6 +24,49 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - release: 1.38.0 준비 — 코드보다 먼저 시작하는 프로젝트
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.37.0 → 1.38.0) · `tests/verification.test.js`(버전 단언) · `.github/actions/validate/action.yml`(기본값 1.38) · `templates/github-actions/llm-wiki-validate.yml`(핀 3줄) · `CHANGELOG.md`·`CHANGELOG.ko.md`(1.38.0 절) · `ROADMAP.md`·`ROADMAP.ko.md`(출시 절) · README 2종(액션 핀, `--greenfield` 표기, 모드 절에 "꺼진 규칙은 보고만 안 한다" 한 문장) · `examples/greenfield-vue-demo/README*.md`("미배포" 안내 교체) · `outputs/team-briefing/`(대상 버전, 22장 타임라인에 1.38 행·`.now` 이동, 발표 노트) · 위키 `EXAMPLES`(CI 예시 핀 4줄)·`RELEASE_FLOW`(Checklist에 "미배포 표기 정리" 항목)
+- summary: 같은 PR의 세 커밋(greenfield, 꺼진 규칙 측정 + P2, 스킬 갱신)을 1.38.0 MINOR로 묶는다. 새 옵션 하나와 부가 JSON이고, lite에서 스캐폴드를 명시 승인할 때 exit 0 → 1로 바뀌는 것이 이름 붙인 예외다(문서화된 게이트 복구). 브랜치에서 "미배포"로 적어 둔 표기 열두 곳을 버전으로 바꿨다.
+- evidence: 테스트 757/757 · lint 102 files OK · `impact --since origin/main --strict` pass(PR 전체, CI와 같은 기준)
+- caveats: 커밋 단위 `impact --since HEAD~1`은 이 릴리스 커밋만 놓고 보면 index·위키 README·HARNESS_GOVERNANCE_ROADMAP·REVIEW_HISTORY 4건을 지목한다. 넷 다 같은 PR의 앞선 커밋에서 본문을 고쳤고, CI는 PR 전체(`origin/main`, 병합 뒤에는 병합 커밋의 `HEAD~1` = 이전 main)로 본다(1.37.0과 같은 구성). 공유 덱 Artifact는 재게시하지 않았다(유지보수자 지시, 파일만 정렬).
+
+## 2026-10-28 - chore(skills): 이 저장소의 생성 스킬 20개를 현재 생성기로 다시 만들었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: harness
+- changed: `.claude/skills/llm-wiki-{bootstrap,feature,fix,docs-sync,backfill}/SKILL.md` · `.agents/skills/…`(같은 5종) · `.cursor/rules/llm-wiki-*.mdc`(5종) · `.llm-wiki/prompts/llm-wiki-*.md`(5종)
+- summary: 2026-10-27 greenfield 항목이 "observed"로 남긴 별건이다. 커밋된 관리 스킬이 1.34.0 이후 갱신되지 않아 그때 제거한 Delegation budget 블록을 아직 담고 있었다. `init --write --skills --refresh`로 사용자 미수정 관리 아티팩트만 다시 썼다. 바뀐 것은 그 블록 삭제와, 직전 커밋까지의 거버넌스 예산 한 구절("요구사항 문서를 구현했으면 그 근거도 갱신")이며 `estimated-tokens`가 줄었다(feature 1584 → 1269, chars/4 프록시). onboard·prepare는 이미 최신이었다.
+- evidence: 20 files, +56/−176 · `harness-health` findings 0 · `impact --since HEAD --strict` pass · 테스트 757/757
+- caveats: 내용 변경은 생성기 출력 그대로이며 손으로 고친 줄은 없다.
+
+## 2026-10-28 - fix(governance): 꺼진 규칙이 사실까지 지우고 있었다 — lite의 스캐폴드 일괄 승인 · P2 3건
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/governance.js`(`withRulesMeasured`) · `src/commands.js`(`statsCommand`·`nextCommand`·`reviewCommand`가 읽는 규칙만 되살려 audit, `STATS_MEASURED_RULES`, review 항목 `planned`·`planned` 플래그·조건부 caveat) · `src/cli.js`(`help mode`의 lite 설명 한 문장, `help init`의 결정 템플릿 문장) · `src/commands/doc-templates.js`(결정 템플릿을 모든 init에서 ADR 골격·`source_files: []`, `logBody`에 감지된 매니페스트 전달) · `src/commands/doc-content.js`(`logBody({ manifest })`) · `tests/rule-toggle-measurement.test.js`(신규 7건) · `tests/greenfield.test.js`(brownfield 단언 갱신, 신규 2건) · 위키 10종(PUBLIC_API, DOMAIN_FEATURES, GLOSSARY, ARCHITECTURE_CONVENTIONS, HARNESS_GOVERNANCE_ROADMAP, domains/00_overview, EXAMPLES, index, project-profile, profiles/library)
+- summary: 지난 항목이 caveat로 남긴 "lite의 `stats` enriched 100%"를 고치려다 같은 원인이 더 무거운 결함을 내고 있음을 확인했다. lite는 `content.not_enriched`·`evidence.missing`·`evidence.stale`을 `off`로 두고 `off`는 finding을 지우는데, `stats`·`next`·`review`가 그 finding으로 사실을 판정했다. 빈 저장소 실측(`init --greenfield`, lite): `stats` 보강 12/12, `next` 체크리스트 0, `review --approve-all --yes`가 스캐폴드 포함 8건 중 8건 승인. 같은 저장소 standard는 6/12, 6, 2건. 이제 세 명령이 자기가 읽는 규칙만 audit 한 번에서 기본 severity로 되돌리고(`backfill`의 `rules: {}`와 같은 원칙), lite와 standard의 수치가 같다. P2 3건: 결정 템플릿을 모든 init에서 ADR 골격으로, 첫 로그 항목이 감지된 매니페스트를 적도록, `review`가 계획 문서를 `planned`로 표시하도록 했다. 같은 PR에서 1.38.0으로 내므로 위키의 "미배포" 표기를 1.38.0으로 바꿨다.
+- evidence: 테스트 748 → 757(실측) · 신규 7건은 수정을 끈 상태(`withRulesMeasured`가 입력을 그대로 반환)에서 7건 모두 실패함을 확인 · lint 102 files OK · PR #7 CI 18/18(greenfield 커밋, 3 OS × Node 18.18/20/22/24)
+- decision: lite에서 스캐폴드를 명시 승인하면 exit 0 → 1이 된다. 문서화된 게이트("일괄 승인이 스캐폴드를 쓸어 담지 못한다", 2026-07-31)를 되살리는 수정이라 이름 붙인 예외로 MINOR에 싣는다. lite의 `stats`는 이제 드리프트 스캔 비용을 치른다(`backfill`과 같다). `validate`·`audit`·`drift`가 lite에서 보고하는 것은 그대로다.
+- caveats: 결정 템플릿 변경은 새로 만드는 파일에만 적용된다(init은 기존 파일을 덮어쓰지 않는다). `review`의 위험 점수는 계획 문서에도 그대로 "근거 없음" 가산(+25)을 준다 — 표시만 바꿨다.
+
+## 2026-10-27 - feat(greenfield): 코드가 없는 프로젝트도 같은 위키로 시작한다 (미배포)
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, examples, docs, wiki
+- changed: `src/cli.js`(`--greenfield` 파싱·`COMMAND_OPTION_RULES`(init/quickstart/handoff)·도움말, stats JSON 키 목록) · `src/commands.js`(`resolveInitGovernanceMode`, `manifestPresent`·`startingPointLines`, greenfield 후보, quickstart 핸드오프 모드, `buildHandoff`/`handoffNextStep` greenfield, `stats.plannedKnowledge`) · `src/commands/doc-templates.js`(`greenfieldDocMetadata`, 매니페스트 없으면 `source_files` 빈 목록) · `src/commands/doc-content.js`(greenfield 본문 4종 en/ko, `indexBody` 읽기 순서, `logBody` 근거 줄) · `src/commands/scans.js`(`PLANNED_DOC_TYPES`·`isPlannedDoc`·`localReferencePaths`, `scanUngroundedVerified` 분기) · `src/commands/findings.js`·`src/i18n.js`(`evidence.planned_unlinked`) · `src/config.js`(`GREENFIELD_DOCS`) · `src/frontmatter.js`(인라인 `[]`) · `src/task-prompts.js`(`greenfieldPlanningWorkflow`, 거버넌스 예산 3모드 한 구절) · `src/index.js`(typedef) · `tests/greenfield.test.js`(16건)·`tests/greenfield-demo-walkthrough.test.js`(1건) · `examples/greenfield-vue-demo/`(신규) · `examples/README.md` · README 2종 · 위키 11종(index, project-profile, profiles/library, EXAMPLES, GLOSSARY, VISIBILITY, ARCHITECTURE_CONVENTIONS, domains/00_overview, DOMAIN_FEATURES, PUBLIC_API, HARNESS_GOVERNANCE_ROADMAP)
+- summary: 빈 저장소에서 v1.37.0 `quickstart`를 실제로 돌려 결함 셋을 찾았다. 생성 문서 10건이 없는 `package.json`을 인용했고(`validate` 경고 10건·`stats` 근거 100%), `quickstart`는 lite를 쓰면서 strict라고 안내했으며, ADR 템플릿은 일반 플레이스홀더였다. 셋을 고친 뒤, 새 엔진이나 필드 없이 기존 `doc_type`으로 "계획된 지식"(requirement + 결정 기록 타입)을 정의했다. 근거 없이 승인된 계획은 `evidence.planned_unlinked`(info)이고 `stats`가 따로 센다. 근거를 연결하면 기존 validate·impact·drift가 그대로 감시한다.
+- evidence: 테스트 731 → 748(실측) · lint·`validate --strict`·`audit` 통과 · 데모 워크스루 20/20(Node 22.14), 데모 앱 `npm install`·`vue-tsc`·`vite build`·테스트 4건 통과 · 수동 수명주기 스모크(빈 저장소 → 승인 → 연결 → 코드 변경 → impact exit 1)
+- decision: `evidence.ungrounded` 대신 info를 받는 대상에 기존 결정 기록 타입(`decision`·`decision_log`·`adr`)도 포함했다(유지보수자 승인, 2026-10-27). 도입처에서 `--strict`가 실패하던 경우가 통과로 바뀔 수 있는 완화이며, 같은 대상은 info로 계속 보고된다.
+- observed: 이 저장소가 커밋한 생성 스킬 20개(`.claude`·`.agents`·`.cursor`·`.llm-wiki`)는 1.34.0 이후 갱신되지 않아 제거된 Delegation budget 블록을 아직 담고 있다. `init --skills --refresh`를 돌리면 그 블록이 빠져 범위 밖 변경이 되므로 되돌렸고 별건으로 남긴다(유지보수자 결정).
+- caveats: 미배포이며 버전·CHANGELOG는 건드리지 않았다(CHANGELOG는 릴리스 때 쓴다). 연결된 참조는 구현 위치일 뿐 완료가 아니고, 요구사항 수정은 코드를 지목하지 않으며, 문서 안 수용 기준은 개별 추적되지 않는다. lite의 `stats` enriched가 꺼진 규칙 때문에 100%로 나오는 기존 결함은 고치지 않았다.
+
 ## 2026-10-27 - release: 1.37.0 준비 — drift 섹션 축소, search-docs --all-terms, held-out 검색 평가
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

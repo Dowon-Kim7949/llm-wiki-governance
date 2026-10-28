@@ -33,6 +33,8 @@ This detects the project, creates the wiki and adapter files, and prints a hando
 
 The CLI needs no model. The enrichment step does, and it decides quality: use your strongest reasoning model for the first build.
 
+**Starting a project that has no code yet** (`--greenfield`, 1.38.0): `quickstart --write --greenfield` adds requirement and decision (ADR) documents and prints a planning prompt. Your agent records the purpose, requirements, acceptance criteria, and decisions you state, invents none, and cites no source. Approving a requirement approves the plan, not an implementation: `validate` reports an approved plan with nothing linked as info, and `stats` counts plans apart. Once code exists, link each requirement's source files and tests in its `evidence`. From then on it is checked like any other doc, and the existing-project steps above apply. [`examples/greenfield-vue-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/greenfield-vue-demo) runs this path from an empty repository.
+
 **Demo.** [`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo) runs the whole loop on a small Vue 3 app in a temporary git repo (`npm install && npm run demo`, Node.js 20.19+, no API key): two source-backed docs, `validate --strict`, `review --approve`, then a code change that makes `impact` exit 1 until the doc is updated. It also shows the limits: a doc updated with the *wrong* number passes, and date-based `drift` misses a change committed the same day as the review.
 
 ## Why not just an AGENTS.md or CLAUDE.md?
@@ -75,7 +77,7 @@ Writes happen only with an explicit `--write`, `--apply`, or `--approve`. `--lan
 
 ## Run it in CI
 
-Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or use the composite action in one step: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.37.0`. It appends the report to the job summary, including the documents `impact` wants re-reviewed (`summary: "false"` turns that off). On a private repository, the runner-free `templates/git-hooks/pre-commit` hook and the `LLM_WIKI_RUNNER` variable (self-hosted runner) avoid shared runner minutes. Recipes per repository size: [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
+Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or use the composite action in one step: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.38.0`. It appends the report to the job summary, including the documents `impact` wants re-reviewed (`summary: "false"` turns that off). On a private repository, the runner-free `templates/git-hooks/pre-commit` hook and the `LLM_WIKI_RUNNER` variable (self-hosted runner) avoid shared runner minutes. Recipes per repository size: [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
 
 ## Governance modes
 
@@ -87,7 +89,7 @@ One engine, three policy levels, switchable at any time with `{ "governance": { 
 | Docs after a code change | only what the code cannot show | when a domain, architecture, or contract moves | every affected document |
 | Drift and missing-doc gate | off | reports (warning) | fails the build (error) |
 
-`quickstart` scaffolds `lite`. A config without a `governance` block resolves to `strict`, the rule set enforced before modes existed. Structural and safety checks run in every mode. The intended path is months in `lite`, then `mode set strict --write` and `backfill` before a handoff. **Before making `impact` a required check:** under `strict`, `impact.source_changed` is an `error`, so `impact --since <ref>` fails a build on its own; use `standard`, or pin `"impact.source_changed": "warning"` in `rules`.
+`quickstart` scaffolds `lite`. A config without a `governance` block resolves to `strict`, the rule set enforced before modes existed. Structural and safety checks run in every mode. A rule a mode turns off is only not reported: `stats` and `next` still measure enrichment and evidence, and `review` still refuses to approve an unfilled scaffold. The intended path is months in `lite`, then `mode set strict --write` and `backfill` before a handoff. **Before making `impact` a required check:** under `strict`, `impact.source_changed` is an `error`, so `impact --since <ref>` fails a build on its own; use `standard`, or pin `"impact.source_changed": "warning"` in `rules`.
 
 ## Agent-native (MCP)
 

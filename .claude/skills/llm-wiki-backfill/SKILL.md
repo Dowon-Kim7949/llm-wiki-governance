@@ -1,7 +1,7 @@
 ---
 name: llm-wiki-backfill
 description: Reconstruct an incomplete LLM-WIKI from the current repository for a handoff, labeling every fact verified / inferred / unknown (needs_review).
-estimated-tokens: 2056 # chars/4 proxy of the skill body, not a measured token count
+estimated-tokens: 1726 # chars/4 proxy of the skill body, not a measured token count
 ---
 
 Get the current wiki map at RUN TIME (not a snapshot): run `llm-wiki prepare --task "<the task>" --compact` (or `llm-wiki onboard --domain <area>`), then read the docs it points to and confirm against the source.
@@ -50,12 +50,6 @@ Context budget (spend tokens on evidence, not on volume):
 - Read a large file by line range or section instead of whole; for wiki docs use 'llm-wiki get-doc <path> --section "<heading>" --strict-section --max-chars <n>'.
 - Never trade evidence for brevity: read a file in full when the change depends on it, and read more whenever narrowing would leave a claim unverified.
 - Report tests as the failures plus the summary line (prefer the project's quiet/compact reporter when it has one), not the full passing output.
-Delegation budget (spend the expensive context on judgment, not on reading):
-- Locating and scoping is dispatchable: when an answer needs a sweep across many documents or files, send a read-only subagent on a cheaper model and take back a brief — findings, file:line evidence, and what stayed unconfirmed — instead of pulling the raw material into this context.
-- Judgment is not dispatchable: the design decision, the regression call, the edit itself, and the wiki/log prose stay here. A cheaper agent can apply text you already wrote; it cannot write the sentence that explains why the change was made.
-- Mechanical finishing is dispatchable: running the checks, writing the run manifest, and applying edits you have already decided on.
-- Dispatch only when it pays: a brief plus its dispatch costs more than reading one file, and a delegate that hands back the raw material has bought nothing. When the harness can choose a model per dispatch, send the dispatch to the cheaper one and keep the session's own model fixed — switching the session model mid-task re-reads the conversation so far at the new model's price.
-- Delegation never buys an unverified claim: either the delegate reads the actual source and reports the evidence, or you read it yourself — never skip the source because a dispatch felt expensive.
 
 Expected final response:
 - Documents created or filled, with the confidence label distribution.
@@ -66,4 +60,4 @@ Expected final response:
 
 Completion contract (Gate 26 — enables 'llm-wiki check-run'): after finishing, write .llm-wiki/runs/run-backfill-<timestamp>.json with fields: task="backfill", changedSource[] (source files you edited), touchedDocs[] (docs/llm-wiki/* you updated), logAppended (bool), validated {ran, result}. Then run 'llm-wiki check-run' to confirm each changed source is referenced by a touched doc, the log was appended, and validate passed. Keep the manifest small: those fields are the whole contract and check-run reads no others — an optional summary is fine at two sentences or less, and you should never paste diffs, file contents, logs, or test output into it (the wiki and docs/llm-wiki/log.md are where the narrative belongs). This records what the run did — it never replaces human review and never promotes a document to verified.
 
-<!-- llm-wiki-generated v5 5e0368dfddc3b23a -->
+<!-- llm-wiki-generated v5 5a43936cb7a22180 -->

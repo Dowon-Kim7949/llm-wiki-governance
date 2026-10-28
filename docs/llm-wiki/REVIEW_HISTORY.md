@@ -6,7 +6,7 @@ tags:
 status: verified
 doc_type: review_history
 project: llm-wiki-governance
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 author: Claude Code
 last_edited_by: Claude Code
 wiki_block_version: v1
@@ -43,21 +43,21 @@ related:
 visibility: internal
 contains_sensitive_info: false
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-28
 source_digests:
-  - docs/llm-wiki/VISIBILITY.md sha256:34bbddeb6dd49197
-  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:952c1a12e20ec865
-  - docs/llm-wiki/BENCHMARK.md sha256:df61a063867e6f13
-  - docs/llm-wiki/DOMAIN_FEATURES.md sha256:3856d6013128c39e
-  - docs/llm-wiki/EXAMPLES.md sha256:85e4496685fd330e
-  - docs/llm-wiki/GLOSSARY.md sha256:f0e31c021a21d471
-  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:ee48a3889ad1810f
-  - docs/llm-wiki/PUBLIC_API.md sha256:6e8213a68860ad84
-  - docs/llm-wiki/README.md sha256:7420637f516c6d0e
-  - docs/llm-wiki/RELEASE_FLOW.md sha256:5850e5723d7d928d
-  - docs/llm-wiki/domains/00_overview.md sha256:61da61911ef14fe8
-  - docs/llm-wiki/project-profile.md sha256:df52ec19feec4881
-  - docs/llm-wiki/profiles/library.md sha256:d72cf29a75b9883c
+  - docs/llm-wiki/VISIBILITY.md sha256:52b9d54834606505
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:1be58c0916ecfc9e
+  - docs/llm-wiki/BENCHMARK.md sha256:ec7d0470a48bc7c6
+  - docs/llm-wiki/DOMAIN_FEATURES.md sha256:4f3be0a326ec9d3c
+  - docs/llm-wiki/EXAMPLES.md sha256:4966cd746cea6b06
+  - docs/llm-wiki/GLOSSARY.md sha256:8237d2b6ba460130
+  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:1d3231b8265ec9dc
+  - docs/llm-wiki/PUBLIC_API.md sha256:090d0c398f82328f
+  - docs/llm-wiki/README.md sha256:155784a313bd4fda
+  - docs/llm-wiki/RELEASE_FLOW.md sha256:02019ed6881143f0
+  - docs/llm-wiki/domains/00_overview.md sha256:ff46b9412d284904
+  - docs/llm-wiki/project-profile.md sha256:e02dd90aff818438
+  - docs/llm-wiki/profiles/library.md sha256:f0d952a92e8621ae
   - docs/llm-wiki/VERSIONING.md sha256:1d126c18fd851e56
 ---
 
@@ -72,6 +72,8 @@ source_digests:
 - 2026-10-21(1.34.0 준비): 이 문서가 인용하는 원문서 11종이 1.34.0 변경(위임 예산 제거·tarball 구성·drift 일괄 조회·1.33.0 "미출시" 표기 정리)으로 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — 이번에는 Review Note를 더하지 않고 본문을 고쳤으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
 - 2026-10-21(N-15 기록): 원문서 `HARNESS_GOVERNANCE_ROADMAP.md`(결함 등록부에 47번 N-15 추가)·`PUBLIC_API.md`(`drift` 행에 알려진 한계 추가)가 본문 수정으로 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 - 2026-10-27(1.37.0 준비): 원문서들이 `drift`의 `.md` 섹션 축소, `search-docs --all-terms`, held-out 검색 평가를 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — 1.34.0 때처럼 Review Note를 더하지 않고 본문을 고쳤으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
+- 2026-10-27(greenfield, 미배포): 원문서 10종이 Greenfield 지원(`--greenfield`, 계획된 지식, `evidence.planned_unlinked`)을 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. 위키 `README.md`만 Review Note를 더해 1건(2026-09-14)을 이 아카이브로 옮겼고, 나머지는 본문을 고쳤으므로 5건 상한을 넘지 않았습니다.
+- 2026-10-28(1.38.0 준비): 원문서 9종이 꺼진 규칙의 측정(`withRulesMeasured`)·결정 템플릿 통일·`review`의 `planned` 표시를 반영하고 "미배포" 표기를 1.38.0으로 바꾸느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — Review Note를 더하지 않고 본문을 고쳤으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
 
 ## Architecture Conventions
 
@@ -404,7 +406,7 @@ source_digests:
 
 ## Wiki README
 
-원문서: [README.md](README.md) — 8건(2026-08-03 → 2026-09-08), 2026-09-08 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 2건 추가 이관(5건 상한) · 2026-10-27(1.37.0)에 1건 추가 이관(5건 상한).
+원문서: [README.md](README.md) — 9건(2026-08-03 → 2026-09-14), 2026-09-08 이전분 · 2026-10-26에 1건 추가 이관(5건 상한) · 2026-10-27에 2건 추가 이관(5건 상한) · 2026-10-27(1.37.0)에 1건 추가 이관(5건 상한) · 2026-10-27(greenfield)에 1건 추가 이관(5건 상한).
 
 - 2026-08-03에 HEAD의 루트 `README.md` 변경(impact 기본 error Upgrading 절·`drift --watch-needs-review`·release_notes 면제·adapter 본문 영어 고정)을 이 문서 전 항목과 대조했다. 이 문서는 impact/drift 게이트와 adapter 언어에 대해 아무 주장도 하지 않고(게이트 계약은 `AGENTS.md`·index.md에 위임), EN/KO 짝 갱신 규칙은 이번 커밋에서 `README.md`·`README.ko.md`가 함께 바뀌어 지켜졌으며, `review --approve-all --yes`와 `content.not_enriched`도 소스에서 재확인돼 **불변** — 본문 무수정(`package.json`은 이번 커밋에서 변경 없음).
 - 2026-08-03(1.28.0 배포 준비)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 2건을 재확인했다: `package.json`, `README.md`. 이번 릴리스 커밋의 실제 diff는 `package.json`의 version(1.27.2 → 1.28.0), `src/cli.js`의 `drift` usage 요약 + `help drift` Options 블록, README 2종의 Upgrading 절 배포 상태 문장과 액션 핀, ROADMAP 2종의 shipped 절 추가, `.github/actions/validate/action.yml`의 `version` 입력 기본값(1.27 → 1.28)이 전부다. 이 문서가 소유한 것은 위키 운영 규칙(상태 전이·근거 규약·로그)이고 루트 README의 Upgrading 절·액션 핀은 그 규칙과 무관하며, `package.json`의 version 한 줄도 마찬가지다 — 본문 **불변**.
@@ -414,6 +416,7 @@ source_digests:
 - 2026-09-07(1.30.0)에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README에서 바뀐 것은 **거버넌스 모드 절 신설**·명령 표의 `mode`/`backfill` 행 추가·컴포지트 액션 핀(`@v1.29.5` → `@v1.30.0`)이고, 이 문서가 소유하는 것은 **위키 운영 규칙**(편집 시 `needs_review`, 작업 끝에 `review --approve-all --yes`, log append-only, 민감정보 금지, UTF-8)이므로 그 규칙은 하나도 바뀌지 않았다 — 모드는 **어떤 문서를 기대하는지**를 바꾸고 **누가 승인하는지**는 바꾸지 않는다. 본문 **불변**.
 - 2026-09-08에 `impact.source_changed`가 이 문서를 지목해 인용 소스 `README.md`를 재확인했다. 루트 README를 소개와 핵심 기능 위주로 줄이면서 거버넌스 실전·업그레이드·작동 방식·벤치마크 절을 걷어내고 그 상세를 `CHANGELOG`·`PUBLIC_API.md`·`BENCHMARK.md`로 넘겼다(영문·국문 각각 270 → 102줄). 이 문서가 소유한 것은 위키 운영 규칙이고, 그중 루트 문서를 다루는 두 줄 — 영문 `.md`와 국문 `.ko.md`를 쌍으로 유지하며 상단에 `> Language:` 상호링크를 둔다는 것, 그리고 루트 README는 frontmatter 없이 `docs/llm-wiki/` 밖에 있어 `validate`/`validate-frontmatter` 대상이 아니라는 것 — 은 축약 뒤에도 그대로 참이다. 두 파일을 같은 구조 같은 줄 수로 맞췄으므로 쌍 규약이 오히려 더 분명해졌다. 본문 **불변**.
 - 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 루트 `README.md` 변경을 대조했다. 이번 변경은 생성 스킬을 4종에서 실제 7종으로 고친 것, `npx llm-wiki-governance` 패키지명 명시, 국문 문서 표시, 컴포지트 액션 태그 `@v1.31.0`, CI 문단 유지다 — 전부 **내용**이고 이 문서가 소유한다고 스스로 선언한 것(위키 문서의 구조 규약, EN/KO 쌍 유지, 루트 README에 frontmatter를 두지 않는다는 경계, validate 스캔 범위)은 하나도 건드리지 않았다. **쌍 유지 규약은 실제로 지켜졌다**: 스킬 7종 나열이 `README.md`와 `README.ko.md` 양쪽에 들어갔고 액션 태그도 두 파일에서 같다. 본문 **불변**.
+- 2026-09-14(1.32.0)에 `impact`가 이 문서를 지목해 루트 `README.md` 변경을 대조했다. 추가된 것은 CI 문단의 문장 하나다 — 비공개 저장소에서는 러너 분이 **조직이 공유하는 한도**로 과금된다는 것과, 요금 0인 두 경로(러너가 아예 필요 없는 `templates/git-hooks/pre-commit`, `LLM_WIKI_RUNNER` 변수로 붙이는 self-hosted 러너). **EN/KO 쌍 유지 규약대로 `README.ko.md`에도 같은 위치에 대응 문장을 넣었고**, 컴포지트 액션 태그 핀도 두 파일에서 `@v1.32.0`으로 같다. 이 문서는 위키 운영 규칙만 소유하고 CI 채널이나 워크플로 내용은 서술하지 않으므로 — 본문 **불변**. 이 노트로 6건이 되므로 가장 오래된 2026-08-06 항목을 `REVIEW_HISTORY.md`로 원문 그대로 옮겨 5건을 유지했다(아카이브 3 → 4건).
 
 ## Release Flow
 

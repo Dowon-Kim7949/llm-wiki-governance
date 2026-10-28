@@ -204,6 +204,7 @@ export function defaultOptions() {
     skillTokenCap: null,
     keepMonths: null,
     minimal: false,
+    greenfield: false,
     withAdapters: false,
     noAdapters: false,
     skills: false,
@@ -506,6 +507,9 @@ export function parseArgs(argv) {
     } else if (arg === "--minimal") {
       usedOptions.add("minimal");
       options.minimal = true;
+    } else if (arg === "--greenfield") {
+      usedOptions.add("greenfield");
+      options.greenfield = true;
     } else if (arg === "--with-adapters") {
       usedOptions.add("with-adapters");
       options.withAdapters = true;
@@ -610,10 +614,13 @@ const COMMAND_OPTION_RULES = {
   // prompt, quickstart prints the handoff, and init/quickstart write the generated
   // skills from the same builders.
   backfill: new Set(["cwd", "type", "profile", "agent", "mode", "strict", "dry-run", "write", "existing", "prompt-profile", "format", "out"]),
-  quickstart: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "mode", "dry-run", "write", "prompt-profile", "format", "out"]),
-  handoff: new Set(["cwd", "type", "profile", "agent", "mode", "prompt-profile", "format", "out"]),
+  // `greenfield` is accepted where the planning scaffold or the planning
+  // handoff is produced: init/quickstart add the planning documents, and
+  // handoff/quickstart print the planning prompt instead of the code-enrichment one.
+  quickstart: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "greenfield", "skills", "refresh", "domains", "mode", "dry-run", "write", "prompt-profile", "format", "out"]),
+  handoff: new Set(["cwd", "type", "profile", "agent", "mode", "greenfield", "prompt-profile", "format", "out"]),
   prompt: new Set(["cwd", "task", "type", "profile", "agent", "mode", "prompt-profile", "format", "out"]),
-  init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "skills", "refresh", "domains", "mode", "dry-run", "write", "prompt-profile", "format", "out", "with-adapters", "no-adapters"]),
+  init: new Set(["cwd", "type", "profile", "agent", "existing", "minimal", "greenfield", "skills", "refresh", "domains", "mode", "dry-run", "write", "prompt-profile", "format", "out", "with-adapters", "no-adapters"]),
   migrate: new Set(["cwd", "type", "profile", "agent", "dry-run", "apply", "format", "out"]),
   "import-memory": new Set(["cwd", "dry-run", "apply", "format", "out"]),
   fix: new Set(["cwd", "dry-run", "write", "format", "out"]),
@@ -795,12 +802,12 @@ Usage:
   llm-wiki mode [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki mode set <lite|standard|strict> [--write] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
   llm-wiki backfill [--write] [--mode <lite|standard|strict>] [--strict] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--prompt-profile full|slim] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--greenfield] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--greenfield] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--greenfield] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki prompt --task <${PROMPT_TASK_CHOICES}> [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--greenfield] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--greenfield] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate [--dry-run] [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki migrate --apply [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--format text|json|markdown|html] [--out <path>]
   llm-wiki import-memory [<path>] [--cwd <path>] [--format text|json|markdown|html] [--out <path>]
@@ -943,19 +950,23 @@ JSON (--format json):
   quickstart: `llm-wiki quickstart
 
 Usage:
-  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--greenfield] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki quickstart --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--greenfield] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Runs doctor, init, optional frontmatter validation, and prints the Codex/Claude Code handoff prompt.
+
+Starting a new project (--greenfield):
+  For a repository with little or no application source. Adds the planning documents init --greenfield adds (see llm-wiki help init) and prints a planning prompt instead of the code-enrichment prompt: the agent records the purpose, requirements, acceptance criteria, and decisions YOU state, invents none, and cites no source until code exists. Existing files are never overwritten.
 `,
   handoff: `llm-wiki handoff
 
 Usage:
-  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki handoff [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--greenfield] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Prints the next prompt to run in Codex or Claude Code after CLI setup, with project-type-specific source evidence guidance. Antigravity handoff remains blocked until the adapter contract is confirmed.
+  --greenfield prints the planning prompt for a project with little or no source yet (record what the human states; invent nothing; cite no source until code exists).
 `,
   prompt: `llm-wiki prompt
 
@@ -973,11 +984,18 @@ Prompt profile:
   init: `llm-wiki init
 
 Usage:
-  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
-  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --dry-run [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--minimal] [--greenfield] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
+  llm-wiki init --write [--cwd <path>] [--type <project-type>] [--profile <profile>...] [--agent <codex|claude|cursor|copilot|windsurf|gemini|jetbrains|antigravity|all>...] [--existing skip|overwrite] [--minimal] [--greenfield] [--skills] [--refresh] [--domains <a,b,c>] [--prompt-profile full|slim] [--doc-lang en|ko] [--format text|json|markdown|html] [--out <path>]
 
 Purpose:
   Previews or creates missing LLM-WIKI documents and selected adapter files. Existing adapter files are never overwritten.
+  When the detected manifest does not exist (an empty or manifest-less repository), generated documents cite no source (source_files: []) instead of a file that is not there.
+  templates/DECISION_LOG.template.md is an ADR skeleton (context, decision, alternatives, consequences) and cites no source, so a copied decision starts with no implementation evidence linked.
+
+Starting a new project (--greenfield):
+  Also plans docs/llm-wiki/requirements/00_overview.md and docs/llm-wiki/templates/REQUIREMENT.template.md, and — only for files it creates — writes a planning-oriented project-profile.md (purpose, scope, non-goals, constraints) and an index.md read order that names the requirements and decisions.
+  Requirements live one per document as docs/llm-wiki/requirements/REQ-NNN-<slug>.md with doc_type: requirement; decisions as docs/llm-wiki/decisions/ADR-NNNN-<slug>.md with doc_type: decision. Those doc types are planned knowledge: approving one (verified) approves the plan, not an implementation, and validate reports an approved one with no linked evidence as evidence.planned_unlinked (info) instead of evidence.ungrounded.
+  Link implementation evidence (source files and tests) in the requirement's frontmatter evidence once code exists; from then on drift and impact watch it like any other verified document. A resolving reference shows where the requirement is implemented, never that it is complete.
 `,
   validate: `llm-wiki validate
 
@@ -1029,7 +1047,9 @@ Purpose:
               switches the completeness/freshness rules off, so an ordinary change
               needs no documentation work: evidence.stale, impact.source_changed,
               content.not_enriched, evidence.missing and evidence.ungrounded are
-              off, and a missing planned document is info, not a warning.
+              off, and a missing planned document is info, not a warning. Off
+              means not reported: stats and next still measure enrichment and
+              evidence, and review still refuses to approve an unfilled scaffold.
     standard  Balance speed and knowledge. Plans profile + per-domain documents and
               keeps the detection, but demotes impact.source_changed to a warning so
               governance reports an omission instead of failing the build.
@@ -1436,7 +1456,7 @@ Evidence tiers:
   agent_verified is unknown (null in JSON), never 0.
 
 JSON (--format json):
-  Top-level keys: schemaVersion, command, result, stats, findings[]. stats carries documents, healthScore, status, verified/verifiedPct, enriched/enrichedPct, evidenceBacked/evidencePct, evidenceTiers { referenceChecked, humanVerified, both, agentVerified }, staleVerified, orphanDocuments.
+  Top-level keys: schemaVersion, command, result, stats, findings[]. stats carries documents, healthScore, status, verified/verifiedPct, enriched/enrichedPct, evidenceBacked/evidencePct, evidenceTiers { referenceChecked, humanVerified, both, agentVerified }, staleVerified, orphanDocuments, plannedKnowledge { documents, approved, linked, unresolved, unlinked }.
 `,
   "list-docs": `llm-wiki list-docs
 

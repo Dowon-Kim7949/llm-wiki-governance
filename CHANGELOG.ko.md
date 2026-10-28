@@ -4,6 +4,34 @@
 
 `llm-wiki-governance`(옛 이름 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. [유의적 버전](https://semver.org/)을 따르며, 항목은 최신 릴리스가 위로 옵니다.
 
+## 1.38.0 — 2026-10-28
+
+코드가 생기기 전에 프로젝트를 시작할 수 있습니다. 위키도 엔진도 기존과 같습니다. `--greenfield`는 요구사항과 결정을 계획된 지식으로 기록하고, 코드가 생기면 같은 문서에 구현 근거를 연결해 기존 검사로 넘어갑니다. 이 기능을 만들다가 lite가 1.30.0부터 꺼 두고 있던 게이트 하나를 찾았습니다. lite에서는 `review --approve-all`이 손대지 않은 뼈대 문서까지 승인했습니다. 새 프로젝트를 이 도구로 시작하거나 lite로 도는 저장소가 있다면 올리세요.
+
+- **`init` / `quickstart` / `handoff --greenfield`.**
+  - `init`과 `quickstart`가 `docs/llm-wiki/requirements/00_overview.md`와 `docs/llm-wiki/templates/REQUIREMENT.template.md`를 더하고, 새로 만드는 `project-profile.md`(목적·범위·비목표·제약)와 `index.md`에 계획용 본문을 씁니다. 기존 파일은 덮어쓰지 않고, 더한 두 문서는 필수 문서가 아닙니다.
+  - `handoff --greenfield`(그리고 `quickstart --greenfield`)는 코드 보강 프롬프트 대신 계획 기록 프롬프트를 냅니다. 사용자가 말한 것만 기록하고, 없는 소스를 인용하지 않고, 모두 `needs_review`로 두고, 아무것도 승인하지 않게 합니다.
+  - 요구사항은 문서 하나에 하나씩 `requirements/REQ-NNN-<slug>.md`(`doc_type: requirement`), 결정은 `decisions/ADR-NNNN-<slug>.md`(`doc_type: decision`)로 둡니다.
+- **계획된 지식.** `doc_type`이 `requirement`·`decision`·`decision_log`·`adr`인 문서는 의도한 동작을 말합니다. 이런 문서의 승인은 계획 승인이지 구현 승인이 아닙니다. 로컬 `source_files`나 `evidence` 없이 승인된 문서는 `evidence.ungrounded`(warning) 대신 `evidence.planned_unlinked`(info)를 받습니다. `stats`는 이런 문서를 `plannedKnowledge { documents, approved, linked, unresolved, unlinked }`로 따로 셉니다. linked는 로컬 참조가 모두 해석된다는 뜻이고, 계획이 어디에 구현됐는지 보여 줄 뿐 완료를 뜻하지 않습니다. `review`는 이런 문서를 `no-evidence` 대신 `planned`로 표시합니다. 새 frontmatter 필드도 새 status 값도 없습니다.
+- **빈 저장소에서 가짜 근거를 쓰지 않습니다.** 감지한 매니페스트 파일이 없으면 `init`이 `package.json`을 인용하는 대신 `source_files: []`를 씁니다. 전에는 빈 저장소가 `validate` 경고 10건과 근거 커버리지 100%를 받았습니다. `detection.primaryManifest`의 값과 형태는 그대로입니다. 첫 `log.md` 항목은 이제 항상 `package.json`이 아니라 감지한 매니페스트(`pyproject.toml`, `go.mod` 등)를 적습니다.
+- **결정 템플릿은 모든 `init`에서 ADR 골격입니다**(Decision Status·Context·Decision·Alternatives Considered·Consequences·Evidence). 이 템플릿과 요구사항 템플릿은 소스를 인용하지 않으므로, 복사한 문서가 첫날부터 근거 연결됨으로 세지지 않습니다.
+- **`quickstart`가 자기가 쓴 모드를 안내합니다.** 새 저장소에서 config에는 `lite`를 쓰면서 handoff 프롬프트에는 `strict`라고 적었습니다. 이제 `init`이 쓰기 전에 모드를 정합니다.
+- **모드가 끈 규칙은 보고만 멈추고 사실은 그대로입니다.** lite는 `content.not_enriched`·`evidence.missing`·`evidence.stale`을 끄는데, 세 명령이 그 finding으로 사실을 판정했습니다. lite인 빈 저장소에서 `stats`는 12건 중 12건이 보강됐다고 했고, `next`는 채울 문서가 없다고 했고, `review --approve-all --yes`는 뼈대 문서를 포함해 `needs_review` 8건을 모두 승인했습니다(같은 저장소 standard에서는 6/12, 6건, 2건). 이제 `stats`·`next`·`review`는 자기가 읽는 규칙만 그 audit 한 번에서 되살립니다. `backfill`이 드리프트를 재던 방식과 같습니다. `validate`·`audit`·`status`·`drift`는 그대로 모드가 정한 대로 보고합니다.
+- frontmatter의 인라인 `key: []`를 빈 목록으로 읽습니다. 전에는 문자열 `"[]"`로 읽혀 `frontmatter.array` 오류가 났습니다.
+- 생성 프롬프트의 거버넌스 예산(세 모드 모두)이 변경이 구현한 요구사항 문서의 근거도 갱신하라고 지시합니다.
+- `examples/greenfield-vue-demo/`가 전체 경로를 돌립니다. 빈 저장소, 계획과 승인, Vue 3 + TypeScript 구현, 근거 연결, `impact`가 지목하는 코드 변경, 재승인까지 검사 20개입니다(`node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough`. 앱 자체 테스트는 Node 22.6 이상이 필요하고, 그보다 낮으면 건너뜀으로 보고합니다).
+
+**바뀐 동작:**
+- lite에서, 또는 `rules`에서 `content.not_enriched`를 `off`로 둔 경우, `review --approve <뼈대 문서>`가 이제 `review.not_enriched`와 함께 exit 1로 끝나고 `--approve-all`은 뼈대 문서를 건너뜁니다. 문서화된 게이트를 되살린 것이고, 이번 릴리스에서 종료 코드가 바뀌는 유일한 경우입니다.
+- lite에서 `stats`의 `enriched`·`evidenceTiers`·`staleVerified`가 실제 값을 보고하므로 수치가 내려가고, `stats`가 `backfill`처럼 드리프트 스캔 비용을 치릅니다. `next`는 채울 문서를 나열하고 `auditFindings`에도 그 finding이 들어갑니다.
+- 연결된 근거 없이 승인된 결정 기록(`decision`·`decision_log`·`adr`)이 `evidence.ungrounded`(warning)에서 `evidence.planned_unlinked`(info)로 바뀌므로, 그 때문에 실패하던 `--strict` 실행이 통과할 수 있습니다. 보고는 계속됩니다.
+- 새로 `init`하면 결정 템플릿이 ADR 형식에 `source_files: []`로 생깁니다.
+- JSON 추가: `stats.plannedKnowledge`, `review` 항목의 `planned`, 플래그를 준 `init`·`handoff` 결과의 `greenfield: true`.
+
+**한계.** 연결된 참조는 요구사항이 어디에 구현됐는지 보여 줄 뿐 끝났다는 증명이 아닙니다. 어떤 명령도 테스트를 돌리거나 요구사항을 판정하지 않습니다. 요구사항을 고쳐도 코드는 지목되지 않습니다(`impact`는 코드에서 문서 방향으로 작동합니다). 문서 안의 수용 기준은 하나하나 추적하지 않습니다. 새 프로젝트는 lite로 시작하고, lite에서는 `impact`와 `drift`가 꺼져 있습니다. 에이전트가 계획 프롬프트를 실제로 따르는지는 측정하지 않았습니다.
+
+MINOR입니다. 옵션 하나와 JSON 키가 늘었습니다. lite의 승인 거부는 이름 붙인 예외입니다. 종료 코드가 바뀌지만, 코드가 이미 명시하던 계약을 되살린 것입니다. 테스트: 731 → 757.
+
 ## 1.37.0 — 2026-10-27
 
 1.36.0을 마무리하는 릴리스입니다. 날짜 기준 `drift`가 `impact`처럼 인용한 마크다운 섹션만 보고, `search-docs`가 예전 매치 규칙을 옵션으로 돌려받고, 검색 수치를 순위기를 고를 때 쓰지 않은 질의로 다시 쟀습니다. 위키가 긴 마크다운 파일의 섹션을 인용하거나, 검색이 모든 질의어를 맞춰야 한다고 가정한 스크립트가 있다면 올리세요.

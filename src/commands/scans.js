@@ -4,8 +4,8 @@
 // findings array (category.subrule shape); driftTargets is pure and exported for
 // unit tests. Depends only on the Node stdlib, files.js, encoding.js,
 // frontmatter.js, sensitive-info.js, git.js, and the sibling command modules
-// (wiki-files, adapters, wiki-graph, references); no back-dependency on
-// commands.js.
+// (wiki-files, adapters, wiki-graph, references, governance-mode); no
+// back-dependency on commands.js.
 import path from "node:path";
 import { listMarkdownFiles, pathExists, toPosix } from "../files.js";
 import { findMojibakeIndicators, hasUtf8Bom, readTextAuto, readUtf8 } from "../encoding.js";
@@ -15,6 +15,7 @@ import { commitAtEndOf, fileAtRef, fileAtRefFromCwd, fileChangedSince, lineRange
 import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
+import { DECISION_DOC_TYPES } from "./governance-mode.js";
 import {
   escapeRegex,
   extractMarkdownLinkTargets,
@@ -531,11 +532,60 @@ export function evidenceStrictSeverity(options) {
   return options.strict ? "error" : "warning";
 }
 
+// Planned knowledge: documents that state INTENDED behavior — a requirement and
+// its acceptance criteria, or an architecture decision — rather than describe code
+// that exists. Expressed in the doc_type vocabulary the product already has, not a
+// new field: the decision types are DECISION_DOC_TYPES (backfill's decision-record
+// check and content.dated_heading already treat them as records), and `requirement`
+// is the one type the greenfield scaffold adds. For these documents `verified`
+// means the plan was approved; it never means the plan is implemented, so a
+// verified one with nothing linked is a normal stage of the lifecycle rather than
+// the defect evidence.ungrounded describes.
+export const PLANNED_DOC_TYPES = new Set(["requirement", ...DECISION_DOC_TYPES]);
+
+export function isPlannedDoc(frontmatter) {
+  const docType = typeof frontmatter?.doc_type === "string" && frontmatter.doc_type.trim()
+    ? frontmatter.doc_type.trim()
+    : (typeof frontmatter?.type === "string" ? frontmatter.type.trim() : "");
+  return PLANNED_DOC_TYPES.has(docType.toLowerCase());
+}
+
+// The local (non-external) references a document cites in source_files and
+// evidence, as bare paths. For planned knowledge these are what "implementation
+// evidence linked" counts: a URL to a product brief is where a requirement came
+// from, not where this repository implements it. The CLI cannot tell an
+// implementation file from any other local file — that stays the reviewer's call.
+export function localReferencePaths(frontmatter) {
+  const paths = [];
+  const add = (base) => {
+    if (base && !isExternalSourceReference(base) && !paths.includes(base)) paths.push(base);
+  };
+  for (const entry of Array.isArray(frontmatter?.source_files) ? frontmatter.source_files : []) {
+    if (typeof entry === "string") add(entry.trim().split("#")[0].trim());
+  }
+  for (const entry of Array.isArray(frontmatter?.evidence) ? frontmatter.evidence : []) {
+    if (typeof entry !== "string" || !entry.trim()) continue;
+    // parseEvidenceReference also reads the `path:10-20` form; a reference it
+    // rejects is still a local reference, and an unresolvable one.
+    const parsed = parseEvidenceReference(entry.trim());
+    if (parsed?.external) continue;
+    add(parsed ? parsed.source : entry.trim().split("#")[0].trim());
+  }
+  return paths;
+}
+
 // Gate 25: a `verified` document that carries neither source_files nor evidence
 // is "verified" with no code grounding — the hole where the schema requires the
 // source_files KEY but allows an empty list and evidence is optional. Default
 // warning and NOT escalated by --strict (config `rules` can escalate); it must
 // never break existing validate on intentionally-ungrounded verified docs.
+//
+// Planned knowledge is reported apart, as evidence.planned_unlinked (info): an
+// approved requirement or decision with no local reference yet. Same population
+// question, different meaning — the warning would tell a project that approving a
+// plan before writing its code is a defect, and under --strict it would fail the
+// build for the one state a new project is in by definition. The fact is still
+// reported, only at a severity that cannot fail a build.
 export async function scanUngroundedVerified(cwd) {
   const findings = [];
   for (const file of await listTargetMarkdown(cwd)) {
@@ -543,6 +593,17 @@ export async function scanUngroundedVerified(cwd) {
     const parsed = parseFrontmatter(await readUtf8(file));
     const frontmatter = parsed.frontmatter ?? {};
     if (frontmatter.status !== "verified") continue;
+    if (isPlannedDoc(frontmatter)) {
+      if (localReferencePaths(frontmatter).length === 0) {
+        findings.push({
+          severity: "info",
+          rule: "evidence.planned_unlinked",
+          path: rel,
+          message: "Approved planned document (requirement or decision) has no implementation evidence linked yet; verified here means the plan was approved, not that it is implemented."
+        });
+      }
+      continue;
+    }
     const sourceFiles = Array.isArray(frontmatter.source_files)
       ? frontmatter.source_files.filter((item) => typeof item === "string" && item.trim())
       : [];

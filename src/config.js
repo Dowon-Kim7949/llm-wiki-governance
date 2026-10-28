@@ -64,6 +64,15 @@ export const CORE_REQUIRED_DOCS = [
   "docs/llm-wiki/templates/TASK_PROMPT.template.md"
 ];
 
+// The planning documents `init --greenfield` adds next to the mode's planned set.
+// Deliberately NOT a profile and NOT required: plannedWikiDocs never returns them,
+// so structure.required_doc cannot start nagging a project that never asked for
+// them, and lite (which plans no profile documents) still creates them when asked.
+export const GREENFIELD_DOCS = [
+  "docs/llm-wiki/requirements/00_overview.md",
+  "docs/llm-wiki/templates/REQUIREMENT.template.md"
+];
+
 export const PROFILE_DOCS = {
   frontend: [
     "docs/llm-wiki/profiles/frontend.md",

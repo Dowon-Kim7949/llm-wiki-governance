@@ -1,7 +1,7 @@
 import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
+import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, GREENFIELD_DOCS, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
 import { detectProject, detectWorkspaces } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
@@ -11,7 +11,7 @@ import { schemaRequiredFields } from "./frontmatter-schema.js";
 import { renderTextReport } from "./report.js";
 import { scanSensitiveInfo } from "./sensitive-info.js";
 import { renderTemplate, renderWikiDocumentTemplate, todayIsoDate } from "./template-renderer.js";
-import { DEFAULT_PROMPT_PROFILE, buildTaskPrompt, evidenceFocus, initialEnrichmentWorkflow, isPromptProfile } from "./task-prompts.js";
+import { DEFAULT_PROMPT_PROFILE, buildTaskPrompt, evidenceFocus, greenfieldPlanningWorkflow, initialEnrichmentWorkflow, isPromptProfile } from "./task-prompts.js";
 import { buildReleaseNotes, buildReleaseNotesBody, collectCommits } from "./release-notes.js";
 import { fileChangedSince, fileAtRef, lineRangeChangedSince, changedFiles, gitUserName, isPathIgnored, trackedPaths, modifiedTrackedFiles } from "./git.js";
 import { localizeExplanation, normalizeLang } from "./i18n.js";
@@ -68,6 +68,8 @@ import {
   EVIDENCE_REFERENCE_RULES,
   evidenceTier,
   isAgentReviewer,
+  isPlannedDoc,
+  localReferencePaths,
   scanEncoding,
   scanEnrichment,
   scanEvidenceDrift,
@@ -122,6 +124,7 @@ import {
   plannedWikiDocs,
   ruleSuppressed,
   suppressDomainDocs,
+  withRulesMeasured,
   SCAN_GATING_RULES
 } from "./governance.js";
 export { detectDomainDirectories, domainDisplayName, normalizeDomainSlug, planDomainDocs } from "./commands/domains.js";
@@ -552,7 +555,9 @@ export async function statusCommand(options) {
 }
 
 export async function nextCommand(options) {
-  const auditResult = await audit(options);
+  // Measured even when content.not_enriched is off (lite): otherwise the checklist
+  // of a fresh lite wiki is empty and says there is nothing to fill.
+  const auditResult = await audit(withRulesMeasured(options, ["content.not_enriched"]));
   const actions = buildNextActions(auditResult, options);
   const result = actions.some((action) => action.priority === "blocked")
     ? "blocked"
@@ -1768,7 +1773,10 @@ export async function reviewCommand(options) {
 
   // One audit run supplies per-document findings for both risk ranking and the
   // promotion gate (a doc with any blocked/error finding cannot be approved).
-  const auditResult = await audit(options);
+  // NEVER_APPROVE_RULES are measured even when switched off: the enrichment gate
+  // below is a fact about the document, and lite turning content.not_enriched off
+  // used to let --approve-all promote every untouched scaffold.
+  const auditResult = await audit(withRulesMeasured(options, NEVER_APPROVE_RULES));
   const findingsByPath = new Map();
   for (const finding of auditResult.findings) {
     if (!finding.path || finding.path === ".") continue;
@@ -1820,6 +1828,10 @@ function buildReviewEntry(doc, findings) {
     visibility: doc.visibility,
     lastUpdated: typeof doc.frontmatter.last_updated === "string" ? doc.frontmatter.last_updated : null,
     evidenceBacked,
+    // A requirement or decision (PLANNED_DOC_TYPES): the list labels it "planned"
+    // instead of "no-evidence", because a plan with nothing linked yet is the
+    // expected state, not a gap. The risk score is unchanged.
+    planned: isPlannedDoc(doc.frontmatter),
     riskScore,
     // Also gates --approve-all, so a bulk approval cannot sweep up scaffolds.
     approvable: blocking.length === 0 && unenriched.length === 0,
@@ -1843,7 +1855,8 @@ function renderReviewList(reviewed, totalScanned, includeSensitive) {
   const docLines = reviewed.map((doc) => {
     const flags = [];
     if (!doc.approvable) flags.push("BLOCKED");
-    if (!doc.evidenceBacked) flags.push("no-evidence");
+    if (doc.planned) flags.push("planned");
+    else if (!doc.evidenceBacked) flags.push("no-evidence");
     const severity = doc.findingCount ? ` (${formatCountMap(doc.findingsBySeverity)})` : "";
     return `${doc.path} — ${doc.title ?? "(no title)"} [risk ${doc.riskScore}${flags.length ? `, ${flags.join(", ")}` : ""}] findings: ${doc.findingCount}${severity}`;
   });
@@ -1860,6 +1873,7 @@ function renderReviewList(reviewed, totalScanned, includeSensitive) {
     { title: "Needs Review (risk-ranked)", body: docLines.length ? docLines : ["none"] },
     { title: "Caveats", body: [
       "Read-only list. Risk-ranks needs_review docs (never-enriched / thin / no-evidence / broken-link first) for fast spot-checking. Restricted/sensitive docs are excluded unless --include-sensitive.",
+      ...(reviewed.some((doc) => doc.planned) ? ["planned marks a requirement or decision (doc_type requirement, decision, decision_log, or adr): approving it approves the plan, not an implementation, so it may have no evidence linked yet."] : []),
       "Scope: content documents under docs/llm-wiki, excluding docs/llm-wiki/templates/ (skeletons adopters copy) and the append-only log. The freshness gates (drift, impact) skip templates too, so this boundary no longer produces findings you cannot clear (N-14).",
       "Promotion to verified is never automatic: run review --approve <path> (or review --approve-all --yes) to stamp verified + reviewed_by + reviewed_at, plus the tags: status tag when the document already carries one. Docs with blocking/structural findings are refused until fixed. Human review is the default; if your project delegates the approval run, set llm-wiki.config.json \"reviewer\" so reviewed_by names whoever actually approves."
     ] }
@@ -2298,11 +2312,14 @@ export async function quickstartCommand(options) {
   }
 
   const doctorResult = await doctor(options);
+  // Resolved before init writes anything, from the same evidence init uses, so the
+  // handoff names the mode this run records rather than the pre-config default.
+  const initMode = await resolveInitGovernanceMode(options);
   const initResult = await initCommand(options);
   const frontmatterResult = options.write
     ? await validateFrontmatterCommand(options)
     : null;
-  const handoff = buildHandoff(options, doctorResult.detection);
+  const handoff = buildHandoff({ ...options, governanceMode: initMode }, doctorResult.detection);
   const findings = [
     ...(initResult.findings ?? []),
     ...(frontmatterResult?.findings ?? []),
@@ -2507,23 +2524,35 @@ function describeScaffoldConfig(config) {
   return parts.length > 0 ? parts.join(", ") : "empty starter; add type/profiles/agents/strict";
 }
 
-export async function initCommand(options) {
-  const detection = await detectProject(options.cwd, options.type, options.profiles);
-  const agents = selectedAgents(options);
-  // init is the only command that runs before a project has stated a policy, so it
-  // resolves the mode from evidence: an explicit --mode, else the config, else
-  // "does this repository already exist" (see initGovernanceMode). The resolved
-  // value drives the planned document set AND the config this run scaffolds, so the
-  // two can never disagree — a config that says lite next to a strict document set
-  // would be the worst possible first impression.
+// init is the only command that runs before a project has stated a policy, so it
+// resolves the mode from evidence: an explicit --mode, else the config, else
+// "does this repository already exist" (see initGovernanceMode). The resolved
+// value drives the planned document set AND the config this run scaffolds, so the
+// two can never disagree — a config that says lite next to a strict document set
+// would be the worst possible first impression. quickstart asks the same question
+// BEFORE init writes, so the handoff it prints names the mode init is about to
+// record; it used to ask effectiveGovernanceMode, which on a new repository (no
+// config yet) answered strict next to the lite config the same run wrote.
+async function resolveInitGovernanceMode(options) {
   const projectConfig = await loadProjectConfig(options.cwd);
-  const governanceMode = initGovernanceMode(options, {
+  return initGovernanceMode(options, {
     configMode: projectConfig.config?.governance?.mode ?? null,
     configPresent: projectConfig.found,
     wikiInitialized: await pathExists(path.join(options.cwd, "docs", "llm-wiki", "index.md"))
   });
+}
+
+export async function initCommand(options) {
+  const detection = await detectProject(options.cwd, options.type, options.profiles);
+  const agents = selectedAgents(options);
+  const governanceMode = await resolveInitGovernanceMode(options);
   const modeScopedOptions = { ...options, governanceMode, governanceModeSource: options.governanceModeSource ?? "default" };
-  const baseDocs = plannedDocs(detection.projectType, options.minimal, options.profiles, governanceMode);
+  // --greenfield adds the planning documents on top of whatever the mode plans; they
+  // are never part of the required set (see GREENFIELD_DOCS).
+  const baseDocs = [
+    ...plannedDocs(detection.projectType, options.minimal, options.profiles, governanceMode),
+    ...(options.greenfield ? GREENFIELD_DOCS : [])
+  ];
   const candidateSet = new Set(baseDocs);
   // suppressDomainDocs folds --minimal together with the mode's domainDocs policy,
   // and an explicit --domains list always wins over the policy — naming a domain is
@@ -2577,6 +2606,8 @@ async function initDryRun(options, detection, agents, candidates, domainNotice =
     skipped.push("--with-adapters is treated as legacy shorthand for --agent all.");
   }
 
+  const startingPoint = startingPointLines(options, await manifestPresent(options.cwd, detection), "would cite");
+
   return withText({
     command: "init",
     dryRun: true,
@@ -2584,15 +2615,40 @@ async function initDryRun(options, detection, agents, candidates, domainNotice =
     detection,
     agents,
     planned,
-    skipped
+    skipped,
+    ...(options.greenfield ? { greenfield: true } : {})
   }, "LLM-WIKI Init Dry Run", [
     { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
     { title: "Documentation Language", body: [`${docLang} (change with --doc-lang en|ko or config docLanguage).`] },
+    ...(startingPoint.length ? [{ title: "Starting Point", body: startingPoint }] : []),
     { title: "Planned Creates", body: planned },
     { title: "Skipped Existing", body: skipped },
     { title: "Caveats", body: ["No files were written. Existing adapter files are not overwritten."] }
   ]);
+}
+
+// Whether the manifest generated documents would cite as their source exists.
+// detectProject always names one (falling back to package.json) because
+// `detection` is part of every report and its shape is a contract; this is the
+// check that stops a generated document from citing that fallback when no such
+// file is there — every document of an empty repository used to.
+async function manifestPresent(cwd, detection) {
+  if (typeof detection.primaryManifest !== "string" || !detection.primaryManifest) return false;
+  return pathExists(path.join(cwd, detection.primaryManifest));
+}
+
+// The "Starting Point" lines of an init report: said only when they apply, so a
+// brownfield run with a manifest and no --greenfield prints exactly what it did.
+function startingPointLines(options, manifestFound, verb) {
+  const lines = [];
+  if (!manifestFound) {
+    lines.push(`No manifest exists yet: generated documents ${verb} no source (an empty source_files list) instead of a file that is not there. Add real files once code exists.`);
+  }
+  if (options.greenfield) {
+    lines.push("Greenfield: requirements (docs/llm-wiki/requirements/, doc_type requirement) and decisions (docs/llm-wiki/decisions/, doc_type decision) are planned knowledge — approving one approves the plan, not an implementation, until implementation evidence is linked.");
+  }
+  return lines;
 }
 
 async function findMissingDocs(cwd, projectType, profiles = [], customDocs = [], mode = undefined) {
@@ -2634,6 +2690,11 @@ async function initWrite(options, detection, agents, candidates, domainContext =
   const lastUpdated = todayIsoDate();
   const docLang = normalizeLang(options.docLang);
   if (domainNotice) skipped.push(domainNotice);
+  // Rendering sees `primaryManifest: null` when the file is absent (docMetadata then
+  // cites no source); the reported `detection` keeps its shape.
+  const manifestFound = await manifestPresent(options.cwd, detection);
+  const renderDetection = manifestFound ? detection : { ...detection, primaryManifest: null };
+  const docOptions = { greenfield: options.greenfield === true };
 
   for (const rel of candidates) {
     const absolutePath = path.join(options.cwd, rel);
@@ -2651,16 +2712,16 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     let content;
     let viaOverride = "";
     if (overridePath) {
-      const override = await renderOverriddenDoc(options.cwd, rel, overridePath, detection, lastUpdated, domainContext, docLang);
+      const override = await renderOverriddenDoc(options.cwd, rel, overridePath, renderDetection, lastUpdated, domainContext, docLang, docOptions);
       if (override.missing) {
-        content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext, docLang);
+        content = renderGeneratedWikiDoc(rel, renderDetection, lastUpdated, domainContext, docLang, docOptions);
         skipped.push(`${rel}: template override ${overridePath} not found; used the built-in template.`);
       } else {
         content = override.content;
         viaOverride = ` (via template override ${overridePath})`;
       }
     } else {
-      content = renderGeneratedWikiDoc(rel, detection, lastUpdated, domainContext, docLang);
+      content = renderGeneratedWikiDoc(rel, renderDetection, lastUpdated, domainContext, docLang, docOptions);
     }
     const sensitiveFindings = scanSensitiveInfo(content);
     if (sensitiveFindings.length > 0) {
@@ -2726,6 +2787,8 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     ...(outputIgnored ? ["WARNING: docs/llm-wiki is gitignored — created docs will not be tracked by git (git add -f docs/llm-wiki or edit .gitignore)."] : [])
   ];
 
+  const startingPoint = startingPointLines(options, manifestFound, "cite");
+
   return withText({
     command: "init",
     dryRun: false,
@@ -2739,11 +2802,13 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     overwritten,
     skipped,
     skillsCreated: skillWrites.created.length,
+    ...(options.greenfield ? { greenfield: true } : {}),
     findings
   }, "LLM-WIKI Init Write", [
     { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
     { title: "Summary", body: reassurance },
+    ...(startingPoint.length ? [{ title: "Starting Point", body: startingPoint }] : []),
     { title: "Created", body: created },
     { title: "Overwritten", body: overwritten },
     { title: "Skipped Existing", body: skipped },
@@ -2799,6 +2864,8 @@ export async function graphCommand(options) {
 // Read-only. Aggregates a health snapshot: document status mix, verified %,
 // enrichment %, evidence coverage %, staleness, and orphans. Reuses the audit
 // findings (content.not_enriched, evidence.stale) and the wiki graph.
+const STATS_MEASURED_RULES = ["content.not_enriched", "evidence.stale", ...EVIDENCE_REFERENCE_RULES];
+
 export async function statsCommand(options) {
   const cwd = options.cwd;
   // The change-log record counts once, as log.md: monthly volumes written by
@@ -2824,11 +2891,24 @@ export async function statsCommand(options) {
       hasGrounding,
       reviewedBy: typeof frontmatter.reviewed_by === "string" && frontmatter.reviewed_by.trim() !== "",
       reviewedByName: typeof frontmatter.reviewed_by === "string" ? frontmatter.reviewed_by : null,
-      reviewedAt: typeof frontmatter.reviewed_at === "string" && frontmatter.reviewed_at.trim() !== ""
+      reviewedAt: typeof frontmatter.reviewed_at === "string" && frontmatter.reviewed_at.trim() !== "",
+      planned: isPlannedDoc(frontmatter),
+      localReferences: localReferencePaths(frontmatter).length,
+      // Checked here, not read off the audit findings: lite turns evidence.missing
+      // off, and a requirement citing a file that does not exist must not count as
+      // linked just because the rule that would have said so is silenced.
+      localReferencesMissing: isPlannedDoc(frontmatter)
+        ? (await Promise.all(localReferencePaths(frontmatter).map((ref) => pathExists(path.join(cwd, ref))))).some((exists) => !exists)
+        : false
     });
   }
 
-  const auditResult = await audit(options);
+  // The rules the numbers below are read from are measured even when the project
+  // switched them off (lite turns content.not_enriched, evidence.missing and
+  // evidence.stale off): a silenced rule read as a fact made a fresh lite wiki 100%
+  // enriched. That includes the drift scan, so stats pays for it in lite the way
+  // backfill does.
+  const auditResult = await audit(withRulesMeasured(options, STATS_MEASURED_RULES));
   const findings = auditResult.findings ?? [];
   const uniquePathsFor = (rule) => new Set(findings.filter((finding) => finding.rule === rule).map((finding) => finding.path)).size;
   const notEnriched = uniquePathsFor("content.not_enriched");
@@ -2867,6 +2947,22 @@ export async function statsCommand(options) {
     if (tier.referenceChecked && human) bothTiers += 1;
   }
 
+  // Planned knowledge (requirements and decisions, see PLANNED_DOC_TYPES), counted
+  // apart so an approved plan is never read as a verified implementation: the
+  // existing counts above are unchanged and still include these documents, and
+  // this block says how many of them are plans and whether anything is linked.
+  // "linked" means every local reference resolves — where the plan is implemented,
+  // not that it is complete.
+  const plannedKnowledge = { documents: 0, approved: 0, linked: 0, unresolved: 0, unlinked: 0 };
+  for (const doc of docMeta) {
+    if (!doc.planned) continue;
+    plannedKnowledge.documents += 1;
+    if (doc.status === "verified") plannedKnowledge.approved += 1;
+    if (doc.localReferences === 0) plannedKnowledge.unlinked += 1;
+    else if (doc.localReferencesMissing || unresolvedRefPaths.has(doc.rel)) plannedKnowledge.unresolved += 1;
+    else plannedKnowledge.linked += 1;
+  }
+
   const verified = statusCounts.verified ?? 0;
   const enriched = Math.max(0, total - notEnriched);
   const pct = (value) => (total === 0 ? 0 : Math.round((value / total) * 100));
@@ -2885,6 +2981,11 @@ export async function statsCommand(options) {
     `stale_verified: ${staleVerified}`,
     `orphan_documents: ${orphanDocuments}`
   ];
+  // Printed only when the wiki has planned documents, so a wiki without any reads
+  // exactly as before.
+  if (plannedKnowledge.documents > 0) {
+    summaryLines.push(`planned_knowledge: ${plannedKnowledge.documents} (approved ${plannedKnowledge.approved}); implementation evidence linked ${plannedKnowledge.linked}, unresolved ${plannedKnowledge.unresolved}, none ${plannedKnowledge.unlinked}`);
+  }
   if (total === 0) summaryLines.push("wiki: not initialized (run init --write first)");
   const statusLines = Object.keys(statusCounts).sort().map((status) => `${status}: ${statusCounts[status]}`);
 
@@ -2909,20 +3010,21 @@ export async function statsCommand(options) {
         agentVerified
       },
       staleVerified,
-      orphanDocuments
+      orphanDocuments,
+      plannedKnowledge
     },
     findings: []
   }, "LLM-WIKI Stats", [
     { title: "Summary", body: summaryLines },
     { title: "Document Status", body: statusLines.length ? statusLines : ["none"] },
-    { title: "Caveats", body: ["Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata. " + (agentVerified === null
+    { title: "Caveats", body: [...(plannedKnowledge.documents > 0 ? ["planned_knowledge counts doc_type requirement, decision, decision_log, and adr documents. For them verified means the plan was approved, not that it is implemented; linked means every local reference they cite resolves, which shows where a plan is implemented, not that it is complete. They are also included in verified, evidence_coverage, and evidence_tiers above."] : []), "Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; enriched, evidence_tiers, and stale_verified are measured even when their rules are switched off (lite, or config), because off stops a rule being reported, not being true. evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata. " + (agentVerified === null
       ? "Who the reviewer was is not checked: an agent's approval counts toward human_verified here. Name your agent reviewers in llm-wiki.config.json \"agentReviewers\" to report them as agent_verified instead; until then agent_verified is unknown (null in JSON), not 0."
       : "Documents whose reviewed_by matches llm-wiki.config.json \"agentReviewers\" (trimmed, case-insensitive) are counted as agent_verified instead of human_verified; a reviewer name not on that list still counts as human, so the split is only as accurate as the list.")] }
   ]);
 }
 
-function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext(), docLang = "en") {
-  const meta = docMetadata(rel, detection, lastUpdated, domainContext, docLang);
+function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), domainContext = emptyDomainContext(), docLang = "en", docOptions = {}) {
+  const meta = docMetadata(rel, detection, lastUpdated, domainContext, docLang, docOptions);
   const project = detection.projectName ?? "project";
 
   return renderWikiDocumentTemplate({
@@ -2942,10 +3044,10 @@ function renderGeneratedWikiDoc(rel, detection, lastUpdated = todayIsoDate(), do
 // renderWikiDocumentTemplate, so an override can NEVER produce status: verified
 // (any frontmatter in the override file is parsed off and discarded). Returns
 // { content, missing }; missing is true when the override file is absent.
-async function renderOverriddenDoc(cwd, rel, overridePath, detection, lastUpdated, domainContext, docLang = "en") {
+async function renderOverriddenDoc(cwd, rel, overridePath, detection, lastUpdated, domainContext, docLang = "en", docOptions = {}) {
   const abs = path.join(cwd, overridePath);
   if (!(await pathExists(abs))) return { content: null, missing: true };
-  const meta = docMetadata(rel, detection, lastUpdated, domainContext, docLang);
+  const meta = docMetadata(rel, detection, lastUpdated, domainContext, docLang, docOptions);
   const project = detection.projectName ?? "project";
   const rendered = renderTemplate(await readUtf8(abs), {
     title: meta.title,
@@ -3323,6 +3425,16 @@ function quickstartInitSummary(initResult) {
 // unsupported-agent case keeps just the message.
 function handoffNextStep(handoff) {
   if (!handoff.supportedAgents?.length) return [handoff.message];
+  if (handoff.greenfield) {
+    return [
+      handoff.message,
+      "How to run — the 'Handoff Prompt' below is an instruction you give your coding agent, not a CLI command · 실행 방법 — 아래 'Handoff Prompt'는 CLI가 실행하는 게 아니라 코딩 에이전트에게 넘기는 지시문입니다:",
+      "1) Paste the prompt below into a Claude Code or Codex session opened on this repo, then tell the agent what the project is for, what it must do, and what you have decided. · 이 저장소를 연 세션에 아래 프롬프트를 붙여넣고, 프로젝트의 목적·해야 할 일·이미 내린 결정을 에이전트에게 말하세요.",
+      "2) The agent records your purpose, requirements with acceptance criteria, and decisions as needs_review documents, invents none of them, and cites no source until code exists. · 에이전트는 말한 내용만 needs_review 문서로 기록하고, 지어내지 않으며, 코드가 생기기 전에는 소스를 인용하지 않습니다.",
+      "3) Review the plan and approve what is right (llm-wiki review --approve <path>): that approves the plan, not an implementation. Once code exists, link each requirement's source and tests in its evidence. · 계획을 검토해 맞는 것만 승인하세요(구현 승인이 아닙니다). 코드가 생기면 요구사항마다 소스와 테스트를 evidence로 연결하세요.",
+      `Governance mode: ${handoff.governanceMode ?? "strict"}. Once code exists, 'llm-wiki mode set standard --write' turns on impact, which flags an approved requirement whose linked code changed. · 코드가 생기면 standard로 올려 impact가 연결된 코드 변경을 지목하게 하세요.`
+    ];
+  }
   return [
     handoff.message,
     "How to run — the 'Handoff Prompt' below is an instruction you give your coding agent, not a CLI command · 실행 방법 — 아래 'Handoff Prompt'는 CLI가 실행하는 게 아니라 코딩 에이전트에게 넘기는 지시문입니다:",
@@ -3386,7 +3498,12 @@ function buildHandoff(options, detection = null) {
   // shared builder so it never drifts from the `bootstrap` task/skill. Handoff names
   // the selected adapter file(s) as the entrypoint; the workflow itself is identical.
   const promptProfile = isPromptProfile(options.promptProfile) ? options.promptProfile : DEFAULT_PROMPT_PROFILE;
-  const prompt = initialEnrichmentWorkflow({ projectType, entrypoints, docLang: normalizeLang(options.docLang), governanceMode: effectiveGovernanceMode(options), promptProfile });
+  // --greenfield swaps the code-enrichment workflow for the planning one: on a
+  // repository with no code, "investigate the actual code" has nothing to act on and
+  // invites an agent to fill the gap with invention.
+  const prompt = options.greenfield
+    ? greenfieldPlanningWorkflow({ entrypoints, docLang: normalizeLang(options.docLang) })
+    : initialEnrichmentWorkflow({ projectType, entrypoints, docLang: normalizeLang(options.docLang), governanceMode: effectiveGovernanceMode(options), promptProfile });
 
   return {
     agents,
@@ -3404,6 +3521,7 @@ function buildHandoff(options, detection = null) {
     // Named only for a non-default profile, like the prompt command's result, so
     // the `full` handoff payload stays byte-identical.
     ...(promptProfile === DEFAULT_PROMPT_PROFILE ? {} : { promptProfile }),
+    ...(options.greenfield ? { greenfield: true } : {}),
     prompt,
     findings
   };
