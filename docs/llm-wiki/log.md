@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - docs(deck): 1.40.1 배포 이후 라벨 정렬
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: `outputs/team-briefing/llm-wiki-briefing.html`(제목·표지·마무리 라벨) · `SPEAKER_NOTES.md`·`README.md`(대상 버전)
+- summary: 1.40.1이 npm에 나간 뒤(06:07 UTC, provenance 있음) 덱 라벨을 v1.40.1로 맞췄다. PATCH라 타임라인 행은 더하지 않았다(행은 기능 단위다).
+- evidence: npm `latest` 1.40.1 · 배포본에서 `--version` 1.40.1, `core.fsmonitor` 빈 값, N-25 가드 확인
+- caveats: 공유 Artifact는 재게시하지 않았다.
+
 ## 2026-10-28 - release: 1.40.1 준비 — 읽기 조회가 대상 저장소의 fsmonitor를 끈다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
