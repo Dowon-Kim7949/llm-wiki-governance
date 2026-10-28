@@ -79,11 +79,11 @@ source_digests:
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
   - src/git.js sha256:368235704e10ed2e
   - .github/workflows/ci.yml sha256:0055dbb54de5761b
-  - .github/actions/validate/action.yml sha256:55453d995d842d12
+  - .github/actions/validate/action.yml sha256:d3be88da29be597b
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
-  - templates/github-actions/llm-wiki-validate.yml sha256:bf1e993d255fdac5
+  - templates/github-actions/llm-wiki-validate.yml sha256:4434aa02eb421f91
   - GATE_REVIEW.md sha256:657d2c226b11ad3e
-  - ROADMAP.md sha256:3d4ab396efa9644e
+  - ROADMAP.md sha256:42b380b6f3a21bd5
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵

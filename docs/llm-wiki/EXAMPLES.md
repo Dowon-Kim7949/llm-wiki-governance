@@ -24,7 +24,7 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - src/cli.js sha256:7d0df7982416faef
-  - README.md sha256:c8dec7da23c37dec
+  - README.md sha256:536dd7dd59614670
 ---
 
 # Examples
@@ -129,10 +129,10 @@ node bin/llm-wiki.js validate --type library
 # `npm ci`가 필요 없고(게이트가 쓰는 패키지는 런타임 의존성이 없는 이것 하나뿐이다) 이
 # 패키지를 devDependency로 둘 필요도 없다. 비공개 저장소에서 러너 분이 과금되는 쪽이라면
 # 그 의존성 설치가 보통 워크플로에서 가장 긴 스텝이다.
-npx -y llm-wiki-governance@1.40 validate-frontmatter
-npx -y llm-wiki-governance@1.40 validate --strict --agent codex
-npx -y llm-wiki-governance@1.40 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
-npx -y llm-wiki-governance@1.40 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
+npx -y llm-wiki-governance@1.41 validate-frontmatter
+npx -y llm-wiki-governance@1.41 validate --strict --agent codex
+npx -y llm-wiki-governance@1.41 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx -y llm-wiki-governance@1.41 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
 
 🚨 **패키지 이름을 줄여 `npx llm-wiki`라고 쓰면 안 된다.** 이 패키지의 bin 이름이 `llm-wiki`인데

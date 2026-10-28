@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - release: 1.41.0 준비 — 내용 digest가 처음으로 판정에 쓰인다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.41.0) · `tests/verification.test.js`(버전 단언) · README 2종(액션 핀 `@v1.41.0`) · `.github/actions/validate/action.yml`(기본 `1.41`) · `templates/github-actions/llm-wiki-validate.yml`(`@1.41`) · ROADMAP 2종(1.41.0 절) · 위키 `VERSIONING`(MINOR 판정)·`EXAMPLES`(`@1.41`) · 재승인(`index`·`README`·`RELEASE_FLOW`·`HARNESS_GOVERNANCE_ROADMAP`·`REVIEW_HISTORY`)
+- summary: 바로 아래 커밋의 C′를 MINOR로 낸다. 옵트인 설정이 판정에 쓰이기 시작했고, 방향은 finding이 느는 쪽뿐이다. 마이너 핀(`@1.41`)이 바뀌는 MINOR라 CI 템플릿·액션 기본값·EXAMPLES를 함께 바꿨다.
+- evidence: 게이트 결과는 커밋 메시지에 남긴다.
+- caveats: CI 매트릭스와 npm 배포는 이 기록 뒤의 일이다. 병합은 사용자가 한다.
+
 ## 2026-10-28 - feat(drift): C′ — 기록된 digest가 축소의 세 번째 조건이 됐다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

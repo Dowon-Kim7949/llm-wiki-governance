@@ -1192,6 +1192,22 @@ when budgeted.
 **Next:** explain why content anchors disagree with the date verdict on 6 of 16 documents here,
 before letting them decide narrowing; an independent developer running the usability protocol.
 
+## Release Plan (post-1.40.1) — content digests take their first decision — **shipped as 1.41.0 (2026-10-28)**
+
+- **The disagreements, explained.** Every case on this repository was the content verdict seeing
+  what the date verdict cannot: same-day changes, version-only manifests, uncommitted edits.
+  None was a date over-report that content cleared.
+- **C′.** With `"sourceDigests": true`, a stamped region digest must match at `HEAD` before
+  `drift` narrows a citation away. It closes the same-day squash gap for documents approved with
+  digests, and can only add findings.
+- **Preconditions built with it.** The content comparison reads `HEAD`, and a root or workspace
+  `package.json` is digested without its `version`.
+- **Not done.** Documents without digests keep the same-day gap; `impact` narrowing is unchanged;
+  no repository with region digests has been measured.
+
+**Next:** measure C′ on a repository that narrows; an independent developer running the
+usability protocol.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.
