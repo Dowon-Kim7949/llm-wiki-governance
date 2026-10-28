@@ -604,7 +604,7 @@ export function requirementsOverviewBody(docLang) {
 - 계획: 요구사항 문서는 의도한 동작과 수용 기준을 적습니다. 소스를 인용하지 않으며 사람이 검토하기 전까지 \`needs_review\`입니다.
 - 승인: \`llm-wiki review --approve <path>\`가 계획을 \`verified\`로 표시합니다. 이것은 요구사항 승인이지 구현 주장이 아닙니다. \`llm-wiki validate\`는 연결된 근거가 없는 승인 요구사항을 \`evidence.planned_unlinked\`(info)로 보고합니다.
 - 연결: 코드가 생기면 구현 파일과 테스트를 요구사항의 frontmatter \`evidence\`에 넣습니다. \`validate\`는 각 참조가 실제로 있는지 확인합니다. 그 코드가 바뀌면 \`impact\`와 \`drift\`가 승인된 요구사항을 다시 검토 대상으로 지목합니다(이 두 검사를 켜는 모드에서만 — \`llm-wiki mode\`로 확인하며, lite는 둘 다 끕니다).
-- 변경: 요구사항이 바뀌면 문서를 고치고(다시 \`needs_review\`), 연결된 코드와 테스트는 사람이 다시 확인합니다. CLI는 요구사항 수정을 코드 쪽으로 추적하지 않습니다.
+- 변경: 요구사항이 바뀌면 문서를 고치고(다시 \`needs_review\`), 연결된 코드와 테스트는 사람이 다시 확인합니다. \`llm-wiki impact\`는 승인된 요구사항의 본문이 바뀐 diff에서 그 문서가 연결한 파일과 각 파일이 같은 diff에서 바뀌었는지를 알려 줍니다(\`impact.plan_changed\`, info). 그 파일이 여전히 요구사항을 충족하는지는 판단하지 않습니다.
 - \`llm-wiki stats\`는 계획 문서를 승인 여부와 근거 연결 상태로 세고, \`llm-wiki list-docs --doc-type requirement\`는 목록을 보여 줍니다.
 
 ## Review Notes
@@ -625,7 +625,7 @@ This is the requirements map: one document per requirement under \`docs/llm-wiki
 - Planned: a requirement document states intended behavior and its acceptance criteria. It cites no source and stays \`needs_review\` until a human reviews it.
 - Approved: \`llm-wiki review --approve <path>\` marks the plan \`verified\`. That approves the requirement; it does not claim an implementation. \`llm-wiki validate\` reports an approved requirement with nothing linked as \`evidence.planned_unlinked\` (info).
 - Linked: when code exists, add the implementing files and tests to the requirement's frontmatter \`evidence\`. \`validate\` checks that each reference exists; \`impact\` and \`drift\` flag the approved requirement for re-review when that code changes (in the modes that run them — \`llm-wiki mode\` shows which; lite turns both off).
-- Changed: when a requirement changes, edit its document (it returns to \`needs_review\`) and re-check the linked code and tests by hand — the CLI does not trace a requirement edit forward into code.
+- Changed: when a requirement changes, edit its document (it returns to \`needs_review\`) and re-check the linked code and tests by hand. \`llm-wiki impact\` names the files an approved requirement links when its text changes in a diff, and whether each changed in the same diff (\`impact.plan_changed\`, info); it does not judge whether they still satisfy it.
 - \`llm-wiki stats\` counts planned documents by approval and linked evidence; \`llm-wiki list-docs --doc-type requirement\` lists them.
 
 ## Review Notes

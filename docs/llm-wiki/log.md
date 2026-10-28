@@ -24,6 +24,17 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - fix(drift,review) + feat(impact): 축소가 바뀐 인용을 숨겼고, lite가 strict의 승인 거부를 비켜 갔다 · impact.plan_changed
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/git.js`(`lastCommitTouchingKey`·`lineRangeChangedBetween`·`renamedPaths`, `commitAtEndOf` 주석 정정) · `src/commands/scans.js`(`reviewStamp`·`citedRegionsSinceStamp`, `driftTargets`의 `baselineKey`) · `src/config-file.js`(`governanceSuppressedRules`) · `src/commands.js`(`reviewCommand` 승인 측정 확대, `statsCommand`의 `verifiedNotEnriched`, `impactCommand`의 `changedPlans`) · `src/commands/plan-changes.js`(신규) · `src/commands/findings.js`·`src/i18n.js`(`impact.plan_changed` 등록, en/ko) · `src/cli.js`(`help drift`·`help impact`) · `src/commands/doc-content.js`(요구사항 개요의 "변경" 줄) · 테스트 `drift-narrowing-baseline`(신규 12)·`impact-plan-changed`(신규 10)·`rule-toggle-measurement`(+4)·`verification`(줄 범위 픽스처가 리뷰를 커밋하도록) · 위키 10종
+- summary: 외부 검토(ChatGPT, 2026-10-28)가 지적한 "drift 섹션 축소의 위음성 가능성"을 커밋 날짜를 고정한 git 이력으로 재현했다. 리뷰일 끝 스냅샷은 날짜 순서로 고른 커밋이라, 리뷰 당일 날짜의 곁가지 커밋이 리뷰 뒤 머지되거나, 리뷰 당일 리뷰 뒤에 커밋되거나, committer date가 과거인 리뷰 뒤 커밋이 있으면 바뀐 인용 영역을 "그대로"로 읽고, 무관한 후속 편집으로 파일 단위 검사가 잡았을 문서를 지웠다(N-20). 1.37.0 CHANGELOG의 "숨기지 않는다"는 거짓이었고, 1.37.0 이전부터 있던 줄 범위 축소도 같은 경우에 숨겼다. 이제 리뷰 스탬프를 쓴 커밋도 동의해야 축소한다. 같은 날 lite 승인 경로를 다시 훑다가, config `"strict": true`인 lite가 strict·standard가 거부하는 문서(존재하지 않는 파일 인용)를 승인하는 것을 세 모드로 재현했다(N-21). `review`가 모드의 floor만이 끈 규칙도 측정한다. 1.38.0 이전 lite에서 승인된 스캐폴드는 `stats.verifiedNotEnriched`로 보이게 했다(바꾸지는 않는다). 계획 → 코드 방향 `impact.plan_changed`(info)는 2026-10-28 설계 검토안에서 한 가지를 바꿨다: 연결 파일이 같은 diff에서 바뀌었다고 침묵하지 않고 파일별 `changed`/`unchanged`/`missing`/`uncertain`으로 표시한다.
+- evidence: `tests/drift-narrowing-baseline.test.js` 12건 중 5건, `rule-toggle-measurement`의 모드 승인 일치 테스트가 1.38.0(main 워크트리)에서 실패하고 이 변경에서 통과 · 전체 테스트 exit 0 · lint 105 files OK
+- decision: 축소만 보수화했다(유지보수자 선택, 2026-10-28). N-15의 파일 단위 늦은 머지 위음성은 2026-10-21 결정대로 한계로 남긴다. "측정된 사실 → 정책 → finding" 엔진 재설계는 하지 않았다 — 확인된 결함 둘이 소비자 단위 측정으로 닫혔다.
+- caveats: 스탬프를 커밋하지 않은 문서는 이제 축소되지 않는다(과거 날짜의 미커밋 스탬프에서만 드러난다). squash·rebase 오탐과 시간대 의존 경계는 그대로다. `impact.plan_changed`는 영어 템플릿 제목으로만 비의미 절을 알아보고, 모르는 제목은 의미 있는 변경으로 센다.
+
 ## 2026-10-28 - release: 1.38.0 준비 — 코드보다 먼저 시작하는 프로젝트
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

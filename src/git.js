@@ -150,6 +150,29 @@ export function changedFiles(cwd, sinceRef) {
   return [...new Set(changed)];
 }
 
+// Renames in the same comparison changedFiles makes (<sinceRef>, else HEAD, to the
+// working tree), as a Map from the new repo-relative path to the old one.
+// changedFiles lists only the new name of a renamed file, so a reader that needs
+// the file's content before the change has to ask for the old path. `-M` forces
+// rename detection on whatever diff.renames says; -z keeps non-ASCII paths
+// unquoted. An untracked file is not in this diff, so a rename is seen once the
+// new path is staged or committed. Best-effort: throws only if git fails.
+export function renamedPaths(cwd, sinceRef) {
+  const out = runGit(cwd, ["diff", "--name-status", "-M", "-z", sinceRef || "HEAD"]);
+  const parts = out.split("\0");
+  const renames = new Map();
+  for (let index = 0; index < parts.length; index += 1) {
+    const status = parts[index];
+    if (/^[RC]\d*$/.test(status)) {
+      if (status.startsWith("R")) renames.set(parts[index + 2], parts[index + 1]);
+      index += 2;
+    } else if (status) {
+      index += 1;
+    }
+  }
+  return renames;
+}
+
 // Stored content of <relPath> at <ref>, or null when it cannot be read. Callers
 // need the BEFORE side of a diff to decide whether a change is meaningful, which
 // `changedFiles` (names only) cannot answer. Best-effort: `git show <ref>:<path>`
@@ -164,11 +187,13 @@ export function fileAtRef(cwd, ref, relPath) {
   }
 }
 
-// The commit HEAD's history had reached at the END of sinceDate — the newest one
-// whose committer date is not after it, the same clock and the same boundary
-// fileChangedSince uses — or null when there is none or git fails. Its tree is the
-// repository as a review dated sinceDate saw it, which is what the date-anchored
-// drift scan compares a cited Markdown section against (2026-10-27).
+// The newest commit in HEAD's history whose committer date is not after the END of
+// sinceDate — the same clock and the same boundary fileChangedSince uses — or null
+// when there is none or git fails. It is NOT necessarily the repository a review
+// dated sinceDate saw: the walk is ordered by date, so a side-branch commit dated
+// that day but merged later, or a commit made after the review with an older
+// committer date, can be the one returned (reproduced 2026-10-28). The drift scan
+// therefore never narrows on this snapshot alone; see scanEvidenceDriftDetailed.
 export function commitAtEndOf(cwd, sinceDate) {
   try {
     const sha = runGit(cwd, ["rev-list", "-1", `--before=${sinceDate} 23:59:59`, "HEAD"]).trim();
@@ -176,6 +201,37 @@ export function commitAtEndOf(cwd, sinceDate) {
   } catch {
     return null;
   }
+}
+
+// The newest commit in HEAD's history whose diff of the CWD-relative <file> adds or
+// removes a line starting with `<key>:` — for a wiki document and its review key,
+// the commit that wrote the review stamp it carries now — or null when there is
+// none or git fails. Callers must still check that the file at that commit holds
+// the stamp they expect: a stamp that was never committed has no such commit, and
+// this then names an older one.
+export function lastCommitTouchingKey(cwd, file, key) {
+  try {
+    const sha = runGit(cwd, ["log", "-1", "--format=%H", `-G^${key}:`, "HEAD", "--", file]).trim();
+    return sha || null;
+  } catch {
+    return null;
+  }
+}
+
+// True when a commit reachable from HEAD but not from <fromRef> touched the given
+// line range of <file>: `git log -L` over `<fromRef>..HEAD`, so it is decided by
+// ancestry, not by commit dates, and a branch merged after <fromRef> counts even
+// when its commits are dated before it. Throws when git rejects the query (e.g. an
+// out-of-range line); callers treat that as "unknown".
+export function lineRangeChangedBetween(cwd, file, start, end, fromRef) {
+  const out = runGit(cwd, [
+    "log",
+    "--pretty=format:%h",
+    "-s",
+    `-L${start},${end}:${file}`,
+    `${fromRef}..HEAD`
+  ]).trim();
+  return out.length > 0;
 }
 
 // Stored content of a CWD-relative <file> at <ref>, or null like fileAtRef. The

@@ -184,3 +184,81 @@ test("lite: stale_verified is measured, not assumed zero", { skip: !hasGit() && 
   const validated = await validateCommand(options);
   assert.ok(!validated.findings.some((finding) => finding.rule === "evidence.stale"), "lite still does not report it");
 });
+
+// 2026-10-28. The approval gate refuses a document with an error finding, and
+// --strict (or config "strict": true) makes evidence.missing an error. Lite turns
+// that rule off, so with "strict": true the same document — enriched, but citing a
+// file that does not exist — was refused under strict and standard and approved
+// under lite.
+// The body names the reference under ## Evidence, so evidence.missing is the only
+// finding --strict raises to an error (evidence.section_missing would be another).
+async function modeProject(prefix, config) {
+  const dangling = wikiDoc({ title: "Dangling", evidence: ["src/absent.js"] })
+    .replace("Body written from the source.", "Body written from the source.\n\n## Evidence\n\n- src/absent.js");
+  return liteProject(prefix, { dangling }, { "llm-wiki.config.json": `${JSON.stringify(config)}\n` });
+}
+
+test("a governance mode decides what is reported, never what review can approve", async () => {
+  for (const strict of [true, false]) {
+    const verdicts = {};
+    for (const mode of ["strict", "standard", "lite"]) {
+      const cwd = await modeProject(`llm-wiki-toggle-gate-${mode}-`, { governance: { mode }, strict });
+      const options = await cliOpts(cwd);
+      const listed = await reviewCommand(options);
+      verdicts[mode] = listed.documents.find((doc) => doc.path === "docs/llm-wiki/dangling.md")?.approvable;
+    }
+    assert.deepEqual(verdicts, { strict: !strict, standard: !strict, lite: !strict }, `strict: ${strict}`);
+  }
+
+  const cwd = await modeProject("llm-wiki-toggle-gate-approve-", { governance: { mode: "lite" }, strict: true });
+  const options = await cliOpts(cwd);
+  const named = await reviewCommand({ ...options, approve: ["docs/llm-wiki/dangling.md"], reviewer: "t" });
+  assert.deepEqual(named.approved, [], "lite no longer approves what strict and standard refuse");
+  const validated = await validateCommand(options);
+  assert.ok(!validated.findings.some((finding) => finding.rule === "evidence.missing"), "and lite still does not report it");
+});
+
+test("a rule switched off by name stays off for the approval gate, in every mode", async () => {
+  // Only the mode's own floor is measured: an explicit entry is the project's
+  // narrowest statement and wins, in lite exactly as it does in standard.
+  for (const mode of ["standard", "lite"]) {
+    const cwd = await modeProject(`llm-wiki-toggle-gate-named-${mode}-`, { governance: { mode }, strict: true, rules: { "evidence.missing": "off" } });
+    const options = await cliOpts(cwd);
+    assert.ok(!(options.governanceSuppressedRules ?? []).includes("evidence.missing"), `${mode}: guard: not recorded as a mode-only off`);
+    const listed = await reviewCommand(options);
+    assert.equal(listed.documents.find((doc) => doc.path === "docs/llm-wiki/dangling.md")?.approvable, true, mode);
+  }
+});
+
+test("governanceSuppressedRules names the rules a mode alone switched off", async () => {
+  const lite = await cliOpts(await modeProject("llm-wiki-toggle-floor-lite-", { governance: { mode: "lite" } }));
+  assert.deepEqual([...lite.governanceSuppressedRules].sort(), [
+    "content.not_enriched", "encoding.bom", "evidence.missing", "evidence.stale", "evidence.ungrounded", "impact.source_changed"
+  ]);
+  const strict = await cliOpts(await modeProject("llm-wiki-toggle-floor-strict-", { governance: { mode: "strict" } }));
+  assert.equal(strict.governanceSuppressedRules, undefined, "strict's floor is empty, so its option set is unchanged");
+  const legacy = await cliOpts(await modeProject("llm-wiki-toggle-floor-legacy-", {}));
+  assert.equal(legacy.governanceSuppressedRules, undefined);
+});
+
+test("stats lists verified documents that still carry scaffold placeholder text, in every mode", async () => {
+  const scaffoldBody = (title) => wikiDoc({ title, status: "verified", sourceFiles: ["package.json"] })
+    .replace("Body written from the source.", "Concise summary: describe what this document covers.");
+  for (const mode of ["lite", "strict"]) {
+    const cwd = await liteProject(`llm-wiki-toggle-verified-scaffold-${mode}-`, {
+      approvedScaffold: scaffoldBody("Approved scaffold"),
+      draftScaffold: wikiDoc({ title: "Draft scaffold" }).replace("Body written from the source.", "Concise summary: describe it."),
+      written: wikiDoc({ title: "Written", status: "verified", sourceFiles: ["package.json"] })
+    }, { "package.json": "{}\n", "llm-wiki.config.json": `${JSON.stringify({ governance: { mode } })}\n` });
+    const result = await statsCommand(await cliOpts(cwd));
+    assert.deepEqual(result.stats.verifiedNotEnriched, ["docs/llm-wiki/approvedScaffold.md"], mode);
+    assert.match(result.text, /verified_not_enriched: 1 \(docs\/llm-wiki\/approvedScaffold\.md\)/);
+  }
+
+  const clean = await liteProject("llm-wiki-toggle-verified-clean-", {
+    written: wikiDoc({ title: "Written", status: "verified", sourceFiles: ["package.json"] })
+  }, { "package.json": "{}\n" });
+  const result = await statsCommand(await cliOpts(clean));
+  assert.deepEqual(result.stats.verifiedNotEnriched, []);
+  assert.doesNotMatch(result.text, /verified_not_enriched/, "the line is printed only when there is something to say");
+});

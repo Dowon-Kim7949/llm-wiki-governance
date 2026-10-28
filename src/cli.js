@@ -1235,6 +1235,12 @@ Narrowing:
   the summary line locator_narrowed instead of drifting. A source_files entry,
   a bare path, #symbol: or #route:, or a region that cannot be located on
   either side keeps the whole file watched.
+  Since 1.39.0 a citation is narrowed only when the commit that wrote the
+  document's current review stamp agrees too: the review day's snapshot alone
+  could hide a change (a branch merged after the review, a later commit on the
+  review day, a backdated commit). A stamp that is not committed keeps the
+  whole file watched. A late merge with no other later commit to the file is
+  still not seen at all (N-15).
 
 Options:
   --watch-needs-review  Widen the date-anchored freshness check to needs_review
@@ -1307,6 +1313,17 @@ Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
     (reviewed_at missing, or unchanged and older than today): the hand-edited status that validate
     cannot see. A cheap signal, not proof; see llm-wiki explain
     review.unattested_promotion.
+
+Plans (1.39.0, impact.plan_changed, info in every mode including lite):
+  The other direction. When an approved requirement or decision (doc_type
+  requirement, decision, decision_log, adr) changes in the diff, impact lists
+  the local files it links and whether each changed in the same diff, is
+  unchanged, or is missing (JSON changedPlans; summary line changed_plans).
+  Edits only to Review Notes, Evidence, Alternatives Considered or Open
+  Questions, whitespace, or frontmatter other than the title do not count.
+  It names files to re-check; it never shows that code satisfies a plan, and
+  a plan with no local link produces no finding. Never fails a build unless
+  rules raise "impact.plan_changed"; "off" switches it off.
 `,
   "check-run": `llm-wiki check-run
 

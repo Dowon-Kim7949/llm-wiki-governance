@@ -378,6 +378,15 @@ export function mergeConfigIntoOptions(options, config) {
   const modeRules = resolveGovernanceIntoOptions(options, config);
   if ((modeRules || presetRules || config.rules) && (!options.rules || Object.keys(options.rules).length === 0)) {
     options.rules = { ...(modeRules ?? {}), ...(presetRules ?? {}), ...(config.rules ?? {}) };
+    // The rules that are off ONLY because the mode's floor says so — not restated by
+    // the preset or by an explicit entry. `review` measures these for its approval
+    // gate (see reviewCommand): a mode decides what is reported, never what can be
+    // approved. Set only when non-empty, so a strict or legacy project's option set
+    // is unchanged.
+    const modeOnlyOff = Object.keys(modeRules ?? {}).filter((rule) => modeRules[rule] === "off"
+      && !(presetRules && Object.prototype.hasOwnProperty.call(presetRules, rule))
+      && !(config.rules && Object.prototype.hasOwnProperty.call(config.rules, rule)));
+    if (modeOnlyOff.length > 0) options.governanceSuppressedRules = modeOnlyOff;
   }
   if (Array.isArray(config.requiredDocs) && (!options.requiredDocs || options.requiredDocs.length === 0)) {
     options.requiredDocs = [...config.requiredDocs];
