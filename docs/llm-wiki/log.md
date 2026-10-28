@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - release: 1.40.1 준비 — 읽기 조회가 대상 저장소의 fsmonitor를 끈다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.40.1) · `tests/verification.test.js`(버전 단언) · README 2종(액션 핀 `@v1.40.1`) · ROADMAP 2종(1.40.1 절) · 위키 `VERSIONING`(PATCH 판정) · 재승인 6건(`EXAMPLES`·`HARNESS_GOVERNANCE_ROADMAP`·`index`·`README`·`REVIEW_HISTORY`·`VERSIONING`)
+- summary: 바로 아래 커밋의 하드닝을 PATCH로 낸다. 명령·옵션·JSON·finding·종료 코드는 바뀌지 않는다. `@1.40` 마이너 핀(CI 템플릿, 액션 기본값, EXAMPLES)은 그대로 1.40.1을 가리킨다.
+- evidence: 테스트 802/802, lint 109개 파일, `validate --strict`·`impact --since origin/main --strict` pass, `--version` 1.40.1
+- caveats: CI 매트릭스와 npm 배포는 이 기록 뒤의 일이다. 병합은 사용자가 한다.
+
 ## 2026-10-28 - fix(git): 읽기 조회가 대상 저장소의 fsmonitor 명령을 실행했다 — 리뷰 당일 squash는 결정으로 남겼다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
