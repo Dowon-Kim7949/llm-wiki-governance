@@ -24,8 +24,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:592836e8b901c7be
-  - src/cli.js sha256:7cfa335ece8b01a7
+  - package.json sha256:11bfea7c81c52615
+  - src/cli.js sha256:b4c407f857f2de78
 ---
 
 # Library

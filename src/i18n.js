@@ -104,6 +104,7 @@ const MESSAGE_CATALOG = {
     "evidence.stale": "verified 문서가 {reference}를 참조하는데 {baseline} 이후 변경되었습니다; 재검토·갱신하거나 needs_review로 강등하세요.",
     // impact
     "impact.source_changed": "verified 문서가 {sources}에 의존하는데 이번 diff에서 변경되었지만 문서 자신은 변경되지 않았습니다; 재검토·갱신하거나 needs_review로 강등하세요.",
+    "impact.plan_changed": "승인된 계획이 이번 diff에서 바뀌었습니다({sections}). 연결된 파일을 다시 확인하세요 — 이번 diff에서 안 바뀜: {unchanged}; 바뀜: {changed}; 없거나 해석 불가: {missing}. 검토할 후보를 알려 줄 뿐, 어떤 파일이 계획을 충족하거나 어긴다는 뜻은 아닙니다.",
     // run
     "run.test_evidence_missing": "코드를 변경한 {task} 실행의 run manifest에 테스트 증거가 불완전합니다(누락: {missing}); 변경 전 실패한 테스트(red)와 변경 후 통과(green)를 기록하세요.",
     // okf
@@ -251,6 +252,11 @@ const EXPLANATION_CATALOG = {
       meaning: "verified 문서가 현재 diff에서 변경된 소스 파일에 의존하는데, 문서 자신은 변경되지 않았습니다.",
       whyItMatters: "이는 날짜 기준 evidence.stale의 diff 기준·pre-merge 보완으로, 가장 중요한 경우 — 코드와 그 문서가 서로 다른 위치/PR에서 바뀌는 경우 — 를 잡아 verified 문서가 문서화한 코드와 조용히 어긋나지 않게 합니다. 내용을 보는 예외가 하나 있습니다: version 값만 바뀐 package.json은 변경된 것으로 보고되지만 앵커 대조에는 쓰이지 않습니다(N-13, 2026-08-04). 릴리스마다 올라가는 값이고 어떤 문서의 주장도 그 숫자에 의존하지 않기 때문입니다. 다른 키가 바뀌거나, version 필드가 추가·삭제되거나, 파싱이 안 되거나, 비교할 기준 내용이 없으면 그대로 셉니다.",
       remediation: ["변경된 소스를 다시 읽고 같은 변경집합에서 verified 문서를 갱신하세요.", "evidence에서 줄 범위나 Markdown 섹션 로케이터로만 인용한 파일은 그 영역만 기준과 비교합니다. 영역이 그대로면 실패 대신 locatorNarrowed로 보고됩니다(source_files, 경로만 쓴 인용, #symbol:, #route:는 파일 단위).", "주장이 더 이상 성립하지 않으면 문서를 needs_review로 낮추세요(llm-wiki drift --downgrade).", "새 검토 후 reviewed_by/reviewed_at을 갱신하세요.", "이는 diff 기반 파일 수준 휴리스틱이니, 변경이 문서화된 주장에 영향이 없다면 무시하세요.", "이 규칙은 기본이 error라 --strict 없이도 빌드를 실패시킵니다. 너무 시끄러우면 llm-wiki.config.json rules에서 \"impact.source_changed\"를 \"warning\"(또는 \"info\"/\"off\")으로 낮추거나 rulesPreset: \"relaxed\"를 쓰세요.", "허브 파일 1개가 그것을 인용한 문서 수만큼 발화하는 것은 정상입니다."]
+    },
+    "impact.plan_changed": {
+      meaning: "승인된 계획 문서(doc_type requirement, decision, decision_log, adr이며 diff 전이나 후에 verified)의 계획을 서술하는 절이 바뀌었고, 그 문서가 로컬 파일(frontmatter source_files 또는 evidence)을 연결하고 있습니다. finding은 그 파일들을 나열하고 각 파일이 같은 diff에서 바뀌었는지, 그대로인지, 없는지 표시합니다. Review Notes, Evidence, Alternatives Considered, Open Questions만 바뀐 경우와 공백, title을 뺀 frontmatter 변경은 세지 않습니다. 그 밖의 제목은 사용자 정의 제목이나 번역된 제목도 셉니다. 추가·삭제·이름 변경된 계획도 따라갑니다. impact JSON의 changedPlans에는 세지 않은 계획까지 모두 들어갑니다.",
+      whyItMatters: "impact.source_changed는 코드에서 그 코드를 설명하는 문서 쪽을 가리키고, 반대 방향은 없었습니다. 요구사항의 수용 기준이나 ADR의 결정이 바뀌면 변경이 닿아야 할 곳은 그 문서가 연결한 코드와 테스트이고, 검토자는 같은 PR에서 그 목록이 필요합니다. 모든 모드(lite 포함)에서 info인 이유는 계획이 바뀌었다고 연결 파일이 틀렸다는 뜻이 아니고, 같은 diff에서 바뀐 연결 파일이 새 내용을 구현했다는 뜻도 아니기 때문입니다. 후보 목록이지 판정이 아닙니다.",
+      remediation: ["연결된 파일과 테스트를 계획의 새 내용과 대조해 다시 읽고, 맞지 않는 곳을 고치세요.", "changed로 표시된 파일은 이번 diff에서 편집됐다는 뜻입니다. 새 내용을 구현했다고 가정하지 말고 확인하세요.", "계획이 연결하지 않은 코드도 영향을 받으면 그 코드를 계획의 evidence에 추가해 다음 변경 때 찾히게 하세요.", "기본으로는 빌드를 실패시키지 않습니다. llm-wiki.config.json rules에 \"impact.plan_changed\": \"warning\"(또는 \"error\")으로 올리거나 \"off\"로 끌 수 있습니다."]
     },
     "review.unattested_promotion": {
       meaning: "impact diff 안에서 위키 문서가 verified로 승격됐는데 검토 스탬프가 함께 바뀌지 않았습니다. reviewed_at이 없거나, 날짜가 아니거나, 승격 전과 같은 값이거나(그 값이 오늘이면 제외합니다. 같은 날 강등했다 다시 승인한 문서는 날짜가 그대로입니다), reviewed_by가 비어 있습니다. review --approve는 항상 새 reviewed_at을 쓰므로, 스탬프 없는 승격은 status를 손으로 고쳤을 가능성이 큽니다. opt-in 규칙이라 기본은 꺼져 있고 config rules로 켭니다.",

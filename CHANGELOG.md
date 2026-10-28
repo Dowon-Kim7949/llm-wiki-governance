@@ -6,6 +6,171 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.40.0 — 2026-10-28
+
+A validation release. The tool was run end to end outside this repository — on an existing
+Python (FastAPI) service and on a React + Express npm workspace — and the runs found three
+detection defects that this repository's own tests could not see. All three are fixed, and the
+walkthroughs now run in `npm test`. What has been shown on which stack, how to reproduce it,
+and what has not is in [`docs/VALIDATION.md`](./docs/VALIDATION.md). Upgrade if you initialize
+Python or Rust projects or npm-workspace repositories.
+
+- **Security: a caller-supplied git revision can no longer be read as a git option.** The MCP
+  `validate` tool (`changed` with `since`) and the programmatic API (`commands.validate` with
+  `changed`, `commands.impact` and `commands["release-notes"]`, each with `since`) passed
+  `since` to git unchecked. A value git reads as an option could make git write a file at a
+  path the caller chose, on an MCP server whose contract is read-only. The `llm-wiki` CLI was
+  not exposed: its parser refuses a `--since` value that starts with `-`. Affected: every
+  published `llm-wiki-governance` version (1.16.0–1.38.0) and `@dowonk-7949/llm-wiki-standard`
+  1.5.0–1.15.1 (MCP from 1.6.0), each checked against its published tarball. A revision that
+  starts with `-` is now refused, and every revision is followed by `--`, so a value naming a
+  file instead of a revision is refused too rather than read as a path; the run reports that
+  it could not compute the change set (`changed.unavailable`, `impact.unavailable`). No
+  revision git accepts starts with `-`. Upgrade if an MCP client, an agent, or code you do not
+  fully control can supply `since`.
+- **`drift` trusts the review-stamp commit in fewer histories.** Re-checking the 1.39.0 fix
+  found two that still hid a cited change the reviewer never saw. A body line starting with
+  `reviewed_at:`, such as a fenced example, made a later edit of that line count as the stamp
+  commit. A review branch squashed or rebased onto newer commits put the stamp on top of them.
+  A stamp commit now counts only if it changed the stamp's value and is dated on or before the
+  review day; otherwise the citation is checked at file level, as before 1.37.0. A squash or
+  rebase on the review day itself is still taken as reviewed (the date granularity every date
+  check shares), and N-15 is unchanged. Git history cannot name what a reviewer looked at;
+  both baselines approximate it, and narrowing happens only when they agree.
+- **`init` suggests a type for an npm-workspace repository.** When the root `package.json`
+  declares workspaces and names no framework itself, detection says `unknown`. `init` (without
+  `--type`) now reads the member manifests and suggests `--type fullstack`, `frontend` or
+  `backend`: a `hint:` line under Detected Project and a `typeHint` JSON key. The detected type
+  is not changed. `init` records a type in the config only when it is not `unknown`, so such a
+  repository detects again on every `validate`, and a new type there would make new documents
+  required.
+- **An explicit type is no longer a review item when detection found nothing.** Recording
+  `--type fullstack`, as the hint says, made every `validate` report `project.review_item`
+  ("Explicit type 'fullstack' differs from detected 'unknown'"), a warning that fails
+  `--strict`. A real disagreement — a configured `library` where detection finds `frontend` —
+  is still reported.
+- **Python and Rust projects are named from their manifest.** Without a `package.json`,
+  generated documents took the directory name for `project:`. They now read `name` from
+  `pyproject.toml` (`[project]` or `[tool.poetry]`) or `Cargo.toml` (`[package]`). A `name`
+  under an array-of-tables header such as `[[bin]]` is not taken for the project's. No check
+  compares the name, so existing documents are unaffected.
+- **Runnable stack walkthroughs.** `examples/python-fastapi-brownfield` (21 checks) and
+  `examples/react-node-fullstack` (15 checks) each run with one command and need only Node.js
+  and git. The greenfield demo adds a requirement changed ahead of its code, so
+  `impact.plan_changed` is shown with its linked files unchanged (20 → 23 checks).
+- **`docs/VALIDATION.md`** (English and Korean): a stack matrix with evidence labels, the
+  commands that reproduce each claim, the limits the walkthroughs demonstrate, and what was not
+  measured (agent behaviour, efficacy, independent usability).
+
+**Behaviour changes, named:**
+- A `since` value (MCP or programmatic) that starts with `-`, or that names a file rather
+  than a revision, is refused instead of being passed to git.
+- In repositories that squash or rebase reviewed branches, a narrowed `drift` citation whose
+  stamp commit is dated after the review day is reported at file level: more findings, never
+  fewer.
+- `init` text gains a `hint:` line, and its JSON a `typeHint` key, only for an npm-workspace
+  repository detected as `unknown` without `--type`.
+- `validate` and `audit` no longer report `project.review_item` for an explicit type when
+  detection is `unknown`, so a `--strict` run that failed only on that can pass.
+- Newly generated documents of a Python or Rust project carry the manifest's name in
+  `project:`.
+
+**Limits.** Detection alone still says `unknown` for such a workspace; the hint is advice. Go,
+JVM, PHP, Ruby, .NET, mobile and infrastructure projects are covered by detection tests only,
+not end to end, and pnpm workspaces are not parsed. The walkthroughs never run the applications.
+No model was run: agent adapters and skills are checked to exist and to point at the wiki, not
+to be followed. No independent developer has followed the README.
+
+Sized as a MINOR: one additive JSON key, one review item that no longer fires where it carried
+no information, and a generated-document field; the security fix refuses only input git would
+have read as an option or a path, and the `drift` change can only add findings. Tests:
+783 → 801.
+
+## 1.39.0 — 2026-10-28
+
+Prepared but not published on its own: it lacked the security fix above, so its changes
+reach npm in 1.40.0.
+
+A correctness release with one new signal. Two gates could pass something they exist to
+stop: `drift` narrowing could hide a cited region that had changed, and lite could approve a
+document that strict and standard refuse. Both are fixed and pinned by tests that fail on
+1.38.0. `impact` also gains the reverse direction: when an approved requirement or decision
+changes, it names the files the plan links. Upgrade if your wiki cites line ranges or
+Markdown sections, if any repository runs in lite with `"strict": true`, or if you plan with
+requirement documents.
+
+- **`drift` no longer narrows a citation away on the review-day snapshot alone.**
+  - 1.37.0 said a wrong snapshot "can only flag a document, not hide one". That was false.
+    The snapshot is the newest commit dated on or before the review day, and a date walk can
+    return a side-branch commit dated that day but merged after the review, a commit made
+    later on the review day, or a commit made after the review with an older committer date.
+    The cited section then read the same on both sides and was narrowed away, although the
+    file-level check (triggered by any later edit to the file) would have reported the
+    document. Line ranges, narrowed with `git log -L --since` since before 1.37.0, hid the
+    same changes. Reproduced with controlled commit dates in
+    `tests/drift-narrowing-baseline.test.js` (5 of its 12 tests fail on 1.38.0).
+  - A citation is now narrowed only when the commit that wrote the document's current
+    review stamp agrees as well: no commit between it and `HEAD` touched a cited line range
+    (`git log -L <stamp>..HEAD`, decided by ancestry, not dates), and every cited section
+    reads the same there as at `HEAD`. The stamp commit is the newest commit whose diff
+    touches the document's `reviewed_at` line (else `last_updated`), accepted only if the
+    committed value matches the working tree.
+  - When that commit cannot be established (the stamp is not committed, or the committed
+    value differs), the file is checked at file level, as before 1.37.0.
+- **A governance mode no longer changes what `review` can approve.** With `"strict": true`
+  in the config, `evidence.missing` is an error, and an error finding blocks approval. Lite
+  turns that rule off, so a document citing a file that does not exist was refused under
+  strict and standard and approved under lite. `review` now measures the rules the mode's
+  floor switched off (and nothing else did) for its approval gate. A rule a project
+  switched off by name stays off, in every mode. `validate`, `audit` and `status` still
+  report what the mode says.
+- **`stats` lists approved documents that still carry scaffold placeholder text**
+  (`verifiedNotEnriched`, and a `verified_not_enriched:` summary line when non-empty).
+  Before 1.38.0, lite or `content.not_enriched: "off"` let `review --approve-all` promote
+  untouched scaffolds, and nothing re-checks a verified document. The list is measured in
+  every mode; it is a fact about the text, not a finding that an approval was wrong, and
+  nothing is changed.
+- **`impact.plan_changed` (info).** When an approved planned document (`doc_type`
+  `requirement`, `decision`, `decision_log`, `adr`; verified before or after the diff)
+  changes in a section that states the plan, `impact` lists the local files it links and,
+  for each, whether it changed in the same diff, is unchanged, is missing, or cannot be
+  matched (`changed` / `unchanged` / `missing` / `uncertain`).
+  - Edits only to Review Notes, Evidence, Alternatives Considered or Open Questions,
+    whitespace, and frontmatter other than the title do not count; any other heading does,
+    custom and translated ones included. Added, deleted and renamed plans are followed; a
+    draft that was never approved is not.
+  - It is info in every mode, lite included, and never fails a build unless `rules` raises
+    `"impact.plan_changed"`. A linked file that changed in the same diff is reported too,
+    because changing does not show it implements the new text.
+  - JSON adds `changedPlans` (every such plan, with `kind`, `status`, `meaningful`,
+    `changedSections`, `ignoredSections`, `linked[{path, change}]`, and `renamedFrom` on a
+    rename). Text output adds a `changed_plans:` summary line and a "Plans changed" section
+    only when a plan is in the diff, so other runs print what they printed before.
+
+**Behaviour changes, named:**
+- `drift`, and `stats` (`staleVerified`), can report more `evidence.stale` findings for
+  files cited only through line ranges or Markdown sections: for any citation whose review
+  stamp is not committed, and for the hidden cases above. Never fewer.
+- In lite with `"strict": true`, `review` refuses a document with an error-level finding
+  that lite does not report (today only `evidence.missing`), and the `review` list in lite
+  shows `evidence.missing` and `encoding.bom` findings on `needs_review` documents.
+- `impact` can report `impact.plan_changed` info findings, so `findingSummary.info` and the
+  `findings:` count grow; `result` and the exit code do not change.
+- Additive JSON: `impact.changedPlans`, `stats.verifiedNotEnriched`.
+
+**Limits.** A late merge with no other later commit to the cited file is still not seen at
+all (N-15, `tests/known-gaps.test.js` GAP 5). Squash and rebase merges of a branch reviewed
+before merging are still over-reported. The review-day boundary is read in the local time
+zone. `impact.plan_changed` names candidates for review; it never shows that code satisfies
+or violates a requirement, it cannot find code a plan does not link, and links are per file,
+so changing one acceptance criterion lists every linked file. Section matching uses the
+English headings the templates generate. `next` in lite still does not suggest repairing
+evidence paths lite does not report.
+
+Sized as a MINOR: one new info rule and additive JSON. The two gate fixes are named
+exceptions: they can add findings or refuse an approval, and they restore what the
+documentation already promised. Tests: 757 → 783.
+
 ## 1.38.0 — 2026-10-28
 
 Start a project before its code exists, on the same wiki and the same engine.
@@ -112,7 +277,8 @@ every term.
     no review-day snapshot, and a heading that matches zero or several headings on either
     side. Renaming the cited heading therefore drifts the document.
   - The snapshot is chosen by committer date, so it inherits the late-merge limit (N-15).
-    When it is wrong, it can only flag a document, not hide one.
+    ~~When it is wrong, it can only flag a document, not hide one.~~ **Corrected in 1.39.0:
+    this was false.** A snapshot chosen by date could hide a changed citation; see 1.39.0.
 - **`search-docs --all-terms`** (MCP `search_docs`: `allTerms`) keeps only documents that
   contain every query term, the rule before 1.36.0, ranked the same way. The flag filters
   and does not rescore. The JSON adds `terms` (the query as the ranker used it, after
@@ -136,7 +302,9 @@ every term.
   summary a `terms:` line.
 
 Sized as a MINOR: one new option, new JSON keys, and a gate that can only report less for a
-citation whose text provably did not change. Tests: 725 → 731.
+citation whose text provably did not change. Tests: 725 → 731. (*Corrected in 1.39.0:* the
+text was not provably unchanged — the review-day snapshot could be a commit the reviewer never
+saw. 1.39.0 requires the review's own commit to agree.)
 
 ## 1.36.0 — 2026-10-27
 

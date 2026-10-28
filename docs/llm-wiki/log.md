@@ -24,6 +24,88 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - docs(validation): 1.40.0 후보의 CI 매트릭스 결과를 기록했다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: docs
+- changed: `docs/VALIDATION.md`(.ko)의 실행 환경 문단과 공개 주장 표 한 행 · `outputs/distribution/CLAIMS.md` 한 행
+- summary: 바로 아래 항목을 쓸 때는 CI가 돌기 전이었다. PR #8의 `4c37b20`에서 18개 체크가 모두 통과했으므로(verify 12 = OS 셋 × Node 18.18/20/22/24, governance gate, consumer install 2, coverage, CodeQL 2), "이 브랜치는 Windows / Node 22뿐"이던 서술을 Recorded CI 결과로 바꿨다.
+- evidence: `gh pr checks 8` 18건 pass, PR mergeStateStatus `CLEAN`
+- caveats: 깨끗한 환경 재현은 여전히 로컬 Windows / Node 22에서만 했다. CI 결과는 이 문서를 위해 돌린 실행이 아니라 기록이다.
+
+## 2026-10-28 - fix(security,drift,detector): N-25 재검증 — CLI는 영향 밖이었고, 스탬프 커밋과 TOML 배열 테이블에 결함이 더 있었다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/git.js`(리비전 뒤 `--`, `commitsTouchingKey`·`committedBy` 신설, `lastCommitTouchingKey` 제거, `isPathIgnored`에 `--`) · `src/release-notes.js`(range 뒤 `--`) · `src/commands/scans.js`(`reviewStamp`) · `src/detector.js`(`tomlSectionName`의 배열 테이블) · 테스트 4파일(+9) · CHANGELOG 2종 · SECURITY 2종 · README 2종 · ROADMAP 2종 · `docs/VALIDATION.md`(.ko) · 신규 `docs/USABILITY_PROTOCOL.md`(.ko) · 위키 `PUBLIC_API`·`ARCHITECTURE_CONVENTIONS`·`DOMAIN_FEATURES`·`HARNESS_GOVERNANCE_ROADMAP`(59 정정, 60~63 신설)·`VERSIONING`
+- summary:
+  - N-25를 독립적으로 다시 검토했다. 배포 tarball 69개를 인터페이스별로 확인했다. CLI는 파서가 `-`로 시작하는 값을 거부해서 영향이 없었고, 영향받은 것은 MCP와 프로그래밍 API다(`llm-wiki-governance` 1.16.0~1.38.0, 옛 패키지 1.5.0~1.15.1). 앞선 기록의 "CLI 세 명령도 같다"는 틀린 서술이라 정정했다.
+  - 회귀 테스트에 측정 결함이 있었다. 정해진 파일 이름만 확인해서 `release-notes` 경로를 놓쳤는데, 이를 고쳤다.
+  - 정확성 결함도 하나 막았다. 리비전 뒤에 `--`가 없어서 파일 이름을 준 `since`가 pathspec으로 읽히고, 틀린 변경 집합이 오류 없이 반환됐다. 이제 `--`를 붙인다.
+  - N-20 재검증에서, 스탬프 커밋으로 리뷰보다 늦은 커밋이 골라지는 이력 두 가지(본문 예시 줄, 리뷰 브랜치의 squash·rebase)를 재현하고 막았다.
+  - N-24의 줄 단위 리더가 배열 테이블 헤더(대괄호를 두 겹 쓰는 `bin` 같은 헤더)를 섹션 경계로 읽지 못하던 결함을 고쳤다. 처음 쓴 위키 서술에는 그 헤더를 대괄호째 적어서 `wiki_link.missing` 5건이 났고, `validate --strict`가 그것을 잡아 표현을 바꿨다.
+  - 승인 게이트는 모드 floor가 심각도를 낮춘 규칙을 복원하지 않는다. floor에 그런 규칙이 새로 생기면 실패하는 가드 테스트를 넣었다.
+- evidence: 가드 테스트 7개 중 5개가 가드 없는 트리에서 실패하고 수정본에서는 통과 · 새 drift 테스트 2건이 `57ec108` 트리에서 실패 · TOML 테스트가 수정 전에는 `cli-tool`을 반환 · 깨끗한 환경(tarball 설치, 격리한 HOME·npm·git 설정)에서 README Quick Start와 워크스루 4종 통과 · 전체 테스트 수는 최종 실행 결과로 CHANGELOG에 기록
+- caveats:
+  - MCP `cwd`의 신뢰 경계와 git 로컬 설정은 고치지 않고 `SECURITY.md`에 문서화했다.
+  - 리뷰 당일의 squash·rebase는 여전히 위음성이다(테스트로 고정).
+  - 이 기록 시점에 CI 매트릭스는 아직 돌지 않았다.
+  - 재현 세부를 담은 내부 보안 평가와 보안 권고 초안은 이 저장소에 두지 않았다.
+
+## 2026-10-28 - fix(security): 읽기 전용 MCP 서버가 git 옵션 주입으로 파일을 썼다
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/git.js`(`assertRevision`, 호출자 리비전을 받는 네 함수에 적용) · `src/release-notes.js`(`collectCommits`) · `tests/git-revision-guard.test.js`(신규 3) · CHANGELOG 2종(1.40.0 절에 보안 항목, 테스트 수 789 → 792) · 위키 `PUBLIC_API`(MCP 절)·`ARCHITECTURE_CONVENTIONS`(git.js)·`HARNESS_GOVERNANCE_ROADMAP`(N-25)
+- summary: 최종 보고의 보안 절을 쓰려고 `--since` 검증 여부를 확인하다 찾았다. MCP `validate`의 `since`가 git에 그대로 닿아 `--output=<경로>`가 diff를 그 경로에 썼다(임시 저장소에서 재현). CLI 세 명령도 같은 형태였다. `-`로 시작하는 리비전을 거부한다. git이 받는 리비전 중 `-`로 시작하는 것은 없다.
+- evidence: 재현 스크립트가 수정 전 `true`(파일 생성), 수정 후 `false` · 신규 테스트 3건 통과 · 전체 테스트 792
+- caveats: 1.38.0까지 배포된 버전에 있는 문제다. 1.39.0만 따로 배포하면 이 수정이 빠진다(브랜치 `feat/1-39-correctness`에는 없다). 공개 저장소에 이 커밋을 push하면 문제의 형태가 드러나므로, 배포 순서와 GitHub 보안 권고 여부는 유지보수자 결정이다.
+
+## 2026-10-28 - release: 1.40.0 준비 — 이 저장소 밖에서도 같은 검사
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.39.0 → 1.40.0) · `tests/verification.test.js`(버전 단언) · `.github/actions/validate/action.yml`(기본값 1.40) · `templates/github-actions/llm-wiki-validate.yml`(핀 3줄) · `CHANGELOG.md`·`CHANGELOG.ko.md`(1.40.0 절) · `ROADMAP.md`·`ROADMAP.ko.md`(출시 절) · README 2종(액션 핀) · 위키 `VERSIONING`(1.40.0 MINOR 판정 절)·`EXAMPLES`(CI 예시 핀)·`REVIEW_HISTORY`(서문 한 줄)
+- summary: 앞 커밋(`16a231a`)을 1.40.0 MINOR로 묶는다. 출하되는 변경은 `init`의 `typeHint`, `unknown` 감지에 대한 type review item 제외, Python·Rust 생성 문서의 프로젝트 이름 셋이고, 셋 다 다른 스택 워크스루가 찾은 결함에서 나왔다. 예제와 검증 문서는 tarball에 들어가지 않으므로 그것만으로 릴리스하지 않았을 것이다 — 버전을 목표 숫자에 맞춘 것이 아니라는 판단을 VERSIONING에 남겼다.
+- evidence: 테스트 789/789 · `validate --strict`·`impact --since main --strict` pass(재승인 후 확인)
+- caveats: 1.39.0과 같은 날 두 릴리스를 준비했다. 둘 다 로컬 커밋뿐이고 push·태그·배포는 유지보수자 승인 대기다. 1.39.0만 먼저 낼 수 있도록 브랜치를 나눴다(`feat/1-39-correctness` ⊂ `feat/1-40-validation`). 공유 덱의 대상 버전은 배포 전이라 바꾸지 않았다.
+
+## 2026-10-28 - feat(validation): 다른 스택에서 처음부터 끝까지 — Python·React+Node 워크스루와 감지 결함 셋
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, examples, docs, wiki
+- changed: `src/detector.js`(`workspaceTypeHint`, `tomlSectionName`, 프레임워크 의존성 목록 상수화, `unknown` 감지에 대한 type 차이 review item 제외) · `src/commands.js`(`init`의 `hint:` 줄과 JSON `typeHint`) · `examples/python-fastapi-brownfield/`·`examples/react-node-fullstack/`(신규, 앱·보강 문서·워크스루·README 2종) · `examples/_shared/walkthrough-kit.mjs`(신규) · `examples/greenfield-vue-demo/`(요구사항을 코드보다 먼저 바꾸는 8단계, 검사 20 → 23) · `examples/README.md` · `tests/cross-stack-detection.test.js`(신규 4)·`tests/stack-walkthroughs.test.js`(신규 2)·`tests/greenfield-demo-walkthrough.test.js`(검사 수) · `docs/VALIDATION.md`·`.ko.md`(신규, 위키 밖) · README 2종("다른 스택" 문단) · `outputs/distribution/introduction-2026-10.md`(공개 소개 초안, 게시 안 함) · 위키 9종
+- summary: 미션의 1.40.0 목표 "이 저장소 밖에서도 된다는 것을 재현 가능하게 보인다"를 스크립트 워크스루로 했다. Python 서비스(검사 21개)와 React + Express workspace(검사 15개)를 각각 실제 CLI로 처음부터 끝까지 돌리자 이 저장소의 테스트로는 안 보이던 결함 셋이 첫날 나왔다. workspace 풀스택이 `unknown`으로 감지되고(N-22), 그 안내대로 `--type`을 기록하면 `validate --strict`가 매번 깨지고(N-23), Python 서비스가 디렉터리 이름으로 불렸다(N-24). N-22는 감지 결과를 바꾸지 않고 `init`이 제안하게 했다 — 바꾸면 type 없이 초기화된 기존 workspace 저장소의 필수 문서가 바뀐다. greenfield 데모에는 1.39.0의 `impact.plan_changed`를 코드와 함께 바뀐 경우와 코드보다 먼저 바뀐 경우 둘 다 넣었다.
+- evidence: 테스트 783 → 789 전부 통과 · 워크스루 greenfield 23/23·Python 21/21·풀스택 15/15 · `tests/cross-stack-detection.test.js`는 1.39.0 코드에서 실패(가져올 함수가 없다), N-23은 수정 전 풀스택 워크스루의 `validate --strict` 실패로 재현
+- decision: 기존 두 데모를 공유 키트로 옮기지 않았다(동작이 같고 증명이 늘지 않는다). 실제 에이전트 실행은 하지 않았다(유지보수자 선택: 결정적 검사만) — 어댑터·스킬 파일이 위키를 가리키는지까지가 검증 범위다.
+- caveats: 스택 워크스루는 애플리케이션을 실행하지 않는다(Python·npm 설치 없음). Go·Rust·JVM·PHP·Ruby·.NET·모바일·인프라는 여전히 감지 단위 테스트뿐이다. README를 따라 해 본 독립 개발자는 없다(`docs/VALIDATION.md` 사용성 절).
+
+## 2026-10-28 - release: 1.39.0 준비 — 막으라고 있는 것을 통과시키던 게이트 두 개와 계획 → 코드 방향
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.38.0 → 1.39.0) · `tests/verification.test.js`(버전 단언) · `.github/actions/validate/action.yml`(기본값 1.39) · `templates/github-actions/llm-wiki-validate.yml`(핀 3줄) · `CHANGELOG.md`·`CHANGELOG.ko.md`(1.39.0 절, 1.37.0 절의 거짓 주장 두 곳에 정정 표기) · `ROADMAP.md`·`ROADMAP.ko.md`(출시 절) · README 2종(액션 핀, greenfield 문단에 `impact.plan_changed` 한 문장, "변경 감지" 항목에 축소 조건 한 구절) · 위키 `VERSIONING`(1.39.0 MINOR 판정 절)·`EXAMPLES`(CI 예시 핀)·`REVIEW_HISTORY`(서문 한 줄)
+- summary: 앞 커밋(`63310ff`)을 1.39.0 MINOR로 묶는다. info 규칙 하나와 부가 JSON 키 둘이고, 게이트 수정 두 건(N-20, N-21)은 finding을 더하거나 승인을 거부할 수 있어 CHANGELOG에 동작 변경으로 이름 붙였다. 1.37.0 CHANGELOG의 "숨기지 않는다"는 지우지 않고 취소선과 정정 표기를 달았다 — 이력은 당시 주장을 보여 주고, 틀렸다는 사실도 같은 자리에서 보여야 한다.
+- evidence: `impact --since HEAD --strict` pass(재승인 후) · 테스트 수는 CHANGELOG에 적은 783을 실제 실행으로 확인
+- caveats: 공유 덱(`outputs/team-briefing/`)의 대상 버전 표기(v1.38.0 다섯 곳)는 **고치지 않았다** — 덱은 배포된 최신 버전을 가리키고 1.39.0은 배포 전이다(push·태그·배포는 유지보수자 승인 대기). 배포할 때 정렬한다. 위키 `README.md`의 `evidence.stale`(10-28의 1.38.0 릴리스 커밋이 원인, 이 브랜치 이전부터 있던 상태)도 이번 재승인으로 해소했다.
+
+## 2026-10-28 - fix(drift,review) + feat(impact): 축소가 바뀐 인용을 숨겼고, lite가 strict의 승인 거부를 비켜 갔다 · impact.plan_changed
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki
+- changed: `src/git.js`(`lastCommitTouchingKey`·`lineRangeChangedBetween`·`renamedPaths`, `commitAtEndOf` 주석 정정) · `src/commands/scans.js`(`reviewStamp`·`citedRegionsSinceStamp`, `driftTargets`의 `baselineKey`) · `src/config-file.js`(`governanceSuppressedRules`) · `src/commands.js`(`reviewCommand` 승인 측정 확대, `statsCommand`의 `verifiedNotEnriched`, `impactCommand`의 `changedPlans`) · `src/commands/plan-changes.js`(신규) · `src/commands/findings.js`·`src/i18n.js`(`impact.plan_changed` 등록, en/ko) · `src/cli.js`(`help drift`·`help impact`) · `src/commands/doc-content.js`(요구사항 개요의 "변경" 줄) · 테스트 `drift-narrowing-baseline`(신규 12)·`impact-plan-changed`(신규 10)·`rule-toggle-measurement`(+4)·`verification`(줄 범위 픽스처가 리뷰를 커밋하도록) · 위키 10종
+- summary: 외부 검토(ChatGPT, 2026-10-28)가 지적한 "drift 섹션 축소의 위음성 가능성"을 커밋 날짜를 고정한 git 이력으로 재현했다. 리뷰일 끝 스냅샷은 날짜 순서로 고른 커밋이라, 리뷰 당일 날짜의 곁가지 커밋이 리뷰 뒤 머지되거나, 리뷰 당일 리뷰 뒤에 커밋되거나, committer date가 과거인 리뷰 뒤 커밋이 있으면 바뀐 인용 영역을 "그대로"로 읽고, 무관한 후속 편집으로 파일 단위 검사가 잡았을 문서를 지웠다(N-20). 1.37.0 CHANGELOG의 "숨기지 않는다"는 거짓이었고, 1.37.0 이전부터 있던 줄 범위 축소도 같은 경우에 숨겼다. 이제 리뷰 스탬프를 쓴 커밋도 동의해야 축소한다. 같은 날 lite 승인 경로를 다시 훑다가, config `"strict": true`인 lite가 strict·standard가 거부하는 문서(존재하지 않는 파일 인용)를 승인하는 것을 세 모드로 재현했다(N-21). `review`가 모드의 floor만이 끈 규칙도 측정한다. 1.38.0 이전 lite에서 승인된 스캐폴드는 `stats.verifiedNotEnriched`로 보이게 했다(바꾸지는 않는다). 계획 → 코드 방향 `impact.plan_changed`(info)는 2026-10-28 설계 검토안에서 한 가지를 바꿨다: 연결 파일이 같은 diff에서 바뀌었다고 침묵하지 않고 파일별 `changed`/`unchanged`/`missing`/`uncertain`으로 표시한다.
+- evidence: `tests/drift-narrowing-baseline.test.js` 12건 중 5건, `rule-toggle-measurement`의 모드 승인 일치 테스트가 1.38.0(main 워크트리)에서 실패하고 이 변경에서 통과 · 전체 테스트 exit 0 · lint 105 files OK
+- decision: 축소만 보수화했다(유지보수자 선택, 2026-10-28). N-15의 파일 단위 늦은 머지 위음성은 2026-10-21 결정대로 한계로 남긴다. "측정된 사실 → 정책 → finding" 엔진 재설계는 하지 않았다 — 확인된 결함 둘이 소비자 단위 측정으로 닫혔다.
+- caveats: 스탬프를 커밋하지 않은 문서는 이제 축소되지 않는다(과거 날짜의 미커밋 스탬프에서만 드러난다). squash·rebase 오탐과 시간대 의존 경계는 그대로다. `impact.plan_changed`는 영어 템플릿 제목으로만 비의미 절을 알아보고, 모르는 제목은 의미 있는 변경으로 센다.
+
 ## 2026-10-28 - release: 1.38.0 준비 — 코드보다 먼저 시작하는 프로젝트
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

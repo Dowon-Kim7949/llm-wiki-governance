@@ -46,19 +46,19 @@ reviewed_by: Claude Code (delegated by Dowon-Kim)
 reviewed_at: 2026-10-28
 source_digests:
   - docs/llm-wiki/VISIBILITY.md sha256:52b9d54834606505
-  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:1be58c0916ecfc9e
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:711f3708a69e4af0
   - docs/llm-wiki/BENCHMARK.md sha256:ec7d0470a48bc7c6
-  - docs/llm-wiki/DOMAIN_FEATURES.md sha256:4f3be0a326ec9d3c
-  - docs/llm-wiki/EXAMPLES.md sha256:4966cd746cea6b06
-  - docs/llm-wiki/GLOSSARY.md sha256:8237d2b6ba460130
-  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:1d3231b8265ec9dc
-  - docs/llm-wiki/PUBLIC_API.md sha256:090d0c398f82328f
+  - docs/llm-wiki/DOMAIN_FEATURES.md sha256:58550b953a29a154
+  - docs/llm-wiki/EXAMPLES.md sha256:afcfe3a4ff0582f1
+  - docs/llm-wiki/GLOSSARY.md sha256:7caf06d61e51c6d1
+  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:32aac0fd54210512
+  - docs/llm-wiki/PUBLIC_API.md sha256:1a468eb5bcb82e9d
   - docs/llm-wiki/README.md sha256:155784a313bd4fda
-  - docs/llm-wiki/RELEASE_FLOW.md sha256:02019ed6881143f0
-  - docs/llm-wiki/domains/00_overview.md sha256:ff46b9412d284904
+  - docs/llm-wiki/RELEASE_FLOW.md sha256:fa4ee454b12332a1
+  - docs/llm-wiki/domains/00_overview.md sha256:9e863529085c6a5d
   - docs/llm-wiki/project-profile.md sha256:e02dd90aff818438
   - docs/llm-wiki/profiles/library.md sha256:f0d952a92e8621ae
-  - docs/llm-wiki/VERSIONING.md sha256:1d126c18fd851e56
+  - docs/llm-wiki/VERSIONING.md sha256:d3194292c052e55b
 ---
 
 # Review History
@@ -74,6 +74,12 @@ source_digests:
 - 2026-10-27(1.37.0 준비): 원문서들이 `drift`의 `.md` 섹션 축소, `search-docs --all-terms`, held-out 검색 평가를 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — 1.34.0 때처럼 Review Note를 더하지 않고 본문을 고쳤으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
 - 2026-10-27(greenfield, 미배포): 원문서 10종이 Greenfield 지원(`--greenfield`, 계획된 지식, `evidence.planned_unlinked`)을 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. 위키 `README.md`만 Review Note를 더해 1건(2026-09-14)을 이 아카이브로 옮겼고, 나머지는 본문을 고쳤으므로 5건 상한을 넘지 않았습니다.
 - 2026-10-28(1.38.0 준비): 원문서 9종이 꺼진 규칙의 측정(`withRulesMeasured`)·결정 템플릿 통일·`review`의 `planned` 표시를 반영하고 "미배포" 표기를 1.38.0으로 바꾸느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — Review Note를 더하지 않고 본문을 고쳤으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
+- 2026-10-28(1.39.0 준비): 원문서들이 `drift` 축소의 두 번째 기준선(N-20), 모드가 승인 가능 여부를 바꾸지 않는 `review`(N-21), `stats.verifiedNotEnriched`, `impact.plan_changed`를 반영하느라 본문이 고쳐지거나(7종) 인용 소스의 내용 해시가 바뀌어 다시 스탬프돼(`index.md`·`project-profile.md`·`profiles/library.md`) 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — Review Note를 더하지 않았으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
+- 2026-10-28(1.39.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.39.0 MINOR 판정 절 추가)와 `EXAMPLES.md`(CI 예시 핀 `@1.39`)가 고쳐져 이 문서를 다시 지목했습니다. `index.md`·위키 `README.md`·`RELEASE_FLOW.md`·`HARNESS_GOVERNANCE_ROADMAP.md`는 인용 소스(루트 README·CI 템플릿·액션·ROADMAP)가 버전 핀과 기능 한 문장만 바뀌어 본문이 그대로 맞고, 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
+- 2026-10-28(다른 스택 검증): 원문서들이 workspace 힌트·프로젝트 이름·type review item(N-22~N-24)과 새 워크스루를 반영하느라 본문이 고쳐지거나(7종) 인용한 루트 README가 "다른 스택" 문단 하나만 바뀌어 재스탬프돼(`index.md`·위키 `README.md`) 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
+- 2026-10-28(1.40.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.40.0 MINOR 판정 절)와 `EXAMPLES.md`(CI 예시 핀 `@1.40`)가 고쳐져 이 문서를 다시 지목했습니다. 인용 소스가 버전 핀만 바뀐 문서는 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
+- 2026-10-28(보안 수정 N-25): 원문서 `PUBLIC_API.md`(MCP 절)·`ARCHITECTURE_CONVENTIONS.md`(git.js)·`HARNESS_GOVERNANCE_ROADMAP.md`(59번)가 git 옵션 주입 수정을 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
+- 2026-10-28(N-25 재검증): 원문서 5종(`PUBLIC_API.md`·`ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`·`HARNESS_GOVERNANCE_ROADMAP.md`·`VERSIONING.md`)의 본문이 고쳐져 이 문서를 다시 지목했습니다. 고친 내용은 N-25의 CLI 영향 정정, 스탬프 커밋 판정 보수화(N-26·N-27), TOML 배열 테이블(N-28)입니다. 루트 README를 인용하는 `index.md`·위키 `README.md`·`EXAMPLES.md`는 README의 쓰기 플래그 목록·MCP `cwd` 안내·보안 업데이트 행과 겹치는 서술이 없어 본문이 그대로 맞고, 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 
 ## Architecture Conventions
 

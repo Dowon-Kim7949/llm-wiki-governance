@@ -1123,6 +1123,63 @@ document model.
 **Next:** whether a requirement edit can point at code without guessing; the anchor
 comparison, the paid benchmark, and a third query set, as before.
 
+## Release Plan (post-1.38.0) — gates that let through what they exist to stop, and the plan-to-code direction — **shipped as 1.39.0 (2026-10-28)**
+
+An external review asked whether `drift` narrowing could hide a change. It could, and
+reproducing it led to a second gate that depended on the governance mode.
+
+- **`drift` narrowing needs the review's own commit to agree.** The review-day snapshot is
+  chosen by date and can be a side-branch commit merged after the review, a later commit on
+  the review day, or a backdated commit; a changed citation then read as unchanged and was
+  dropped. Line-range narrowing (older than 1.37.0) did the same. A citation is now dropped
+  only when the commit that wrote the current review stamp also shows no change, and is
+  checked at file level when that commit cannot be found.
+- **A mode no longer changes what `review` can approve.** With `"strict": true`, lite
+  approved a document strict and standard refuse. `review` now measures the rules the mode
+  alone switched off; `stats` lists approved documents that still carry scaffold text.
+- **`impact.plan_changed` (info).** When an approved requirement or decision changes, `impact`
+  lists the files it links and whether each changed in the same diff. It names candidates
+  for review and judges nothing.
+- **Not done.** The file-level late-merge gap (N-15) stays a recorded limit; acceptance
+  criteria are still not traced one by one; whether agents follow the plan-change list was
+  not measured.
+
+**Next:** cross-stack validation outside this repository (a Python backend and a React +
+Node full-stack fixture next to the Vue demos), and a first-time developer path through
+the README that is checked by script.
+
+## Release Plan (post-1.39.0) — the same checks outside this repository — **shipped as 1.40.0 (2026-10-28)**
+
+Show, reproducibly, that the tool works on projects that are not its own wiki.
+
+- **Two stack walkthroughs** run in `npm test`: an existing Python (FastAPI) service and a
+  React + Express npm workspace with a shared API contract. Each needs only Node.js and git
+  and never runs the application. The greenfield demo now also changes a requirement ahead of
+  its code.
+- **Defects found on the first run.** A workspace full-stack repository was detected as
+  `unknown`; following the advice to pass `--type` then failed every `validate --strict`; and
+  a Python service was named after its directory. The second and third are fixed; for the
+  first, `init` suggests a type instead of changing detection, which would have changed the
+  required documents of existing repositories.
+- **`docs/VALIDATION.md`** lists what was shown on which stack, how to reproduce it, and what
+  was not: agent behaviour, efficacy, and an independent developer following the README. It
+  now also maps each README claim to its evidence, and records a run of the packed tarball in
+  an isolated environment.
+- **Security.** The MCP `validate` tool and the programmatic API passed a caller-supplied
+  `since` to git unchecked, so a value git reads as an option could make it write a file. The
+  CLI was not exposed. Revisions are now validated and followed by `--`. 1.39.0 lacked the fix
+  and was not published on its own.
+- **`drift` narrowing, re-checked.** Two more histories hid a cited change: a body line shaped
+  like the review stamp, and a review branch squashed or rebased onto newer commits. Both now
+  fall back to file level. A squash on the review day itself remains a pinned limit.
+- **Not done.** Go, JVM, PHP, Ruby, .NET, mobile and infrastructure remain detection-only;
+  pnpm workspaces are not parsed; no model was run; no independent developer has run
+  `docs/USABILITY_PROTOCOL.md` yet.
+
+**Next:** an independent developer following the README from a clean machine; detection that
+can improve without changing the type of repositories already initialized; the paid benchmark
+when budgeted.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

@@ -7,6 +7,7 @@ Language: [English](./README.md) | **한국어**
 1. 빈 저장소에서 계획(요구사항, 수용 기준, 아키텍처 결정 하나)을 기록하고 승인합니다.
 2. 작은 Vue 3 + TypeScript 앱으로 요구사항 하나를 구현하고, 그 코드와 테스트를 요구사항에 연결합니다.
 3. 코드를 바꾸면 `impact`가 다시 검토할 요구사항을 지목합니다.
+4. 1.39.0부터는 반대 방향도 돌립니다. 소유자가 코드보다 먼저 요구사항을 바꾸면 `impact`가 그 요구사항이 연결한 파일을 알려 줍니다.
 
 [Vue 3 데모](../vue3-typescript-demo/README.ko.md)는 이 데모의 Brownfield 판입니다. 그쪽은 앱이 먼저 있고 위키를 앱에서 써 냅니다. 두 데모는 아래 5단계에서 만나고, 그 뒤로는 같은 근거 기반 위키입니다.
 
@@ -19,7 +20,7 @@ node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough
 ```
 
 - 임시 git 저장소에서 돌고, 각 명령의 실제 출력을 보여 준 뒤 PASS/FAIL 표로 끝납니다.
-- 검사는 20개입니다. Node 22.6 미만에서는 18개입니다. 의존성 없이는 앱의 TypeScript 테스트를 돌릴 수 없어서 "통과"가 아니라 "건너뜀"으로 표시합니다.
+- 검사는 23개입니다. Node 22.6 미만에서는 21개입니다. 의존성 없이는 앱의 TypeScript 테스트를 돌릴 수 없어서 "통과"가 아니라 "건너뜀"으로 표시합니다.
 - 옵션: `--full`은 출력 전체, `--keep`은 저장소 보존, `--cli <path>`는 다른 CLI 지정입니다.
 - 필요한 것은 Node.js 18.18 이상과 git이고, 모델이나 API 키는 쓰지 않습니다.
 
@@ -33,8 +34,8 @@ node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough
 | 3 | `review --approve`. `--reviewer "Demo Reviewer"`가 프로젝트 소유자를 대신합니다 | 실제 CLI |
 | 4 | REQ-001 구현 | [`implementation/`](./implementation/)에 **미리 작성**. 테스트는 Node 22.6 이상에서 실제로 돌립니다 |
 | 5 | 코드와 테스트를 REQ-001·ADR-0001에 연결 | [`linking/`](./linking/)에 **미리 작성** |
-| 5-8 | `validate`, `review`, `stats`, `search-docs`, `impact` | 실제 CLI |
-| 6-7 | 코드 변경과 요구사항 수정 | 스크립트 편집(`scripts/demo.mjs`) |
+| 5-9 | `validate`, `review`, `stats`, `search-docs`, `impact` | 실제 CLI |
+| 6-8 | 코드 변경과 두 번의 요구사항 수정 | 스크립트 편집(`scripts/demo.mjs`) |
 
 ## 단계
 
@@ -54,8 +55,12 @@ node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough
 6. **코드를 바꿉니다.** 새 규칙은 "작업을 요청한 사람은 그 작업을 승인할 수 없다"입니다.
    - `impact --since HEAD`가 exit 1로 끝나고 REQ-001만 지목합니다.
    - ADR-0001은 인용한 머리 줄이 바뀌지 않아 줄 범위로 축소되고, REQ-002는 코드를 인용하지 않습니다.
-7. **요구사항을 고치고 다시 검토합니다.** AC-5를 추가하고 승인하면 `impact`가 작업 트리와 커밋 양쪽에서 통과합니다.
-8. **최종 상태입니다.** `validate --strict`가 통과합니다. 남는 것은 보류된 REQ-002에 대한 info 한 줄뿐입니다.
+7. **요구사항을 고치고 다시 검토합니다.** AC-5를 추가하고 승인하면 `impact`가 작업 트리와 커밋 양쪽에서 통과합니다. 같은 diff에서 요구사항이 바뀌었으므로 `impact`가 그 연결 파일도 알려 주고(`impact.plan_changed`, info), 두 파일 모두 `changed`로 나옵니다. 편집됐다는 뜻이지 AC-5를 구현했다는 뜻은 아닙니다. 그것은 테스트가 확인합니다.
+8. **코드보다 먼저 요구사항을 바꿉니다.** 소유자가 승인에 만료를 두기로 합니다(AC-6). 코드는 바꾸지 않습니다.
+   - `impact`는 exit 0으로 끝나고, 앞으로 바뀌어야 할 `src/domain/approval.ts`와 `tests/approval.test.ts`를 `unchanged`로 알려 줍니다.
+   - JSON(`changedPlans`)에서는 Acceptance Criteria 절은 셌고, 문구만 고친 Open Questions는 세지 않았음을 확인할 수 있습니다.
+   - 소유자가 바뀐 계획을 승인합니다. AC-6은 계획이고 아직 구현되지 않았습니다.
+9. **최종 상태입니다.** `validate --strict`가 통과합니다. 남는 것은 보류된 REQ-002에 대한 info 한 줄뿐입니다.
 
 단계를 손으로 따라가려면 이 체크아웃 밖에 빈 저장소를 만들고, 같은 스크립트로 편집을 하나씩 적용합니다.
 
@@ -63,12 +68,12 @@ node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough
 node examples/greenfield-vue-demo/scripts/demo.mjs workspace ~/greenfield-wiki-demo
 cd ~/greenfield-wiki-demo
 node <checkout>/bin/llm-wiki.js init --write --greenfield
-node <checkout>/examples/greenfield-vue-demo/scripts/demo.mjs plan   # 이어서 implement, link, enable-gate, change-source, update-requirement
+node <checkout>/examples/greenfield-vue-demo/scripts/demo.mjs plan   # 이어서 implement, link, enable-gate, change-source, update-requirement, change-requirement
 ```
 
 ## 이 데모가 보여 주지 않는 것
 
 - **코드가 요구사항을 충족한다는 것.** 연결된 참조는 REQ-001이 어디에 구현됐는지 보여 줄 뿐입니다. 충족 여부는 테스트가 확인하고, 그것으로 충분한지는 사람이 판단합니다. 어떤 `llm-wiki` 명령도 테스트를 돌리거나 요구사항을 판정하지 않습니다.
-- **요구사항 수정이 코드를 지목하는 것.** `impact`는 코드에서 문서 방향으로만 작동합니다. 요구사항이 바뀌면 연결된 코드와 테스트는 사람이 다시 확인합니다.
+- **요구사항 수정이 어떤 코드를 깨뜨리는지.** 1.39.0부터 `impact`는 바뀐 요구사항이 연결한 파일을 알려 주지만, 연결한 파일만, 파일 단위로 알려 줄 뿐 어느 것도 판정하지 않습니다. 새 내용과 대조해 다시 확인하는 일은 여전히 사람의 몫입니다.
 - **수용 기준 단위 추적.** 근거는 문서 단위로 추적하므로 요구사항 하나에 문서 하나가 단위입니다. 문서 안의 수용 기준은 하나하나 추적하지 않습니다.
 - **lite 모드 기본값.** 이 데모는 `impact.source_changed`를 손으로 켭니다. 신규 프로젝트는 lite로 시작하고, lite에서는 `impact`와 `drift`가 꺼져 있습니다.

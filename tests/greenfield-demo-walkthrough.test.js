@@ -19,8 +19,10 @@ test("greenfield demo: the documented walkthrough passes every check against thi
   const run = spawnSync(process.execPath, [script, "walkthrough", "--cli", cli, "--quiet"], { encoding: "utf8" });
   const output = `${run.stdout}${run.stderr}`;
   assert.equal(run.status, 0, output);
-  // 18 governance checks, plus the app's tests twice where Node can run them.
-  assert.match(output, new RegExp(`All ${canRunAppTests() ? 20 : 18} checks passed\\.`));
+  // 21 governance checks, plus the app's tests twice where Node can run them.
+  // 1.39.0 added three: a requirement changed ahead of its code (impact.plan_changed
+  // in text and JSON) and its re-approval.
+  assert.match(output, new RegExp(`All ${canRunAppTests() ? 23 : 21} checks passed\\.`));
   // The one step that must fail is the point of the demo, and it names only the
   // requirement whose code changed — the line-range-anchored ADR and the
   // unlinked, deferred requirement stay quiet.

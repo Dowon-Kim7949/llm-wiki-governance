@@ -151,3 +151,17 @@ Every public surface was re-read against the source on 2026-10-26 (1.34.0). Verd
 | Zero-dependency; read-only MCP; OKF `type`/`aliases`/`tags` | README, `package.json` | verified | kept |
 | "An unenriched wiki measured worse than no wiki" | README | conditional: one repo, one model, six tasks; +14% is a lower bound; two of six tasks went the other way | kept, conditions now inline |
 | Description wording | `package.json` vs GitHub "About" | minor mismatch in word order | maintainer's call (repo settings) |
+
+## 2026-10-28 re-check (1.40.0 candidate)
+
+| Claim | Where | Verdict | Action |
+| --- | --- | --- | --- |
+| "Read-only MCP" (row above: verified) | README, SECURITY, this file | **was false through 1.38.0**: `validate` with a crafted `since` made git write a file (N-25) | true from 1.40.0, tested; README and SECURITY now say so. Do not call it "always read-only". |
+| "`cwd` selects the project" | MCP docs | conditional: `cwd` is not a sandbox; any directory the server can read | stated in SECURITY and README |
+| "Every citation is checked" | README | verified, with the existing limit (resolving ≠ true) | kept |
+| "Report a vulnerability through GitHub (preferred)" | SECURITY | **broken on 2026-10-28**: private vulnerability reporting is disabled on the repository | maintainer action: enable it in repository settings |
+| "Tested on Windows, macOS, Linux" | README | verified by CI for the 1.40.0 candidate: PR #8 at `4c37b20`, 12 of 12 jobs (three OS × Node 18.18 / 20 / 22 / 24) | may be said for 1.40.0; it describes CI tests, not production use on those platforms |
+| Security fix "shipped" | any post | forbidden until 1.40.0 is on npm and the advisory is public | posts carry it as a bracketed, conditional line |
+
+**Added to Forbidden:** describing how the N-25 issue is triggered in any promotional text, and
+calling a release "fixed" or "secure" before the fixed package resolves from the registry.

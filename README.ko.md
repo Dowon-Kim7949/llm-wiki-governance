@@ -33,9 +33,11 @@ npx llm-wiki-governance quickstart --write --type frontend --agent claude   # �
 
 CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단계뿐이고 품질도 거기서 갈리므로, 처음 위키를 만들 때는 가장 강한 추론 모델을 쓰세요.
 
-**코드가 아직 없는 프로젝트를 시작할 때**(`--greenfield`, 1.38.0): `quickstart --write --greenfield`가 요구사항·결정(ADR) 문서를 만들고 계획용 프롬프트를 출력합니다. 에이전트는 사용자가 말한 목적·요구사항·수용 기준·결정만 기록하고, 지어내지 않으며, 소스를 인용하지 않습니다. 요구사항 승인은 계획 승인이지 구현 승인이 아닙니다. `validate`는 연결된 근거가 없는 승인 계획을 info로 보고하고, `stats`는 계획 문서를 따로 셉니다. 코드가 생기면 요구사항마다 소스 파일과 테스트를 `evidence`에 연결하세요. 그때부터는 다른 문서와 똑같이 검사받고, 위의 기존 프로젝트 절차가 그대로 적용됩니다. [`examples/greenfield-vue-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/greenfield-vue-demo)가 빈 저장소에서 이 경로를 돌려 봅니다.
+**코드가 아직 없는 프로젝트를 시작할 때**(`--greenfield`, 1.38.0): `quickstart --write --greenfield`가 요구사항·결정(ADR) 문서를 만들고 계획용 프롬프트를 출력합니다. 에이전트는 사용자가 말한 목적·요구사항·수용 기준·결정만 기록하고, 지어내지 않으며, 소스를 인용하지 않습니다. 요구사항 승인은 계획 승인이지 구현 승인이 아닙니다. `validate`는 연결된 근거가 없는 승인 계획을 info로 보고하고, `stats`는 계획 문서를 따로 셉니다. 코드가 생기면 요구사항마다 소스 파일과 테스트를 `evidence`에 연결하세요. 그때부터는 다른 문서와 똑같이 검사받고, 위의 기존 프로젝트 절차가 그대로 적용됩니다. 나중에 승인된 요구사항이나 결정이 바뀌면 `impact`가 그 문서가 연결한 파일과 각 파일이 같은 diff에서 바뀌었는지를 알려 줍니다(1.39.0, info). 다시 볼 곳을 알려 줄 뿐 판정하지 않습니다. [`examples/greenfield-vue-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/greenfield-vue-demo)가 빈 저장소에서 이 경로를 돌려 봅니다.
 
 **데모.** [`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo)는 작은 Vue 3 앱으로 전체 흐름을 임시 git 저장소에서 돌립니다(`npm install && npm run demo`, Node.js 20.19+, API 키 불필요). 소스 근거 문서 2개, `validate --strict`, `review --approve`를 거친 뒤 코드를 바꾸면 문서를 고칠 때까지 `impact`가 exit 1로 끝납니다. 한계도 보여 줍니다. 문서를 *틀린* 숫자로 고쳐도 통과하고, 날짜 기준 `drift`는 검토와 같은 날 커밋된 변경을 놓칩니다.
+
+**다른 스택.** 워크스루 두 개가 더 있습니다. 기존 Python(FastAPI) 서비스([`examples/python-fastapi-brownfield`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/python-fastapi-brownfield))와 공유 API 계약을 둔 React + Express workspace([`examples/react-node-fullstack`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/react-node-fullstack))에서 돕니다. 둘 다 Node.js와 git만 있으면 됩니다. 어떤 스택에서 무엇을 확인했는지, 어떻게 재현하는지, 무엇을 아직 보이지 못했는지는 [docs/VALIDATION.ko.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/VALIDATION.ko.md)에 있습니다. 루트 매니페스트에 프레임워크가 없는 npm workspace 저장소는 `unknown`으로 감지되고, `init`이 멤버 매니페스트를 보고 `--type`을 제안합니다.
 
 ## AGENTS.md나 CLAUDE.md만으로는 왜 부족한가
 
@@ -55,7 +57,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 - **문서를 대신 쓰지 않습니다.** CLI는 뼈대를 만들고 검사하고 프롬프트를 출력합니다. 내용은 에이전트가 씁니다.
 - **누가 승인했는지 증명하지 못합니다.** `reviewed_by`에는 `review --approve`에 넘긴 이름이 기록될 뿐입니다. 에이전트 이름을 `agentReviewers`에 적어 두면 `stats`가 그 승인을 따로 셉니다. 누가 머지할 수 있는지는 이 도구가 아니라 브랜치 보호가 정합니다. 이 저장소의 위키는 유지보수자의 기록된 결정에 따라 에이전트가 승인합니다([AGENTS.md](./AGENTS.md)).
 - **의미 검색이 아닙니다.** 조회는 키워드 일치를 BM25로 순위 매기는 방식이고, 임베딩도 인덱스 서비스도 없습니다. 호스팅 서비스도 아니어서 CLI가 스스로 네트워크를 호출하지 않습니다.
-- **변경 감지는 대부분 파일 단위입니다.** `impact`와 `drift`는 라인 범위나 마크다운 섹션으로 인용한 경우만 그 영역으로 좁히고, 날짜 기준 `drift`에는 머지 방식에 따른 사각지대도 있습니다. [Wiring the gate](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#wiring-the-gate-the-step-most-repos-skip)(영문)를 보세요.
+- **변경 감지는 대부분 파일 단위입니다.** `impact`와 `drift`는 라인 범위나 마크다운 섹션으로 인용한 경우만 그 영역으로 좁히고, 1.39.0부터 `drift`는 검토를 기록한 커밋도 동의할 때만 좁힙니다. 날짜 기준 `drift`에는 머지 방식에 따른 사각지대도 있습니다. [Wiring the gate](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#wiring-the-gate-the-step-most-repos-skip)(영문)를 보세요.
 
 ## 명령
 
@@ -73,11 +75,11 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 | `mcp` | 읽기 전용 MCP 서버를 띄웁니다. |
 | `fix` · `migrate` · `archive-log` · `handoff` · `prompt` · `check-run` · `harness-health` · `import-memory` | 범위를 한정한 자동 수정, 문서 계약 업그레이드, 변경 로그 월별 보관, 에이전트 프롬프트, 하네스 점검입니다. |
 
-쓰기는 `--write`나 `--apply`, `--approve`를 직접 줬을 때만 일어납니다. `--lang ko`는 findings를 한국어로, `--doc-lang ko`는 생성되는 위키 본문을 한국어로 만듭니다. CLI를 spawn하는 대신 패키지를 import해서 쓸 수도 있습니다(`import { commands, run } from "llm-wiki-governance"`). 전체 참조는 `npx llm-wiki-governance help <command>`(영문, 오프라인)이고, `--version`은 설치된 버전만 출력합니다.
+쓰기는 `--write`, `--apply`, `--approve`, `drift --downgrade`, `--out <파일>`을 직접 줬을 때만 일어납니다. 그 밖의 명령과 모든 MCP 툴은 읽기만 합니다. `--lang ko`는 findings를 한국어로, `--doc-lang ko`는 생성되는 위키 본문을 한국어로 만듭니다. CLI를 spawn하는 대신 패키지를 import해서 쓸 수도 있습니다(`import { commands, run } from "llm-wiki-governance"`). 전체 참조는 `npx llm-wiki-governance help <command>`(영문, 오프라인)이고, `--version`은 설치된 버전만 출력합니다.
 
 ## CI에서 돌리기
 
-[`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 쓰세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.38.0`. 리포트를 job summary에 붙이고, 거기에 `impact`가 다시 검토하라는 문서 목록도 들어갑니다(`summary: "false"`로 끔). 비공개 저장소라면 러너 없이 도는 `templates/git-hooks/pre-commit` 훅과 `LLM_WIKI_RUNNER` 변수(self-hosted 러너)로 조직이 나눠 쓰는 러너 시간을 아낄 수 있습니다. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)(영문)에 있습니다.
+[`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 쓰세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.40.0`. 리포트를 job summary에 붙이고, 거기에 `impact`가 다시 검토하라는 문서 목록도 들어갑니다(`summary: "false"`로 끔). 비공개 저장소라면 러너 없이 도는 `templates/git-hooks/pre-commit` 훅과 `LLM_WIKI_RUNNER` 변수(self-hosted 러너)로 조직이 나눠 쓰는 러너 시간을 아낄 수 있습니다. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)(영문)에 있습니다.
 
 ## 거버넌스 모드
 
@@ -99,7 +101,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 { "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-툴은 전부 읽기 전용이고 `verified` 승격은 CLI에서만 일어납니다. 인증 기능이 없으니 로컬 서브프로세스로만 쓰세요([SECURITY.ko.md](./SECURITY.ko.md#mcp-서버-신뢰-모델)).
+툴은 전부 읽기 전용이고 `verified` 승격은 CLI에서만 일어납니다. 인증 기능이 없고 `cwd` 인자도 샌드박스가 아니니 로컬 서브프로세스로만 쓰세요([SECURITY.ko.md](./SECURITY.ko.md#mcp-서버-신뢰-모델)). 1.40.0 이전 버전은 `validate`를 통해 파일을 쓰게 만들 수 있었으니 올리세요.
 
 ## 도입과 운영에 드는 것
 
@@ -117,6 +119,7 @@ Windows·macOS·Linux에서 런타임 의존성 없이 돕니다. Node·Python·
 | `sensitive.redacted`가 문서를 막음 | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you)(영문) |
 | 모든 명령·옵션·exit code | [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · `help <command>`(영문) |
 | 신뢰 모델, 취약점 제보 | [SECURITY.ko.md](./SECURITY.ko.md) |
+| 보안 수정 받기 | 보안 수정은 최신 릴리스에만 들어갑니다. `npm install -D llm-wiki-governance@latest` 후 `--version`으로 확인하세요. |
 | 실사용 예시 | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) |
 | 출시 이력, 방향, 결정 기록 | [CHANGELOG.ko.md](./CHANGELOG.ko.md) · [ROADMAP.ko.md](./ROADMAP.ko.md) · [GATE_REVIEW.md](./GATE_REVIEW.md)(영문) |
 

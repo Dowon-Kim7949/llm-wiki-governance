@@ -11,7 +11,7 @@ import { listMarkdownFiles, pathExists, toPosix } from "../files.js";
 import { findMojibakeIndicators, hasUtf8Bom, readTextAuto, readUtf8 } from "../encoding.js";
 import { parseFrontmatter } from "../frontmatter.js";
 import { scanSensitiveInfo } from "../sensitive-info.js";
-import { commitAtEndOf, fileAtRef, fileAtRefFromCwd, fileChangedSince, lineRangeChangedSince, pathsChangedSince } from "../git.js";
+import { commitAtEndOf, committedBy, commitsTouchingKey, fileAtRef, fileAtRefFromCwd, fileChangedSince, lineRangeChangedBetween, lineRangeChangedSince, pathsChangedSince } from "../git.js";
 import { isAppendOnlyLog, isTemplateDoc, listTargetMarkdown, listWikiContentDocs } from "./wiki-files.js";
 import { ADAPTER_TARGETS } from "./adapters.js";
 import { collectWikiGraph } from "./wiki-graph.js";
@@ -776,7 +776,9 @@ export function driftTargets(frontmatter, options = {}) {
   const baseline = reviewedAt ?? lastUpdated;
   if (!baseline) return null;
 
-  return { baseline, ...anchors };
+  // baselineKey names the frontmatter field the baseline came from, so the drift
+  // scan can find the commit that wrote it (reviewStamp in scanEvidenceDriftDetailed).
+  return { baseline, baselineKey: reviewedAt ? "reviewed_at" : "last_updated", ...anchors };
 }
 
 // Flags verified documents whose referenced files changed in git after the
@@ -786,11 +788,31 @@ export function driftTargets(frontmatter, options = {}) {
 // edits elsewhere in the file are not drift. A line range asks `git log -L`; a
 // section (2026-10-27) is compared between the repository as of the end of the
 // review day (commitAtEndOf) and HEAD — committed history only, like every other
-// date check here. Anything that cannot be compared exactly — a line query git
-// rejects (e.g. an out-of-range line), no review-day snapshot, a file absent on
-// either side, a heading that matches zero or several headings — falls back to
-// the file-level check, so narrowing only removes a finding whose cited text
-// provably did not move. Best-effort: silently skips when git is unavailable.
+// date check here.
+//
+// Neither date question names the repository the reviewer saw, and both were
+// shown (2026-10-28) to hide a cited region that DID change: a side-branch commit
+// dated the review day but merged after it, a commit made later the same day, and
+// a commit made after the review with an older committer date each read as
+// "unchanged", while the file-level check, triggered by an unrelated later edit,
+// would have reported the document. So a citation is only ever narrowed away when
+// the commit that wrote the document's current review stamp (reviewStamp) agrees
+// as well: no commit between it and HEAD touched a cited line range, and every
+// cited section reads the same there as at HEAD. Requiring a second baseline can
+// only keep findings, never remove one.
+//
+// Anything that cannot be compared exactly — a line query git rejects (e.g. an
+// out-of-range line), no review-day snapshot, no stamp commit (the stamp is not
+// committed, or does not match what is committed), a file absent on either side, a
+// heading that matches zero or several headings — falls back to the file-level
+// check, and so does a stamp commit dated after the review day (a review committed
+// later, or one squashed or rebased onto a newer branch). Known limits that remain:
+// a cited region changed only by commits the date check cannot see (the late merge
+// with no later edit, N-15) is not reported at all, and a squash or rebase on the
+// review day itself is still taken to be what was reviewed. Git history cannot name
+// the files a reviewer looked at; both baselines are approximations of it, and the
+// scan only ever narrows when they agree. Best-effort: silently skips when git is
+// unavailable.
 // Template skeletons are out of scope (N-14, 2026-08-06): review cannot
 // re-stamp them, so flagging them produced findings with no way to clear them.
 export async function scanEvidenceDrift(cwd, options = {}) {
@@ -842,6 +864,17 @@ export async function scanEvidenceDriftDetailed(cwd, options = {}) {
     const parsed = parseFrontmatter(await readUtf8(file));
     const targets = driftTargets(parsed.frontmatter, options);
     if (!targets) continue;
+    // The commit that wrote this document's review stamp, resolved at most once per
+    // document and only when a citation is about to be narrowed away.
+    let stampResolved = false;
+    let stamp = null;
+    const stampCommit = () => {
+      if (!stampResolved) {
+        stampResolved = true;
+        stamp = reviewStamp(cwd, rel, targets.baselineKey, targets.baseline);
+      }
+      return stamp;
+    };
 
     for (const base of targets.files) {
       if (!(await pathExists(path.join(cwd, base)))) continue;
@@ -896,6 +929,13 @@ export async function scanEvidenceDriftDetailed(cwd, options = {}) {
         }
       }
 
+      // About to narrow the citation away: the review's own commit must agree.
+      if (!staleReference && !fallbackFileLevel && fileChangedMemo(base, targets.baseline)) {
+        const verdict = citedRegionsSinceStamp(cwd, base, locators, stampCommit(), contentAt);
+        if (verdict.fallback) fallbackFileLevel = true;
+        else if (verdict.staleReference) staleReference = verdict.staleReference;
+      }
+
       if (fallbackFileLevel) {
         if (fileChangedMemo(base, targets.baseline)) {
           findings.push(driftFinding(rel, `${base}`, targets.baseline));
@@ -908,6 +948,73 @@ export async function scanEvidenceDriftDetailed(cwd, options = {}) {
     }
   }
   return { findings, locatorNarrowed };
+}
+
+// The commit that wrote <rel>'s current review stamp: the newest commit in HEAD's
+// history that changed the frontmatter <key> to the value the working tree carries,
+// or null when that cannot be established — the stamp was never committed, the
+// committed one differs (an uncommitted re-stamp), git fails, or the commit is dated
+// after the review day — and the caller then refuses to narrow. A later same-value
+// re-stamp does not move it, so it can only be older than the last review, which
+// keeps more findings, not fewer.
+//
+// Two ways the stamp commit read later than the review, both reproduced 2026-10-28
+// and both hiding a cited change the reviewer never saw:
+//   - `-G^<key>:` also matches a body line, such as a fenced example, so editing
+//     one named that later commit. A candidate counts only if its parent carried a
+//     different value (or no file).
+//   - a squash or rebase writes the stamp into a new commit on top of whatever the
+//     target branch held by then, so that commit's history includes changes made
+//     after the review. Such a commit is dated after the review day, and a stamp
+//     commit dated after the review day is not trusted to name what was reviewed.
+// What remains: a squash or rebase on the review day itself still counts, the
+// date-granularity limit every date check here shares.
+export function reviewStamp(cwd, rel, key, value) {
+  const candidates = commitsTouchingKey(cwd, rel, key);
+  if (!candidates) return null;
+  const valueAt = (ref) => {
+    const committed = fileAtRefFromCwd(cwd, ref, rel);
+    return committed === null ? null : parseFrontmatter(committed).frontmatter?.[key] ?? null;
+  };
+  for (const sha of candidates) {
+    // Newest first: the first candidate that does not carry the value means the
+    // value the working tree reads was never committed after it.
+    if (valueAt(sha) !== value) return null;
+    if (valueAt(`${sha}^`) === value) continue;
+    return committedBy(cwd, sha, value) ? sha : null;
+  }
+  return null;
+}
+
+// Whether a citation's regions moved between the review stamp commit and HEAD:
+// { staleReference } when one did, { fallback: true } when that cannot be decided
+// (no stamp commit, a line query git rejects, a file or region missing on either
+// side), and {} when every region is provably the same. Line ranges ask `git log
+// -L <stamp>..HEAD`, which follows the lines through edits above them and decides
+// by ancestry rather than dates; sections compare text, as the date path does.
+function citedRegionsSinceStamp(cwd, base, locators, stamp, contentAt) {
+  if (!stamp) return { fallback: true };
+  for (const range of locators.filter((locator) => locator.kind === "line")) {
+    try {
+      if (lineRangeChangedBetween(cwd, base, range.start, range.end, stamp)) {
+        return { staleReference: `${base}#L${range.start}-L${range.end}` };
+      }
+    } catch {
+      return { fallback: true };
+    }
+  }
+  const sections = locators.filter((locator) => locator.kind === "section");
+  if (sections.length === 0) return {};
+  const before = contentAt(stamp, base);
+  const after = contentAt("HEAD", base);
+  if (before === null || after === null) return { fallback: true };
+  for (const section of sections) {
+    const was = locatedRegion(before, section);
+    const now = locatedRegion(after, section);
+    if (was === null || now === null) return { fallback: true };
+    if (was !== now) return { staleReference: `${base}${locatorLabel(section)}` };
+  }
+  return {};
 }
 
 // A negative filter over pathsChangedSince: false only when no commit after the

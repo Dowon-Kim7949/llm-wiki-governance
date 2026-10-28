@@ -23,13 +23,21 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:7cfa335ece8b01a7
-  - README.md sha256:14fc22598dde8a49
+  - src/cli.js sha256:b4c407f857f2de78
+  - README.md sha256:c66473dc9b5fde80
 ---
 
 # Examples
 
 실제로 검증된 사용 예시입니다. 명령/옵션 근거는 [Public Api](PUBLIC_API.md).
+
+1.40.0부터 다른 스택의 워크스루도 있습니다. `examples/python-fastapi-brownfield/`(기존 Python 서비스, 검사 21개)와 `examples/react-node-fullstack/`(React + Express workspace와 공유 API 계약, 검사 15개)이며, 둘 다 `node examples/<이름>/scripts/walkthrough.mjs` 한 줄로 돌고 Node.js와 git만 필요합니다. 스택별로 무엇을 확인했고 무엇을 아직 못 보였는지는 위키 밖의 `docs/VALIDATION.md`에 정리했습니다.
+
+```bash
+node examples/python-fastapi-brownfield/scripts/walkthrough.mjs   # pyproject.toml 감지 · 지어낸 인용 탐지 · impact · drift 두 경우
+node examples/react-node-fullstack/scripts/walkthrough.mjs        # workspace 힌트 → --type fullstack · 계약 변경 하나가 문서 셋을 지목
+llm-wiki init --dry-run                                           # npm workspace 저장소: type unknown + "hint: ... --type fullstack"
+```
 
 처음부터 끝까지 직접 실행해 볼 수 있는 예제는 저장소의 `examples/vue3-typescript-demo/`에 있습니다(2026-10-27). Vue 3 + TypeScript 할 일 앱에서 `init --write` → 소스 근거 문서 2종 → `validate --strict` → `review --approve` → 소스 변경 → `impact` exit 1 → 문서 갱신·재승인 → `impact` exit 0을 `npm run demo` 한 번으로 돌립니다. lite 모드에 `impact.source_changed` 규칙 하나만 켜는 구성이고, `tests/vue-demo-walkthrough.test.js`가 CI마다 현재 CLI로 같은 시나리오를 실행합니다. npm 패키지에는 들어가지 않습니다.
 
@@ -50,7 +58,19 @@ llm-wiki review --approve docs/llm-wiki/requirements/REQ-001-<slug>.md   # 계�
 llm-wiki stats                                            # planned_knowledge: 승인 수 · 근거 연결 linked/unresolved/none
 ```
 
-`init`은 매니페스트 파일이 없으면 생성 문서에 소스를 적지 않습니다(그 전에는 없는 `package.json`을 적었습니다). 요구사항은 문서 하나에 하나씩 `requirements/REQ-NNN-*.md`(`doc_type: requirement`), 결정은 `decisions/ADR-NNNN-*.md`(`doc_type: decision`)로 둡니다. 코드가 생기면 그 요구사항의 frontmatter `evidence`에 구현 파일과 테스트를 적고 다시 승인합니다. 그때부터 `impact`가 그 코드의 변경을 지목합니다(lite에서는 꺼져 있으니 `mode set standard --write`나 `rules`로 켭니다). lite에서도 `llm-wiki next`는 아직 채우지 않은 섹션을 문서별로 보여 주고, 손대지 않은 스캐폴드는 `review --approve-all --yes`가 승인하지 않습니다(1.38.0 전에는 lite에서 둘 다 빠졌습니다). 처음부터 끝까지 돌려 보는 예제는 `examples/greenfield-vue-demo/`(`node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough`, 검사 20개)이고 `tests/greenfield-demo-walkthrough.test.js`가 CI에서 같은 시나리오를 실행합니다.
+`init`은 매니페스트 파일이 없으면 생성 문서에 소스를 적지 않습니다(그 전에는 없는 `package.json`을 적었습니다). 요구사항은 문서 하나에 하나씩 `requirements/REQ-NNN-*.md`(`doc_type: requirement`), 결정은 `decisions/ADR-NNNN-*.md`(`doc_type: decision`)로 둡니다. 코드가 생기면 그 요구사항의 frontmatter `evidence`에 구현 파일과 테스트를 적고 다시 승인합니다. 그때부터 `impact`가 그 코드의 변경을 지목합니다(lite에서는 꺼져 있으니 `mode set standard --write`나 `rules`로 켭니다). lite에서도 `llm-wiki next`는 아직 채우지 않은 섹션을 문서별로 보여 주고, 손대지 않은 스캐폴드는 `review --approve-all --yes`가 승인하지 않습니다(1.38.0 전에는 lite에서 둘 다 빠졌습니다). 처음부터 끝까지 돌려 보는 예제는 `examples/greenfield-vue-demo/`(`node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough`, 검사 23개 — 1.39.0에서 요구사항을 코드보다 먼저 바꾸는 단계가 더해졌습니다)이고 `tests/greenfield-demo-walkthrough.test.js`가 CI에서 같은 시나리오를 실행합니다.
+
+요구사항이 바뀐 PR에서 무엇을 다시 볼지(1.39.0, lite에서도 켜짐):
+
+```bash
+llm-wiki impact --since origin/main
+# changed_plans: 1 (docs/llm-wiki/requirements/REQ-001-<slug>.md)
+# ## Plans changed — linked files to re-check
+# | `.../REQ-001-<slug>.md` | acceptance criteria | `src/<module>.ts` (changed), `tests/<module>.test.ts` (unchanged) |
+llm-wiki impact --since origin/main --format json   # changedPlans[].linked[{path, change}]
+```
+
+`impact.plan_changed`는 info라 빌드를 실패시키지 않습니다. Review Notes·Evidence·Alternatives Considered·Open Questions만 고친 경우는 세지 않습니다. `changed`는 그 파일이 같은 diff에서 편집됐다는 뜻일 뿐 새 수용 기준을 구현했다는 뜻이 아니고, `unchanged`인 파일이 틀렸다는 뜻도 아닙니다.
 
 ## 생성 문서 언어 선택 (--doc-lang, 1.24)
 
@@ -109,10 +129,10 @@ node bin/llm-wiki.js validate --type library
 # `npm ci`가 필요 없고(게이트가 쓰는 패키지는 런타임 의존성이 없는 이것 하나뿐이다) 이
 # 패키지를 devDependency로 둘 필요도 없다. 비공개 저장소에서 러너 분이 과금되는 쪽이라면
 # 그 의존성 설치가 보통 워크플로에서 가장 긴 스텝이다.
-npx -y llm-wiki-governance@1.38 validate-frontmatter
-npx -y llm-wiki-governance@1.38 validate --strict --agent codex
-npx -y llm-wiki-governance@1.38 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
-npx -y llm-wiki-governance@1.38 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
+npx -y llm-wiki-governance@1.40 validate-frontmatter
+npx -y llm-wiki-governance@1.40 validate --strict --agent codex
+npx -y llm-wiki-governance@1.40 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx -y llm-wiki-governance@1.40 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
 
 🚨 **패키지 이름을 줄여 `npx llm-wiki`라고 쓰면 안 된다.** 이 패키지의 bin 이름이 `llm-wiki`인데

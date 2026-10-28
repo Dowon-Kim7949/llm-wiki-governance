@@ -2253,14 +2253,20 @@ test("evidence drift narrows to cited lines for line-only evidence", async (t) =
   await writeFile(path.join(cwd, "a.ts"), "one\ntwo\nthree\nfour\nfive\n", { encoding: "utf8" });
   gitAtDate(cwd, "2026-07-10T10:00:00")(["add", "."]);
   gitAtDate(cwd, "2026-07-10T10:00:00")(["-c", "commit.gpgsign=false", "commit", "-m", "init"]);
-  await writeFile(path.join(cwd, "a.ts"), "one\ntwo-changed\nthree\nfour\nfive\n", { encoding: "utf8" });
-  gitAtDate(cwd, "2026-07-12T10:00:00")(["add", "a.ts"]);
-  gitAtDate(cwd, "2026-07-12T10:00:00")(["-c", "commit.gpgsign=false", "commit", "-m", "edit line 2"]);
 
   // Verified doc citing ONLY line 2 (no broad source_files) → changed line → drift.
   await writeVerifiedLineEvidenceDoc(cwd, "cites-line2.md", "a.ts#L2-L2", "2026-07-11");
   // Verified doc citing ONLY lines 4-5 → unrelated to the edit → no drift.
   await writeVerifiedLineEvidenceDoc(cwd, "cites-line4.md", "a.ts#L4-L5", "2026-07-11");
+  // The reviews are committed: since 2026-10-28 a citation is narrowed only when the
+  // commit that wrote the review stamp agrees (tests/drift-narrowing-baseline.test.js),
+  // and a stamp that was never committed falls back to the file-level check.
+  gitAtDate(cwd, "2026-07-11T10:00:00")(["add", "."]);
+  gitAtDate(cwd, "2026-07-11T10:00:00")(["-c", "commit.gpgsign=false", "commit", "-m", "review"]);
+
+  await writeFile(path.join(cwd, "a.ts"), "one\ntwo-changed\nthree\nfour\nfive\n", { encoding: "utf8" });
+  gitAtDate(cwd, "2026-07-12T10:00:00")(["add", "a.ts"]);
+  gitAtDate(cwd, "2026-07-12T10:00:00")(["-c", "commit.gpgsign=false", "commit", "-m", "edit line 2"]);
 
   const result = await audit({ cwd, type: "unknown", profiles: [], agents: [], format: "text", strict: false });
   const stale = result.findings.filter((finding) => finding.rule === "evidence.stale");
@@ -3690,7 +3696,7 @@ test("package metadata targets npmjs public publish without committed tokens", a
   const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), { encoding: "utf8" }));
 
   assert.equal(packageJson.name, "llm-wiki-governance");
-  assert.equal(packageJson.version, "1.38.0");
+  assert.equal(packageJson.version, "1.40.0");
   assert.equal(packageJson.private, false);
   assert.equal(packageJson.publishConfig, undefined);
   assert.equal(packageJson.repository.url, "git+https://github.com/Dowon-Kim7949/llm-wiki-governance.git");

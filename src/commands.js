@@ -2,7 +2,7 @@ import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, GREENFIELD_DOCS, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
-import { detectProject, detectWorkspaces } from "./detector.js";
+import { detectProject, detectWorkspaces, workspaceTypeHint } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
 import { CONFIG_FILENAME, checkRunIgnored, loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
@@ -102,6 +102,7 @@ import {
 } from "./commands/fix-migrate.js";
 import { applyFilters, loadContentDocs } from "./commands/retrieval.js";
 import { currentSourceDigests, formatDigestEntry } from "./commands/source-digests.js";
+import { PLAN_CHANGED_RULE, scanPlanChanges } from "./commands/plan-changes.js";
 import { planSkillArtifacts, writeSkillArtifacts } from "./commands/skills.js";
 import {
   buildEvidenceLedger,
@@ -1273,6 +1274,7 @@ export async function impactCommand(options) {
       impactedDocuments: [],
       versionOnlyExcluded: [],
       locatorNarrowed: [],
+      changedPlans: [],
       findingSummary,
       findings
     }, "LLM-WIKI Reverse-Impact", [
@@ -1294,6 +1296,15 @@ export async function impactCommand(options) {
     : await scanReverseImpact(cwd, changedSet, { since: options.since });
   const findings = applyRuleConfig(reverseImpact.findings, options);
   const { locatorNarrowed } = reverseImpact;
+  // The other direction (1.39.0): an approved requirement or decision changed in
+  // this diff, so the files it links are named for re-checking. Info in every mode,
+  // lite included — no mode's floor lists it — and cheap, since it reads only the
+  // wiki documents inside the diff. See src/commands/plan-changes.js.
+  const planChanges = ruleSuppressed(options, PLAN_CHANGED_RULE)
+    ? { changedPlans: [], findings: [] }
+    : await scanPlanChanges(cwd, { since: options.since, changed, changedSet });
+  findings.push(...applyRuleConfig(planChanges.findings, options));
+  const { changedPlans } = planChanges;
   // Reported, not enforced — see stampOnlyDocExclusions and GATE_REVIEW.md.
   const stampOnlyExclusions = await stampOnlyDocExclusions(cwd, options.since, changed);
   // ...unless the project opted into impact.stamp_only. Skipped while
@@ -1331,6 +1342,11 @@ export async function impactCommand(options) {
     `findings: ${findings.length}`,
     `stamp_only_exclusions: ${stampOnlyExclusions.length}${stampOnlyExclusions.length ? ` (${stampOnlyExclusions.join(", ")})` : ""}`
   ];
+  // Printed only when an approved plan is in the diff, so other runs read as before.
+  if (changedPlans.length > 0) {
+    const meaningful = changedPlans.filter((plan) => plan.meaningful);
+    summary.push(`changed_plans: ${meaningful.length}${meaningful.length ? ` (${meaningful.map((plan) => plan.path).join(", ")})` : ""}${changedPlans.length > meaningful.length ? `; not counted: ${changedPlans.length - meaningful.length}` : ""}`);
+  }
 
   // What a PR reviewer needs first: which documents, and which changed sources each
   // one cites. Additive to the JSON (changedFiles stays a count); the text form is
@@ -1350,6 +1366,17 @@ export async function impactCommand(options) {
       "Next: re-read each document against the listed sources and update what is no longer true in this same change, then approve it again (`llm-wiki review --approve <path>`). `llm-wiki explain impact.source_changed` lists the other ways to clear it."
     ].join("\n");
 
+  const meaningfulPlans = changedPlans.filter((plan) => plan.meaningful);
+  const planReview = meaningfulPlans.length === 0
+    ? []
+    : [
+      "| Plan | What changed | Linked files (in this diff?) |",
+      "| --- | --- | --- |",
+      ...meaningfulPlans.map((plan) => `| \`${plan.path}\`${plan.renamedFrom ? ` (was \`${plan.renamedFrom}\`)` : ""} | ${plan.changedSections.join(", ")} | ${plan.linked.length ? plan.linked.map((link) => `\`${link.path}\` (${link.change})`).join(", ") : "none linked"} |`),
+      "",
+      "Next: re-read the linked code and tests against the new text of each plan. A file marked changed was edited in this diff, which does not show it implements the change; a file marked unchanged may still be correct. Nothing here judges either."
+    ].join("\n");
+
   return withText({
     command: "impact",
     result,
@@ -1360,11 +1387,13 @@ export async function impactCommand(options) {
     versionOnlyExcluded,
     stampOnlyExclusions,
     locatorNarrowed,
+    changedPlans,
     findingSummary,
     findings
   }, "LLM-WIKI Reverse-Impact", [
     { title: "Summary", body: summary },
     { title: "Documents to re-review", body: reReview },
+    ...(changedPlans.length > 0 ? [{ title: "Plans changed — linked files to re-check", body: planReview.length ? planReview : ["none counted: only Review Notes, Evidence, Alternatives Considered or Open Questions changed"] }] : []),
     { title: "Finding Summary", body: formatFindingSummary(findingSummary) },
     { title: "Findings", body: findings.map(formatFinding) },
     { title: "Caveats", body: [
@@ -1374,7 +1403,8 @@ export async function impactCommand(options) {
       "Documents whose doc_type is release_notes are exempt: they are immutable records of a shipped release and they anchor package.json, which changes every release.",
       "A package.json whose diff moves nothing but the version value is reported as changed but not used for anchoring (N-13, 2026-08-04): every release bumps it and no document's claims depend on the number. Any other key, an unparseable manifest, a version field added or removed, or a manifest with no baseline to compare against all still count. Version-only exclusion is package.json only, and never applies to pyproject.toml or Cargo.toml.",
       "Documents under docs/llm-wiki/templates/ are out of scope (N-14, 2026-08-06): they are skeletons adopters copy, and review cannot promote or re-stamp them, so flagging them produced findings with no way to clear them. The append-only change log is out of scope for the same reason.",
-      "stamp_only_exclusions counts wiki documents inside this diff whose ONLY change is a review stamp (status / reviewed_by / reviewed_at / last_updated / the status tag). A document in the diff is not flagged, on the reading that it was updated in this change — and a stamp satisfies that test without anyone re-reading anything, so one unrelated 'review --approve-all' in a PR's range exempts every document it stamped for the whole PR (N-9; measured: a stale contract description passed the gate that way). This is REPORTED and not enforced, because the same exclusion is how the standard remediation clears a finding, so enforcing it would leave real drift with no resolution path (N-11). Treat a non-zero count as 'these documents were not actually checked by this run'."
+      "stamp_only_exclusions counts wiki documents inside this diff whose ONLY change is a review stamp (status / reviewed_by / reviewed_at / last_updated / the status tag). A document in the diff is not flagged, on the reading that it was updated in this change — and a stamp satisfies that test without anyone re-reading anything, so one unrelated 'review --approve-all' in a PR's range exempts every document it stamped for the whole PR (N-9; measured: a stale contract description passed the gate that way). This is REPORTED and not enforced, because the same exclusion is how the standard remediation clears a finding, so enforcing it would leave real drift with no resolution path (N-11). Treat a non-zero count as 'these documents were not actually checked by this run'.",
+      ...(changedPlans.length > 0 ? ["changed_plans (impact.plan_changed, info in every mode) lists approved requirements and decisions whose text changed in this diff, with the local files they link and whether each changed here. Edits only to Review Notes, Evidence, Alternatives Considered or Open Questions, whitespace, and frontmatter other than the title are not counted; any other heading is. It names files to re-check; it never shows that code satisfies a requirement, and it cannot find code the plan does not link."] : [])
     ] }
   ]);
 }
@@ -1776,7 +1806,20 @@ export async function reviewCommand(options) {
   // NEVER_APPROVE_RULES are measured even when switched off: the enrichment gate
   // below is a fact about the document, and lite turning content.not_enriched off
   // used to let --approve-all promote every untouched scaffold.
-  const auditResult = await audit(withRulesMeasured(options, NEVER_APPROVE_RULES));
+  //
+  // So are the rules a governance MODE switched off (and nothing else did): a mode
+  // decides what is reported, never what can be approved. Measured 2026-10-28 with
+  // config `strict: true`, a document citing a file that does not exist was refused
+  // under strict and standard (evidence.missing is an error under --strict) and
+  // approved under lite, which turns that rule off. A rule the project switched off
+  // by name stays off here, exactly as it does in every other mode. The two
+  // scan-gated rules are left out: they only ever concern verified documents, which
+  // review does not approve, and restoring evidence.stale would buy a drift scan.
+  const gateMeasured = [
+    ...NEVER_APPROVE_RULES,
+    ...(options.governanceSuppressedRules ?? []).filter((rule) => !Object.values(SCAN_GATING_RULES).includes(rule))
+  ];
+  const auditResult = await audit(withRulesMeasured(options, gateMeasured));
   const findingsByPath = new Map();
   for (const finding of auditResult.findings) {
     if (!finding.path || finding.path === ".") continue;
@@ -2544,6 +2587,10 @@ async function resolveInitGovernanceMode(options) {
 
 export async function initCommand(options) {
   const detection = await detectProject(options.cwd, options.type, options.profiles);
+  // Advisory only: a workspace repository whose framework dependencies live in its
+  // member manifests is detected as unknown, and init says which --type the members
+  // point at instead of changing the detected type (see workspaceTypeHint).
+  const typeHint = !options.type && detection.projectType === "unknown" ? await workspaceTypeHint(options.cwd) : null;
   const agents = selectedAgents(options);
   const governanceMode = await resolveInitGovernanceMode(options);
   const modeScopedOptions = { ...options, governanceMode, governanceModeSource: options.governanceModeSource ?? "default" };
@@ -2565,17 +2612,27 @@ export async function initCommand(options) {
     : null;
 
   if (options.dryRun) {
-    return initDryRun(modeScopedOptions, detection, agents, candidates, domainNotice);
+    return initDryRun(modeScopedOptions, detection, agents, candidates, domainNotice, typeHint);
   }
 
   if (options.write) {
-    return initWrite(modeScopedOptions, detection, agents, candidates, domainContext, domainNotice);
+    return initWrite(modeScopedOptions, detection, agents, candidates, domainContext, domainNotice, typeHint);
   }
 
   return needsWriteFlag("init", "Preview the changes with init --dry-run, or run init --write to create the missing LLM-WIKI files. Existing wiki docs are kept (--existing skip by default).");
 }
 
-async function initDryRun(options, detection, agents, candidates, domainNotice = null) {
+// The Detected Project lines, plus the workspace hint when there is one.
+function detectedProjectLines(detection, typeHint) {
+  const lines = [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`];
+  if (typeHint) {
+    const members = typeHint.members.map((member) => `${member.path} (${[...member.frontend, ...member.backend].join(", ")})`).join("; ");
+    lines.push(`hint: package.json declares workspaces whose manifests name ${members}. If this is one ${typeHint.suggestedType} project, run init again with --type ${typeHint.suggestedType}; init then records the type in llm-wiki.config.json. The detected type stays unknown on its own, because a repository initialized without a type detects it again on every validate.`);
+  }
+  return lines;
+}
+
+async function initDryRun(options, detection, agents, candidates, domainNotice = null, typeHint = null) {
   const planned = [];
   const skipped = [];
   const docLang = normalizeLang(options.docLang);
@@ -2616,9 +2673,10 @@ async function initDryRun(options, detection, agents, candidates, domainNotice =
     agents,
     planned,
     skipped,
+    ...(typeHint ? { typeHint } : {}),
     ...(options.greenfield ? { greenfield: true } : {})
   }, "LLM-WIKI Init Dry Run", [
-    { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
+    { title: "Detected Project", body: detectedProjectLines(detection, typeHint) },
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
     { title: "Documentation Language", body: [`${docLang} (change with --doc-lang en|ko or config docLanguage).`] },
     ...(startingPoint.length ? [{ title: "Starting Point", body: startingPoint }] : []),
@@ -2682,7 +2740,7 @@ async function findMissingDocs(cwd, projectType, profiles = [], customDocs = [],
   return findings;
 }
 
-async function initWrite(options, detection, agents, candidates, domainContext = emptyDomainContext(), domainNotice = null) {
+async function initWrite(options, detection, agents, candidates, domainContext = emptyDomainContext(), domainNotice = null, typeHint = null) {
   const created = [];
   const overwritten = [];
   const skipped = [];
@@ -2802,10 +2860,11 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     overwritten,
     skipped,
     skillsCreated: skillWrites.created.length,
+    ...(typeHint ? { typeHint } : {}),
     ...(options.greenfield ? { greenfield: true } : {}),
     findings
   }, "LLM-WIKI Init Write", [
-    { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
+    { title: "Detected Project", body: detectedProjectLines(detection, typeHint) },
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
     { title: "Summary", body: reassurance },
     ...(startingPoint.length ? [{ title: "Starting Point", body: startingPoint }] : []),
@@ -2914,6 +2973,17 @@ export async function statsCommand(options) {
   const notEnriched = uniquePathsFor("content.not_enriched");
   const staleVerified = uniquePathsFor("evidence.stale");
   const orphanDocuments = auditResult.wikiGraph?.summary?.orphanDocuments ?? 0;
+  // Approved documents that still carry scaffold placeholder text. Before 1.38.0,
+  // lite (or content.not_enriched set to off) let `review --approve-all` promote
+  // untouched scaffolds, and nothing re-checks a document once it is verified, so
+  // this is where such an approval stays visible. It is a fact about the text, not
+  // a finding that the approval was wrong, and nothing is changed: the reader
+  // decides whether to fill the document or set it back to needs_review.
+  const notEnrichedPaths = new Set(findings.filter((finding) => finding.rule === "content.not_enriched").map((finding) => finding.path));
+  const verifiedNotEnriched = docMeta
+    .filter((doc) => doc.status === "verified" && notEnrichedPaths.has(doc.rel))
+    .map((doc) => doc.rel)
+    .sort();
 
   // Gate 25: computed evidence tiers (additive, report-only). A doc is
   // reference_checked when it has grounding and no unresolved-reference finding;
@@ -2986,6 +3056,10 @@ export async function statsCommand(options) {
   if (plannedKnowledge.documents > 0) {
     summaryLines.push(`planned_knowledge: ${plannedKnowledge.documents} (approved ${plannedKnowledge.approved}); implementation evidence linked ${plannedKnowledge.linked}, unresolved ${plannedKnowledge.unresolved}, none ${plannedKnowledge.unlinked}`);
   }
+  // Same rule: printed only when there is something to say.
+  if (verifiedNotEnriched.length > 0) {
+    summaryLines.push(`verified_not_enriched: ${verifiedNotEnriched.length} (${verifiedNotEnriched.join(", ")})`);
+  }
   if (total === 0) summaryLines.push("wiki: not initialized (run init --write first)");
   const statusLines = Object.keys(statusCounts).sort().map((status) => `${status}: ${statusCounts[status]}`);
 
@@ -3011,13 +3085,14 @@ export async function statsCommand(options) {
       },
       staleVerified,
       orphanDocuments,
-      plannedKnowledge
+      plannedKnowledge,
+      verifiedNotEnriched
     },
     findings: []
   }, "LLM-WIKI Stats", [
     { title: "Summary", body: summaryLines },
     { title: "Document Status", body: statusLines.length ? statusLines : ["none"] },
-    { title: "Caveats", body: [...(plannedKnowledge.documents > 0 ? ["planned_knowledge counts doc_type requirement, decision, decision_log, and adr documents. For them verified means the plan was approved, not that it is implemented; linked means every local reference they cite resolves, which shows where a plan is implemented, not that it is complete. They are also included in verified, evidence_coverage, and evidence_tiers above."] : []), "Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; enriched, evidence_tiers, and stale_verified are measured even when their rules are switched off (lite, or config), because off stops a rule being reported, not being true. evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata. " + (agentVerified === null
+    { title: "Caveats", body: [...(verifiedNotEnriched.length > 0 ? ["verified_not_enriched lists verified documents that still contain scaffold placeholder text (the content.not_enriched check, measured in every mode). Before 1.38.0, lite or content.not_enriched set to off let review --approve-all promote untouched scaffolds, so an approval like this may predate that fix. It is not proof the approval was wrong, and stats changes nothing: fill the document and approve it again, or set it back to needs_review."] : []), ...(plannedKnowledge.documents > 0 ? ["planned_knowledge counts doc_type requirement, decision, decision_log, and adr documents. For them verified means the plan was approved, not that it is implemented; linked means every local reference they cite resolves, which shows where a plan is implemented, not that it is complete. They are also included in verified, evidence_coverage, and evidence_tiers above."] : []), "Read-only health snapshot. enriched% counts documents without a content.not_enriched flag; enriched, evidence_tiers, and stale_verified are measured even when their rules are switched off (lite, or config), because off stops a rule being reported, not being true. evidence_coverage counts documents citing source_files or evidence. Health score is the mean of verified%, enriched%, and evidence_coverage%. evidence_tiers (Gate 25) are computed, report-only: reference_checked = has grounding and every reference resolves (file + line/symbol/section); human_verified = verified with reviewer metadata. " + (agentVerified === null
       ? "Who the reviewer was is not checked: an agent's approval counts toward human_verified here. Name your agent reviewers in llm-wiki.config.json \"agentReviewers\" to report them as agent_verified instead; until then agent_verified is unknown (null in JSON), not 0."
       : "Documents whose reviewed_by matches llm-wiki.config.json \"agentReviewers\" (trimmed, case-insensitive) are counted as agent_verified instead of human_verified; a reviewer name not on that list still counts as human, so the split is only as accurate as the list.")] }
   ]);

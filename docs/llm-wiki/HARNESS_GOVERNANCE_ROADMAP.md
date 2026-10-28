@@ -65,25 +65,25 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:592836e8b901c7be
-  - src/cli.js sha256:7cfa335ece8b01a7
+  - package.json sha256:7c299ceb0ae61c09
+  - src/cli.js sha256:b4c407f857f2de78
   - src/index.js sha256:ee1d42734ade2f15
-  - src/commands.js sha256:a708cf502b526bda
-  - src/commands/scans.js sha256:81a66b137b3d5209
-  - src/commands/findings.js sha256:45598b539e3a6a99
+  - src/commands.js sha256:e15de888dff84f03
+  - src/commands/scans.js sha256:5a46d1c79c3d3410
+  - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/wiki-files.js sha256:141842053b78cc2c
   - src/commands/adapters.js sha256:1329c62a8fd74c06
   - src/commands/skills.js sha256:b7ecf90972a2857b
   - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
   - src/commands/references.js sha256:16ff5b183865242b
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
-  - src/git.js sha256:c6baa86ab48e2da1
+  - src/git.js sha256:f077117fb943b9aa
   - .github/workflows/ci.yml sha256:0055dbb54de5761b
-  - .github/actions/validate/action.yml sha256:e67cd91d4c1889d2
+  - .github/actions/validate/action.yml sha256:55453d995d842d12
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
-  - templates/github-actions/llm-wiki-validate.yml sha256:313bfc01306c01ed
+  - templates/github-actions/llm-wiki-validate.yml sha256:bf1e993d255fdac5
   - GATE_REVIEW.md sha256:1925d235d0b93b6a
-  - ROADMAP.md sha256:86f288f10b95ce2b
+  - ROADMAP.md sha256:d44816d7f72a00c9
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵
@@ -1806,6 +1806,104 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     (b) `REVIEW_HISTORY.md`가 원문서들을 `source_files`로 인용해서, 원문서만 바꾼 커밋에서
     아카이브가 2차로 지목됩니다(N-1 계열). `review_history`는 제품 개념이 아니라 이 저장소의 관례라
     제품에 면제를 넣지 않았습니다.
+
+### 1.39.0 처리 중 발견 (2026-10-28, 외부 검토 지적의 재현)
+
+53. ~~**N-20 `drift`의 축소가 바뀐 인용을 숨겼다**~~ — **1.39.0에서 수정.** 1.37.0은 리뷰일 끝 스냅샷이
+    틀려도 "지목하는 쪽으로만 틀린다"고 적었습니다. 커밋 날짜를 고정한 git 이력으로 재현해 보니
+    거짓이었습니다. `rev-list -1 --before=<리뷰일> 23:59:59 HEAD`는 날짜 순서로 고르므로, (a) 리뷰 당일
+    날짜의 곁가지 커밋이 리뷰 뒤에 머지되고 그 커밋이 그날 가장 늦을 때, (b) 리뷰 당일 리뷰 뒤에
+    인용 영역을 바꾼 커밋이 있을 때, (c) 리뷰 뒤 커밋인데 committer date가 과거일 때(날짜를 보존한
+    rebase) 바뀐 영역을 "그대로"로 읽었습니다. 같은 파일의 다른 곳을 나중에 고치면 파일 단위 검사는
+    문서를 지목했을 텐데, 축소가 그 finding을 지웠습니다. (a)와 같은 이력에서 곁가지 커밋이 리뷰보다
+    이르면 정상 지목됐으므로 결과가 **커밋 순서에 달려 있었습니다**. 1.37.0 이전부터 있던 줄 범위 축소
+    (`git log -L --since`)도 (a)·(c)에서 똑같이 숨겼습니다. 수정은 두 번째 기준선입니다. 현재 리뷰
+    스탬프 줄을 쓴 커밋(`git log -1 -G^reviewed_at:`, 커밋된 값이 작업 트리와 같을 때만)과 `HEAD`
+    사이에서도 인용 영역이 그대로여야 축소합니다. 기준선을 하나 더 요구하므로 finding은 늘 수만
+    있습니다. 고정 테스트는 `tests/drift-narrowing-baseline.test.js` 12건이고 1.38.0에서 5건이
+    실패합니다. **바꾸지 않은 것**: N-15(47번)의 파일 단위 늦은 머지 위음성은 2026-10-21 결정대로
+    한계로 남깁니다. 이번 수정은 축소만 보수화했고 파일 단위 판정 기준은 그대로입니다. squash·rebase
+    오탐도 그대로이고, 리뷰일 경계를 실행 환경 시간대로 읽는 것도 그대로입니다. 스탬프를 커밋하지 않은
+    문서는 이제 축소되지 않습니다(과거 날짜로 미커밋 스탬프를 둔 경우에만 드러납니다).
+54. ~~**N-21 config `"strict": true`인 lite가 strict·standard가 거부하는 문서를 승인했다**~~ — **1.39.0에서
+    수정.** 1.38.0이 고친 것은 `content.not_enriched` 하나였습니다. `"strict": true`이면
+    `evidence.missing`이 error가 되고 error finding은 승인을 막는데, lite는 이 규칙을 끄므로 존재하지
+    않는 파일을 인용한 문서가 lite에서만 승인됐습니다(세 모드로 재현). `review`가 이제 모드의 floor만이
+    끈 규칙(`governanceSuppressedRules`)도 측정합니다. 이름으로 끈 규칙은 standard와 똑같이 lite에서도
+    꺼진 채입니다. lite floor에서 strict 실행이 error로 올리는 규칙은 지금 `evidence.missing` 하나라
+    실측 영향은 이 조합에 한정됩니다.
+55. **관찰 4건(이번에 고치지 않음)** — (a) lite에서 `next`는 꺼진 `evidence.missing`·`encoding.bom`의 수리
+    안내를 내지 않습니다. `next`는 무엇도 인증하지 않는 권고이고 lite의 "개발을 끊지 않는다" 계약과
+    맞물려 있어, 고칠지는 제품 판단으로 남깁니다. (b) lite에서 `status`는 스캐폴드뿐인 위키도 `pass`로
+    봅니다. 1.38.0이 "보고 명령은 모드가 말하는 대로"라고 명시한 동작입니다. (c) 1.38.0 이전 lite에서 이미
+    승인된 스캐폴드는 자동으로 되돌리지 않고, `stats`의 `verifiedNotEnriched`가 사실만 나열합니다.
+    (d) "측정된 사실 → 정책 → finding·종료 코드"를 엔진 수준에서 분리하는 재설계는 이번에 하지
+    않았습니다. 확인된 결함 두 건은 소비자 단위 측정(`withRulesMeasured`)으로 고칠 수 있었고, 재설계는
+    모든 명령의 출력 계약을 건드립니다.
+
+### 1.40.0 처리 중 발견 (2026-10-28, 다른 스택에서 처음부터 끝까지 돌려 봄)
+
+이 저장소의 위키 밖에서 Python(FastAPI) 기존 서비스와 React + Express workspace를 워크스루로
+돌리자 이 저장소의 테스트로는 보이지 않던 결함 셋이 나왔습니다. 셋 다 처음 돌린 날 나왔다는 사실이
+이 검증의 가치를 말합니다.
+
+56. ~~**N-22 workspace 풀스택 저장소가 `unknown`으로 감지된다**~~ — **1.40.0에서 안내로 해소.** 루트
+    `package.json`에 프레임워크가 없고 멤버(`client/`·`server/`)에만 있으면 감지가 `unknown`(confidence
+    low)이었습니다. 감지 결과에 멤버 의존성을 합치면 고쳐지지만 그러지 않았습니다. `init`은 type이
+    `unknown`이 아닐 때만 config에 기록하므로 그렇게 초기화된 기존 workspace 저장소는 `validate`마다
+    다시 감지하고, type이 `fullstack`으로 바뀌면 프로필 문서가 새로 필수가 되어 빌드가 깨집니다. 대신
+    `init`이 `--type`을 제안합니다(`hint:` 줄, JSON `typeHint`). 감지 개선이 필요하다는 판단 자체는
+    남습니다 — 기존 저장소를 깨지 않고 바꾸려면 감지 결과의 버전 관리(예: config에 감지 시점 기록)가
+    먼저 필요합니다.
+57. ~~**N-23 명시 type이 `unknown` 감지와 "다르다"며 `validate --strict`를 매번 깨뜨렸다**~~ — **1.40.0에서
+    수정.** N-22의 안내대로 `--type fullstack`을 기록하면 `project.review_item`(warning)이 모든 실행에서
+    나왔습니다. README의 Quick start도 `--type`을 쓰므로 감지가 판단하지 못한 저장소에서는 같은 일이
+    났습니다. 감지 결과가 `unknown`이면 이제 차이로 보지 않습니다. 실제로 엇갈리는 경우는 그대로
+    warning입니다.
+58. ~~**N-24 Python·Rust 프로젝트가 디렉터리 이름으로 불렸다**~~ — **1.40.0에서 수정.** `package.json`이
+    없으면 생성 문서의 `project:`가 디렉터리 이름이었습니다(워크스루에서는 임시 디렉터리 이름).
+    `pyproject.toml`·`Cargo.toml`의 `name`을 줄 단위로 읽습니다. 프로젝트 이름과 문서를 대조하는
+    검사는 없어 기존 저장소에는 영향이 없습니다. Go(`go.mod`의 module 경로)·JVM·.NET은 그대로입니다.
+59. ~~**N-25 읽기 전용 MCP 서버가 git 옵션 주입으로 파일을 썼다**~~ — **1.40.0에서 수정(보안).** 미션의
+    "읽기 전용 MCP 동작 보존" 항목을 확인하다가 찾았습니다. MCP `validate` 툴의 `since`는 스키마상
+    문자열일 뿐이라 git이 옵션으로 읽는 값이 그대로 git에 닿았고, git이 호출자가 고른 경로에 파일을
+    썼습니다(임시 저장소에서 재현, 파일 생성 확인). 프로그래밍 API(`commands.impact`·`commands.validate`·
+    `commands["release-notes"]`)도 같은 경로였습니다. **CLI는 해당하지 않았습니다.** 파서
+    (`readOptionValue`)가 `-`로 시작하는 `--since` 값을 거부합니다. 처음 기록은 CLI 세 명령도 같다고
+    적었지만, 배포 tarball 69개 실측에서 CLI는 한 번도 쓰지 않았습니다(2026-10-28 정정). `runGit`이
+    셸을 쓰지 않아 셸 주입은 없었지만 옵션 주입은 막지 못했습니다. 호출자가 준 리비전은 이제
+    `assertRevision`을 지나며 `-`로 시작하면 거부되고, 리비전 뒤에는 `--`가 붙습니다. 영향 범위는
+    `llm-wiki-governance` 1.16.0~1.38.0 전부와 옛 `@dowonk-7949/llm-wiki-standard` 1.5.0~1.15.1이고,
+    1.39.0만 따로 내면 이 수정이 빠집니다. 고정 테스트는 `tests/git-revision-guard.test.js`입니다. MCP와
+    API를 실제로 호출하고, 정해진 파일 이름이 아니라 저장소에 새 항목이 생겼는지를 봅니다. 첫 테스트는
+    정해진 이름만 확인해서 `<값>..HEAD` 이름으로 쓰는 `release-notes` 경로를 수정 전에도 통과시켰습니다.
+60. ~~**N-26 본문의 `reviewed_at:` 줄이 `drift`의 스탬프 커밋을 앞당겼다**~~ — **1.40.0에서 수정.** 1.39.0
+    수정을 다시 검증하다 찾았습니다. 스탬프 커밋은 `git log -1 -G^reviewed_at:`로 골랐는데, `-G`는
+    펜스 안 예시처럼 본문에서 같은 모양의 줄에도 걸립니다. 그 줄을 리뷰 뒤에 고치면 그 커밋이 스탬프
+    커밋이 되고, 리뷰 당일 리뷰 뒤의 인용 변경이 다시 숨었습니다. 이제 후보마다 부모 커밋의 값과
+    비교해, 값을 실제로 바꾼 커밋만 인정합니다(`tests/drift-narrowing-baseline.test.js`).
+61. ~~**N-27 리뷰 브랜치의 squash·rebase가 스탬프를 리뷰 뒤 변경 위에 놓았다**~~ — **1.40.0에서 보수화.**
+    리뷰가 자기 브랜치에 있고 대상 브랜치가 그 사이 인용 영역을 바꾸면, merge 커밋은 스탬프 커밋을
+    보존해 그 변경이 조상 관계상 리뷰 뒤로 남습니다. squash와 rebase는 스탬프를 그 변경 위의 새 커밋에
+    씁니다. 그러면 날짜 스냅샷과 스탬프 커밋 둘 다 변경을 포함해 축소가 finding을 지웠습니다(1.38.0
+    이전부터 같았습니다). 스탬프 커밋의 committer date가 리뷰일 끝을 넘으면 이제 축소하지 않고 파일
+    단위로 봅니다. **남은 한계**: 리뷰 당일에 squash·rebase하면 여전히 리뷰한 것으로 봅니다. 모든 날짜
+    검사가 공유하는 날짜 단위 한계이고, 테스트가 현재 동작을 고정합니다. git 이력은 리뷰어가 무엇을
+    봤는지 알려 주지 못하므로 두 기준선은 근사일 뿐이고, 둘이 동의할 때만 축소합니다.
+62. ~~**N-28 TOML 배열 테이블 아래 `name`이 프로젝트 이름이 됐다**~~ — **1.40.0에서 수정.** N-24의
+    줄 단위 리더가 배열 테이블 헤더(대괄호를 두 겹 쓰는 `bin` 같은 헤더)를 섹션 경계로 읽지 못했습니다.
+    그래서 `[package]`에 `name`이 없으면 그 아래 바이너리 이름이 패키지 이름이 됐습니다. 배열 테이블은 이제
+    자기 섹션입니다(`tests/cross-stack-detection.test.js`). 이 항목을 처음 쓸 때 헤더를 대괄호째 적었더니
+    위키 링크로 읽혀 `wiki_link.missing`이 났습니다. 인라인 코드 안의 이중 대괄호도 위키 링크로 보는 스캐너
+    동작은 바꾸지 않았고, 표현을 바꿨습니다.
+63. **관찰 2건(이번에 고치지 않음)** — (a) MCP `cwd`는 서버 프로세스가 읽을 수 있는 어느 디렉터리든
+    고를 수 있고, 거기서 실행되는 git은 그 저장소의 로컬 설정을 따릅니다. 문서화된 로컬 단일 사용자
+    모델 안의 신뢰 경계라 `SECURITY.md`에 배포 지침으로 적었습니다. git 설정 기반 동작을 끄는 방어적
+    하드닝은 설계와 테스트가 먼저 필요해 넣지 않았습니다. (b) 승인 게이트는 모드가 `off`로 끈 규칙만
+    복원하고, 모드 floor가 심각도를 낮춘 규칙은 복원하지 않습니다. 지금 낮추는 두 규칙
+    (`structure.required_doc`, `impact.source_changed`)은 `needs_review` 문서의 승인과 무관합니다.
+    floor에 새로 낮추는 규칙이 생기면 실패하도록 `tests/rule-toggle-measurement.test.js`에 가드를
+    넣었습니다.
 
 ### 사람의 결정이 필요함
 

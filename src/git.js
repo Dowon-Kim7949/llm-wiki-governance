@@ -4,6 +4,21 @@ export function runGit(cwd, args) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
 
+// A revision that came from a caller (an MCP tool argument, a programmatic `since`)
+// must not start with "-": git reads it as an option, and some git options write
+// files. Found 2026-10-28 through the MCP validate tool, whose contract is
+// read-only; the CLI was never exposed because its parser refuses a "-"-prefixed
+// --since value. No ref name or revision expression git accepts starts with "-"
+// (`@{-1}` starts with "@"), so nothing legitimate is refused. Callers also end the
+// revision with "--" so it cannot be read as a path. Throws, and every caller
+// already treats a git failure as "unknown".
+export function assertRevision(ref) {
+  if (typeof ref !== "string" || ref.length === 0 || ref.startsWith("-")) {
+    throw new Error(`not a git revision: ${JSON.stringify(ref)}`);
+  }
+  return ref;
+}
+
 // True when <file> has commits after the END of the given YYYY-MM-DD date.
 // Anchoring to end-of-day means a document reviewed on date D "covers" every
 // commit made on day D, so a same-day review reports no drift; only commits on a
@@ -109,7 +124,7 @@ export function modifiedTrackedFiles(cwd) {
 
 export function isPathIgnored(cwd, relPath) {
   try {
-    runGit(cwd, ["check-ignore", "-q", relPath]);
+    runGit(cwd, ["check-ignore", "-q", "--", relPath]);
     return true;
   } catch {
     return false;
@@ -144,10 +159,36 @@ export function changedFiles(cwd, sinceRef) {
   // reported nothing to update. `--exclude-standard` keeps gitignored build
   // output and local scratch files out of the comparison.
   const untracked = toLines(runGit(cwd, ["ls-files", "--others", "--exclude-standard"]));
+  // The trailing "--" makes git take <sinceRef> as a revision or fail. Without it a
+  // value naming a file and no ref was read as a pathspec, and the run compared
+  // that one file against the index — a wrong change set, reported as a right one.
   const changed = sinceRef
-    ? [...toLines(runGit(cwd, ["diff", "--name-only", sinceRef])), ...untracked]
+    ? [...toLines(runGit(cwd, ["diff", "--name-only", assertRevision(sinceRef), "--"])), ...untracked]
     : [...toLines(runGit(cwd, ["diff", "--name-only", "HEAD"])), ...untracked];
   return [...new Set(changed)];
+}
+
+// Renames in the same comparison changedFiles makes (<sinceRef>, else HEAD, to the
+// working tree), as a Map from the new repo-relative path to the old one.
+// changedFiles lists only the new name of a renamed file, so a reader that needs
+// the file's content before the change has to ask for the old path. `-M` forces
+// rename detection on whatever diff.renames says; -z keeps non-ASCII paths
+// unquoted. An untracked file is not in this diff, so a rename is seen once the
+// new path is staged or committed. Best-effort: throws only if git fails.
+export function renamedPaths(cwd, sinceRef) {
+  const out = runGit(cwd, ["diff", "--name-status", "-M", "-z", assertRevision(sinceRef || "HEAD"), "--"]);
+  const parts = out.split("\0");
+  const renames = new Map();
+  for (let index = 0; index < parts.length; index += 1) {
+    const status = parts[index];
+    if (/^[RC]\d*$/.test(status)) {
+      if (status.startsWith("R")) renames.set(parts[index + 2], parts[index + 1]);
+      index += 2;
+    } else if (status) {
+      index += 1;
+    }
+  }
+  return renames;
 }
 
 // Stored content of <relPath> at <ref>, or null when it cannot be read. Callers
@@ -158,17 +199,19 @@ export function changedFiles(cwd, sinceRef) {
 // must be posix and relative to the git root, which is what changedFiles yields.
 export function fileAtRef(cwd, ref, relPath) {
   try {
-    return runGit(cwd, ["show", `${ref}:${relPath}`]);
+    return runGit(cwd, ["show", `${assertRevision(ref)}:${relPath}`]);
   } catch {
     return null;
   }
 }
 
-// The commit HEAD's history had reached at the END of sinceDate — the newest one
-// whose committer date is not after it, the same clock and the same boundary
-// fileChangedSince uses — or null when there is none or git fails. Its tree is the
-// repository as a review dated sinceDate saw it, which is what the date-anchored
-// drift scan compares a cited Markdown section against (2026-10-27).
+// The newest commit in HEAD's history whose committer date is not after the END of
+// sinceDate — the same clock and the same boundary fileChangedSince uses — or null
+// when there is none or git fails. It is NOT necessarily the repository a review
+// dated sinceDate saw: the walk is ordered by date, so a side-branch commit dated
+// that day but merged later, or a commit made after the review with an older
+// committer date, can be the one returned (reproduced 2026-10-28). The drift scan
+// therefore never narrows on this snapshot alone; see scanEvidenceDriftDetailed.
 export function commitAtEndOf(cwd, sinceDate) {
   try {
     const sha = runGit(cwd, ["rev-list", "-1", `--before=${sinceDate} 23:59:59`, "HEAD"]).trim();
@@ -176,6 +219,49 @@ export function commitAtEndOf(cwd, sinceDate) {
   } catch {
     return null;
   }
+}
+
+// The commits in HEAD's history, newest first, whose diff of the CWD-relative <file>
+// adds or removes a line starting with `<key>:`, or null when git fails. These are
+// CANDIDATES for the commit that wrote a document's review stamp: `-G` matches any
+// such line, so a fenced example in the body, or a commit that rewrote the stamp
+// line without changing its value, is listed too. Callers must compare the value
+// at each candidate and at its parent to find the one that wrote it.
+export function commitsTouchingKey(cwd, file, key) {
+  try {
+    const out = runGit(cwd, ["log", "--format=%H", `-G^${key}:`, "HEAD", "--", file]).trim();
+    return out ? out.split("\n").map((line) => line.trim()).filter(Boolean) : [];
+  } catch {
+    return null;
+  }
+}
+
+// True when commit <sha> has a committer date no later than the END of sinceDate —
+// the clock and boundary every other date check here uses, evaluated by git so the
+// time zone is the same one. False when it is later, and when git fails.
+export function committedBy(cwd, sha, sinceDate) {
+  try {
+    const out = runGit(cwd, ["rev-list", "-1", `--before=${sinceDate} 23:59:59`, assertRevision(sha), "--"]).trim();
+    return out === sha;
+  } catch {
+    return false;
+  }
+}
+
+// True when a commit reachable from HEAD but not from <fromRef> touched the given
+// line range of <file>: `git log -L` over `<fromRef>..HEAD`, so it is decided by
+// ancestry, not by commit dates, and a branch merged after <fromRef> counts even
+// when its commits are dated before it. Throws when git rejects the query (e.g. an
+// out-of-range line); callers treat that as "unknown".
+export function lineRangeChangedBetween(cwd, file, start, end, fromRef) {
+  const out = runGit(cwd, [
+    "log",
+    "--pretty=format:%h",
+    "-s",
+    `-L${start},${end}:${file}`,
+    `${assertRevision(fromRef)}..HEAD`
+  ]).trim();
+  return out.length > 0;
 }
 
 // Stored content of a CWD-relative <file> at <ref>, or null like fileAtRef. The
