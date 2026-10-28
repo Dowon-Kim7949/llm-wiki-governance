@@ -23,7 +23,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:b4c407f857f2de78
+  - src/cli.js sha256:7d0df7982416faef
   - README.md sha256:c8dec7da23c37dec
 ---
 

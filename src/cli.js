@@ -1250,9 +1250,14 @@ Options:
                         each verified document, compare the date verdict with
                         the content verdict — the source_digests stamped by
                         review --approve (config "sourceDigests": true) against
-                        the sources now — and list where they disagree, e.g. a
-                        late merge the date check cannot see. --anchor date is
-                        the default and prints nothing extra.
+                        the sources at HEAD — and list where they disagree, e.g. a
+                        late merge the date check cannot see. A root or workspace
+                        package.json is compared without its version value.
+                        --anchor date is the default and prints nothing extra.
+                        Separately, with "sourceDigests": true, drift narrows a
+                        line-range or section citation away only if its stamped
+                        digest still matches at HEAD (1.41.0); that can add a
+                        finding, never remove one.
   --strict              Escalate evidence severities and fail on findings. The
                         default exit code stays 0, so adding drift to an existing
                         pipeline cannot break it.
@@ -1419,7 +1424,8 @@ Approve (writes ONLY the review stamp; see GATE_REVIEW.md "Review Workflow Scope
   - --approve <path> promotes the named needs_review docs to verified, stamping
     status: verified + reviewed_by + reviewed_at, plus the tags: status tag when
     the document already carries one, plus source_digests (one content digest
-    per local anchor, read by drift --anchor content) only when
+    per local anchor, read by drift --anchor content and, for narrowed
+    citations, by drift itself) only when
     llm-wiki.config.json sets "sourceDigests": true. Repeatable, and a value may be a
     comma-separated list. --approve-all promotes every approvable needs_review doc
     but REQUIRES an explicit --yes confirmation.

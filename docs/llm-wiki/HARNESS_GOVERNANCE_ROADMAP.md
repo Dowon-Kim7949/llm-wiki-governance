@@ -65,24 +65,24 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:c2c8bd08741c512b
-  - src/cli.js sha256:b4c407f857f2de78
+  - package.json sha256:a18a7e2bc101d0dd
+  - src/cli.js sha256:7d0df7982416faef
   - src/index.js sha256:ee1d42734ade2f15
-  - src/commands.js sha256:e15de888dff84f03
-  - src/commands/scans.js sha256:5a46d1c79c3d3410
+  - src/commands.js sha256:9de9e64b3a165a88
+  - src/commands/scans.js sha256:7744bb5ee7415ca1
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/wiki-files.js sha256:141842053b78cc2c
   - src/commands/adapters.js sha256:1329c62a8fd74c06
   - src/commands/skills.js sha256:b7ecf90972a2857b
-  - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
+  - src/commands/fix-migrate.js sha256:b5cb0accb9da1c85
   - src/commands/references.js sha256:16ff5b183865242b
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
-  - src/git.js sha256:5d67aa0297942e5b
+  - src/git.js sha256:368235704e10ed2e
   - .github/workflows/ci.yml sha256:0055dbb54de5761b
   - .github/actions/validate/action.yml sha256:55453d995d842d12
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
   - templates/github-actions/llm-wiki-validate.yml sha256:bf1e993d255fdac5
-  - GATE_REVIEW.md sha256:cceb2b887183933b
+  - GATE_REVIEW.md sha256:657d2c226b11ad3e
   - ROADMAP.md sha256:3d4ab396efa9644e
 ---
 
@@ -1906,7 +1906,7 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     (`structure.required_doc`, `impact.source_changed`)은 `needs_review` 문서의 승인과 무관합니다.
     floor에 새로 낮추는 규칙이 생기면 실패하도록 `tests/rule-toggle-measurement.test.js`에 가드를
     넣었습니다.
-64. **리뷰 당일 squash의 `drift` 축소 위음성(결정 대기)** — N-27 수정 뒤에도 남은 한 가지 이력입니다.
+64. **리뷰 당일 squash의 `drift` 축소 위음성** — **1.41.0에서 C′로 부분 해소(사용자 결정 2026-10-28).** `sourceDigests: true`이고 영역 digest가 기록된 인용은 축소 전에 그 digest가 `HEAD`와 같아야 하고, 그 전제로 내용 비교를 `HEAD` 기준으로 바꾸고 매니페스트를 `version` 없이 digest한다. digest가 없는 문서에서는 한계가 그대로다. 아래는 결정 전 기록이다 — N-27 수정 뒤에도 남은 한 가지 이력입니다.
     git 이력만으로는 이 경우와 리뷰어가 변경을 본 경우를 가를 수 없습니다. 선택지와 대가는 `GATE_REVIEW.md`의
     "Same-Day Squash Narrowing"에 있습니다. 내용 앵커가 날짜 판정과 어긋난 6/16건(1.40.1 뒤에는 4/16건)은
     2026-10-28에 모두 설명했습니다. 원인은 커밋하지 않은 편집, 같은 날 버전 값만 바뀐 `package.json`, 같은 날

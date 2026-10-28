@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { driftCommand, impactCommand, reviewCommand } from "../src/commands.js";
 import { upsertFrontmatterList } from "../src/commands/fix-migrate.js";
-import { compareSourceDigests, currentSourceDigests, parseDigestEntries } from "../src/commands/source-digests.js";
+import { compareSourceDigests, currentSourceDigests, digestText, formatDigestEntry, parseDigestEntries } from "../src/commands/source-digests.js";
 import { parseFrontmatter } from "../src/frontmatter.js";
 import { normalizeOptions, resolveOptions } from "../src/index.js";
 
@@ -168,4 +168,65 @@ test("config: sourceDigests must be a boolean", async () => {
   await writeFile(path.join(cwd, "llm-wiki.config.json"), JSON.stringify({ sourceDigests: "yes" }), "utf8");
   const { errors } = await resolveOptions({ cwd });
   assert.ok(errors.some((error) => error.includes("sourceDigests")));
+});
+
+// 1.41.0: drift's content verdict reads HEAD. The date verdict beside it reads
+// committed history only, and an uncommitted edit made the two disagree for no
+// reason (3 of the 6 disagreements measured on this repository, 2026-10-28).
+test("drift --anchor content reads HEAD: an uncommitted edit is not a change until it is committed", { skip: !hasGit() }, async () => {
+  const { cwd, git, docPath } = await project({ digests: true });
+  await approve(cwd);
+  git(["add", "-A"]);
+  git(["-c", "commit.gpgsign=false", "commit", "-q", "-m", "approve"]);
+  const stamped = parseFrontmatter(await readFile(docPath, "utf8")).frontmatter;
+
+  await writeFile(path.join(cwd, "src", "app.js"), "export const x = 2;\n", "utf8");
+  assert.equal((await compareSourceDigests(cwd, stamped)).verdict, "changed", "the working tree has moved");
+  assert.equal((await compareSourceDigests(cwd, stamped, { ref: "HEAD" })).verdict, "unchanged", "HEAD has not");
+  const before = await driftCommand((await resolveOptions({ cwd, anchor: "content" })).options);
+  assert.equal(before.contentAnchor.documents[0].content, "unchanged");
+
+  git(["-c", "commit.gpgsign=false", "commit", "-q", "-am", "commit the edit"]);
+  const after = await driftCommand((await resolveOptions({ cwd, anchor: "content" })).options);
+  assert.deepEqual(after.contentAnchor.documents[0].changed, [{ key: "src/app.js", reason: "content differs" }]);
+});
+
+// 1.41.0: a manifest of record is digested without its version value, the way
+// impact treats it (N-13). Measured on this repository, 2026-10-28: every content
+// disagreement after the 1.40.1 release was a package.json whose only change was
+// `version`.
+test("a version-only change to a manifest of record is not a content change", async () => {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "llm-wiki-digests-manifest-"));
+  const manifest = (fields) => `${JSON.stringify(fields, null, 2)}\n`;
+  const base = { name: "x", version: "1.0.0", main: "x.js", workspaces: ["packages/*"] };
+  await mkdir(path.join(cwd, "packages", "a"), { recursive: true });
+  await mkdir(path.join(cwd, "fixtures", "b"), { recursive: true });
+  await writeFile(path.join(cwd, "package.json"), manifest(base), "utf8");
+  await writeFile(path.join(cwd, "packages", "a", "package.json"), manifest({ name: "a", version: "1.0.0" }), "utf8");
+  await writeFile(path.join(cwd, "fixtures", "b", "package.json"), manifest({ name: "b", version: "1.0.0" }), "utf8");
+  const frontmatter = { status: "verified", source_files: ["package.json", "packages/a/package.json", "fixtures/b/package.json"], evidence: [] };
+  const stamped = { ...frontmatter, source_digests: (await currentSourceDigests(cwd, frontmatter)).map(formatDigestEntry) };
+  const changedKeys = async () => (await compareSourceDigests(cwd, stamped)).changed.map((entry) => entry.key);
+
+  await writeFile(path.join(cwd, "package.json"), manifest({ ...base, version: "1.0.1" }), "utf8");
+  await writeFile(path.join(cwd, "packages", "a", "package.json"), manifest({ name: "a", version: "2.0.0" }), "utf8");
+  await writeFile(path.join(cwd, "fixtures", "b", "package.json"), manifest({ name: "b", version: "2.0.0" }), "utf8");
+  assert.deepEqual(await changedKeys(), ["fixtures/b/package.json"],
+    "root and workspace manifests ignore the version; a nested manifest no workspace declares does not");
+
+  await writeFile(path.join(cwd, "package.json"), manifest({ ...base, main: "y.js" }), "utf8");
+  assert.ok((await changedKeys()).includes("package.json"), "any other field is a change");
+  const { version: _v, ...withoutVersion } = base;
+  await writeFile(path.join(cwd, "package.json"), manifest(withoutVersion), "utf8");
+  assert.ok((await changedKeys()).includes("package.json"), "removing the version field is a change");
+
+  // A digest stamped before 1.41.0 covered the whole file. It is still accepted while
+  // the file is unchanged, and reads as changed after the next version bump until
+  // the document is approved again.
+  await writeFile(path.join(cwd, "package.json"), manifest(base), "utf8");
+  const legacy = { ...frontmatter, source_digests: [`package.json sha256:${digestText(manifest(base))}`] };
+  const legacyVerdict = async () => (await compareSourceDigests(cwd, { ...legacy, source_files: ["package.json"] })).verdict;
+  assert.equal(await legacyVerdict(), "unchanged");
+  await writeFile(path.join(cwd, "package.json"), manifest({ ...base, version: "1.0.1" }), "utf8");
+  assert.equal(await legacyVerdict(), "changed");
 });
