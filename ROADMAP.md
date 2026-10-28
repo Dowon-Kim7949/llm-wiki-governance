@@ -1148,6 +1148,28 @@ reproducing it led to a second gate that depended on the governance mode.
 Node full-stack fixture next to the Vue demos), and a first-time developer path through
 the README that is checked by script.
 
+## Release Plan (post-1.39.0) — the same checks outside this repository — **shipped as 1.40.0 (2026-10-28)**
+
+Show, reproducibly, that the tool works on projects that are not its own wiki.
+
+- **Two stack walkthroughs** run in `npm test`: an existing Python (FastAPI) service and a
+  React + Express npm workspace with a shared API contract. Each needs only Node.js and git
+  and never runs the application. The greenfield demo now also changes a requirement ahead of
+  its code.
+- **Defects found on the first run.** A workspace full-stack repository was detected as
+  `unknown`; following the advice to pass `--type` then failed every `validate --strict`; and
+  a Python service was named after its directory. The second and third are fixed; for the
+  first, `init` suggests a type instead of changing detection, which would have changed the
+  required documents of existing repositories.
+- **`docs/VALIDATION.md`** lists what was shown on which stack, how to reproduce it, and what
+  was not: agent behaviour, efficacy, and an independent developer following the README.
+- **Not done.** Go, JVM, PHP, Ruby, .NET, mobile and infrastructure remain detection-only;
+  pnpm workspaces are not parsed; no model was run.
+
+**Next:** an independent developer following the README from a clean machine; detection that
+can improve without changing the type of repositories already initialized; the paid benchmark
+when budgeted.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

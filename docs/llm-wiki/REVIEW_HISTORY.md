@@ -49,7 +49,7 @@ source_digests:
   - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:bc3ad827cfbc402b
   - docs/llm-wiki/BENCHMARK.md sha256:ec7d0470a48bc7c6
   - docs/llm-wiki/DOMAIN_FEATURES.md sha256:cb61ab7ac59cfb4d
-  - docs/llm-wiki/EXAMPLES.md sha256:ebebe5c71be83fa1
+  - docs/llm-wiki/EXAMPLES.md sha256:afcfe3a4ff0582f1
   - docs/llm-wiki/GLOSSARY.md sha256:7caf06d61e51c6d1
   - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:05fab278bb4079d0
   - docs/llm-wiki/PUBLIC_API.md sha256:11deeace7465e0b4
@@ -58,7 +58,7 @@ source_digests:
   - docs/llm-wiki/domains/00_overview.md sha256:9e863529085c6a5d
   - docs/llm-wiki/project-profile.md sha256:e02dd90aff818438
   - docs/llm-wiki/profiles/library.md sha256:f0d952a92e8621ae
-  - docs/llm-wiki/VERSIONING.md sha256:c6b29cc69fa9e765
+  - docs/llm-wiki/VERSIONING.md sha256:074f4c418a9d2f54
 ---
 
 # Review History
@@ -77,6 +77,7 @@ source_digests:
 - 2026-10-28(1.39.0 준비): 원문서들이 `drift` 축소의 두 번째 기준선(N-20), 모드가 승인 가능 여부를 바꾸지 않는 `review`(N-21), `stats.verifiedNotEnriched`, `impact.plan_changed`를 반영하느라 본문이 고쳐지거나(7종) 인용 소스의 내용 해시가 바뀌어 다시 스탬프돼(`index.md`·`project-profile.md`·`profiles/library.md`) 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — Review Note를 더하지 않았으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
 - 2026-10-28(1.39.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.39.0 MINOR 판정 절 추가)와 `EXAMPLES.md`(CI 예시 핀 `@1.39`)가 고쳐져 이 문서를 다시 지목했습니다. `index.md`·위키 `README.md`·`RELEASE_FLOW.md`·`HARNESS_GOVERNANCE_ROADMAP.md`는 인용 소스(루트 README·CI 템플릿·액션·ROADMAP)가 버전 핀과 기능 한 문장만 바뀌어 본문이 그대로 맞고, 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 - 2026-10-28(다른 스택 검증): 원문서들이 workspace 힌트·프로젝트 이름·type review item(N-22~N-24)과 새 워크스루를 반영하느라 본문이 고쳐지거나(7종) 인용한 루트 README가 "다른 스택" 문단 하나만 바뀌어 재스탬프돼(`index.md`·위키 `README.md`) 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
+- 2026-10-28(1.40.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.40.0 MINOR 판정 절)와 `EXAMPLES.md`(CI 예시 핀 `@1.40`)가 고쳐져 이 문서를 다시 지목했습니다. 인용 소스가 버전 핀만 바뀐 문서는 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 
 ## Architecture Conventions
 

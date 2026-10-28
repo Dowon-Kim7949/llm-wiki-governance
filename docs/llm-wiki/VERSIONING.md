@@ -24,7 +24,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:363aafcd2545dc99
+  - package.json sha256:7c299ceb0ae61c09
   - RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
 ---
 
@@ -72,6 +72,21 @@ source_digests:
   게이트를 우회하지 못한다")을 되살린다. 그래도 `--strict` 파이프라인을 새로 실패시키거나 승인을
   거부할 수 있으므로, 1.31.0의 N-8과 1.38.0의 lite 승인 거부처럼 CHANGELOG에 동작 변경으로 이름을
   붙였다.
+
+## 기록된 판정 — 1.40.0 (MINOR, 2026-10-28)
+
+- **minor 근거.** 패키지에 들어가는 변경은 셋이다: `init`의 부가 JSON 키 `typeHint`와 텍스트
+  `hint:` 줄, 감지 결과가 `unknown`일 때 명시 type을 `project.review_item`으로 내지 않는 것, 그리고
+  `package.json`이 없는 Python·Rust 프로젝트의 생성 문서 `project:` 값. 명령·옵션·JSON 키 제거나
+  이름 변경은 없고 `schemaVersion`도 그대로다. 생성 문서 내용이 바뀌므로 위 정책대로 PATCH가 아니라
+  MINOR다.
+- **버전을 목표에 맞춘 것이 아니다.** 예제·`docs/VALIDATION.md`·소개 초안은 tarball에 들어가지 않아
+  그것만으로는 릴리스할 이유가 없다. 위 세 변경이 실제로 출하되는 동작이고, 검증 작업이 그 결함들을
+  찾았다.
+- **동작 변경의 방향.** review item 하나가 줄어 `--strict` 실행이 새로 통과할 수 있다. 그 warning은
+  감지가 판단하지 못한 상태를 "차이"로 보고하던 것이라 정보가 없었다. 실제로 엇갈리는 type은 계속
+  warning이다. 감지 결과(`detection.projectType`)는 의도적으로 바꾸지 않았다 — 바꾸면 type 없이 초기화된
+  workspace 저장소의 필수 문서가 바뀌어 빌드가 깨질 수 있고, 그것은 major 판단이 필요한 변경이다.
 
 ## Evidence
 

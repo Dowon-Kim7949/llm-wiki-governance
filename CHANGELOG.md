@@ -6,6 +6,56 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.40.0 — 2026-10-28
+
+A validation release. The tool was run end to end outside this repository — on an existing
+Python (FastAPI) service and on a React + Express npm workspace — and the runs found three
+detection defects that this repository's own tests could not see. All three are fixed, and the
+walkthroughs now run in `npm test`. What has been shown on which stack, how to reproduce it,
+and what has not is in [`docs/VALIDATION.md`](./docs/VALIDATION.md). Upgrade if you initialize
+Python or Rust projects or npm-workspace repositories.
+
+- **`init` suggests a type for an npm-workspace repository.** When the root `package.json`
+  declares workspaces and names no framework itself, detection says `unknown`. `init` (without
+  `--type`) now reads the member manifests and suggests `--type fullstack`, `frontend` or
+  `backend`: a `hint:` line under Detected Project and a `typeHint` JSON key. The detected type
+  is not changed. `init` records a type in the config only when it is not `unknown`, so such a
+  repository detects again on every `validate`, and a new type there would make new documents
+  required.
+- **An explicit type is no longer a review item when detection found nothing.** Recording
+  `--type fullstack`, as the hint says, made every `validate` report `project.review_item`
+  ("Explicit type 'fullstack' differs from detected 'unknown'"), a warning that fails
+  `--strict`. A real disagreement — a configured `library` where detection finds `frontend` —
+  is still reported.
+- **Python and Rust projects are named from their manifest.** Without a `package.json`,
+  generated documents took the directory name for `project:`. They now read `name` from
+  `pyproject.toml` (`[project]` or `[tool.poetry]`) or `Cargo.toml` (`[package]`). No check
+  compares the name, so existing documents are unaffected.
+- **Runnable stack walkthroughs.** `examples/python-fastapi-brownfield` (21 checks) and
+  `examples/react-node-fullstack` (15 checks) each run with one command and need only Node.js
+  and git. The greenfield demo adds a requirement changed ahead of its code, so
+  `impact.plan_changed` is shown with its linked files unchanged (20 → 23 checks).
+- **`docs/VALIDATION.md`** (English and Korean): a stack matrix with evidence labels, the
+  commands that reproduce each claim, the limits the walkthroughs demonstrate, and what was not
+  measured (agent behaviour, efficacy, independent usability).
+
+**Behaviour changes, named:**
+- `init` text gains a `hint:` line, and its JSON a `typeHint` key, only for an npm-workspace
+  repository detected as `unknown` without `--type`.
+- `validate` and `audit` no longer report `project.review_item` for an explicit type when
+  detection is `unknown`, so a `--strict` run that failed only on that can pass.
+- Newly generated documents of a Python or Rust project carry the manifest's name in
+  `project:`.
+
+**Limits.** Detection alone still says `unknown` for such a workspace; the hint is advice. Go,
+JVM, PHP, Ruby, .NET, mobile and infrastructure projects are covered by detection tests only,
+not end to end, and pnpm workspaces are not parsed. The walkthroughs never run the applications.
+No model was run: agent adapters and skills are checked to exist and to point at the wiki, not
+to be followed. No independent developer has followed the README.
+
+Sized as a MINOR: one additive JSON key, one review item that no longer fires where it carried
+no information, and a generated-document field. Tests: 783 → 789.
+
 ## 1.39.0 — 2026-10-28
 
 A correctness release with one new signal. Two gates could pass something they exist to

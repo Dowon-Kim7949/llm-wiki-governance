@@ -24,6 +24,16 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - release: 1.40.0 준비 — 이 저장소 밖에서도 같은 검사
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: release, docs, wiki
+- changed: `package.json`(1.39.0 → 1.40.0) · `tests/verification.test.js`(버전 단언) · `.github/actions/validate/action.yml`(기본값 1.40) · `templates/github-actions/llm-wiki-validate.yml`(핀 3줄) · `CHANGELOG.md`·`CHANGELOG.ko.md`(1.40.0 절) · `ROADMAP.md`·`ROADMAP.ko.md`(출시 절) · README 2종(액션 핀) · 위키 `VERSIONING`(1.40.0 MINOR 판정 절)·`EXAMPLES`(CI 예시 핀)·`REVIEW_HISTORY`(서문 한 줄)
+- summary: 앞 커밋(`16a231a`)을 1.40.0 MINOR로 묶는다. 출하되는 변경은 `init`의 `typeHint`, `unknown` 감지에 대한 type review item 제외, Python·Rust 생성 문서의 프로젝트 이름 셋이고, 셋 다 다른 스택 워크스루가 찾은 결함에서 나왔다. 예제와 검증 문서는 tarball에 들어가지 않으므로 그것만으로 릴리스하지 않았을 것이다 — 버전을 목표 숫자에 맞춘 것이 아니라는 판단을 VERSIONING에 남겼다.
+- evidence: 테스트 789/789 · `validate --strict`·`impact --since main --strict` pass(재승인 후 확인)
+- caveats: 1.39.0과 같은 날 두 릴리스를 준비했다. 둘 다 로컬 커밋뿐이고 push·태그·배포는 유지보수자 승인 대기다. 1.39.0만 먼저 낼 수 있도록 브랜치를 나눴다(`feat/1-39-correctness` ⊂ `feat/1-40-validation`). 공유 덱의 대상 버전은 배포 전이라 바꾸지 않았다.
+
 ## 2026-10-28 - feat(validation): 다른 스택에서 처음부터 끝까지 — Python·React+Node 워크스루와 감지 결함 셋
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
