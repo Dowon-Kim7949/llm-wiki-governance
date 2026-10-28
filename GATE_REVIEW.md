@@ -3364,17 +3364,40 @@ rewrites the stamp commit, and a recorded commit id would not survive the rewrit
   `review --approve` records a hash of each cited region. A citation whose recorded hash
   still matches is unchanged since approval, whatever the git history, and one that does
   not match changed. That answers the question exactly. Cost: only documents approved with
-  digests on are covered. The shadow comparison is also not yet trustworthy: on this
-  repository `drift --anchor content` disagrees with the date verdict on 6 of 16 documents
-  (2026-10-28), and why has not been examined.
+  digests on are covered.
+- **C′ — digests as a third condition, not a replacement.** Narrow a citation away only when
+  the end-of-day snapshot, the stamp commit and, where one was recorded, the region's digest
+  all agree it is unchanged. Like the stamp-commit baseline, this can only keep findings. It
+  closes this history for every document approved with digests on, and leaves the rest as
+  today. Cost: a line-range digest changes when lines are inserted above the range, so such a
+  citation stays reported where `git log -L` would have narrowed it. Sections are compared by
+  heading and do not have that cost.
 - **Not an option — record the reviewed commit id in frontmatter.** A squash or rebase
   replaces that commit, so the id names nothing on the target branch.
 
-**Recommendation.** Keep A for now and work toward C. First explain the 6 disagreements. If
-they are date over-reports that content anchors correctly clear, let digests, where
-present, decide narrowing (an opt-in behaviour change for projects that turned digests on).
-Revisit B only if adopters report this history, and measure its cost on a repository that
-narrows before deciding.
+**What the shadow disagreements were (examined 2026-10-28).** `drift --anchor content`
+disagreed with the date verdict on 6 of 16 documents in the morning and on 4 of 16 after the
+1.40.1 release. Both states were reproduced and every case explained. In all of them the date
+verdict was `fresh` and the content verdict `changed`, and every `changed` was true: the bytes
+did differ from what was approved.
+
+- 3 of the 6: an edit not yet committed. Date checks read committed history only, and content
+  reads the working tree.
+- 2 of the 6, and all 4 after the release: a `package.json` whose only change was `version`,
+  committed on the review day. Date checks treat the whole review day as seen; `impact`
+  excludes version-only manifests (N-13), and the content comparison does not.
+- 1 of the 6: a document citing wiki pages edited on the review day.
+
+None was a date over-report that content cleared. This corpus cannot show one anyway: every
+document here was re-approved on 2026-10-28, so no date verdict could be `stale`. It also
+holds no region digests and no narrowed citations.
+
+**Recommendation.** Keep A for now. C as a replacement is not supported by evidence yet. C′ is
+the safe next step if the gap matters: it is opt-in through `"sourceDigests": true`, it only
+keeps findings, and it needs no new data structure. Two things first, whichever is chosen:
+give the content comparison the N-13 version-only exclusion, and decide whether it should read
+the working tree or `HEAD`. Revisit B only if adopters report this history, and measure its
+cost on a repository that narrows before deciding.
 
 ## Release Caveats
 

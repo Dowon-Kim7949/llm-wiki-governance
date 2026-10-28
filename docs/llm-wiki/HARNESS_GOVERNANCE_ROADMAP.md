@@ -82,7 +82,7 @@ source_digests:
   - .github/actions/validate/action.yml sha256:55453d995d842d12
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
   - templates/github-actions/llm-wiki-validate.yml sha256:bf1e993d255fdac5
-  - GATE_REVIEW.md sha256:f7b5ac0607f1ff0c
+  - GATE_REVIEW.md sha256:cceb2b887183933b
   - ROADMAP.md sha256:3d4ab396efa9644e
 ---
 
@@ -1908,9 +1908,13 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     넣었습니다.
 64. **리뷰 당일 squash의 `drift` 축소 위음성(결정 대기)** — N-27 수정 뒤에도 남은 한 가지 이력입니다.
     git 이력만으로는 이 경우와 리뷰어가 변경을 본 경우를 가를 수 없습니다. 선택지와 대가는 `GATE_REVIEW.md`의
-    "Same-Day Squash Narrowing"에 있습니다. 권고는 현행을 유지하면서 내용 해시(`source_digests`)로 판정하는
-    쪽을 준비하는 것입니다. 그 전에 이 저장소에서 내용 앵커가 날짜 판정과 어긋난 6/16건의 원인을 먼저 밝혀야
-    합니다.
+    "Same-Day Squash Narrowing"에 있습니다. 내용 앵커가 날짜 판정과 어긋난 6/16건(1.40.1 뒤에는 4/16건)은
+    2026-10-28에 모두 설명했습니다. 원인은 커밋하지 않은 편집, 같은 날 버전 값만 바뀐 `package.json`, 같은 날
+    고친 위키 문서였고, 전부 날짜가 `fresh`, 내용이 `changed`인 방향이었습니다. 날짜의 과잉 보고를 내용이
+    바로잡은 사례는 없었습니다. 다만 이 저장소는 모든 문서가 같은 날 재승인돼 그런 사례가 나올 수 없는
+    표본입니다. 그래서 권고를 바꿨습니다. 내용 해시를 대체가 아니라 **세 번째 동의 조건(C′)**으로만 쓰는 것이
+    다음 안이고, 그 전에 내용 비교에 N-13의 버전 전용 제외를 주고 작업 트리와 `HEAD` 중 무엇을 읽을지
+    정해야 합니다.
 
 ### 사람의 결정이 필요함
 
