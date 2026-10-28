@@ -1180,6 +1180,18 @@ Show, reproducibly, that the tool works on projects that are not its own wiki.
 can improve without changing the type of repositories already initialized; the paid benchmark
 when budgeted.
 
+## Release Plan (post-1.40.0) — what the repository being read can make git do — **shipped as 1.40.1 (2026-10-28)**
+
+- **Hardening.** Of the repository-local git settings measured against this package's read
+  queries, `core.fsmonitor` and clean filters were reached; textconv and external diff drivers
+  were not. Every query now switches `core.fsmonitor` off. Filters stay on, because switching
+  them off would misreport Git LFS files; SECURITY.md says so.
+- **Recorded, not decided:** the `drift` narrowing gap for a review branch squashed or rebased
+  on the review day itself (`GATE_REVIEW.md`, "Same-Day Squash Narrowing").
+
+**Next:** explain why content anchors disagree with the date verdict on 6 of 16 documents here,
+before letting them decide narrowing; an independent developer running the usability protocol.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

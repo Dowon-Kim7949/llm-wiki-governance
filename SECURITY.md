@@ -164,9 +164,13 @@ deployment. Understand its boundary before exposing it:
   project it was started in. If that matters, run the server as a user, or in a
   container, that can read only the projects it should serve.
 - **git runs where you point it.** Several tools run `git` read commands in `cwd`,
-  and git applies that repository's own local configuration. Point the server, and
-  the CLI, only at repositories you would run `git status` in yourself; a directory
-  unpacked from an untrusted archive with its `.git` folder is not one.
+  and git applies that repository's own local configuration. From 1.40.1 every query
+  switches off the repository's `core.fsmonitor`. A clean or process filter the
+  repository configures still runs when git reads a working-tree file (switching filters
+  off would misreport Git LFS files), and git may refresh its own `.git/index` cache.
+  Point the server, and the CLI, only at repositories you would run `git status` in
+  yourself; a directory unpacked from an untrusted archive with its `.git` folder is not
+  one.
 - **Do not expose it over a network.** Because there is no auth, do **not** put
   the stdio server behind a public/remote broker or network transport as-is. If
   you must reach it remotely, front it with **your own** authenticated,

@@ -24,7 +24,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:7c299ceb0ae61c09
+  - package.json sha256:c2c8bd08741c512b
   - RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
 ---
 
@@ -93,6 +93,14 @@ source_digests:
   낼 수만 있다. squash·rebase를 쓰는 저장소의 `drift --strict`를 새로 실패시킬 수 있으므로 CHANGELOG에
   동작 변경으로 이름 붙였다. 둘 다 이미 약속한 계약(읽기 전용 MCP, "축소는 숨기지 않는다")을 되살리는
   결함 수정이라 MINOR 판정을 바꾸지 않는다. 1.39.0은 보안 수정이 빠져 있어 단독으로 배포하지 않는다.
+
+## 기록된 판정 — 1.40.1 (PATCH, 2026-10-28)
+
+- **patch 근거.** 패키지에 들어가는 변경은 `runGit`이 모든 git 조회에 `-c core.fsmonitor=`를 붙이는
+  것 하나다. 명령·옵션·JSON 키·finding·종료 코드는 바뀌지 않는다. 바뀌는 것은 대상 저장소의
+  fsmonitor 명령이 더는 실행되지 않는다는 점뿐이다. fsmonitor는 성능 최적화라 결과는 같다.
+- **넣지 않은 것.** clean·process 필터는 끄지 않았다. 끄면 Git LFS 파일이 바뀐 것으로 보고되므로
+  그것은 동작 변경이 된다. 리뷰 당일 squash의 drift 위음성도 결정 문서만 썼고, 동작은 그대로다.
 
 ## Evidence
 

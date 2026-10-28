@@ -46,19 +46,19 @@ reviewed_by: Claude Code (delegated by Dowon-Kim)
 reviewed_at: 2026-10-28
 source_digests:
   - docs/llm-wiki/VISIBILITY.md sha256:52b9d54834606505
-  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:711f3708a69e4af0
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:4adead7e84bff744
   - docs/llm-wiki/BENCHMARK.md sha256:ec7d0470a48bc7c6
-  - docs/llm-wiki/DOMAIN_FEATURES.md sha256:58550b953a29a154
+  - docs/llm-wiki/DOMAIN_FEATURES.md sha256:d1943baf04b77888
   - docs/llm-wiki/EXAMPLES.md sha256:afcfe3a4ff0582f1
   - docs/llm-wiki/GLOSSARY.md sha256:7caf06d61e51c6d1
-  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:32aac0fd54210512
-  - docs/llm-wiki/PUBLIC_API.md sha256:1a468eb5bcb82e9d
+  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:d223d1e78bdbd826
+  - docs/llm-wiki/PUBLIC_API.md sha256:822914edd194b56e
   - docs/llm-wiki/README.md sha256:155784a313bd4fda
   - docs/llm-wiki/RELEASE_FLOW.md sha256:fa4ee454b12332a1
   - docs/llm-wiki/domains/00_overview.md sha256:9e863529085c6a5d
   - docs/llm-wiki/project-profile.md sha256:e02dd90aff818438
   - docs/llm-wiki/profiles/library.md sha256:f0d952a92e8621ae
-  - docs/llm-wiki/VERSIONING.md sha256:d3194292c052e55b
+  - docs/llm-wiki/VERSIONING.md sha256:1bf4ee9554cf82f0
 ---
 
 # Review History
@@ -80,6 +80,8 @@ source_digests:
 - 2026-10-28(1.40.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.40.0 MINOR 판정 절)와 `EXAMPLES.md`(CI 예시 핀 `@1.40`)가 고쳐져 이 문서를 다시 지목했습니다. 인용 소스가 버전 핀만 바뀐 문서는 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 - 2026-10-28(보안 수정 N-25): 원문서 `PUBLIC_API.md`(MCP 절)·`ARCHITECTURE_CONVENTIONS.md`(git.js)·`HARNESS_GOVERNANCE_ROADMAP.md`(59번)가 git 옵션 주입 수정을 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 - 2026-10-28(N-25 재검증): 원문서 5종(`PUBLIC_API.md`·`ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`·`HARNESS_GOVERNANCE_ROADMAP.md`·`VERSIONING.md`)의 본문이 고쳐져 이 문서를 다시 지목했습니다. 고친 내용은 N-25의 CLI 영향 정정, 스탬프 커밋 판정 보수화(N-26·N-27), TOML 배열 테이블(N-28)입니다. 루트 README를 인용하는 `index.md`·위키 `README.md`·`EXAMPLES.md`는 README의 쓰기 플래그 목록·MCP `cwd` 안내·보안 업데이트 행과 겹치는 서술이 없어 본문이 그대로 맞고, 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
+- 2026-10-28(1.40.1 git 하드닝): 원문서 `ARCHITECTURE_CONVENTIONS.md`(git.js)·`PUBLIC_API.md`(MCP 절)·`HARNESS_GOVERNANCE_ROADMAP.md`(63 갱신, 64 신설)가 `core.fsmonitor` 하드닝과 리뷰 당일 squash 결정 대기를 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
+- 2026-10-28(1.40.1 릴리스 준비): `VERSIONING.md`에 1.40.1 PATCH 판정 절이 더해져 이 문서를 다시 지목했습니다. 버전 범프 때문에 지목된 문서도 있습니다. 루트 README를 인용하는 `index.md`·위키 `README.md`·`EXAMPLES.md`는 README에서 액션 핀만 바뀌었고, ROADMAP을 인용하는 `HARNESS_GOVERNANCE_ROADMAP.md`는 ROADMAP에 1.40.1 절이 더해졌을 뿐입니다(63·64번이 이미 같은 내용입니다). 본문이 그대로 맞아 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 
 ## Architecture Conventions
 

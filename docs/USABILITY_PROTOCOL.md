@@ -63,6 +63,29 @@ In a small repository they know, or a copy of `examples/python-fastapi-brownfiel
 - Every request for help, and what was asked.
 - Their checklist answers, unedited.
 
+## Invitation (for the maintainer to send)
+
+> I maintain a small open-source CLI for keeping AI-written project docs honest
+> (llm-wiki-governance). I'm looking for one developer who has never seen it to try it for an
+> hour, on their own machine, using only the README. You'd do two small tasks while thinking
+> aloud; I'd only watch and take notes, and I won't help unless something would touch files
+> outside the test folder. Nothing about you or your code is published. Node.js 18.18+ and git
+> are all you need. Interested?
+
+## Session record (copy one per participant)
+
+```
+Date / participant id (no names):
+OS / Node / git versions:
+Task A: finished? (y/n, step where stopped)    time per step:
+Task B: finished? (y/n, step where stopped)    time per step:
+Error messages (verbatim) and what they did next:
+Pages and help topics opened:
+Requests for help (what was asked):
+Checklist answers (1–5 + sentence), questions 1–8:
+Facilitator notes (observations only, no interpretation):
+```
+
 ## Reporting
 
 - Add results to [VALIDATION.md](./VALIDATION.md) under Usability with the date,

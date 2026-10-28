@@ -6,6 +6,25 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.40.1 — 2026-10-28
+
+A hardening patch. No output changes.
+
+- **git queries switch off the repository's `core.fsmonitor`.** Every git command this package
+  runs is a read, and some of them compare against the working tree, where git runs the
+  command that setting names. Pointing the CLI or the MCP server at a repository whose own
+  configuration names such a command no longer runs it. What remains is listed in
+  [SECURITY.md](./SECURITY.md#mcp-server-trust-model): a clean or process filter the
+  repository configures still runs (switching filters off would misreport Git LFS files), so
+  point the tool only at repositories you would run `git status` in.
+- **Recorded, not changed:** a `drift` narrowing gap when a review branch is squashed or
+  rebased on the review day itself. Options and costs are in `GATE_REVIEW.md` ("Same-Day
+  Squash Narrowing"); the current behaviour stays pinned by a test.
+- `docs/USABILITY_PROTOCOL.md` gains an invitation text and a session record; no session has
+  been run yet.
+
+Tests: 801 → 802.
+
 ## 1.40.0 — 2026-10-28
 
 A validation release. The tool was run end to end outside this repository — on an existing

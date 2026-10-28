@@ -65,7 +65,7 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:7c299ceb0ae61c09
+  - package.json sha256:c2c8bd08741c512b
   - src/cli.js sha256:b4c407f857f2de78
   - src/index.js sha256:ee1d42734ade2f15
   - src/commands.js sha256:e15de888dff84f03
@@ -77,13 +77,13 @@ source_digests:
   - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
   - src/commands/references.js sha256:16ff5b183865242b
   - src/mcp/tools.js sha256:b29ae9218ef87f1c
-  - src/git.js sha256:f077117fb943b9aa
+  - src/git.js sha256:5d67aa0297942e5b
   - .github/workflows/ci.yml sha256:0055dbb54de5761b
   - .github/actions/validate/action.yml sha256:55453d995d842d12
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
   - templates/github-actions/llm-wiki-validate.yml sha256:bf1e993d255fdac5
-  - GATE_REVIEW.md sha256:1925d235d0b93b6a
-  - ROADMAP.md sha256:d44816d7f72a00c9
+  - GATE_REVIEW.md sha256:f7b5ac0607f1ff0c
+  - ROADMAP.md sha256:3d4ab396efa9644e
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵
@@ -1898,12 +1898,19 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     동작은 바꾸지 않았고, 표현을 바꿨습니다.
 63. **관찰 2건(이번에 고치지 않음)** — (a) MCP `cwd`는 서버 프로세스가 읽을 수 있는 어느 디렉터리든
     고를 수 있고, 거기서 실행되는 git은 그 저장소의 로컬 설정을 따릅니다. 문서화된 로컬 단일 사용자
-    모델 안의 신뢰 경계라 `SECURITY.md`에 배포 지침으로 적었습니다. git 설정 기반 동작을 끄는 방어적
-    하드닝은 설계와 테스트가 먼저 필요해 넣지 않았습니다. (b) 승인 게이트는 모드가 `off`로 끈 규칙만
+    모델 안의 신뢰 경계라 `SECURITY.md`에 배포 지침으로 적었습니다. **1.40.1에서 일부 하드닝:** 실측해
+    보니 우리 명령에 닿는 저장소 설정은 `core.fsmonitor`와 clean 필터였고, textconv와 외부 diff 드라이버는
+    닿지 않았습니다. `runGit`이 이제 `core.fsmonitor`를 끕니다. 필터는 끄면 Git LFS 파일을 잘못 보고하므로
+    남겼습니다(잔여 위험, `SECURITY.md`). (b) 승인 게이트는 모드가 `off`로 끈 규칙만
     복원하고, 모드 floor가 심각도를 낮춘 규칙은 복원하지 않습니다. 지금 낮추는 두 규칙
     (`structure.required_doc`, `impact.source_changed`)은 `needs_review` 문서의 승인과 무관합니다.
     floor에 새로 낮추는 규칙이 생기면 실패하도록 `tests/rule-toggle-measurement.test.js`에 가드를
     넣었습니다.
+64. **리뷰 당일 squash의 `drift` 축소 위음성(결정 대기)** — N-27 수정 뒤에도 남은 한 가지 이력입니다.
+    git 이력만으로는 이 경우와 리뷰어가 변경을 본 경우를 가를 수 없습니다. 선택지와 대가는 `GATE_REVIEW.md`의
+    "Same-Day Squash Narrowing"에 있습니다. 권고는 현행을 유지하면서 내용 해시(`source_digests`)로 판정하는
+    쪽을 준비하는 것입니다. 그 전에 이 저장소에서 내용 앵커가 날짜 판정과 어긋난 6/16건의 원인을 먼저 밝혀야
+    합니다.
 
 ### 사람의 결정이 필요함
 
