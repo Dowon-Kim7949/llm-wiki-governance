@@ -24,6 +24,17 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-28 - feat(validation): 다른 스택에서 처음부터 끝까지 — Python·React+Node 워크스루와 감지 결함 셋
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, examples, docs, wiki
+- changed: `src/detector.js`(`workspaceTypeHint`, `tomlSectionName`, 프레임워크 의존성 목록 상수화, `unknown` 감지에 대한 type 차이 review item 제외) · `src/commands.js`(`init`의 `hint:` 줄과 JSON `typeHint`) · `examples/python-fastapi-brownfield/`·`examples/react-node-fullstack/`(신규, 앱·보강 문서·워크스루·README 2종) · `examples/_shared/walkthrough-kit.mjs`(신규) · `examples/greenfield-vue-demo/`(요구사항을 코드보다 먼저 바꾸는 8단계, 검사 20 → 23) · `examples/README.md` · `tests/cross-stack-detection.test.js`(신규 4)·`tests/stack-walkthroughs.test.js`(신규 2)·`tests/greenfield-demo-walkthrough.test.js`(검사 수) · `docs/VALIDATION.md`·`.ko.md`(신규, 위키 밖) · README 2종("다른 스택" 문단) · `outputs/distribution/introduction-2026-10.md`(공개 소개 초안, 게시 안 함) · 위키 9종
+- summary: 미션의 1.40.0 목표 "이 저장소 밖에서도 된다는 것을 재현 가능하게 보인다"를 스크립트 워크스루로 했다. Python 서비스(검사 21개)와 React + Express workspace(검사 15개)를 각각 실제 CLI로 처음부터 끝까지 돌리자 이 저장소의 테스트로는 안 보이던 결함 셋이 첫날 나왔다. workspace 풀스택이 `unknown`으로 감지되고(N-22), 그 안내대로 `--type`을 기록하면 `validate --strict`가 매번 깨지고(N-23), Python 서비스가 디렉터리 이름으로 불렸다(N-24). N-22는 감지 결과를 바꾸지 않고 `init`이 제안하게 했다 — 바꾸면 type 없이 초기화된 기존 workspace 저장소의 필수 문서가 바뀐다. greenfield 데모에는 1.39.0의 `impact.plan_changed`를 코드와 함께 바뀐 경우와 코드보다 먼저 바뀐 경우 둘 다 넣었다.
+- evidence: 테스트 783 → 789 전부 통과 · 워크스루 greenfield 23/23·Python 21/21·풀스택 15/15 · `tests/cross-stack-detection.test.js`는 1.39.0 코드에서 실패(가져올 함수가 없다), N-23은 수정 전 풀스택 워크스루의 `validate --strict` 실패로 재현
+- decision: 기존 두 데모를 공유 키트로 옮기지 않았다(동작이 같고 증명이 늘지 않는다). 실제 에이전트 실행은 하지 않았다(유지보수자 선택: 결정적 검사만) — 어댑터·스킬 파일이 위키를 가리키는지까지가 검증 범위다.
+- caveats: 스택 워크스루는 애플리케이션을 실행하지 않는다(Python·npm 설치 없음). Go·Rust·JVM·PHP·Ruby·.NET·모바일·인프라는 여전히 감지 단위 테스트뿐이다. README를 따라 해 본 독립 개발자는 없다(`docs/VALIDATION.md` 사용성 절).
+
 ## 2026-10-28 - release: 1.39.0 준비 — 막으라고 있는 것을 통과시키던 게이트 두 개와 계획 → 코드 방향
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

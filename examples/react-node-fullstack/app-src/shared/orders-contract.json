@@ -1,0 +1,12 @@
+{
+  "GET /api/orders": {
+    "response": {
+      "type": "array",
+      "items": {
+        "id": "string",
+        "totalCents": "integer",
+        "status": "pending | paid | shipped"
+      }
+    }
+  }
+}

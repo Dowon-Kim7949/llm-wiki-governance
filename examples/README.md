@@ -18,6 +18,19 @@ repository, records and approves requirements and an ADR as planned knowledge
 (`init --write --greenfield`), implements one requirement, links its code and
 tests as evidence, and then follows the same loop as below.
 
+Two more runnable walkthroughs cover other stacks (each is one command, needs only
+Node.js and git, and ends with a PASS/FAIL table):
+
+- [`python-fastapi-brownfield/`](./python-fastapi-brownfield/README.md) — an
+  existing Python service: detection from `pyproject.toml`, agent adapters, an
+  invented citation caught, retrieval, `impact`, and both sides of `drift`.
+- [`react-node-fullstack/`](./react-node-fullstack/README.md) — a React client and
+  an Express server in npm workspaces with a shared API contract: one contract
+  change flags three documents, a server-only change flags only the server side.
+
+What each walkthrough proves, and what it does not, is summarized in
+[`docs/VALIDATION.md`](../docs/VALIDATION.md).
+
 The loop in one line: **the CLI scaffolds → an agent enriches from real code
 (stays `needs_review`) → a human reviews and promotes to `verified`.** No command
 the CLI runs can promote a document on its own.

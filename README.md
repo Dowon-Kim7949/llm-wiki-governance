@@ -37,6 +37,8 @@ The CLI needs no model. The enrichment step does, and it decides quality: use yo
 
 **Demo.** [`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo) runs the whole loop on a small Vue 3 app in a temporary git repo (`npm install && npm run demo`, Node.js 20.19+, no API key): two source-backed docs, `validate --strict`, `review --approve`, then a code change that makes `impact` exit 1 until the doc is updated. It also shows the limits: a doc updated with the *wrong* number passes, and date-based `drift` misses a change committed the same day as the review.
 
+**Other stacks.** Two more walkthroughs run on an existing Python (FastAPI) service ([`examples/python-fastapi-brownfield`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/python-fastapi-brownfield)) and on a React + Express workspace with a shared API contract ([`examples/react-node-fullstack`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/react-node-fullstack)). Each needs only Node.js and git. What has been checked on which stack, how to reproduce it, and what has not been shown is in [docs/VALIDATION.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/VALIDATION.md). In an npm-workspace repository whose root manifest names no framework, detection says `unknown` and `init` suggests a `--type` from the member manifests.
+
 ## Why not just an AGENTS.md or CLAUDE.md?
 
 Keep them: this tool generates them and points them at the wiki. An instruction file tells an agent how to work. It does not record whether a statement was reviewed, which code it came from, or whether that code has changed since.

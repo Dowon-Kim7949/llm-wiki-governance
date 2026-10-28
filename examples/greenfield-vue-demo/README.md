@@ -7,7 +7,8 @@ empty repository, records the plan (requirements, acceptance criteria, one
 architecture decision), approves it, implements one requirement in a small
 Vue 3 + TypeScript app, links the code and tests to that requirement, changes
 the code, and shows `impact` naming the requirement that has to be reviewed
-again.
+again. Since 1.39.0 it also runs the other direction: the owners change a
+requirement before its code, and `impact` names the files that requirement links.
 
 The [Vue 3 demo](../vue3-typescript-demo/README.md) is the brownfield
 counterpart: there the app exists first and the wiki is written from it. The two
@@ -23,7 +24,7 @@ node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough
 ```
 
 It works in a temporary git repository, prints each command's real output, and
-ends with a PASS/FAIL table (20 checks; 18 on Node older than 22.6, where the
+ends with a PASS/FAIL table (23 checks; 21 on Node older than 22.6, where the
 app's TypeScript tests cannot run without dependencies and are reported as
 skipped, not passed). `--full` prints whole outputs, `--keep` keeps the
 repository, and `--cli <path>` selects another CLI. You need Node.js 18.18+ and
@@ -39,8 +40,8 @@ git. No model and no API key are involved.
 | 3 | `review --approve`. `--reviewer "Demo Reviewer"` stands in for the owners | real CLI |
 | 4 | The implementation of REQ-001 | **prebuilt** in [`implementation/`](./implementation/); its tests are run for real on Node 22.6+ |
 | 5 | Linking the code and tests to REQ-001 and ADR-0001 | **prebuilt** in [`linking/`](./linking/) |
-| 5-8 | `validate`, `review`, `stats`, `search-docs`, `impact` | real CLI |
-| 6-7 | The code change and the requirement edit | scripted edits (`scripts/demo.mjs`) |
+| 5-9 | `validate`, `review`, `stats`, `search-docs`, `impact` | real CLI |
+| 6-8 | The code change and the two requirement edits | scripted edits (`scripts/demo.mjs`) |
 
 ## The steps
 
@@ -68,8 +69,17 @@ git. No model and no API key are involved.
    `impact --since HEAD` exits 1 and names REQ-001 only. ADR-0001 is narrowed out
    because the header lines it cites did not change, and REQ-002 cites no code.
 7. **Update the requirement and review it again.** Add AC-5, approve, and
-   `impact` passes, both on the working tree and on the commit.
-8. **Final state.** `validate --strict` passes. The one remaining finding is the
+   `impact` passes, both on the working tree and on the commit. Because the
+   requirement changed in the same diff, `impact` also lists what it links
+   (`impact.plan_changed`, info): both files show as `changed`. That says they
+   were edited, not that they implement AC-5; the test run checks that.
+8. **Change a requirement before its code.** The owners decide that approvals
+   expire (AC-6). No code changes. `impact` exits 0 and names
+   `src/domain/approval.ts` and `tests/approval.test.ts` as `unchanged`: the
+   files that will have to move. The JSON (`changedPlans`) shows the Acceptance
+   Criteria section counted and the reworded Open Questions not counted. The
+   owners approve the changed plan; AC-6 is planned, not implemented.
+9. **Final state.** `validate --strict` passes. The one remaining finding is the
    info line for the deferred REQ-002.
 
 To run the steps by hand, create the empty repository outside this checkout and
@@ -79,7 +89,7 @@ apply each edit with the same script:
 node examples/greenfield-vue-demo/scripts/demo.mjs workspace ~/greenfield-wiki-demo
 cd ~/greenfield-wiki-demo
 node <checkout>/bin/llm-wiki.js init --write --greenfield
-node <checkout>/examples/greenfield-vue-demo/scripts/demo.mjs plan   # then: implement, link, enable-gate, change-source, update-requirement
+node <checkout>/examples/greenfield-vue-demo/scripts/demo.mjs plan   # then: implement, link, enable-gate, change-source, update-requirement, change-requirement
 ```
 
 ## What this does not show
@@ -88,8 +98,9 @@ node <checkout>/examples/greenfield-vue-demo/scripts/demo.mjs plan   # then: imp
   REQ-001 is implemented. The tests passing checks it, and a person decides
   whether that is enough. No `llm-wiki` command runs your tests or judges a
   requirement.
-- **A requirement edit flagging code.** `impact` works from code to documents.
-  When a requirement changes, re-checking its linked code and tests is manual.
+- **Which code a requirement edit breaks.** Since 1.39.0 `impact` lists the files
+  a changed requirement links, but only those it links, per file, and it judges
+  none of them. Re-checking them against the new text is still a person's job.
 - **Per-criterion tracing.** Evidence is tracked per document, so one
   requirement per document is the unit. Acceptance criteria inside a document
   are not tracked one by one.

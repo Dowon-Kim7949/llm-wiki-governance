@@ -13,7 +13,7 @@
 //   node scripts/demo.mjs workspace <dir>
 //       Creates <dir> as the empty starting repository (one commit, a README) so
 //       you can run the steps by hand.
-//   node scripts/demo.mjs plan | implement | link | enable-gate | change-source | update-requirement
+//   node scripts/demo.mjs plan | implement | link | enable-gate | change-source | update-requirement | change-requirement
 //       The scenario's file edits, applied to the current directory.
 //
 // Plain Node.js (18.18+) with no dependencies; git must be on PATH. The app's own
@@ -137,6 +137,20 @@ function updateRequirement(cwd) {
     next = replaceExactly(next, "  - verified\n", "  - needs-review\n", 1, REQ_001);
     next = next.replace(/^last_updated: .*$/m, `last_updated: ${today()}`);
     return `${next.trimEnd()}\n- ${today()}: the owners added AC-5 (no self-approval); \`approveTask\` and its test were changed with it.\n`;
+  });
+}
+
+// The owners decide the open question before anyone writes the code: an approval
+// expires. Only the plan changes; impact.plan_changed (1.39.0) names the files it
+// links, all unchanged in this diff, as the ones that will have to move.
+function changeRequirementOnly(cwd) {
+  editFile(cwd, REQ_001, (text) => {
+    let next = replaceExactly(text, "- AC-5: The developer who requested a task cannot approve it.\n", "- AC-5: The developer who requested a task cannot approve it.\n- AC-6: An approval older than seven days no longer allows an agent run.\n", 1, REQ_001);
+    next = replaceExactly(next, "- Whether an approval should expire is not decided.\n", "- How an expired approval is shown in the UI is not decided.\n", 1, REQ_001);
+    next = replaceExactly(next, "status: verified", "status: needs_review", 1, REQ_001);
+    next = replaceExactly(next, "  - verified\n", "  - needs-review\n", 1, REQ_001);
+    next = next.replace(/^last_updated: .*$/m, `last_updated: ${today()}`);
+    return `${next.trimEnd()}\n- ${today()}: the owners added AC-6 (approvals expire after seven days). Not implemented yet: \`approveTask\`, \`startAgentRun\` and their tests still implement AC-1 to AC-5.\n`;
   });
 }
 
@@ -319,11 +333,40 @@ function walkthrough(argv) {
   say(`edited ${REQ_001}: added AC-5, updated the evidence notes, status back to needs_review`);
   step("validate --strict after the edit", ["validate", "--strict"], 0);
   step("review --approve the updated requirement", ["review", "--approve", REQ_001, "--reviewer", REVIEWER], 0, (out) => /approved: 1\b/.test(out));
-  step("impact passes once the requirement moves with the code", ["impact", "--since", "HEAD"], 0);
+  say("\nThe requirement changed in the same diff, so impact also lists what it links (impact.plan_changed, info, 1.39.0).");
+  say("Both files show as changed here; that says they were edited, not that they implement AC-5 — the test run above is what checks that.");
+  step("impact passes once the requirement moves with the code", ["impact", "--since", "HEAD"], 0, (out) =>
+    out.includes(`changed_plans: 1 (${REQ_001})`)
+    && out.includes("`src/domain/approval.ts` (changed)")
+    && out.includes("`tests/approval.test.ts` (changed)"));
   commit("feat: a requester cannot approve their own task (REQ-001 AC-5)");
   step("impact for that commit, as CI on a push sees it", ["impact", "--since", "HEAD~1"], 0);
 
-  section("Step 8 - Final state");
+  section("Step 8 - The owners change a requirement before its code");
+  changeRequirementOnly(cwd);
+  say(`edited ${REQ_001}: added AC-6 (approvals expire), reworded the open question, status back to needs_review. No code changed.`);
+  step("impact names the linked files that have not moved yet", ["impact", "--since", "HEAD"], 0, (out) =>
+    out.includes(`impact.plan_changed ${REQ_001}`)
+    && out.includes("`src/domain/approval.ts` (unchanged)")
+    && out.includes("`tests/approval.test.ts` (unchanged)")
+    && !out.includes(`impact.source_changed ${WIKI}/`));
+  step("impact JSON: which sections changed and which were not counted", ["impact", "--since", "HEAD", "--format", "json"], 0, (out) => {
+    try {
+      const plan = JSON.parse(out.replace(/^﻿/, "")).changedPlans.find((entry) => entry.path === REQ_001);
+      return Boolean(plan)
+        && plan.meaningful === true
+        && plan.changedSections.includes("acceptance criteria")
+        && plan.ignoredSections.includes("open questions")
+        && plan.linked.every((link) => link.change === "unchanged");
+    } catch {
+      return false;
+    }
+  });
+  say("\nApproving the changed plan approves AC-6 as a plan; the code for it is the next piece of work.");
+  step("review --approve the changed plan", ["review", "--approve", REQ_001, "--reviewer", REVIEWER], 0, (out) => /approved: 1\b/.test(out));
+  commit("docs: approvals expire after seven days (REQ-001 AC-6, not implemented yet)");
+
+  section("Step 9 - Final state");
   step("validate --strict: clean; the deferred plan stays unlinked", ["validate", "--strict"], 0, (out) =>
     out.includes(`evidence.planned_unlinked ${REQ_002}`) && !out.includes(`evidence.planned_unlinked ${REQ_001}`));
 
@@ -386,7 +429,11 @@ if (isMain) {
       updateRequirement(here);
       console.log(`${REQ_001}: AC-5 added, evidence notes updated, status needs_review`);
       break;
+    case "change-requirement":
+      changeRequirementOnly(here);
+      console.log(`${REQ_001}: AC-6 added (not implemented), status needs_review`);
+      break;
     default:
-      fail("usage: demo.mjs walkthrough|workspace <dir>|plan|implement|link|enable-gate|change-source|update-requirement");
+      fail("usage: demo.mjs walkthrough|workspace <dir>|plan|implement|link|enable-gate|change-source|update-requirement|change-requirement");
   }
 }

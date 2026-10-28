@@ -67,6 +67,43 @@ async function expandWorkspacePattern(cwd, pattern) {
   return [];
 }
 
+const FRONTEND_DEPENDENCIES = ["vue", "react", "svelte", "angular", "next", "nuxt", "vite"];
+const BACKEND_DEPENDENCIES = ["express", "fastify", "nestjs", "@nestjs/core", "django", "fastapi"];
+
+// A suggestion for `init`, never an input to detectProject: when the root
+// package.json declares npm/yarn workspaces, which project type do the member
+// manifests point at? Returns { suggestedType, members[{ path, frontend[],
+// backend[] }] }, or null when there are no workspaces or no member names a known
+// framework. Found by validating a React + Node workspace (2026-10-28): the root
+// manifest of such a repository usually carries no framework dependency, so it is
+// detected as `unknown`. Folding member dependencies into detectProject instead
+// would change the type of every workspace repository initialized without one —
+// `init` records a type in the config only when it is not `unknown`, so those
+// repositories re-detect on every `validate`, and a new `fullstack` type would make
+// its profile documents required and fail their builds.
+export async function workspaceTypeHint(cwd) {
+  const { packages } = await detectWorkspaces(cwd);
+  const members = [];
+  for (const dir of packages) {
+    const manifest = path.join(cwd, ...dir.split("/"), "package.json");
+    if (!(await pathExists(manifest))) continue;
+    let pkg;
+    try {
+      pkg = JSON.parse(await readTextAuto(manifest));
+    } catch {
+      continue;
+    }
+    const deps = { ...pkg?.dependencies, ...pkg?.devDependencies };
+    const frontend = FRONTEND_DEPENDENCIES.filter((name) => deps[name]);
+    const backend = BACKEND_DEPENDENCIES.filter((name) => deps[name]);
+    if (frontend.length || backend.length) members.push({ path: dir, frontend, backend });
+  }
+  if (members.length === 0) return null;
+  const hasFrontend = members.some((member) => member.frontend.length > 0);
+  const hasBackend = members.some((member) => member.backend.length > 0);
+  return { suggestedType: hasFrontend && hasBackend ? "fullstack" : hasFrontend ? "frontend" : "backend", members };
+}
+
 export async function detectProject(cwd, explicitType, explicitProfiles = []) {
   const signals = [];
   const packagePath = path.join(cwd, "package.json");
@@ -86,8 +123,8 @@ export async function detectProject(cwd, explicitType, explicitProfiles = []) {
     ...packageJson?.devDependencies
   };
 
-  const frontendSignals = ["vue", "react", "svelte", "angular", "next", "nuxt", "vite"].filter((name) => deps[name]);
-  const backendSignals = ["express", "fastify", "nestjs", "@nestjs/core", "django", "fastapi"].filter((name) => deps[name]);
+  const frontendSignals = FRONTEND_DEPENDENCIES.filter((name) => deps[name]);
+  const backendSignals = BACKEND_DEPENDENCIES.filter((name) => deps[name]);
 
   if (frontendSignals.length) {
     signals.push({ path: "package.json", reason: `frontend dependencies detected: ${frontendSignals.join(", ")}` });
@@ -111,11 +148,13 @@ export async function detectProject(cwd, explicitType, explicitProfiles = []) {
 
   const ecosystems = [];
   let primaryManifest = packageJson ? "package.json" : null;
+  let manifestName = null;
   if (packageJson) ecosystems.push("node");
   for (const eco of await detectNonNodeEcosystems(cwd)) {
     ecosystems.push(eco.ecosystem);
     signals.push({ path: eco.path, reason: eco.reason });
     if (!primaryManifest) primaryManifest = eco.path;
+    if (!manifestName && eco.projectName) manifestName = eco.projectName;
     if (eco.role === "backend") backendSignals.push(`${eco.ecosystem}:web`);
     else if (eco.role === "library") librarySignals.push(`${eco.ecosystem}:package`);
   }
@@ -147,13 +186,17 @@ export async function detectProject(cwd, explicitType, explicitProfiles = []) {
   const profileReviewItems = explicitProfiles
     .filter((profile) => !KNOWN_PROFILES.has(profile))
     .map((profile) => `Explicit profile '${profile}' is not a known profile.`);
-  const typeReviewItems = explicitType && explicitType !== detectedType.projectType
+  // A real disagreement only. When detection found nothing (`unknown`), an explicit
+  // type fills the gap rather than contradicting it, and reporting it turned every
+  // `validate --strict` red for a project that recorded its type in the config —
+  // the way `init --type` records it (found on a React + Node workspace, 2026-10-28).
+  const typeReviewItems = explicitType && detectedType.projectType !== "unknown" && explicitType !== detectedType.projectType
     ? [`Explicit type '${explicitType}' differs from detected '${detectedType.projectType}'.`]
     : [];
 
   return {
     projectType,
-    projectName: normalizeProjectName(packageJson?.name, cwd),
+    projectName: normalizeProjectName(packageJson?.name ?? manifestName, cwd),
     ecosystems,
     primaryManifest: primaryManifest ?? "package.json",
     confidence: explicitType ? "explicit" : detectedType.confidence,
@@ -161,6 +204,28 @@ export async function detectProject(cwd, explicitType, explicitProfiles = []) {
     signals,
     reviewItems: [...typeReviewItems, ...profileReviewItems]
   };
+}
+
+// The `name = "..."` of the first of <sections> that has one, read line by line —
+// enough for the name of a pyproject.toml or Cargo.toml without a TOML parser (the
+// zero-dependency rule). null when absent or written in a form this does not read
+// (a multi-line or computed value); the caller then keeps the directory name.
+// Used for the `project:` field of newly generated documents only (2026-10-28: a
+// Python service was named after its temporary directory).
+function tomlSectionName(content, sections) {
+  let section = null;
+  const names = new Map();
+  for (const line of String(content).split(/\r?\n/)) {
+    const header = line.match(/^\s*\[([^\]]+)\]\s*(?:#.*)?$/);
+    if (header) {
+      section = header[1].trim();
+      continue;
+    }
+    const value = line.match(/^\s*name\s*=\s*(["'])([^"'\n]+)\1\s*(?:#.*)?$/);
+    if (value && section && !names.has(section)) names.set(section, value[2].trim());
+  }
+  for (const wanted of sections) if (names.get(wanted)) return names.get(wanted);
+  return null;
 }
 
 async function detectNonNodeEcosystems(cwd) {
@@ -174,7 +239,8 @@ async function detectNonNodeEcosystems(cwd) {
       role = "backend";
       reason = `Python manifest detected (${python.name}); stdlib HTTP server usage found`;
     }
-    found.push({ ecosystem: "python", path: python.name, reason, role });
+    const name = python.name === "pyproject.toml" ? tomlSectionName(python.content, ["project", "tool.poetry"]) : null;
+    found.push({ ecosystem: "python", path: python.name, reason, role, ...(name ? { projectName: name } : {}) });
   }
 
   const go = await readFirstManifest(cwd, ["go.mod"]);
@@ -191,7 +257,8 @@ async function detectNonNodeEcosystems(cwd) {
   const rust = await readFirstManifest(cwd, ["Cargo.toml"]);
   if (rust) {
     const role = /\b(actix-web|axum|rocket|warp|tide|poem|salvo)\b/i.test(rust.content) ? "backend" : "library";
-    found.push({ ecosystem: "rust", path: "Cargo.toml", reason: "Rust crate detected (Cargo.toml)", role });
+    const name = tomlSectionName(rust.content, ["package"]);
+    found.push({ ecosystem: "rust", path: "Cargo.toml", reason: "Rust crate detected (Cargo.toml)", role, ...(name ? { projectName: name } : {}) });
   }
 
   const jvm = await readFirstManifest(cwd, ["pom.xml", "build.gradle", "build.gradle.kts"]);

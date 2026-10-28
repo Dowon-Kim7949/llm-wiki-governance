@@ -28,7 +28,7 @@ contains_sensitive_info: false
 source_digests:
   - package.json sha256:363aafcd2545dc99
   - src/cli.js sha256:b4c407f857f2de78
-  - README.md sha256:cf48ba1ff3d3e5d6
+  - README.md sha256:6442b0447217f4c8
 ---
 
 # LLM-WIKI Index

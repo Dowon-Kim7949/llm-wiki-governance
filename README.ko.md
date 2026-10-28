@@ -37,6 +37,8 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 
 **데모.** [`examples/vue3-typescript-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/vue3-typescript-demo)는 작은 Vue 3 앱으로 전체 흐름을 임시 git 저장소에서 돌립니다(`npm install && npm run demo`, Node.js 20.19+, API 키 불필요). 소스 근거 문서 2개, `validate --strict`, `review --approve`를 거친 뒤 코드를 바꾸면 문서를 고칠 때까지 `impact`가 exit 1로 끝납니다. 한계도 보여 줍니다. 문서를 *틀린* 숫자로 고쳐도 통과하고, 날짜 기준 `drift`는 검토와 같은 날 커밋된 변경을 놓칩니다.
 
+**다른 스택.** 워크스루 두 개가 더 있습니다. 기존 Python(FastAPI) 서비스([`examples/python-fastapi-brownfield`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/python-fastapi-brownfield))와 공유 API 계약을 둔 React + Express workspace([`examples/react-node-fullstack`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/react-node-fullstack))에서 돕니다. 둘 다 Node.js와 git만 있으면 됩니다. 어떤 스택에서 무엇을 확인했는지, 어떻게 재현하는지, 무엇을 아직 보이지 못했는지는 [docs/VALIDATION.ko.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/VALIDATION.ko.md)에 있습니다. 루트 매니페스트에 프레임워크가 없는 npm workspace 저장소는 `unknown`으로 감지되고, `init`이 멤버 매니페스트를 보고 `--type`을 제안합니다.
+
 ## AGENTS.md나 CLAUDE.md만으로는 왜 부족한가
 
 그 파일들은 그대로 두세요. 이 도구가 그 파일들을 만들고 위키를 가리키게 합니다. 지시 파일은 에이전트에게 일하는 방식을 알려 주지만, 어떤 문장이 검토를 거쳤는지, 어떤 코드에서 나왔는지, 그 뒤로 그 코드가 바뀌었는지는 기록하지 않습니다.

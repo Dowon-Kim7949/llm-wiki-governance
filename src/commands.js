@@ -2,7 +2,7 @@ import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { CORE_REQUIRED_DOCS, CURRENT_WIKI_BLOCK_VERSION, GREENFIELD_DOCS, JSON_SCHEMA_VERSION, PROFILE_DOCS, VALID_STATUSES } from "./config.js";
-import { detectProject, detectWorkspaces } from "./detector.js";
+import { detectProject, detectWorkspaces, workspaceTypeHint } from "./detector.js";
 import { findMojibakeIndicators, hasUtf8Bom, readUtf8, writeUtf8 } from "./encoding.js";
 import { listMarkdownFiles, pathExists, toPosix } from "./files.js";
 import { CONFIG_FILENAME, checkRunIgnored, loadProjectConfig, mergeConfigIntoOptions } from "./config-file.js";
@@ -2587,6 +2587,10 @@ async function resolveInitGovernanceMode(options) {
 
 export async function initCommand(options) {
   const detection = await detectProject(options.cwd, options.type, options.profiles);
+  // Advisory only: a workspace repository whose framework dependencies live in its
+  // member manifests is detected as unknown, and init says which --type the members
+  // point at instead of changing the detected type (see workspaceTypeHint).
+  const typeHint = !options.type && detection.projectType === "unknown" ? await workspaceTypeHint(options.cwd) : null;
   const agents = selectedAgents(options);
   const governanceMode = await resolveInitGovernanceMode(options);
   const modeScopedOptions = { ...options, governanceMode, governanceModeSource: options.governanceModeSource ?? "default" };
@@ -2608,17 +2612,27 @@ export async function initCommand(options) {
     : null;
 
   if (options.dryRun) {
-    return initDryRun(modeScopedOptions, detection, agents, candidates, domainNotice);
+    return initDryRun(modeScopedOptions, detection, agents, candidates, domainNotice, typeHint);
   }
 
   if (options.write) {
-    return initWrite(modeScopedOptions, detection, agents, candidates, domainContext, domainNotice);
+    return initWrite(modeScopedOptions, detection, agents, candidates, domainContext, domainNotice, typeHint);
   }
 
   return needsWriteFlag("init", "Preview the changes with init --dry-run, or run init --write to create the missing LLM-WIKI files. Existing wiki docs are kept (--existing skip by default).");
 }
 
-async function initDryRun(options, detection, agents, candidates, domainNotice = null) {
+// The Detected Project lines, plus the workspace hint when there is one.
+function detectedProjectLines(detection, typeHint) {
+  const lines = [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`];
+  if (typeHint) {
+    const members = typeHint.members.map((member) => `${member.path} (${[...member.frontend, ...member.backend].join(", ")})`).join("; ");
+    lines.push(`hint: package.json declares workspaces whose manifests name ${members}. If this is one ${typeHint.suggestedType} project, run init again with --type ${typeHint.suggestedType}; init then records the type in llm-wiki.config.json. The detected type stays unknown on its own, because a repository initialized without a type detects it again on every validate.`);
+  }
+  return lines;
+}
+
+async function initDryRun(options, detection, agents, candidates, domainNotice = null, typeHint = null) {
   const planned = [];
   const skipped = [];
   const docLang = normalizeLang(options.docLang);
@@ -2659,9 +2673,10 @@ async function initDryRun(options, detection, agents, candidates, domainNotice =
     agents,
     planned,
     skipped,
+    ...(typeHint ? { typeHint } : {}),
     ...(options.greenfield ? { greenfield: true } : {})
   }, "LLM-WIKI Init Dry Run", [
-    { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
+    { title: "Detected Project", body: detectedProjectLines(detection, typeHint) },
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
     { title: "Documentation Language", body: [`${docLang} (change with --doc-lang en|ko or config docLanguage).`] },
     ...(startingPoint.length ? [{ title: "Starting Point", body: startingPoint }] : []),
@@ -2725,7 +2740,7 @@ async function findMissingDocs(cwd, projectType, profiles = [], customDocs = [],
   return findings;
 }
 
-async function initWrite(options, detection, agents, candidates, domainContext = emptyDomainContext(), domainNotice = null) {
+async function initWrite(options, detection, agents, candidates, domainContext = emptyDomainContext(), domainNotice = null, typeHint = null) {
   const created = [];
   const overwritten = [];
   const skipped = [];
@@ -2845,10 +2860,11 @@ async function initWrite(options, detection, agents, candidates, domainContext =
     overwritten,
     skipped,
     skillsCreated: skillWrites.created.length,
+    ...(typeHint ? { typeHint } : {}),
     ...(options.greenfield ? { greenfield: true } : {}),
     findings
   }, "LLM-WIKI Init Write", [
-    { title: "Detected Project", body: [`type: ${detection.projectType}`, `confidence: ${detection.confidence}`] },
+    { title: "Detected Project", body: detectedProjectLines(detection, typeHint) },
     { title: "Selected Agents", body: [agents.length ? agents.join(", ") : "none"] },
     { title: "Summary", body: reassurance },
     ...(startingPoint.length ? [{ title: "Starting Point", body: startingPoint }] : []),

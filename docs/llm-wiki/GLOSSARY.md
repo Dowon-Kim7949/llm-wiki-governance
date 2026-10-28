@@ -28,7 +28,7 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - src/frontmatter-schema.js sha256:ec4476da72b5c2e2
-  - src/commands.js sha256:b68f27a10f5c28d3
+  - src/commands.js sha256:e15de888dff84f03
   - src/config.js sha256:ef863d1307ba2dc9
   - llm-wiki.config.json sha256:16fa581c78b330eb
 ---
@@ -53,6 +53,7 @@ source_digests:
 - **source_digests / 내용 앵커** — (1.36.0, 섀도) `review --approve`가 config `sourceDigests: true`일 때 스탬프하는 선택 frontmatter 리스트. 항목은 `<경로[로케이터]> sha256:<16 hex>`이고, 검토 시점에 인용 소스가 어떤 내용이었는지를 날짜·SHA·머지 방식과 무관하게 기록한다. `drift --anchor content`가 지금 내용과 비교해 날짜 판정 옆에 보인다.
 - **locatorNarrowed** — (1.36.0) `impact` JSON 키. 줄 범위나 `.md` 섹션으로만 인용된 파일이 diff에 들었지만 인용된 영역은 그대로라 실패시키지 않은 인용의 목록. 건너뛴 사실을 숨기지 않으려고 보고한다. 1.37.0부터 `drift`에도 같은 키가 있고, 1.39.0부터 `drift`는 **리뷰 스탬프 커밋**도 동의할 때만 인용을 이 목록으로 보낸다.
 - **리뷰 스탬프 커밋(review stamp commit)** — (1.39.0) 문서의 현재 `reviewed_at`(없으면 `last_updated`) 줄을 쓴 가장 최근 커밋. 그 커밋에 커밋된 값이 작업 트리의 값과 같을 때만 인정한다(`src/commands/scans.js#symbol:reviewStamp`). 리뷰일 끝 스냅샷은 날짜 순서로 고른 커밋이라 리뷰어가 보지 않은 곁가지 커밋일 수 있었고, 그래서 `drift`의 축소가 바뀐 인용을 숨겼다(N-20). 이 커밋을 정할 수 없으면 축소하지 않는다.
+- **workspace 힌트(typeHint)** — (1.40.0) `init`이 `--type` 없이 `unknown`으로 감지한 npm/yarn workspace 저장소에서 멤버 매니페스트의 프레임워크 의존성을 보고 내는 `--type` 제안. 텍스트 `hint:` 줄과 JSON `typeHint`로만 나오고 감지 결과(`detection.projectType`)는 바꾸지 않는다(`src/detector.js#symbol:workspaceTypeHint`).
 - **impact.plan_changed / changedPlans** — (1.39.0) `impact`의 반대 방향 신호. diff 안에서 승인된 계획 문서(계획된 지식)의 계획 서술 절이 바뀌면, 그 문서가 연결한 로컬 파일과 각 파일이 같은 diff에서 `changed`/`unchanged`/`missing`/`uncertain`인지를 info finding과 JSON `changedPlans`로 낸다. 검토할 후보 목록이지 충족 판정이 아니다. 판정 규칙은 `src/commands/plan-changes.js#symbol:scanPlanChanges`에 있다.
 - **llm-wiki.config.json** — 프로젝트 루트의 선택적 설정 파일. 인식하는 키는 `type`·`profiles`·`agents`·`strict`·`rules`·`rulesPreset`·`requiredDocs`·`templates`·`reviewer`(별칭 `reviewedBy`)·`lang`·`docLanguage`·`harnessHealth`·`wikiBudget`(1.33.0, `{ "logTokens", "docTokens" }`)·`agentReviewers`(1.33.0, 이름 배열)·`promptProfile`(1.33.0, `"full"|"slim"`)·`governance`(1.30.0, `{ "mode": "lite"|"standard"|"strict" }`)·`checkRun`(1.36.0, `{ "ignore": ["dir/", "*.ext", "경로"] }`)·`sourceDigests`(1.36.0, boolean)이며, unknown 키는 무시돼 옛 파일이 계속 동작한다. **1.31.0부터 값 어휘도 검증한다**: `type`은 `KNOWN_TYPES`에, `agents`는 `SUPPORTED_AGENTS`에 대조하고 위반은 config 오류(exit 3), `agents`의 `all`은 CLI와 같이 세 이름으로 펼쳐진다 — 그 전에는 타입만 봐서 `{"type": "frontendd"}`가 조용히 통과했다. 적용 우선순위는 CLI 플래그 > config > 자동감지(`strict`는 additive라 config가 켤 수만 있다). `src/config-file.js`. 키별 의미는 [PUBLIC_API](PUBLIC_API.md)의 Configuration 절이 소유한다.
 - **월별 권(log volume)** — `docs/llm-wiki/log-YYYY-MM.md`. `archive-log`(1.33.0)가 `log.md`에서 보존 기간을 넘긴 항목을 고치지 않고 통째로 옮겨 두는 파일이다(기존 권에 덧붙일 때는 줄끝만 그 권을 따른다). 집계(`stats`·orphan)에서는 `log.md` 하나로 센다. `log.md`와 같은 변경 로그 기록으로 취급된다(`isAppendOnlyLog`): 다시 쓰이지 않고 review·drift·impact 대상이 아니며, 민감정보·링크 스캔은 받는다.

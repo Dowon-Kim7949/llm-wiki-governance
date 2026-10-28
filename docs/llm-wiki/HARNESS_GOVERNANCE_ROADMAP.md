@@ -68,7 +68,7 @@ source_digests:
   - package.json sha256:363aafcd2545dc99
   - src/cli.js sha256:b4c407f857f2de78
   - src/index.js sha256:ee1d42734ade2f15
-  - src/commands.js sha256:b68f27a10f5c28d3
+  - src/commands.js sha256:e15de888dff84f03
   - src/commands/scans.js sha256:9d32671b86e6b28a
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/wiki-files.js sha256:141842053b78cc2c
@@ -1840,6 +1840,30 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     (d) "측정된 사실 → 정책 → finding·종료 코드"를 엔진 수준에서 분리하는 재설계는 이번에 하지
     않았습니다. 확인된 결함 두 건은 소비자 단위 측정(`withRulesMeasured`)으로 고칠 수 있었고, 재설계는
     모든 명령의 출력 계약을 건드립니다.
+
+### 1.40.0 처리 중 발견 (2026-10-28, 다른 스택에서 처음부터 끝까지 돌려 봄)
+
+이 저장소의 위키 밖에서 Python(FastAPI) 기존 서비스와 React + Express workspace를 워크스루로
+돌리자 이 저장소의 테스트로는 보이지 않던 결함 셋이 나왔습니다. 셋 다 처음 돌린 날 나왔다는 사실이
+이 검증의 가치를 말합니다.
+
+56. ~~**N-22 workspace 풀스택 저장소가 `unknown`으로 감지된다**~~ — **1.40.0에서 안내로 해소.** 루트
+    `package.json`에 프레임워크가 없고 멤버(`client/`·`server/`)에만 있으면 감지가 `unknown`(confidence
+    low)이었습니다. 감지 결과에 멤버 의존성을 합치면 고쳐지지만 그러지 않았습니다. `init`은 type이
+    `unknown`이 아닐 때만 config에 기록하므로 그렇게 초기화된 기존 workspace 저장소는 `validate`마다
+    다시 감지하고, type이 `fullstack`으로 바뀌면 프로필 문서가 새로 필수가 되어 빌드가 깨집니다. 대신
+    `init`이 `--type`을 제안합니다(`hint:` 줄, JSON `typeHint`). 감지 개선이 필요하다는 판단 자체는
+    남습니다 — 기존 저장소를 깨지 않고 바꾸려면 감지 결과의 버전 관리(예: config에 감지 시점 기록)가
+    먼저 필요합니다.
+57. ~~**N-23 명시 type이 `unknown` 감지와 "다르다"며 `validate --strict`를 매번 깨뜨렸다**~~ — **1.40.0에서
+    수정.** N-22의 안내대로 `--type fullstack`을 기록하면 `project.review_item`(warning)이 모든 실행에서
+    나왔습니다. README의 Quick start도 `--type`을 쓰므로 감지가 판단하지 못한 저장소에서는 같은 일이
+    났습니다. 감지 결과가 `unknown`이면 이제 차이로 보지 않습니다. 실제로 엇갈리는 경우는 그대로
+    warning입니다.
+58. ~~**N-24 Python·Rust 프로젝트가 디렉터리 이름으로 불렸다**~~ — **1.40.0에서 수정.** `package.json`이
+    없으면 생성 문서의 `project:`가 디렉터리 이름이었습니다(워크스루에서는 임시 디렉터리 이름).
+    `pyproject.toml`·`Cargo.toml`의 `name`을 줄 단위로 읽습니다. 프로젝트 이름과 문서를 대조하는
+    검사는 없어 기존 저장소에는 영향이 없습니다. Go(`go.mod`의 module 경로)·JVM·.NET은 그대로입니다.
 
 ### 사람의 결정이 필요함
 

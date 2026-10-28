@@ -56,6 +56,7 @@ evidence:
   - src/git.js#symbol:changedFiles
   - src/commands/plan-changes.js#symbol:scanPlanChanges
   - src/commands/scans.js#symbol:reviewStamp
+  - src/detector.js#symbol:workspaceTypeHint
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/domains/00_overview.md
@@ -64,7 +65,7 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - src/cli.js sha256:b4c407f857f2de78
-  - src/commands.js sha256:b68f27a10f5c28d3
+  - src/commands.js sha256:e15de888dff84f03
   - src/commands/retrieval.js sha256:36e3f0e8b46fe723
   - src/release-notes.js sha256:7dcc7040f651c1b9
   - src/config-file.js sha256:762011b8afa322f6
@@ -76,11 +77,11 @@ source_digests:
   - src/mcp/validate-args.js sha256:14568f590681aa53
   - src/frontmatter.js sha256:f03d0c07725dec3e
   - src/commands/import-memory.js sha256:36c43fde4eb90a81
-  - package.json sha256:11bfea7c81c52615
+  - package.json sha256:363aafcd2545dc99
   - src/commands/fix-migrate.js sha256:19e63e39ce576bb9
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/scans.js sha256:9d32671b86e6b28a
-  - src/detector.js sha256:5ad2488c9692faa3
+  - src/detector.js sha256:82df09c0ded9bef7
   - src/commands/plan-changes.js sha256:45a66f378082e11a
 ---
 
@@ -105,7 +106,7 @@ source_digests:
 | `quickstart --dry-run\|--write` | doctor+init+frontmatter+handoff 프롬프트 | `--write` 시 |
 | `handoff` | Codex/Claude Code 인수인계 프롬프트 출력 | `--out` 시 |
 | `prompt --task <name>` | 반복 작업 프롬프트. 지원 값 **10종**: `bootstrap`/`onboard`/`prepare`/`feature`/`fix`/`refactor`/`docs-sync`/`okf-extract`/`backfill`/`issue` — 단일 소스는 `src/task-prompts.js#symbol:SUPPORTED_TASK_PROMPTS`이고 MCP `prompt` 툴의 enum도 여기서 파생된다(미지원 값은 blocked, exit 2). `bootstrap`은 init 뼈대의 최초 보강용이며 `handoff`와 규칙을 공유한다. 반복 write 워크플로(`feature`/`fix`/`refactor`/`docs-sync`)는 1.27.2부터 Goal/Hard lines/Exit criteria 3블록, 절차형 원샷(`bootstrap`/`onboard`/`prepare`/`okf-extract`/`backfill`)은 체크리스트를 유지한다. **1.30.0에서 추가된 `backfill`**은 `backfill --write`가 만든 스텁을 채우는 재구성 워크플로이며, 근거 사다리(현재 소스 > 테스트 > 설정 > 기존 문서 > ADR > 커밋 메시지 > diff/이력 > 로컬 이슈 메타데이터)·세 confidence 라벨·"파일 배치·네이밍·의존성 선택·커밋 제목에서 근거를 재구성하지 말라"는 상시 규칙을 담는다. 여기서 순서가 안전장치이므로 체크리스트 형태를 유지한다. **1.33.0의 `issue`**는 대화와 위키로 GitHub 이슈 본문 초안(배경·목표·범위 밖·완료 기준·관련 문서 링크·위험·열린 질문)을 쓰게 하는 **읽기 전용** 프리셋이다 — 작업 단위 경위는 이슈에 두고 위키·log는 고치지 않는다. 생성 스킬은 만들지 않는다(항상 로드되는 표면을 늘리지 않는다). 같은 릴리스부터 `prompt`가 **거버넌스 모드를 따른다** — 그 전에는 `--mode`를 받고도 빌더에 넘기지 않아 `lite` 프로젝트에도 strict 예산을 출력했다(모드 미지정·config 없음은 그대로 strict) | `--out` 시 |
-| `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성. backend/fullstack(디렉터리/파일 도메인)·frontend/mobile(SPA `pages`/`views`/... 폴더 + vue/react-router 라우트 그룹)은 도메인별 문서(`domains/NN_<name>.md`)도 생성 — 도메인 미탐지 시 침묵하지 않고 명시 안내, `--domains a,b,c`로 수동 지정 가능. 1.15부터 `--skills`(또는 `--agent claude\|codex\|cursor`)로 위키-그라운디드 자동화 프롬프트 아티팩트(Claude 스킬 `.claude/skills/`·Codex 스킬 `.agents/skills/`·Cursor 룰·중립 프롬프트, bootstrap/feature/fix/docs-sync; opt-in·미덮어씀; 1.25.0부터 bootstrap만 도메인 맵 스냅샷·나머지는 실행 시점 맵, `--refresh`로 사용자 미수정 관리 스킬만 갱신) 생성. 어댑터 선택은 `--with-adapters`(에이전트 미지정 시 전체) / `--no-adapters`(어댑터 없음 — **선언적**이라 플래그 순서와 무관하고, 명시적 opt-out이므로 config `agents`가 목록을 되채우지 않는다). 1.38.0부터 `templates/DECISION_LOG.template.md`는 플래그와 무관하게 ADR 골격(Decision Status·Context·Decision·Alternatives Considered·Consequences·Evidence)이고 `source_files: []`다 — 그 전에는 일반 플레이스홀더 본문에 매니페스트를 인용해, 복사한 결정 문서가 첫날부터 근거 연결됨으로 셌다. 첫 `log.md` 항목의 근거 줄은 감지된 주 매니페스트(`pyproject.toml` 등)를 적는다(그 전에는 생태계와 무관하게 `package.json`) | `--write` 시 |
+| `init --dry-run\|--write` | 누락 wiki 문서·선택 adapter 생성. backend/fullstack(디렉터리/파일 도메인)·frontend/mobile(SPA `pages`/`views`/... 폴더 + vue/react-router 라우트 그룹)은 도메인별 문서(`domains/NN_<name>.md`)도 생성 — 도메인 미탐지 시 침묵하지 않고 명시 안내, `--domains a,b,c`로 수동 지정 가능. 1.15부터 `--skills`(또는 `--agent claude\|codex\|cursor`)로 위키-그라운디드 자동화 프롬프트 아티팩트(Claude 스킬 `.claude/skills/`·Codex 스킬 `.agents/skills/`·Cursor 룰·중립 프롬프트, bootstrap/feature/fix/docs-sync; opt-in·미덮어씀; 1.25.0부터 bootstrap만 도메인 맵 스냅샷·나머지는 실행 시점 맵, `--refresh`로 사용자 미수정 관리 스킬만 갱신) 생성. 어댑터 선택은 `--with-adapters`(에이전트 미지정 시 전체) / `--no-adapters`(어댑터 없음 — **선언적**이라 플래그 순서와 무관하고, 명시적 opt-out이므로 config `agents`가 목록을 되채우지 않는다). 1.38.0부터 `templates/DECISION_LOG.template.md`는 플래그와 무관하게 ADR 골격(Decision Status·Context·Decision·Alternatives Considered·Consequences·Evidence)이고 `source_files: []`다 — 그 전에는 일반 플레이스홀더 본문에 매니페스트를 인용해, 복사한 결정 문서가 첫날부터 근거 연결됨으로 셌다. 첫 `log.md` 항목의 근거 줄은 감지된 주 매니페스트(`pyproject.toml` 등)를 적는다(그 전에는 생태계와 무관하게 `package.json`). **1.40.0부터 workspace 힌트**: `--type` 없이 감지 결과가 `unknown`이고 루트 `package.json`의 npm/yarn `workspaces` 멤버가 프레임워크를 의존하면, `Detected Project`에 `hint:` 줄이 붙고 JSON에 additive `typeHint{suggestedType, members[{path, frontend[], backend[]}]}`가 붙는다(없으면 키 자체가 없다). **감지 결과(`detection.projectType`)는 바꾸지 않는다** — type 없이 초기화한 저장소는 `validate`마다 다시 감지하므로 바꾸면 그 저장소의 필수 문서가 바뀐다. 같은 릴리스에서 `package.json`이 없으면 프로젝트 이름(생성 문서의 `project:`)을 `pyproject.toml`·`Cargo.toml`의 `name`에서 읽고, 감지 결과가 `unknown`일 때는 명시 type과의 차이를 `project.review_item`(warning)으로 내지 않는다(실제로 엇갈리면 계속 낸다) | `--write` 시 |
 | `migrate [--apply]` | `wiki_block_version` 업그레이드 리포트 + 계획. `--apply`로 `fix` 범위 재사용해 문서를 현재 계약으로 올림(preview-first, `verified` 보존; GATE_REVIEW Gate 8) | `--apply` 시 |
 | `fix [--write]` | 승인된 범위의 안전한 자동수정(누락 Tier A frontmatter 필드, `## Evidence` 섹션 보완, 깨진 related/링크 `needs_review` 스텁, 수정 문서 `last_updated` 갱신). 기본은 미리보기 | `--write` 시 |
 | `archive-log [--keep-months <n>] [--write]` | (1.33.0) `docs/llm-wiki/log.md`에서 보존 기간보다 오래된 `## YYYY-MM-DD` 항목을 그 옆의 월별 권 `docs/llm-wiki/log-YYYY-MM.md`로 **고치지 않고 통째로** 옮긴다(새 권에는 바이트 그대로, 기존 권에 덧붙일 때는 그 권의 줄끝을 따른다). 기본은 미리보기, `--write`로 적용. 보존 기간 `--keep-months`(양의 정수, 기본 2, 아니면 exit 3; API 호출은 `RangeError`로 거부 — 다른 명령과 달리 throw한다)는 오늘이 아니라 **가장 최신의 유효한 날짜 항목**에서 거꾸로 센다. 시계는 "내일(UTC)보다 뒤" 날짜를 보류할 때만 쓴다. 날짜 없는 절·달력에 없는 날짜(`invalid-date`)·미래 날짜(`future-dated`)는 제자리에 두고 `skipped[]`로 보고한다. 쓰기 전에 계획한 파일을 다시 파싱해 원래 항목이 정확히 한 번씩 나오지 않으면 아무것도 쓰지 않는다(`archive.integrity`, blocked → exit 2). 닫히지 않은 코드 펜스(줄 번호 포함, `archive.integrity`)·깨끗이 디코딩되지 않는 log.md나 기존 권(`encoding.mojibake`)·대소문자만 다른 같은 이름 파일(`archive.volume_conflict`)도 쓰기 전에 blocked다. 각 파일은 같은 디렉터리의 임시 파일에 쓴 뒤 rename한다(권 먼저, `log.md` 마지막). 중단되면 항목이 두 곳에 남을 뿐이고, 다음 실행이 권에 이미 있는 항목을 `log.md`에서만 지운다(`alreadyArchived[]`). `--format json` 최상위 키: `schemaVersion`·`command`·`write`·`dryRun`·`result`·`keepMonths`·`cutoffMonth`·`planned[]`·`applied[]`·`alreadyArchived[]`·`skipped[]`·`findings[]`(`planned`/`applied` 항목은 실제로 쓰는 권만, `{ month, file, entries, existing }`; `alreadyArchived` 항목은 `{ month, file, heading }`). 월별 권은 `stats`·orphan 집계에서 `log.md` 하나로 센다. **MCP 미노출**(쓰기 명령). 근거: GATE_REVIEW "Change-Log Volume Scope Decision" | `--write` 시 |
@@ -297,6 +298,7 @@ MCP 클라이언트 등록 예시:
 - `src/git.js#symbol:changedFiles` — 변경집합 프리미티브(working tree / `--since <ref>`); `impact`와 `validate --changed`가 공유.
 - `src/commands/plan-changes.js#symbol:scanPlanChanges` — `impact.plan_changed`(1.39.0): diff 안의 승인된 계획 문서를 절 단위로 비교하고 연결 파일의 변경 여부를 표시한다(`changedPlans`). 이름 변경은 `src/git.js#symbol:renamedPaths`로 따라간다.
 - `src/commands/scans.js#symbol:reviewStamp` — 문서의 현재 리뷰 스탬프를 쓴 커밋(1.39.0). `drift`의 축소가 이 커밋과 리뷰일 스냅샷 둘 다에 동의를 구한다.
+- `src/detector.js#symbol:workspaceTypeHint` — `init`의 workspace 힌트(1.40.0). 멤버 매니페스트의 프레임워크 의존성으로 `--type`을 제안할 뿐 `detectProject`의 결과에는 들어가지 않는다.
 - `src/commands.js#symbol:reviewCommand` — `review` 명령: needs_review 백로그를 위험도 정렬해 나열(read-only)하고 `--approve`/`--approve-all --yes`로 지정 문서에 `status: verified`+`reviewed_by`+`reviewed_at`+`tags`의 상태 태그(이미 있는 경우만)를 스탬프(자동 승격 없음; blocking/구조적 finding 문서 거부; `drift --downgrade`의 역방향). reviewed_by는 `--reviewer`>config>`gitUserName`. seam 재사용: `src/git.js#symbol:gitUserName`·`src/commands/fix-migrate.js#symbol:upsertFrontmatterScalar`·`syncStatusTag`·`src/commands/findings.js`의 `review.reviewer_unresolved`/`review.confirmation_required` 규칙(Gate 20).
 
 ## Review Notes
