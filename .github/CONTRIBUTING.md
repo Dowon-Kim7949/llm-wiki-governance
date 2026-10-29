@@ -88,7 +88,7 @@ identity, not an oversight. Two consequences for contributors:
 
 - **Style is enforced by review, not by a linter dependency.** There is no
   ESLint/Prettier. `npm run lint` is a `node --check` syntax gate over the source
-  (`scripts/lint-syntax.mjs`), and `.editorconfig` captures the whitespace rules.
+  (`.github/scripts/lint-syntax.mjs`), and `.editorconfig` captures the whitespace rules.
   Match the surrounding code's style; reviewers flag deviations.
 - **Coverage uses the Node built-in.** `npm run test:coverage`
   (`node --test --experimental-test-coverage`, Node 20+) — not `nyc`/`c8`. It is

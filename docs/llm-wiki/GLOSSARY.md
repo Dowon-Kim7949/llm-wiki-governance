@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -28,9 +28,9 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - src/frontmatter-schema.js sha256:ec4476da72b5c2e2
-  - src/commands.js sha256:9de9e64b3a165a88
+  - src/commands.js sha256:27428d45e7046786
   - src/config.js sha256:ef863d1307ba2dc9
-  - llm-wiki.config.json sha256:16fa581c78b330eb
+  - llm-wiki.config.json sha256:3f7231330c7ffae1
 ---
 
 # Glossary
@@ -62,6 +62,7 @@ source_digests:
 - **not_enriched** — 생성 후 아직 실제 내용으로 보강되지 않은 문서 신호(`content.not_enriched`, P0-3에서 추가). lite는 이 규칙의 보고를 끄지만 `review`는 그래도 이런 문서의 승인을 거부한다(1.38.0 전에는 lite에서 거부가 빠졌다). 그때 이미 승인된 문서는 `stats`의 `verifiedNotEnriched`(1.39.0)가 나열한다 — 사실의 목록이지 승인이 틀렸다는 판정이 아니다.
 - **템플릿 문서(template doc)** — `docs/llm-wiki/templates/` 하위 문서. **도입처가 복사해 쓰는 뼈대이지 그 저장소를 서술하는 문서가 아니므로** 검토(`review`) 대상도, 최신성 게이트(`evidence.stale`/`impact.source_changed`) 대상도 아니다. 판정의 단일 소스는 `src/commands/wiki-files.js#symbol:isTemplateDoc`이며 `listWikiContentDocs`가 쓰던 경계와 같다. 1.29.1(2026-08-06) 이전에는 이 경계가 명령마다 달라서(N-14) 게이트는 지목하는데 `review`로는 손댈 수 없는 문서가 존재했다 — **해소 경로가 없는 finding**. 승격 대상이 아니라는 사실과 최신성 검사 대상이 아니라는 사실이 이제 같은 술어에서 나온다.
 - **거버넌스 모드(governance mode)** — 이 저장소가 도는 운영 레벨. `lite`/`standard`/`strict` 세 값이며 config `governance.mode`(또는 `--mode`)로 정한다. **프로젝트 템플릿이 아니라 하나의 엔진 위의 정책 레벨**이라 세 레벨이 위키 레이아웃·frontmatter 계약·명령 표면·finding 레지스트리를 공유하고, 같은 저장소에서 제자리로 옮긴다. `lite`=개발 속도, `standard`=속도와 지식의 균형, `strict`=완전성·검증·인수인계. `governance` 블록이 없는 프로젝트는 `strict`로 해소된다(모드 이전 동작과 동일). 단일 소스는 `src/governance.js#symbol:getGovernancePolicy`.
+- **변경 점검(change checks)** — README와 CLI 출력이 `impact`(`impact.source_changed`)와 `drift`(`evidence.stale`)를 함께 부르는 이름이다. 인용한 소스가 바뀐 `verified` 문서를 짚는다. `lite`에서는 둘 다 꺼져 있고, 1.42.0부터 `impact`·`status`·`next`·`quickstart`가 그 사실을 출력에 적는다. 켜는 방법은 `mode set standard --write`(경고) 또는 `strict`(빌드 실패)다. 이 저장소의 `llm-wiki.config.json`은 `checkRun.ignore`에서 옮긴 경로(`docs/outputs/`, `docs/ROADMAP*.md`, `docs/CHANGELOG*.md`)를 쓴다.
 - **rule floor** — 거버넌스 모드가 기여하는 rule-id → severity 바닥값. `rules`가 받는 것과 **같은 어휘**이며 `rulesPreset`·명시 `rules` **아래**에 키 단위로 깔린다(mode floor < `rulesPreset` < `rules`). `strict`의 floor는 **비어 있다** — 레지스트리의 기본 severity가 이미 strict 베이스라인이기 때문이고, 그것이 기존 프로젝트의 마이그레이션 보증이다. 어떤 모드도 `sensitive.*`를 건드릴 수 없고 기본이 `blocked`인 규칙도 만지지 않는다.
 - **backfill** — `lite`에서 `strict`로 올린 뒤 불완전한 위키를 **현재 저장소를 진리의 원천으로 삼아** 재구성하는 명령. 저장소를 인벤토리하고(추적 소스·테스트·매니페스트·도메인 경계·git 이력) 유효 모드의 계획 문서 집합과 대조하고 인수인계 준비도를 이름 붙은 체크 9종으로 채점한다. `--write`는 빠진 문서를 `needs_review` 스텁으로만 만들고(산문 없음·adapter/스킬 없음) 서술은 출력되는 `backfill` 프롬프트가 에이전트에게 넘긴다. `--strict`는 미완성 준비도를 빌드 실패로 만든다.
 - **근거 라벨(verified / inferred / unknown)** — `backfill`이 보고하는 모든 사실에 붙는 confidence 라벨이며 세 값이 섞이지 않는 것이 계약이다. *verified*=현재 소스·테스트·설정에서 읽음, *inferred*=디렉터리 경계·네이밍·git 이력에서 도출했고 **도출이라고 말한다**, *unknown*=저장소가 답할 수 없다. 세 번째가 핵심이다 — ADR도 없고 스스로 설명한 커밋도 없으면 “왜 이걸 골랐나”는 `unknown`으로 남으며, 그것을 그럴듯한 이야기로 채우는 것이 이 기능이 방어하는 실패다. 문서 `status`(`draft`/`needs_review`/`verified`/`deprecated`)와는 **다른 축**이다: `status`는 사람이 문서를 승인했는지를 말하고, 근거 라벨은 개별 주장이 무엇에 근거하는지를 말한다.

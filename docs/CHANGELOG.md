@@ -6,6 +6,55 @@ All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-st
 are documented here. This project follows [Semantic Versioning](https://semver.org/).
 Entries are newest-first.
 
+## 1.42.0 — 2026-10-29
+
+What a new user sees now matches what the tool does. A walkthrough of the published 1.41.0
+in a fresh project, following only the README, found four places where it did not.
+
+- **A lite project says its change checks are off.** `quickstart` starts a new project in
+  `lite`, where `impact` and `drift` report nothing. `impact` used to print `result: pass`
+  and no documents to re-review, which reads like "checked, all clear". Its summary now
+  says `impact.source_changed: off … no document was checked`, and `status`, `next`, and
+  the `quickstart` next step name the mode and how to turn the checks on
+  (`mode set standard --write`).
+- **The approve command is named, and approval is not described as human-only.**
+  `quickstart` and `help` said "a human reviews and marks them verified" without naming
+  `review --approve`, and the tool cannot prove who ran it. They now name the command and
+  say the tool records who approved.
+- **Writing docs by hand is documented.** The CLI has never required an agent, but the
+  README said the agent writes the content. New guide:
+  [docs/WRITING_DOCS_BY_HAND.md](./WRITING_DOCS_BY_HAND.md) (and `.ko.md`). `quickstart`
+  points to it.
+- **Generated documents explain approval instead of forbidding it.** Their Review Notes
+  said "Do not promote this document to `verified`", which a person filling the document
+  in reads as addressed to them. They now say to approve with `review --approve` once
+  reviewed, and that an agent does not approve its own edits. Agent prompts keep their
+  rule unchanged.
+- **README:** the Quick start no longer pins `--type frontend`, explains the `llm-wiki`
+  command name (an unrelated npm package is called `llm-wiki`), and adds troubleshooting
+  rows for a silent change check and `command not found`.
+- **First-run feedback form** (`.github/ISSUE_TEMPLATE/first_run.yml`). It asks for
+  versions, the mode, and the commands run, and nothing that identifies the reporter.
+- **Repository layout.** The root went from 26 files and 18 folders to 11 and 10. Community
+  files moved to `.github/`, project records (this changelog, `ROADMAP`, `GATE_REVIEW`, …)
+  to `docs/`, and `rules/`, `profiles/`, and `adapters/README.md` under `templates/`.
+  Generated skill copies for Cursor and agent-neutral prompts are no longer tracked.
+  Links to the old paths on `main` now 404; tagged URLs still work.
+
+**Behaviour changes, named:**
+- Text output of `impact` (under a gate that is off), `status`, `next`, `quickstart`, and
+  `handoff` gained lines. JSON output is unchanged except `handoff.changeChecksOff`, a new
+  field.
+- Newly generated documents carry the new Review Notes; existing documents are untouched.
+- The npm package no longer has top-level `rules/`, `profiles/`, or `adapters/`. Nothing at
+  runtime read them; they are now under `templates/`. If you referenced
+  `node_modules/llm-wiki-governance/rules/frontmatter.schema.json`, use
+  `templates/rules/frontmatter.schema.json`.
+
+Sized as a MINOR: generated document text changes, which adopters receive on
+`init --write --skills --refresh` (VERSIONING, "What Bumps the Version"). The default mode
+is unchanged; why is recorded in `GATE_REVIEW.md`, "First-Run Default Mode".
+
 ## 1.41.0 — 2026-10-28
 
 Content digests take their first decision. Upgrade if your project sets

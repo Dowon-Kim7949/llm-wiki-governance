@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -60,12 +60,12 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/commands.js sha256:9de9e64b3a165a88
-  - src/cli.js sha256:7d0df7982416faef
+  - src/commands.js sha256:27428d45e7046786
+  - src/cli.js sha256:d9a6cc7effc2dac5
   - src/detector.js sha256:0deb142806225108
   - src/encoding.js sha256:6d9c6a75f032f525
   - src/index.js sha256:ee1d42734ade2f15
-  - src/mcp/tools.js sha256:b29ae9218ef87f1c
+  - src/mcp/tools.js sha256:31d4a4f7379b5ccc
   - src/release-notes.js sha256:4cdf89d4e81df14a
   - src/commands/import-memory.js sha256:36c43fde4eb90a81
   - src/commands/skills.js sha256:b7ecf90972a2857b
@@ -74,7 +74,7 @@ source_digests:
   - src/commands/wiki-hygiene.js sha256:a173de44967befcd
   - templates/adapters/claude-code/CLAUDE.md sha256:ca24fd025a7edba3
   - src/commands/scans.js sha256:7744bb5ee7415ca1
-  - src/commands/fix-migrate.js sha256:b5cb0accb9da1c85
+  - src/commands/fix-migrate.js sha256:a6ada3ac53705144
   - src/commands/domains.js sha256:24d4db3f20d9bc4d
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/references.js sha256:16ff5b183865242b

@@ -65,7 +65,7 @@ npm test             # node --test tests/*.test.js
 
 이 프로젝트는 런타임 의존성뿐 아니라 개발 의존성도 0으로 유지합니다. 어쩌다 그렇게 된 게 아니라 의도한 정체성입니다. 기여자 입장에서는 두 가지가 달라집니다.
 
-- **스타일은 linter가 아니라 리뷰로 지킵니다.** ESLint도 Prettier도 없습니다. `npm run lint`는 소스에 `node --check`를 거는 문법 게이트일 뿐이고(`scripts/lint-syntax.mjs`), 공백 규칙은 `.editorconfig`가 담고 있습니다. 주변 코드의 스타일을 따라 주세요. 거기서 벗어나면 리뷰에서 짚습니다.
+- **스타일은 linter가 아니라 리뷰로 지킵니다.** ESLint도 Prettier도 없습니다. `npm run lint`는 소스에 `node --check`를 거는 문법 게이트일 뿐이고(`.github/scripts/lint-syntax.mjs`), 공백 규칙은 `.editorconfig`가 담고 있습니다. 주변 코드의 스타일을 따라 주세요. 거기서 벗어나면 리뷰에서 짚습니다.
 - **커버리지는 Node 내장 기능을 씁니다.** `npm run test:coverage`가 `node --test --experimental-test-coverage`(Node 20 이상)를 돌립니다. `nyc`나 `c8`가 아닙니다. 게이트가 아니라 참고용이라, 커버리지 도구가 의존성으로 들어오지 않습니다.
 
 충분히 논의된 이유가 없다면 런타임 의존성이든 개발 의존성이든, lockfile 항목이든 **추가하지 말아 주세요.** 이 프로젝트의 정체성인 zero-dependency 원칙이 깨집니다. 공급망 검토는 `npm run sbom`이 내주는 CycloneDX SBOM과, push와 PR마다 도는 GitHub 네이티브 CodeQL 워크플로로 합니다.

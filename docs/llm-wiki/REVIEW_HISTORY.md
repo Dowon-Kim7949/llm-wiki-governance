@@ -43,22 +43,22 @@ related:
 visibility: internal
 contains_sensitive_info: false
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 source_digests:
   - docs/llm-wiki/VISIBILITY.md sha256:52b9d54834606505
-  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:252f293d5f9487d8
-  - docs/llm-wiki/BENCHMARK.md sha256:ec7d0470a48bc7c6
-  - docs/llm-wiki/DOMAIN_FEATURES.md sha256:898bd6e0174753fe
-  - docs/llm-wiki/EXAMPLES.md sha256:fca8919bd2cdb76a
-  - docs/llm-wiki/GLOSSARY.md sha256:39173590aad0ba60
-  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:947bcfa286495946
-  - docs/llm-wiki/PUBLIC_API.md sha256:31d7a62acedf370b
-  - docs/llm-wiki/README.md sha256:155784a313bd4fda
-  - docs/llm-wiki/RELEASE_FLOW.md sha256:fa4ee454b12332a1
-  - docs/llm-wiki/domains/00_overview.md sha256:fde2e108bdc03854
-  - docs/llm-wiki/project-profile.md sha256:e02dd90aff818438
-  - docs/llm-wiki/profiles/library.md sha256:f0d952a92e8621ae
-  - docs/llm-wiki/VERSIONING.md sha256:00cae2aa5c8fd977
+  - docs/llm-wiki/ARCHITECTURE_CONVENTIONS.md sha256:dd0efe74e66ea747
+  - docs/llm-wiki/BENCHMARK.md sha256:6f028d69b1d2f770
+  - docs/llm-wiki/DOMAIN_FEATURES.md sha256:9f5af50cefccc218
+  - docs/llm-wiki/EXAMPLES.md sha256:8e03956ba99e0a94
+  - docs/llm-wiki/GLOSSARY.md sha256:b639798d9e330d65
+  - docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md sha256:37192706ab4a3750
+  - docs/llm-wiki/PUBLIC_API.md sha256:f8568b8b601a9a7b
+  - docs/llm-wiki/README.md sha256:64ae6cbb659c0ac0
+  - docs/llm-wiki/RELEASE_FLOW.md sha256:e722caaa6b9e5d37
+  - docs/llm-wiki/domains/00_overview.md sha256:168cd7bbc5e652b8
+  - docs/llm-wiki/project-profile.md sha256:b8fcc26119bcd1ec
+  - docs/llm-wiki/profiles/library.md sha256:ca5f2760c69cced2
+  - docs/llm-wiki/VERSIONING.md sha256:1d51df66c226f108
 ---
 
 # Review History
@@ -75,6 +75,7 @@ source_digests:
 - 2026-10-27(greenfield, 미배포): 원문서 10종이 Greenfield 지원(`--greenfield`, 계획된 지식, `evidence.planned_unlinked`)을 반영하느라 본문이 고쳐져 이 문서를 다시 지목했습니다. 위키 `README.md`만 Review Note를 더해 1건(2026-09-14)을 이 아카이브로 옮겼고, 나머지는 본문을 고쳤으므로 5건 상한을 넘지 않았습니다.
 - 2026-10-28(1.38.0 준비): 원문서 9종이 꺼진 규칙의 측정(`withRulesMeasured`)·결정 템플릿 통일·`review`의 `planned` 표시를 반영하고 "미배포" 표기를 1.38.0으로 바꾸느라 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — Review Note를 더하지 않고 본문을 고쳤으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
 - 2026-10-28(1.39.0 준비): 원문서들이 `drift` 축소의 두 번째 기준선(N-20), 모드가 승인 가능 여부를 바꾸지 않는 `review`(N-21), `stats.verifiedNotEnriched`, `impact.plan_changed`를 반영하느라 본문이 고쳐지거나(7종) 인용 소스의 내용 해시가 바뀌어 다시 스탬프돼(`index.md`·`project-profile.md`·`profiles/library.md`) 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다** — Review Note를 더하지 않았으므로 어느 원문서도 5건 상한을 넘지 않았습니다.
+- 2026-10-29(1.42.0 준비): 저장소 루트를 정리하면서(커뮤니티 문서는 `.github/`, 프로젝트 기록은 `docs/`, `rules/`·`profiles/`는 `templates/` 아래) 원문서들의 frontmatter 인용 경로가 새 위치로 바뀌었고, 일부는 첫 실행 개선(lite에서 꺼진 변경 점검 표시, 승인 명령 안내)을 반영해 본문이 고쳐져 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.** 이 아카이브의 항목 원문에 남은 옛 경로(`GATE_REVIEW.md`, `RELEASE_CHECKLIST.md` 등 루트 기준)는 그 시점의 기록이라 고치지 않았습니다.
 - 2026-10-28(1.39.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.39.0 MINOR 판정 절 추가)와 `EXAMPLES.md`(CI 예시 핀 `@1.39`)가 고쳐져 이 문서를 다시 지목했습니다. `index.md`·위키 `README.md`·`RELEASE_FLOW.md`·`HARNESS_GOVERNANCE_ROADMAP.md`는 인용 소스(루트 README·CI 템플릿·액션·ROADMAP)가 버전 핀과 기능 한 문장만 바뀌어 본문이 그대로 맞고, 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 - 2026-10-28(다른 스택 검증): 원문서들이 workspace 힌트·프로젝트 이름·type review item(N-22~N-24)과 새 워크스루를 반영하느라 본문이 고쳐지거나(7종) 인용한 루트 README가 "다른 스택" 문단 하나만 바뀌어 재스탬프돼(`index.md`·위키 `README.md`) 이 문서를 다시 지목했습니다. **이 아카이브로 옮긴 항목은 없습니다.**
 - 2026-10-28(1.40.0 릴리스 준비): 버전 범프 커밋에서 `VERSIONING.md`(1.40.0 MINOR 판정 절)와 `EXAMPLES.md`(CI 예시 핀 `@1.40`)가 고쳐져 이 문서를 다시 지목했습니다. 인용 소스가 버전 핀만 바뀐 문서는 재승인으로 `source_digests`만 갱신했습니다. **이 아카이브로 옮긴 항목은 없습니다.**

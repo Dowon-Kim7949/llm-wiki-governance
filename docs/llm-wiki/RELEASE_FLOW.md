@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - package.json
@@ -26,10 +26,10 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:a18a7e2bc101d0dd
-  - docs/RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
-  - templates/github-actions/llm-wiki-validate.yml sha256:4434aa02eb421f91
-  - .github/workflows/publish.yml sha256:c3c6a88cb36e80aa
+  - package.json sha256:6917cd4e241bf53a
+  - docs/RELEASE_CHECKLIST.md sha256:2fb22a641ffb93b8
+  - templates/github-actions/llm-wiki-validate.yml sha256:b57506f63529776e
+  - .github/workflows/publish.yml sha256:2243d9c5bfe8ec69
 ---
 
 # Release Flow

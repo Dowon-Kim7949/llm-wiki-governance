@@ -18,7 +18,7 @@ flowchart LR
 ```
 
 1. **Scaffold.** `quickstart --write` creates the wiki, plus adapter files (`AGENTS.md`, `CLAUDE.md`, …) that point your agent at it.
-2. **Enrich.** Your agent fills the docs from real source files and cites them in frontmatter (`source_files`, `evidence`). The CLI checks that each citation resolves.
+2. **Enrich.** Your agent, or you by hand, fills the docs from real source files and cites them in frontmatter (`source_files`, `evidence`). The CLI checks that each citation resolves.
 3. **Review.** Docs stay `needs_review` until `review --approve` stamps them `verified`. No other command promotes a doc.
 4. **Watch.** `drift` (by review date) and `impact` (by diff against a PR base) flag `verified` docs whose cited sources changed, and CI can fail on them.
 
@@ -26,12 +26,16 @@ flowchart LR
 
 ```bash
 npm install -D llm-wiki-governance
-npx llm-wiki-governance quickstart --write --type frontend --agent claude   # or --agent codex
+npx llm-wiki-governance quickstart --write --agent claude   # or --agent codex; add --type <type> if detection is wrong
 ```
 
-This detects the project, creates the wiki and adapter files, and prints a handoff prompt. Paste it into your agent: it fills in the docs from real source files and leaves everything `needs_review` for you to approve. `quickstart --dry-run` shows what would be created; `--skills` also generates wiki-grounded agent prompts (`bootstrap`, `onboard`, `prepare`, `feature`, `fix`, `docs-sync`, `backfill`). An existing OKF or plain-Markdown folder works too: `--profile okf-v0.1` adds verification and CI without changing your format.
+This detects the project, creates the wiki and adapter files, and prints a handoff prompt. Paste it into your agent: it fills in the docs from real source files and leaves everything `needs_review` for you to approve with `npx llm-wiki review --approve <path>`. No agent? Write the docs yourself: [Writing docs by hand](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/WRITING_DOCS_BY_HAND.md) walks one document from scaffold to `verified`. `quickstart --dry-run` shows what would be created; `--skills` also generates wiki-grounded agent prompts (`bootstrap`, `onboard`, `prepare`, `feature`, `fix`, `docs-sync`, `backfill`). An existing OKF or plain-Markdown folder works too: `--profile okf-v0.1` adds verification and CI without changing your format.
 
-The CLI needs no model. The enrichment step does, and it decides quality: use your strongest reasoning model for the first build.
+The CLI needs no model or API key. The docs are filled either by your agent or by you, and that first build decides quality; with an agent, use your strongest reasoning model for it.
+
+**Change checks start off.** A new project starts in the `lite` [governance mode](#governance-modes), where `impact` and `drift` report nothing when a cited file changes (`impact` says so in its summary). Turn them on when you want reviewed docs flagged: `npx llm-wiki mode set standard --write` (warnings) or `strict` (fails the build). You can also start that way with `quickstart --write --mode standard`. `npx llm-wiki mode` shows what is on. On the day you approve a doc, try `impact --since HEAD~1` rather than `drift`: the date-based `drift` does not see a change committed the same day as the review.
+
+**About the command name.** Output and docs write commands as `llm-wiki …`, the bin this package installs. After `npm install -D`, run them as `npx llm-wiki …`; without a local install, use `npx llm-wiki-governance …`. Do not run `npx llm-wiki` where the package is not installed: an unrelated npm package has that name.
 
 **Starting a project that has no code yet** (`--greenfield`, 1.38.0): `quickstart --write --greenfield` adds requirement and decision (ADR) documents and prints a planning prompt. Your agent records the purpose, requirements, acceptance criteria, and decisions you state, invents none, and cites no source. Approving a requirement approves the plan, not an implementation: `validate` reports an approved plan with nothing linked as info, and `stats` counts plans apart. Once code exists, link each requirement's source files and tests in its `evidence`. From then on it is checked like any other doc, and the existing-project steps above apply. When an approved requirement or decision changes later, `impact` lists the files it links and whether each changed in the same diff (1.39.0, info); it names what to re-check and judges nothing. [`examples/greenfield-vue-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/greenfield-vue-demo) runs this path from an empty repository.
 
@@ -54,7 +58,7 @@ Keep them: this tool generates them and points them at the wiki. An instruction 
 ## What it does not do
 
 - **It does not check that the prose is true.** It checks that each citation resolves: the file exists, the line range fits, the symbol is mentioned, the section heading exists. Whether the sentence is correct is still the reviewer's call.
-- **It does not write your docs.** The CLI scaffolds, checks, and prints prompts; your agent writes the content.
+- **It does not write your docs.** The CLI scaffolds, checks, and prints prompts; you or your agent write the content.
 - **It cannot prove who approved.** `reviewed_by` records the name given to `review --approve`. List agent names under `agentReviewers` so `stats` counts their approvals apart; branch protection, not this tool, controls who can merge. This repository's own wiki is agent-approved by a recorded maintainer decision ([AGENTS.md](./AGENTS.md)).
 - **It is not semantic search.** Retrieval ranks keyword matches (BM25); there are no embeddings and no index service. It is not a hosted service either: the CLI makes no network calls of its own.
 - **Change detection is mostly file-level.** `impact` and `drift` narrow only citations that are line ranges or Markdown sections, and since 1.39.0 `drift` narrows only when the commit that recorded the review agrees; the date-based `drift` also has blind spots that depend on your merge strategy. See [Wiring the gate](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#wiring-the-gate-the-step-most-repos-skip).
@@ -79,7 +83,7 @@ Writes happen only with an explicit `--write`, `--apply`, `--approve`, `drift --
 
 ## Run it in CI
 
-Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or use the composite action in one step: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.41.0`. It appends the report to the job summary, including the documents `impact` wants re-reviewed (`summary: "false"` turns that off). On a private repository, the runner-free `templates/git-hooks/pre-commit` hook and the `LLM_WIKI_RUNNER` variable (self-hosted runner) avoid shared runner minutes. Recipes per repository size: [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
+Copy [`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml), or use the composite action in one step: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.42.0`. It appends the report to the job summary, including the documents `impact` wants re-reviewed (`summary: "false"` turns that off). Check the mode first: under `lite` the `impact` step passes without checking anything. On a private repository, the runner-free `templates/git-hooks/pre-commit` hook and the `LLM_WIKI_RUNNER` variable (self-hosted runner) avoid shared runner minutes. Recipes per repository size: [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md).
 
 ## Governance modes
 
@@ -114,6 +118,9 @@ Runs on Windows, macOS, and Linux with no runtime dependencies. It detects Node,
 | If you… | Then |
 | --- | --- |
 | get an older version from `npx` | `npx` can reuse a cache: run `npx llm-wiki-governance@latest …` and check with `--version`. |
+| see `llm-wiki: command not found` | Prefix it: `npx llm-wiki …` after a local install, `npx llm-wiki-governance …` without one. |
+| changed a cited file and `impact` or `drift` flagged nothing | The project is probably in `lite`: `npx llm-wiki mode`. See *Change checks start off* above. |
+| found the docs confusing, or setup failed | [Open a first-run report](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues/new?template=first_run.yml). It asks only for versions and the commands you ran. |
 | see a finding you do not recognize | `llm-wiki explain <rule>`. |
 | are unsure about setup or CI wiring | `llm-wiki doctor`. |
 | are blocked by `sensitive.redacted` | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you) |

@@ -761,9 +761,13 @@ AI 에이전트가 읽는, 코드 근거로 검증되는 프로젝트 지식베�
 
 What it does / 무엇을 하나:
   1) scaffold the wiki docs with init/quickstart --write · 문서 뼈대를 만들고
-  2) paste the printed handoff prompt into your coding agent to fill them from real code
-     · 출력되는 handoff 프롬프트를 Claude Code/Codex에 붙여넣어 실제 코드로 채우고
-  3) a human reviews and marks them verified · 사람이 검토해 verified로 승인합니다
+  2) fill them from real code: paste the printed handoff prompt into your coding agent, or write them yourself
+     · 출력되는 handoff 프롬프트를 Claude Code/Codex에 붙여넣거나 직접 써서 실제 코드로 채우고
+  3) review them and approve with 'review --approve' (the tool records who approved; it cannot prove it)
+     · 검토 후 'review --approve'로 승인합니다(누가 승인했는지 기록할 뿐 증명하지는 못합니다)
+  New projects start in lite, where the change checks (impact, drift) are off;
+  'mode set standard --write' turns them on.
+  새 프로젝트는 lite로 시작하며 변경 점검(impact, drift)이 꺼져 있습니다. 'mode set standard --write'로 켭니다.
 
 Governance modes / 거버넌스 모드 (llm-wiki mode):
   lite     — fast development, minimal doc overhead (default for new projects)
@@ -1158,7 +1162,7 @@ Purpose:
   (ECC's project vault). ECC documents memories as unreviewed context whose
   accepted knowledge a HUMAN promotes into governed documentation — this
   command is that promotion on-ramp on the LLM-WIKI side; the drafts still
-  require human review (llm-wiki review) before they can become verified.
+  require review and an explicit 'llm-wiki review --approve' before they can become verified.
 
 Safety (conservative write policy):
   - Preview by default; files are written only with --apply.

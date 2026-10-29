@@ -876,7 +876,7 @@ export function renderStubDocument(relTarget, cwd) {
   const body = [
     `# ${title}`,
     "",
-    "> Auto-created `needs_review` stub to resolve a broken reference. Replace this with source-backed content and keep it `needs_review` until human review.",
+    "> Auto-created `needs_review` stub to resolve a broken reference. Replace this with source-backed content and keep it `needs_review` until it is reviewed and approved.",
     "",
     "## Open Questions",
     "",

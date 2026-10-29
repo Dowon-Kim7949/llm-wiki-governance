@@ -1208,6 +1208,22 @@ before letting them decide narrowing; an independent developer running the usabi
 **Next:** measure C′ on a repository that narrows; an independent developer running the
 usability protocol.
 
+## Release Plan (post-1.41.0) — the first run says what it does — **shipped as 1.42.0 (2026-10-29)**
+
+- **A walkthrough of the published 1.41.0,** following only the README in a fresh project, found
+  that a new project's change checks were off without a word, that approval was described as
+  human-only with no command named, that hand-written docs had no guide, and that `llm-wiki` in
+  output did not run as typed.
+- **Fixed in output and docs, not in defaults.** `impact`, `status`, `next`, and `quickstart` say
+  when the checks are off; the approve command is named; a hand-writing guide and a first-run
+  feedback form exist. `lite` stays the default (`GATE_REVIEW.md`, "First-Run Default Mode").
+- **Shorter repository root:** 11 files and 10 folders, down from 26 and 18.
+- **Not done.** The walkthrough was by the maintainer's own agent; independent usability is still
+  Unknown.
+
+**Next:** learn from first-run reports; an independent developer running the usability protocol;
+measure C′ on a repository that narrows.
+
 ## Non-Goals (unchanged safety ethos)
 
 - No writes without an explicit `--write` / `--apply`; preview-first everywhere.

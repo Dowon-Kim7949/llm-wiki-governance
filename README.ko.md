@@ -18,7 +18,7 @@ flowchart LR
 ```
 
 1. **뼈대 만들기.** `quickstart --write`가 위키를 만들고, 에이전트를 위키로 안내하는 adapter 파일(`AGENTS.md`, `CLAUDE.md` 등)을 함께 만듭니다.
-2. **보강.** 에이전트가 실제 소스를 읽고 문서를 채우며, frontmatter(`source_files`, `evidence`)에 그 소스를 인용합니다. CLI는 인용이 실제로 가리키는 대상이 있는지 확인합니다.
+2. **보강.** 에이전트나 사용자가 직접 실제 소스를 읽고 문서를 채우며, frontmatter(`source_files`, `evidence`)에 그 소스를 인용합니다. CLI는 인용이 실제로 가리키는 대상이 있는지 확인합니다.
 3. **검토.** 문서는 `review --approve`로 `verified` 스탬프를 받기 전까지 `needs_review`에 머뭅니다. 다른 어떤 명령도 문서를 승격하지 않습니다.
 4. **감시.** `drift`(검토 날짜 기준)와 `impact`(PR 기준선과의 diff 기준)가, 인용한 소스가 바뀐 `verified` 문서를 표시하고 CI가 그것으로 실패할 수 있습니다.
 
@@ -26,12 +26,16 @@ flowchart LR
 
 ```bash
 npm install -D llm-wiki-governance
-npx llm-wiki-governance quickstart --write --type frontend --agent claude   # 또는 --agent codex
+npx llm-wiki-governance quickstart --write --agent claude   # 또는 --agent codex. 감지가 틀리면 --type <종류>
 ```
 
-프로젝트 종류를 알아낸 다음 위키와 adapter 파일을 만들고 handoff 프롬프트를 출력합니다. 그 프롬프트를 에이전트에 붙여넣으면 에이전트가 실제 소스를 근거로 문서를 채우고, 모두 `needs_review`로 남겨 승인을 기다립니다. `quickstart --dry-run`은 무엇이 만들어질지 먼저 보여 주고, `--skills`는 위키에 근거한 에이전트 프롬프트(`bootstrap`·`onboard`·`prepare`·`feature`·`fix`·`docs-sync`·`backfill`)도 만듭니다. 이미 OKF나 평범한 마크다운 지식 폴더가 있다면 형식을 바꿀 필요 없이 `--profile okf-v0.1`로 검증과 CI만 얹으면 됩니다.
+프로젝트 종류를 알아낸 다음 위키와 adapter 파일을 만들고 handoff 프롬프트를 출력합니다. 그 프롬프트를 에이전트에 붙여넣으면 에이전트가 실제 소스를 근거로 문서를 채우고, 모두 `needs_review`로 남겨 `npx llm-wiki review --approve <경로>`로 승인하기를 기다립니다. 에이전트가 없다면 직접 써도 됩니다. [문서 직접 쓰기](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/WRITING_DOCS_BY_HAND.ko.md)가 문서 하나를 뼈대에서 `verified`까지 안내합니다. `quickstart --dry-run`은 무엇이 만들어질지 먼저 보여 주고, `--skills`는 위키에 근거한 에이전트 프롬프트(`bootstrap`·`onboard`·`prepare`·`feature`·`fix`·`docs-sync`·`backfill`)도 만듭니다. 이미 OKF나 평범한 마크다운 지식 폴더가 있다면 형식을 바꿀 필요 없이 `--profile okf-v0.1`로 검증과 CI만 얹으면 됩니다.
 
-CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단계뿐이고 품질도 거기서 갈리므로, 처음 위키를 만들 때는 가장 강한 추론 모델을 쓰세요.
+CLI에는 모델도 API 키도 필요 없습니다. 문서는 에이전트가 채우든 직접 쓰든 되고, 품질은 처음 채울 때 갈립니다. 에이전트로 채운다면 가장 강한 추론 모델을 쓰세요.
+
+**변경 점검은 꺼진 상태로 시작합니다.** 새 프로젝트는 `lite` [거버넌스 모드](#거버넌스-모드)로 시작하며, 이 모드에서는 인용한 파일이 바뀌어도 `impact`와 `drift`가 아무것도 보고하지 않습니다(`impact`는 요약에 그렇다고 적습니다). 검토한 문서를 짚어 주길 원하면 `npx llm-wiki mode set standard --write`(경고) 또는 `strict`(빌드 실패)로 켜세요. 처음부터 `quickstart --write --mode standard`로 시작할 수도 있습니다. 무엇이 켜져 있는지는 `npx llm-wiki mode`로 봅니다. 문서를 승인한 당일에 시험해 보려면 `drift` 대신 `impact --since HEAD~1`을 쓰세요. 날짜 기준 `drift`는 검토와 같은 날 커밋된 변경을 보지 못합니다.
+
+**명령 이름에 대해.** 출력과 문서는 명령을 이 패키지가 설치하는 bin 이름인 `llm-wiki …`로 씁니다. `npm install -D` 뒤에는 `npx llm-wiki …`로, 로컬 설치 없이는 `npx llm-wiki-governance …`로 실행하세요. 패키지를 설치하지 않은 곳에서 `npx llm-wiki`를 실행하지 마세요. npm에 같은 이름의 무관한 패키지가 있습니다.
 
 **코드가 아직 없는 프로젝트를 시작할 때**(`--greenfield`, 1.38.0): `quickstart --write --greenfield`가 요구사항·결정(ADR) 문서를 만들고 계획용 프롬프트를 출력합니다. 에이전트는 사용자가 말한 목적·요구사항·수용 기준·결정만 기록하고, 지어내지 않으며, 소스를 인용하지 않습니다. 요구사항 승인은 계획 승인이지 구현 승인이 아닙니다. `validate`는 연결된 근거가 없는 승인 계획을 info로 보고하고, `stats`는 계획 문서를 따로 셉니다. 코드가 생기면 요구사항마다 소스 파일과 테스트를 `evidence`에 연결하세요. 그때부터는 다른 문서와 똑같이 검사받고, 위의 기존 프로젝트 절차가 그대로 적용됩니다. 나중에 승인된 요구사항이나 결정이 바뀌면 `impact`가 그 문서가 연결한 파일과 각 파일이 같은 diff에서 바뀌었는지를 알려 줍니다(1.39.0, info). 다시 볼 곳을 알려 줄 뿐 판정하지 않습니다. [`examples/greenfield-vue-demo`](https://github.com/Dowon-Kim7949/llm-wiki-governance/tree/main/examples/greenfield-vue-demo)가 빈 저장소에서 이 경로를 돌려 봅니다.
 
@@ -54,7 +58,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 ## 하지 않는 일
 
 - **산문이 참인지는 검사하지 않습니다.** 인용이 대상을 가리키는지만 봅니다. 파일이 있는지, 라인 범위가 파일 안에 있는지, 심볼이 언급되는지, 섹션 헤딩이 있는지입니다. 문장이 맞는지는 여전히 검토자가 판단합니다.
-- **문서를 대신 쓰지 않습니다.** CLI는 뼈대를 만들고 검사하고 프롬프트를 출력합니다. 내용은 에이전트가 씁니다.
+- **문서를 대신 쓰지 않습니다.** CLI는 뼈대를 만들고 검사하고 프롬프트를 출력합니다. 내용은 사용자나 에이전트가 씁니다.
 - **누가 승인했는지 증명하지 못합니다.** `reviewed_by`에는 `review --approve`에 넘긴 이름이 기록될 뿐입니다. 에이전트 이름을 `agentReviewers`에 적어 두면 `stats`가 그 승인을 따로 셉니다. 누가 머지할 수 있는지는 이 도구가 아니라 브랜치 보호가 정합니다. 이 저장소의 위키는 유지보수자의 기록된 결정에 따라 에이전트가 승인합니다([AGENTS.md](./AGENTS.md)).
 - **의미 검색이 아닙니다.** 조회는 키워드 일치를 BM25로 순위 매기는 방식이고, 임베딩도 인덱스 서비스도 없습니다. 호스팅 서비스도 아니어서 CLI가 스스로 네트워크를 호출하지 않습니다.
 - **변경 감지는 대부분 파일 단위입니다.** `impact`와 `drift`는 라인 범위나 마크다운 섹션으로 인용한 경우만 그 영역으로 좁히고, 1.39.0부터 `drift`는 검토를 기록한 커밋도 동의할 때만 좁힙니다. 날짜 기준 `drift`에는 머지 방식에 따른 사각지대도 있습니다. [Wiring the gate](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#wiring-the-gate-the-step-most-repos-skip)(영문)를 보세요.
@@ -79,7 +83,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 
 ## CI에서 돌리기
 
-[`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 쓰세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.41.0`. 리포트를 job summary에 붙이고, 거기에 `impact`가 다시 검토하라는 문서 목록도 들어갑니다(`summary: "false"`로 끔). 비공개 저장소라면 러너 없이 도는 `templates/git-hooks/pre-commit` 훅과 `LLM_WIKI_RUNNER` 변수(self-hosted 러너)로 조직이 나눠 쓰는 러너 시간을 아낄 수 있습니다. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)(영문)에 있습니다.
+[`templates/github-actions/llm-wiki-validate.yml`](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/templates/github-actions/llm-wiki-validate.yml)을 복사하거나, 컴포지트 액션을 한 스텝으로 쓰세요: `uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.42.0`. 리포트를 job summary에 붙이고, 거기에 `impact`가 다시 검토하라는 문서 목록도 들어갑니다(`summary: "false"`로 끔). 먼저 모드를 확인하세요. `lite`에서는 `impact` 단계가 아무것도 검사하지 않고 통과합니다. 비공개 저장소라면 러너 없이 도는 `templates/git-hooks/pre-commit` 훅과 `LLM_WIKI_RUNNER` 변수(self-hosted 러너)로 조직이 나눠 쓰는 러너 시간을 아낄 수 있습니다. 저장소 규모별 레시피는 [docs/OPERATIONS.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md)(영문)에 있습니다.
 
 ## 거버넌스 모드
 
@@ -114,6 +118,9 @@ Windows·macOS·Linux에서 런타임 의존성 없이 돕니다. Node·Python·
 | 이럴 때 | 이렇게 |
 | --- | --- |
 | `npx`가 옛 버전을 실행함 | `npx`는 캐시를 재사용할 수 있습니다. `npx llm-wiki-governance@latest …`로 실행하고 `--version`으로 확인하세요. |
+| `llm-wiki: command not found` | 앞에 붙이세요. 로컬 설치 뒤에는 `npx llm-wiki …`, 설치 없이는 `npx llm-wiki-governance …`입니다. |
+| 인용한 파일을 바꿨는데 `impact`나 `drift`가 아무것도 짚지 않음 | 아마 `lite` 모드입니다. `npx llm-wiki mode`로 확인하고 위의 *변경 점검은 꺼진 상태로 시작합니다*를 보세요. |
+| 문서가 헷갈렸거나 설치가 막힘 | [첫 사용 보고 남기기](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues/new?template=first_run.yml). 버전과 실행한 명령만 묻습니다. |
 | 처음 보는 finding | `llm-wiki explain <rule>` |
 | 설정이나 CI 배선이 맞는지 모르겠음 | `llm-wiki doctor` |
 | `sensitive.redacted`가 문서를 막음 | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you)(영문) |

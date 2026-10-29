@@ -4,6 +4,25 @@
 
 `llm-wiki-governance`(옛 이름 `@dowonk-7949/llm-wiki-standard`)의 주요 변경 사항을 기록합니다. [유의적 버전](https://semver.org/)을 따르며, 항목은 최신 릴리스가 위로 옵니다.
 
+## 1.42.0 — 2026-10-29
+
+처음 쓰는 사람이 보는 것과 도구가 실제로 하는 일이 맞게 됐습니다. 새 프로젝트에서 README만 따라 배포된 1.41.0을 써 보니, 둘이 어긋나는 곳이 네 군데 있었습니다.
+
+- **lite 프로젝트가 변경 점검이 꺼져 있다고 알립니다.** `quickstart`는 새 프로젝트를 `lite`로 시작하고, 이 모드에서는 `impact`와 `drift`가 아무것도 보고하지 않습니다. 그런데 `impact`는 `result: pass`와 빈 재검토 목록을 출력해 "검사했고 문제없음"처럼 읽혔습니다. 이제 요약에 `impact.source_changed: off … no document was checked`가 나오고, `status`·`next`·`quickstart` 다음 단계가 모드와 켜는 방법(`mode set standard --write`)을 알려 줍니다.
+- **승인 명령을 이름으로 말하고, 승인을 사람 전용이라고 설명하지 않습니다.** `quickstart`와 `help`는 "사람이 검토해 verified 승인"이라고만 하고 `review --approve`를 말하지 않았습니다. 도구는 누가 실행했는지 증명하지 못합니다. 이제 명령을 알려 주고, 도구는 누가 승인했는지 기록할 뿐이라고 말합니다.
+- **문서를 직접 쓰는 방법을 안내합니다.** CLI는 원래 에이전트를 요구하지 않았는데, README는 내용을 에이전트가 쓴다고 적었습니다. 새 안내: [docs/WRITING_DOCS_BY_HAND.ko.md](./WRITING_DOCS_BY_HAND.ko.md)(영문 `.md`도 있음). `quickstart`도 이 문서를 가리킵니다.
+- **생성 문서가 승격을 금지하는 대신 승인 방법을 알려 줍니다.** Review Notes가 "이 문서를 `verified`로 승격하지 않습니다"라고 적혀 있어, 문서를 직접 채우는 사람이 자기에게 하는 말로 읽었습니다. 이제 검토가 끝나면 `review --approve`로 승인하고, 에이전트는 자기가 고친 문서를 승인하지 않는다고 적습니다. 에이전트 프롬프트의 규칙은 그대로입니다.
+- **README:** 빠른 시작에서 `--type frontend` 고정을 뺐고, `llm-wiki` 명령 이름을 설명합니다(npm에 `llm-wiki`라는 무관한 패키지가 있습니다). 조용히 꺼진 변경 점검과 `command not found`에 대한 문제 해결 행을 더했습니다.
+- **첫 사용 피드백 양식**(`.github/ISSUE_TEMPLATE/first_run.yml`). 버전, 모드, 실행한 명령만 묻고 보고자를 식별할 정보는 묻지 않습니다.
+- **저장소 구성.** 루트가 파일 26개·폴더 18개에서 11개·10개로 줄었습니다. 커뮤니티 문서는 `.github/`로, 프로젝트 기록(이 변경 이력, `ROADMAP`, `GATE_REVIEW` 등)은 `docs/`로, `rules/`·`profiles/`·`adapters/README.md`는 `templates/` 아래로 옮겼습니다. Cursor용 생성 스킬 사본과 에이전트 중립 프롬프트는 더 이상 추적하지 않습니다. `main` 기준 옛 경로 링크는 404가 되고, 태그 기준 URL은 그대로 열립니다.
+
+**바뀐 동작:**
+- `impact`(게이트가 꺼진 경우), `status`, `next`, `quickstart`, `handoff`의 텍스트 출력에 줄이 늘었습니다. JSON 출력은 새 필드 `handoff.changeChecksOff` 말고는 그대로입니다.
+- 새로 생성하는 문서에 새 Review Notes가 들어갑니다. 기존 문서는 건드리지 않습니다.
+- npm 패키지에 최상위 `rules/`·`profiles/`·`adapters/`가 없어졌습니다. 런타임은 이 경로를 읽지 않았고, 이제 `templates/` 아래에 있습니다. `node_modules/llm-wiki-governance/rules/frontmatter.schema.json`을 참조했다면 `templates/rules/frontmatter.schema.json`으로 바꾸세요.
+
+MINOR입니다. 생성 문서 텍스트가 바뀌고, 도입처는 `init --write --skills --refresh`로 이를 받습니다(VERSIONING "What Bumps the Version"). 기본 모드는 바꾸지 않았고, 그 이유는 `GATE_REVIEW.md`의 "First-Run Default Mode"에 있습니다.
+
 ## 1.41.0 — 2026-10-28
 
 내용 digest가 처음으로 판정에 쓰입니다. 프로젝트가 `"sourceDigests": true`를 쓰고, 검토한 브랜치를 squash하거나 rebase한다면 올리세요.

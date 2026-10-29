@@ -13,7 +13,7 @@ last_updated: 2026-10-28
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - package.json
@@ -65,25 +65,25 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:a18a7e2bc101d0dd
-  - src/cli.js sha256:7d0df7982416faef
+  - package.json sha256:6917cd4e241bf53a
+  - src/cli.js sha256:d9a6cc7effc2dac5
   - src/index.js sha256:ee1d42734ade2f15
-  - src/commands.js sha256:9de9e64b3a165a88
+  - src/commands.js sha256:27428d45e7046786
   - src/commands/scans.js sha256:7744bb5ee7415ca1
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/wiki-files.js sha256:141842053b78cc2c
   - src/commands/adapters.js sha256:1329c62a8fd74c06
   - src/commands/skills.js sha256:b7ecf90972a2857b
-  - src/commands/fix-migrate.js sha256:b5cb0accb9da1c85
+  - src/commands/fix-migrate.js sha256:a6ada3ac53705144
   - src/commands/references.js sha256:16ff5b183865242b
-  - src/mcp/tools.js sha256:b29ae9218ef87f1c
-  - src/git.js sha256:368235704e10ed2e
-  - .github/workflows/ci.yml sha256:0055dbb54de5761b
-  - .github/actions/validate/action.yml sha256:d3be88da29be597b
+  - src/mcp/tools.js sha256:31d4a4f7379b5ccc
+  - src/git.js sha256:fd9a57a0fc930c4d
+  - .github/workflows/ci.yml sha256:44350d36bd0aa0ee
+  - .github/actions/validate/action.yml sha256:e875a1c8b8202b2a
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
-  - templates/github-actions/llm-wiki-validate.yml sha256:4434aa02eb421f91
-  - docs/GATE_REVIEW.md sha256:657d2c226b11ad3e
-  - docs/ROADMAP.md sha256:42b380b6f3a21bd5
+  - templates/github-actions/llm-wiki-validate.yml sha256:b57506f63529776e
+  - docs/GATE_REVIEW.md sha256:5bc02c2d932b0110
+  - docs/ROADMAP.md sha256:e9741221c365e8b5
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵

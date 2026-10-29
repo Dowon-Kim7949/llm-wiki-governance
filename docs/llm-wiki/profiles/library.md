@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - package.json
@@ -24,8 +24,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:a18a7e2bc101d0dd
-  - src/cli.js sha256:7d0df7982416faef
+  - package.json sha256:6917cd4e241bf53a
+  - src/cli.js sha256:d9a6cc7effc2dac5
 ---
 
 # Library

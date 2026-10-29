@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -65,21 +65,21 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:7d0df7982416faef
-  - src/commands.js sha256:9de9e64b3a165a88
+  - src/cli.js sha256:d9a6cc7effc2dac5
+  - src/commands.js sha256:27428d45e7046786
   - src/commands/retrieval.js sha256:36e3f0e8b46fe723
   - src/release-notes.js sha256:4cdf89d4e81df14a
   - src/config-file.js sha256:762011b8afa322f6
   - src/index.js sha256:ee1d42734ade2f15
-  - src/git.js sha256:368235704e10ed2e
-  - src/report.js sha256:9774daea9617572b
-  - src/mcp/tools.js sha256:b29ae9218ef87f1c
+  - src/git.js sha256:fd9a57a0fc930c4d
+  - src/report.js sha256:f5edafc1d5d9252a
+  - src/mcp/tools.js sha256:31d4a4f7379b5ccc
   - src/mcp/dispatch.js sha256:52e95374f2bc92a9
   - src/mcp/validate-args.js sha256:14568f590681aa53
   - src/frontmatter.js sha256:f03d0c07725dec3e
   - src/commands/import-memory.js sha256:36c43fde4eb90a81
-  - package.json sha256:a18a7e2bc101d0dd
-  - src/commands/fix-migrate.js sha256:b5cb0accb9da1c85
+  - package.json sha256:6917cd4e241bf53a
+  - src/commands/fix-migrate.js sha256:a6ada3ac53705144
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/scans.js sha256:7744bb5ee7415ca1
   - src/detector.js sha256:0deb142806225108
@@ -160,7 +160,7 @@ source_digests:
 - 1.33.0부터 `wikiBudget` 블록으로 위키 읽기 비용 예산 두 개를 선언한다: `{ "wikiBudget": { "logTokens": <n>, "docTokens": <n> } }`. 두 값 모두 양의 정수가 아니면 설정 오류이고(빈 객체나 두 키 외의 키도 설정 오류 — 아무것도 켜지 않는 블록을 켠 줄로 믿게 두지 않는다), **값이 없으면 `budget.log_over`·`budget.doc_over`는 침묵한다**(chars/4 근사이고 기본 임계값을 출하하지 않는다 — `harnessHealth`와 같은 자세). CLI 플래그는 없다(프로젝트 설정이라 명령 표면을 늘리지 않았다). 같은 릴리스의 `markdown_link.anchor_missing`·`content.dated_heading`은 `rules`로 켜는 기본 off 규칙이다.
 - 1.33.0부터 `agentReviewers`(비어 있지 않은 이름 문자열 배열, 아니면 config 오류)로 에이전트인 검토자를 선언한다 — `stats`가 그 승인을 `human_verified`가 아니라 `agentVerified`로 센다(명령 표 `stats` 행). `promptProfile`(`"full"|"slim"`, 아니면 config 오류)은 `--prompt-profile`의 영속 기본값이다.
 - 1.36.0부터 `checkRun` 블록(`{ "checkRun": { "ignore": [...] } }`)으로 `check-run`이 산문으로 취급할 경로를 선언한다(명령 표 `check-run` 행). 항목은 `"dir/"`·`"*.ext"`·정확한 저장소 상대 경로뿐이고, 다른 와일드카드·절대 경로·`..`·빈 목록·`ignore` 외의 키는 config 오류다. 같은 릴리스의 `sourceDigests`(boolean, 아니면 config 오류)는 `review --approve`가 `source_digests`를 스탬프하게 한다(섀도, 기본 false).
-- **1.30.0부터 `governance` 블록으로 거버넌스 레벨을 선언한다**: `{ "governance": { "mode": "lite"|"standard"|"strict" } }`. 알 수 없는 값은 config 오류(exit 3)이며 조용한 폴백이 없다 — lite와 strict의 차이는 "빌드가 문서에 걸리는가"의 차이이므로 오타가 그중 하나를 조용히 고르면 최악의 놀라움이 된다. 레벨은 rule-id → severity **floor**를 기여하고 `rulesPreset`·명시 `rules` **아래**에 키 단위로 깔린다(mode floor < `rulesPreset` < `rules`) — 모드가 다르게 게이트하기 위해 새로 발명한 메커니즘이 없다는 뜻이다. `sensitive.*`는 어떤 모드도 건드릴 수 없고, 기본이 `blocked`인 규칙도 모드가 만지지 않는다(기본이 `error`인 규칙은 `PRESET_DIALABLE_ERROR_RULES` 허용목록의 `impact.source_changed` 하나만 — 프리셋과 같은 불변식이고 테스트가 고정한다). **`strict`의 floor는 비어 있다**: 레지스트리의 기본 severity가 이미 strict 베이스라인이므로, `governance` 블록이 없는 프로젝트는 `strict`로 해소되고 모드가 존재하기 전과 바이트 단위로 같게 동작한다 — 이것이 마이그레이션 보증이다. 새 프로젝트 기본값(`lite`)은 의도적으로 다른 질문이며 `init`이 근거로 해소한다: 명시 `--mode` > 기록된 모드 > *이 저장소에 이미 config나 위키가 있는가*(있으면 `strict`, 둘 다 없으면 `lite`). 단일 소스는 `src/governance.js#symbol:getGovernancePolicy`(frozen, leaf 모듈), 해소는 `src/config-file.js`의 config 병합 시점이라 CLI/API/MCP + monorepo per-package가 자동 상속하고, `doctor`가 유효 레벨·출처·게이트 상태를 에코한다. `--mode <레벨>`은 config를 고치지 않고 이 실행에만 적용된다(`mode`·`backfill`·`init`·`quickstart`·`audit`·`validate`·`status`·`next`·`stats`·`drift`·`impact`·`handoff`·`prompt`가 수용).
+- **1.30.0부터 `governance` 블록으로 거버넌스 레벨을 선언한다**: `{ "governance": { "mode": "lite"|"standard"|"strict" } }`. 알 수 없는 값은 config 오류(exit 3)이며 조용한 폴백이 없다 — lite와 strict의 차이는 "빌드가 문서에 걸리는가"의 차이이므로 오타가 그중 하나를 조용히 고르면 최악의 놀라움이 된다. 레벨은 rule-id → severity **floor**를 기여하고 `rulesPreset`·명시 `rules` **아래**에 키 단위로 깔린다(mode floor < `rulesPreset` < `rules`) — 모드가 다르게 게이트하기 위해 새로 발명한 메커니즘이 없다는 뜻이다. `sensitive.*`는 어떤 모드도 건드릴 수 없고, 기본이 `blocked`인 규칙도 모드가 만지지 않는다(기본이 `error`인 규칙은 `PRESET_DIALABLE_ERROR_RULES` 허용목록의 `impact.source_changed` 하나만 — 프리셋과 같은 불변식이고 테스트가 고정한다). **`strict`의 floor는 비어 있다**: 레지스트리의 기본 severity가 이미 strict 베이스라인이므로, `governance` 블록이 없는 프로젝트는 `strict`로 해소되고 모드가 존재하기 전과 바이트 단위로 같게 동작한다 — 이것이 마이그레이션 보증이다. 새 프로젝트 기본값(`lite`)은 의도적으로 다른 질문이며 `init`이 근거로 해소한다: 명시 `--mode` > 기록된 모드 > *이 저장소에 이미 config나 위키가 있는가*(있으면 `strict`, 둘 다 없으면 `lite`). 단일 소스는 `src/governance.js#symbol:getGovernancePolicy`(frozen, leaf 모듈), 해소는 `src/config-file.js`의 config 병합 시점이라 CLI/API/MCP + monorepo per-package가 자동 상속하고, `doctor`가 유효 레벨·출처·게이트 상태를 에코한다. `--mode <레벨>`은 config를 고치지 않고 이 실행에만 적용된다(`mode`·`backfill`·`init`·`quickstart`·`audit`·`validate`·`status`·`next`·`stats`·`drift`·`impact`·`handoff`·`prompt`가 수용). **1.42.0부터 꺼진 변경 점검을 출력이 말한다**: `impact.source_changed`가 `off`로 해소되면 `impact` 텍스트 요약 둘째 줄에 `impact.source_changed: off (governance mode <mode> or config) — no document was checked; …`가 나오고 "Documents to re-review"가 `not checked: impact.source_changed is off`가 된다. `status`·`next` 텍스트 요약에 `governance_mode:` 줄이 생기며 꺼져 있으면 켜는 명령을 덧붙인다. `quickstart`/`handoff` 결과 JSON에 부가 필드 `handoff.changeChecksOff`(불리언)가 생긴다. 판정·finding·종료 코드는 그대로다.
 - **1.31.0부터 `type`과 `agents`가 CLI 플래그와 같은 어휘로 검증된다.** `type`은 `src/detector.js#symbol:KNOWN_TYPES`에 대해, `agents`는 `src/config.js#symbol:SUPPORTED_AGENTS`에 대해 검증되며 위반은 허용값을 알려 주는 config 오류(exit 3)다. `agents`의 `all`은 CLI `--agent all`과 같이 세 이름(codex/claude/antigravity)으로 펼쳐진다. 그 전에는 config 쪽이 "문자열인가"·"문자열 배열인가"만 봤기 때문에 `{"type": "frontendd"}`가 통과한 뒤 알 수 없는 유형으로 동작했고, `{"agents": ["all"]}`은 `all`이라는 문자열 그대로 adapter 스캔에 넘어갔다 — CLI 경로에서는 이미 펼쳐진 뒤였다. **설정 하나가 서로 다른 답 둘로 해소되는 것은 이 문서가 약속한 "CLI·API·MCP가 같은 effective options를 해석한다"와 어긋난다.** 어휘 상수를 `src/cli.js`의 private const에서 `src/config.js`(의존성 없는 leaf)로 옮겨 두 지면이 같은 목록을 읽게 했다. **변화의 방향: 조용히 틀려 있던 config가 소리 내어 실패한다.**
 - 적용 우선순위: CLI 플래그 > config > 자동감지. 잘못된 config는 exit code `3`으로 거부된다.
 - 배포물에는 포함되지 않는 저장소-로컬 설정이다(`package.json` `files` 미포함).

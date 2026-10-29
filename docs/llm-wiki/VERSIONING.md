@@ -6,11 +6,11 @@ tags:
 status: verified
 doc_type: versioning
 project: llm-wiki-governance
-last_updated: 2026-10-27
+last_updated: 2026-10-29
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - package.json
@@ -24,8 +24,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:a18a7e2bc101d0dd
-  - docs/RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
+  - package.json sha256:6917cd4e241bf53a
+  - docs/RELEASE_CHECKLIST.md sha256:2fb22a641ffb93b8
 ---
 
 # Versioning
@@ -112,6 +112,18 @@ source_digests:
   CHANGELOG에 동작 변경으로 이름 붙였다.
 - **옵트인이 아닌 사용자에게는 변화가 없다.** `sourceDigests`를 켜지 않은 프로젝트에서는 `drift`의
   finding이 그대로다. 바뀌는 것은 `--anchor content` 보고의 비교 기준뿐이다.
+
+## 기록된 판정 — 1.42.0 (MINOR, 2026-10-29)
+
+- **minor 근거.** 생성 문서 본문(Review Notes)의 텍스트가 바뀐다. 위 정책대로 도입처가 `--refresh`로
+  받는 산출물이 바뀌므로 PATCH가 아니다. JSON에는 `handoff.changeChecksOff` 한 필드가 더해졌다(부가).
+- **exit code와 finding은 그대로다.** `impact`·`status`·`next`·`quickstart`는 텍스트 출력에 줄이 늘었을
+  뿐 판정과 종료 코드가 같다. 기본 모드도 `lite` 그대로다. 기본값을 `standard`로 바꾸는 안은 새 저장소의
+  CI 템플릿 종료 코드를 바꾸므로 1.28.0과 같은 형태여서 택하지 않았다(`docs/GATE_REVIEW.md`,
+  "First-Run Default Mode").
+- **tarball 경로 변경.** 최상위 `rules/`·`profiles/`·`adapters/`가 `templates/` 아래로 갔다. 런타임은
+  이 경로를 읽지 않았고, 위 정책대로 tarball 구성은 안정 계약이 아니다. 경로를 직접 참조하던 도입처를
+  위해 CHANGELOG에 이름 붙여 적었다.
 
 ## Evidence
 

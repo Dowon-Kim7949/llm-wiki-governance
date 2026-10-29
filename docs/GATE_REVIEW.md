@@ -3406,6 +3406,40 @@ give the content comparison the N-13 version-only exclusion, and decide whether 
 the working tree or `HEAD`. Revisit B only if adopters report this history, and measure its
 cost on a repository that narrows before deciding.
 
+## First-Run Default Mode (recorded 2026-10-29; default kept, visibility built for 1.42.0)
+
+**Decision (2026-10-29):** keep `lite` as what `quickstart` scaffolds for a new repository.
+Make its consequence visible instead: `impact` says when its gate is off, `status`, `next`,
+and the `quickstart` next step name the mode and how to turn the checks on, and the README
+says so under Quick start. Revisit if first-run reports keep saying the checks could not be
+found.
+
+**The problem.** A walkthrough of the published 1.41.0 in a fresh project, following only the
+README, approved a document, changed the file it cited, and ran `impact --since HEAD~1`. It
+printed `result: pass` and no documents to re-review. The project was in `lite`, where
+`impact.source_changed` and `evidence.stale` are off, and nothing on that path said so.
+Switching to `strict` reported the same change as an error.
+
+**Options.**
+
+- **A — keep `lite`, make it visible (chosen).** No default changes and no build changes for
+  anyone. Costs text only.
+- **B — scaffold `standard`.** The feature works without a setting. Costs:
+  `templates/github-actions/llm-wiki-validate.yml` runs `validate --strict`, which escalates
+  warnings to failures. Under `standard`,
+  `content.not_enriched` is a warning, so a team that copies the template right after
+  `quickstart` gets a red build until every scaffold is filled. `standard` also plans
+  profile and domain documents and tells agents to sync docs per change, which is the
+  overhead `lite` exists to avoid for a personal project.
+- **C — ask the user during `quickstart`.** Breaks non-interactive and CI runs; rejected.
+
+**Why not B now.** Only new repositories would be affected (an existing config is never
+overwritten, and a config with no `governance` block already resolves to `strict`), but for
+them the default exit status of the shipped CI template changes. VERSIONING records the
+1.28.0 default-severity change as a rule broken, not a precedent; B is the same shape.
+`quickstart --write --mode standard` already gives B to anyone who wants it, and the README
+now says so.
+
 ## Release Caveats
 
 - `migrate --apply` was blocked in shipped releases through `1.1.0`. Gate 8 (above)

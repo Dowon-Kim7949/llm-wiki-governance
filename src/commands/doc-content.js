@@ -198,7 +198,7 @@ ${apiServiceInventoryChecklist(docLang).join("\n")}
 
 ## Review Notes
 
-- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
 `;
   }
   return `# Domain Features
@@ -223,7 +223,7 @@ ${apiServiceInventoryChecklist(docLang).join("\n")}
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
+- Keep this document as \`needs_review\` until it has been reviewed.
 `;
 }
 
@@ -252,7 +252,7 @@ ${apiServiceInventoryChecklist(docLang).join("\n")}
 
 ## Review Notes
 
-- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
 `;
   }
   return `# Domain Overview
@@ -276,7 +276,7 @@ ${apiServiceInventoryChecklist(docLang).join("\n")}
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
+- Keep this document as \`needs_review\` until it has been reviewed.
 `;
 }
 
@@ -318,8 +318,8 @@ export function projectProfileBody(docLang) {
 
 ## Review Notes
 
-- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
-- 이 문서를 \`verified\`로 승격하지 않습니다. verified는 사람 승인 전용입니다.
+- 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 검토가 끝나면 \`llm-wiki review --approve <경로>\`로 승인합니다. 에이전트는 자기가 고친 문서를 승인하지 않습니다.
 `;
   }
   return `# Project Profile
@@ -349,8 +349,8 @@ export function projectProfileBody(docLang) {
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
-- Do not promote this document to \`verified\`; verified status is human-approved only.
+- Keep this document as \`needs_review\` until it has been reviewed.
+- Once reviewed, approve it with \`llm-wiki review --approve <path>\`. An agent does not approve its own edits.
 `;
 }
 
@@ -385,8 +385,8 @@ ${domainApiSection}
 
 ## Review Notes
 
-- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
-- 이 문서를 \`verified\`로 승격하지 않습니다. verified는 사람 승인 전용입니다.
+- 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 검토가 끝나면 \`llm-wiki review --approve <경로>\`로 승인합니다. 에이전트는 자기가 고친 문서를 승인하지 않습니다.
 `;
   }
   return `# ${title}
@@ -415,8 +415,8 @@ ${domainApiSection}
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
-- Do not promote this document to \`verified\`; verified status is human-approved only.
+- Keep this document as \`needs_review\` until it has been reviewed.
+- Once reviewed, approve it with \`llm-wiki review --approve <path>\`. An agent does not approve its own edits.
 `;
 }
 
@@ -469,7 +469,7 @@ ${domainApiSection}
 ## Review Notes
 
 - 사람 검토 전까지 \`needs_review\` 상태를 유지합니다.
-- 이 문서를 \`verified\`로 승격하지 않습니다. verified는 사람 승인 전용입니다.
+- 검토가 끝나면 \`llm-wiki review --approve <경로>\`로 승인합니다. 에이전트는 자기가 고친 문서를 승인하지 않습니다.
 `;
   }
   return `# ${plan.domainName}
@@ -492,12 +492,12 @@ ${domainApiSection}
 
 ## Open Questions
 
-- Keep uncertain ownership, boundaries, and dependencies here until human review.
+- Keep uncertain ownership, boundaries, and dependencies here until they are reviewed.
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
-- Do not promote this document to \`verified\`; verified status is human-approved only.
+- Keep this document as \`needs_review\` until it has been reviewed.
+- Once reviewed, approve it with \`llm-wiki review --approve <path>\`. An agent does not approve its own edits.
 `;
 }
 
@@ -546,7 +546,7 @@ export function greenfieldProjectProfileBody(docLang) {
 
 ## Review Notes
 
-- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
 - 코드가 생기기 전에 승인하면 적힌 의도를 승인하는 것이지 구현을 승인하는 것이 아닙니다.
 `;
   }
@@ -583,7 +583,7 @@ export function greenfieldProjectProfileBody(docLang) {
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
+- Keep this document as \`needs_review\` until it has been reviewed.
 - Approving it before code exists approves the stated intent, not an implementation.
 `;
 }
@@ -609,7 +609,7 @@ export function requirementsOverviewBody(docLang) {
 
 ## Review Notes
 
-- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
 `;
   }
   return `# Requirements
@@ -630,7 +630,7 @@ This is the requirements map: one document per requirement under \`docs/llm-wiki
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
+- Keep this document as \`needs_review\` until it has been reviewed.
 `;
 }
 
@@ -670,7 +670,7 @@ export function requirementTemplateBody(docLang) {
 
 ## Review Notes
 
-- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
 - 승인(\`verified\`)은 요구사항을 승인하는 것이지 구현을 승인하는 것이 아닙니다. \`llm-wiki validate\`는 연결된 근거가 없는 승인 요구사항을 \`evidence.planned_unlinked\`(info)로 보고합니다.
 `;
   }
@@ -707,7 +707,7 @@ Copy this template to \`docs/llm-wiki/requirements/REQ-NNN-<short-slug>.md\` for
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
+- Keep this document as \`needs_review\` until it has been reviewed.
 - Approving it (\`verified\`) approves the requirement, not an implementation; \`llm-wiki validate\` reports an approved requirement with nothing linked as \`evidence.planned_unlinked\` (info).
 `;
 }
@@ -748,7 +748,7 @@ export function decisionTemplateBody(docLang) {
 
 ## Review Notes
 
-- 사람 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
+- 검토가 끝나기 전까지 이 문서를 \`needs_review\`로 유지합니다.
 `;
   }
   return `# ADR-NNNN: Decision Title
@@ -782,6 +782,6 @@ Copy this template to \`docs/llm-wiki/decisions/ADR-NNNN-<short-slug>.md\` for e
 
 ## Review Notes
 
-- Keep this document as \`needs_review\` until human review is complete.
+- Keep this document as \`needs_review\` until it has been reviewed.
 `;
 }

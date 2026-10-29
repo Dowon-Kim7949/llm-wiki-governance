@@ -10,7 +10,7 @@ last_updated: 2026-10-27
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js

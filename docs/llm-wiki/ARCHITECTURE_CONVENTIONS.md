@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -65,15 +65,15 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:7d0df7982416faef
-  - src/commands.js sha256:9de9e64b3a165a88
+  - src/cli.js sha256:d9a6cc7effc2dac5
+  - src/commands.js sha256:27428d45e7046786
   - src/frontmatter.js sha256:f03d0c07725dec3e
-  - src/report.js sha256:9774daea9617572b
+  - src/report.js sha256:f5edafc1d5d9252a
   - src/index.js sha256:ee1d42734ade2f15
   - src/config-file.js sha256:762011b8afa322f6
   - src/detector.js sha256:0deb142806225108
   - src/encoding.js sha256:6d9c6a75f032f525
-  - src/git.js sha256:368235704e10ed2e
+  - src/git.js sha256:fd9a57a0fc930c4d
   - src/i18n.js sha256:eb211f0cf4de1540
   - src/mcp/server.js sha256:8ea067d79b56f344
   - src/mcp/validate-args.js sha256:14568f590681aa53
@@ -167,6 +167,7 @@ source_digests:
 - **모든** 위키 문서의 Review Notes 섹션은 최근 5건만 유지하고, 오래된 항목은 [REVIEW_HISTORY.md](REVIEW_HISTORY.md)로 원문 그대로 옮긴다(2026-07-30, 프롬프트 형태 규율). 검토·승인 효력은 frontmatter(`reviewed_by`/`reviewed_at`)가 정본이고 append-only 변경 로그는 `log.md`가 소유하므로, 본문 이력은 어댑터 선적재 문맥에서 지시가 아닌 감사 추적을 덜어내기 위해 상한을 갖는다. 섹션 헤딩 자체는 유지한다(`fix` 엔진의 Evidence-섹션 삽입 앵커). 2026-08-03에 적용 범위를 "무거운 문서"에서 **모든 문서**로 바꿨다 — "무거운"은 테스트가 평가할 수 있는 술어가 아니어서 상한이 나흘간 강제되지 않았고, 아카이브가 모든 문서에 열려 있으므로 좁힐 이유도 없다.
 - 아카이브 건수는 **손으로 적지 않는다**(2026-08-03). 원문서의 포인터 줄(`Older review notes (N entries, ...)`)과 `REVIEW_HISTORY.md` 섹션 헤더(`N건`)와 그 섹션의 실제 항목 수는 세 값이 항상 같아야 하고, `tests/review-notes-cap.test.js`가 이 등식과 5건 상한을 함께 고정한다. 손 계산은 두 번 어긋났다: 2026-07-31에 두 헤더를 교정했는데(39→41, 44→47) 바로 다음 이전이 낡은 47에서 +1을 계산해 그 사이 도착한 3건을 빠뜨렸고, Domain Features 헤더가 실제 51건을 48건이라고 주장했다. 개수를 적어 둔 문서는 드리프트 신호가 가장 강하므로 — 적되, 검사한다.
 - **이 저장소는 자기 위키 문서를 스스로 승격한다**(2026-08-03, 유지보수자 결정). 에이전트가 편집 후 `review --approve-all --yes`를 실행하고, `reviewed_by`는 config `reviewer`가 지목하는 **에이전트 이름**이 되어 스탬프가 사람 검토를 주장하지 않는다. 드리프트도 `reviewed_at` 재스탬프로 해소하며 소스 대조를 전제하지 않는다. 계약 전문은 `AGENTS.md` "Wiki discipline"이 소유하고, 두 가지 침묵 실패를 `tests/self-approval-policy.test.js`가 막는다: config `reviewer` 삭제 시 `resolveReviewer`가 git 신원으로 폴백해 **사람을 사칭**하는 것, 그리고 이 저장소의 완화가 `templates/adapters/*`로 **새어 도입처에 배포**되는 것. 경계는 `docs/llm-wiki/`이며 그 밖에서는 어떤 파일도 `verified`를 씨앗으로 삼을 수 없다(`tests/shipped-assets.test.js`). 대가는 명시한다: 이 저장소에서 `evidence.stale`·`impact`는 항상 초록이므로 **관측 도구가 아니다.**
+- **저장소 루트에는 도구나 관례가 그 자리를 요구하는 것만 둔다**(1.42.0). 남은 것은 README 2종·`LICENSE`·`AGENTS.md`·`CLAUDE.md`·`package.json`·`llm-wiki.config.json`·점파일, 폴더는 `.agents`·`.claude`·`.github`·`bench`·`bin`·`docs`·`examples`·`src`·`templates`·`tests`다. 커뮤니티 문서(`CONTRIBUTING`·`SECURITY`·`CODE_OF_CONDUCT`)는 GitHub가 인식하는 `.github/`, 프로젝트 기록(`CHANGELOG`·`ROADMAP`·`GATE_REVIEW`·`RELEASE_CHECKLIST`·`MAINTAINERS`·`VERIFICATION`)과 `outputs/`·`orca/`는 `docs/`, 배포 자산 `rules/`·`profiles/`·`adapters/README.md`는 `templates/` 아래다. 런타임은 `templates/`만 자기 위치 기준으로 읽으므로(`src/commands/adapters.js`의 `TEMPLATE_ROOT`) 이 이동은 코드 경로를 바꾸지 않았다. `doctor`의 릴리스 체크리스트 탐지는 `docs/`를 먼저 보고 루트로 폴백한다. 생성 스킬 사본 `.cursor/`·`.llm-wiki/prompts/`는 추적하지 않는다(`init --write --skills`가 다시 만든다).
 - `COMMAND_OPTION_RULES`(`src/cli.js`)의 명령별 허용 옵션 집합은 **그 명령이 실제로 적용하는 옵션과 일치**해야 한다(2026-07-31). 30개 명령 전부가 이 맵에 등록되어야 하며, 빠진 명령은 `validateCommandOptions`가 조기 return해 **아무 옵션이나 무검증 통과**한다(`monorepo`가 그 상태였다). 판정 기준은 문서의 추측이 아니라 코드 경로다: 예컨대 `monorepoCommand`는 `{ ...options }`를 각 패키지 `validateCommand`로 전파하므로 `strict`·`agent`는 허용하고, 같은 함수가 패키지별로 `type: null`·`profiles: []`로 덮어쓰므로 `type`·`profile`은 거부한다(받으면 조용히 무효가 된다). 새 명령을 추가할 때는 `COMMAND_OPTION_RULES`와 `COMMAND_HELP` 양쪽에 함께 등록한다 — 후자가 빠지면 `help <command>`가 `Unknown help topic`(exit 3)이 된다.
 - 생성 프롬프트/스킬의 지시 줄은 {steering / 계약 / 안전}으로 분류하고 **steering만** 삭제 후보다: *어떤 steering 줄이 빠졌을 때 실제로 발화하는 신호(`run.*`·validate/audit findings·테스트 실패)가 없으면 삭제 후보* — 캘린더 주기가 아니라 모델 업그레이드/수 릴리스마다 재검토한다(GATE_REVIEW "Prompt-Shape Discipline" 참조). 계약·안전 줄은 정의상 이 규칙의 대상이 아니다.
 - **MCP가 노출하는 툴 집합의 단일 소스는 `TOOL_DEFS`이고, 그것을 산문으로 옮겨 적은 사본은 검사한다**(2026-08-20). 사본은 세 곳이다 — `src/cli.js` 최상위 도움말 Safety 블록의 `mcp` 줄, 같은 파일 `help mcp`의 `Tools` 블록, 그리고 `src/mcp/dispatch.js`가 `initialize` 응답에 싣는 `instructions`(MCP 클라이언트가 에이전트에게 **서버 자신의 설명**으로 보여 주는 문자열). 셋 다 낡아 있었고 **낡은 정도가 서로 달랐다**: Safety 줄은 17종 중 14종, `help mcp`는 1.6 당시의 10종 그대로, instructions는 `review`만 누락 — 한 제품이 같은 질문에 세 가지로 답하고 있었다. 적게 주장하는 문자열은 파싱도 린트도 기존 MCP 동작 테스트도 전부 통과하므로 **어떤 게이트도 잡지 못한다**. 누락은 장식이 아니다 — `prepare`는 에이전트가 질문의 범위를 좁힐 때 집어야 할 툴이라, 그것을 감춘 도움말은 에이전트를 소스 재유도로 되돌려 보낸다(이 패키지가 없애려는 바로 그 비용이다). `tests/mcp-tool-census.test.js`가 세 사본을 전부 `TOOL_DEFS`와 대조한다. 없는 툴을 주장하는 반대 방향은 목록이 기계 판독 가능한 Safety 줄에서만 고정한다.

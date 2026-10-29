@@ -203,3 +203,22 @@ class listed for it.
   one-hour session for a developer who has never seen the project, with a greenfield
   and a brownfield task, a checklist, and what to record. Results will be added here
   only from real sessions.
+- **Maintainer-side first-run review (2026-10-29), not independent.** The maintainer's
+  agent followed the README of the published 1.41.0 in a fresh sample project. It found
+  that a new project's change checks were off without saying so, that the CLI named no
+  approve command and described approval as human-only, that hand-written docs had no
+  guide, and that the `llm-wiki` command name in output did not run as typed. 1.42.0
+  addresses each. This is a heuristic walkthrough by the tool's own side and does not
+  change the **Unknown** above.
+
+### Unsolicited first-run reports
+
+Reports filed through the [first-run issue form](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues/new?template=first_run.yml)
+are listed here with the date, platform, the step that got in the way, and what was done
+(fixed, tracked as an issue, or a recorded no-change decision). No reporter is
+identified. These are self-reports, not observed sessions, so they are kept apart from
+the protocol above and do not by themselves change the usability verdict.
+
+| Date | Platform | Where it got in the way | Outcome |
+| --- | --- | --- | --- |
+| none yet | | | |
