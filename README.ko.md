@@ -101,7 +101,7 @@ CLI에는 모델이 필요 없습니다. 모델이 쓰이는 곳은 보강 단�
 { "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-툴은 전부 읽기 전용이고 `verified` 승격은 CLI에서만 일어납니다. 인증 기능이 없고 `cwd` 인자도 샌드박스가 아니니 로컬 서브프로세스로만 쓰세요([SECURITY.ko.md](./SECURITY.ko.md#mcp-서버-신뢰-모델)). 1.40.0 이전 버전은 `validate`를 통해 파일을 쓰게 만들 수 있었으니 올리세요.
+툴은 전부 읽기 전용이고 `verified` 승격은 CLI에서만 일어납니다. 인증 기능이 없고 `cwd` 인자도 샌드박스가 아니니 로컬 서브프로세스로만 쓰세요([SECURITY.ko.md](.github/SECURITY.ko.md#mcp-서버-신뢰-모델)). 1.40.0 이전 버전은 `validate`를 통해 파일을 쓰게 만들 수 있었으니 올리세요.
 
 ## 도입과 운영에 드는 것
 
@@ -118,9 +118,9 @@ Windows·macOS·Linux에서 런타임 의존성 없이 돕니다. Node·Python·
 | 설정이나 CI 배선이 맞는지 모르겠음 | `llm-wiki doctor` |
 | `sensitive.redacted`가 문서를 막음 | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you)(영문) |
 | 모든 명령·옵션·exit code | [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) · `help <command>`(영문) |
-| 신뢰 모델, 취약점 제보 | [SECURITY.ko.md](./SECURITY.ko.md) |
+| 신뢰 모델, 취약점 제보 | [SECURITY.ko.md](.github/SECURITY.ko.md) |
 | 보안 수정 받기 | 보안 수정은 최신 릴리스에만 들어갑니다. `npm install -D llm-wiki-governance@latest` 후 `--version`으로 확인하세요. |
 | 실사용 예시 | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) |
-| 출시 이력, 방향, 결정 기록 | [CHANGELOG.ko.md](./CHANGELOG.ko.md) · [ROADMAP.ko.md](./ROADMAP.ko.md) · [GATE_REVIEW.md](./GATE_REVIEW.md)(영문) |
+| 출시 이력, 방향, 결정 기록 | [CHANGELOG.ko.md](./docs/CHANGELOG.ko.md) · [ROADMAP.ko.md](./docs/ROADMAP.ko.md) · [GATE_REVIEW.md](./docs/GATE_REVIEW.md)(영문) |
 
-버그 제보와 질문은 [Issues](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues)와 [Discussions](https://github.com/Dowon-Kim7949/llm-wiki-governance/discussions)에 남겨 주세요. 풀 리퀘스트 전에 [CONTRIBUTING.ko.md](./CONTRIBUTING.ko.md)와 [행동 강령](./CODE_OF_CONDUCT.ko.md)을 읽어 주세요. 라이선스는 [MIT](./LICENSE)입니다.
+버그 제보와 질문은 [Issues](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues)와 [Discussions](https://github.com/Dowon-Kim7949/llm-wiki-governance/discussions)에 남겨 주세요. 풀 리퀘스트 전에 [CONTRIBUTING.ko.md](.github/CONTRIBUTING.ko.md)와 [행동 강령](.github/CODE_OF_CONDUCT.ko.md)을 읽어 주세요. 라이선스는 [MIT](./LICENSE)입니다.

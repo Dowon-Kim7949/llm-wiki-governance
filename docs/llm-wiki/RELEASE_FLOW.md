@@ -14,12 +14,12 @@ reviewed_at: 2026-10-28
 wiki_block_version: v1
 source_files:
   - package.json
-  - RELEASE_CHECKLIST.md
+  - docs/RELEASE_CHECKLIST.md
   - templates/github-actions/llm-wiki-validate.yml
   - .github/workflows/publish.yml
 evidence:
   - package.json#section:scripts
-  - RELEASE_CHECKLIST.md#section:Publish
+  - docs/RELEASE_CHECKLIST.md#section:Publish
 related:
   - docs/llm-wiki/index.md
   - docs/llm-wiki/VERSIONING.md
@@ -27,7 +27,7 @@ visibility: internal
 contains_sensitive_info: false
 source_digests:
   - package.json sha256:a18a7e2bc101d0dd
-  - RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
+  - docs/RELEASE_CHECKLIST.md sha256:b4b79745790da0f0
   - templates/github-actions/llm-wiki-validate.yml sha256:4434aa02eb421f91
   - .github/workflows/publish.yml sha256:c3c6a88cb36e80aa
 ---
@@ -76,19 +76,19 @@ source_digests:
 
 ## Checklist
 
-- 상세 절차는 저장소 루트 `RELEASE_CHECKLIST.md`의 Local Verification / Safety Gates / Release Metadata / Publish 섹션을 따른다.
+- 상세 절차는 저장소 루트 `docs/RELEASE_CHECKLIST.md`의 Local Verification / Safety Gates / Release Metadata / Publish 섹션을 따른다.
 - **버전을 손으로 적는 자리가 `package.json` 말고 둘 더 있다.** 도입처가 실제로 받아 실행하는 핀이라 낡으면 조용히 구버전이 돈다.
   - `templates/github-actions/llm-wiki-validate.yml`의 `npx -y llm-wiki-governance@<X.Y>` — **1.32.0부터 `tests/verification.test.js`가 `package.json` 버전에서 X.Y를 계산해 대조하므로, 안 올리면 테스트가 실패한다.** 1.32.0에서 템플릿이 `npm ci` + `npx --no-install` 대신 이 형태를 쓰게 되면서 생긴 자리다.
-  - `.github/actions/validate/action.yml`의 `version` 입력 기본값(patch 없는 `X.Y` 형식) — 같은 배치에서 같은 방식의 테스트를 붙였다. 이 값은 1.27.0–1.27.2에 걸쳐 실제로 낡은 적이 있고, 그래서 `RELEASE_CHECKLIST.md`가 그 사고를 근거로 이 항목을 명시 지목한다.
+  - `.github/actions/validate/action.yml`의 `version` 입력 기본값(patch 없는 `X.Y` 형식) — 같은 배치에서 같은 방식의 테스트를 붙였다. 이 값은 1.27.0–1.27.2에 걸쳐 실제로 낡은 적이 있고, 그래서 `docs/RELEASE_CHECKLIST.md`가 그 사고를 근거로 이 항목을 명시 지목한다.
 - 태그 버전과 `package.json` 일치는 publish 워크플로가 확인하지만(위 Pipeline 4), 위 두 핀은 **태그를 밀기 전 로컬 테스트에서만** 걸린다.
-- **테스트가 보지 않는 문서 속 핀도 있다.** README 2종의 컴포지트 액션 태그(`validate@v<X.Y.Z>`, `RELEASE_CHECKLIST.md`가 지목)와 [EXAMPLES](EXAMPLES.md)의 CI 예시 `npx -y llm-wiki-governance@<X.Y>` 네 줄이다. 실행되는 핀이 아니라 복사되는 예시라 낡아도 아무것도 실패하지 않는다 — EXAMPLES는 1.36.0이 나간 뒤에도 `@1.35`였고 1.37.0 준비 중에 발견해 `@1.37`로 고쳤다. 범프할 때 `git grep -n "@<이전 X.Y>"`로 같이 찾는다.
+- **테스트가 보지 않는 문서 속 핀도 있다.** README 2종의 컴포지트 액션 태그(`validate@v<X.Y.Z>`, `docs/RELEASE_CHECKLIST.md`가 지목)와 [EXAMPLES](EXAMPLES.md)의 CI 예시 `npx -y llm-wiki-governance@<X.Y>` 네 줄이다. 실행되는 핀이 아니라 복사되는 예시라 낡아도 아무것도 실패하지 않는다 — EXAMPLES는 1.36.0이 나간 뒤에도 `@1.35`였고 1.37.0 준비 중에 발견해 `@1.37`로 고쳤다. 범프할 때 `git grep -n "@<이전 X.Y>"`로 같이 찾는다.
 - **브랜치에서 "아직 배포 안 됨"으로 적은 표기도 범프 때 정리한다(1.38.0).** 기능을 릴리스보다 먼저 문서화하면 README 2종·데모 README·위키 여러 곳이 그 사실을 적는다(1.38.0의 `--greenfield`는 열두 곳이었다). 범프 커밋에서 `git grep -n "미배포\|not in a published release\|배포된 릴리스에 없"`로 찾아 버전으로 바꾼다. `log.md`·`REVIEW_HISTORY.md`의 과거 항목은 당시 사실이므로 그대로 둔다.
-- **tarball 구성도 확인한다(1.34.0).** `npm pack --dry-run`에는 `bin/`·`src/`·`templates/`·`rules/`·`adapters/`·`profiles/`와 README 2종·`LICENSE`만 나와야 한다. 프로젝트 문서를 `files`에 다시 넣으면 `tests/verification.test.js`가 실패한다.
+- **tarball 구성도 확인한다(1.34.0).** `npm pack --dry-run`에는 `bin/`·`src/`·`templates/`·`templates/rules/`·`adapters/`·`templates/profiles/`와 README 2종·`LICENSE`만 나와야 한다. 프로젝트 문서를 `files`에 다시 넣으면 `tests/verification.test.js`가 실패한다.
 
 ## Evidence
 
 - `package.json#section:scripts` — `verify`/`validate`/`doctor`/`audit` 스크립트 정의.
-- `RELEASE_CHECKLIST.md#section:Publish` — 태그 생성/푸시와 배포 확인 절차.
+- `docs/RELEASE_CHECKLIST.md#section:Publish` — 태그 생성/푸시와 배포 확인 절차.
 
 ## Review Notes
 

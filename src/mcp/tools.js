@@ -4,7 +4,7 @@
 // API (src/index.js `commands`). No write/mutating command (init/fix/migrate/
 // drift/quickstart --write) is exposed over MCP: agents query and check the
 // wiki through these tools, they do not change it. This mirrors the
-// conservative-write safety ethos of the CLI (GATE_REVIEW.md).
+// conservative-write safety ethos of the CLI (docs/GATE_REVIEW.md).
 //
 // A tool declares a JSON-Schema `inputSchema` for its arguments; the dispatcher
 // VALIDATES the arguments against that schema (src/mcp/validate-args.js — a

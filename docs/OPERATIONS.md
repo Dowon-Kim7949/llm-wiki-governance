@@ -228,7 +228,7 @@ path and a **redacted description of the pattern** — never the value. There is
 deliberately no per-document exception mechanism yet; the report path, and the
 open question of who would be allowed to declare an exception if one is ever
 added, are in
-[SECURITY.md](../SECURITY.md#reporting-a-sensitive-info-false-positive).
+[SECURITY.md](../.github/SECURITY.md#reporting-a-sensitive-info-false-positive).
 
 ## Cost & safety notes
 
@@ -241,5 +241,5 @@ added, are in
 
 - `npx llm-wiki-governance help <command>` — offline, per-command reference.
 - [PUBLIC_API.md](llm-wiki/PUBLIC_API.md) — full command / option / config / programmatic-API / MCP reference.
-- [GATE_REVIEW.md](../GATE_REVIEW.md) — accepted safety scopes and release gates.
-- [SECURITY.md](../SECURITY.md) — threat model, the MCP server trust model, and the sensitive-info false-positive report path.
+- [GATE_REVIEW.md](GATE_REVIEW.md) — accepted safety scopes and release gates.
+- [SECURITY.md](../.github/SECURITY.md) — threat model, the MCP server trust model, and the sensitive-info false-positive report path.

@@ -101,7 +101,7 @@ One engine, three policy levels, switchable at any time with `{ "governance": { 
 { "mcpServers": { "llm-wiki": { "command": "npx", "args": ["-y", "llm-wiki-governance", "mcp"] } } }
 ```
 
-Every tool is read-only; promotion to `verified` stays a CLI action. The server has no authentication and its `cwd` argument is not a sandbox, so keep it a local subprocess ([SECURITY.md](./SECURITY.md#mcp-server-trust-model)). Versions before 1.40.0 could be made to write a file through `validate`; upgrade.
+Every tool is read-only; promotion to `verified` stays a CLI action. The server has no authentication and its `cwd` argument is not a sandbox, so keep it a local subprocess ([SECURITY.md](.github/SECURITY.md#mcp-server-trust-model)). Versions before 1.40.0 could be made to write a file through `validate`; upgrade.
 
 ## What it takes to run
 
@@ -118,9 +118,9 @@ Runs on Windows, macOS, and Linux with no runtime dependencies. It detects Node,
 | are unsure about setup or CI wiring | `llm-wiki doctor`. |
 | are blocked by `sensitive.redacted` | [When the sensitive-info scan blocks you](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/OPERATIONS.md#when-the-sensitive-info-scan-blocks-you) |
 | want every command, option, and exit code | `help <command>` · [PUBLIC_API.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/PUBLIC_API.md) (Korean prose) |
-| want the trust model, or to report a vulnerability | [SECURITY.md](./SECURITY.md) |
+| want the trust model, or to report a vulnerability | [SECURITY.md](.github/SECURITY.md) |
 | want security fixes | They ship in the latest release only: `npm install -D llm-wiki-governance@latest`, then check `--version`. |
 | want worked examples | [EXAMPLES.md](https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/llm-wiki/EXAMPLES.md) (Korean prose) |
-| want history, direction, or the decision record | [CHANGELOG.md](./CHANGELOG.md) · [ROADMAP.md](./ROADMAP.md) · [GATE_REVIEW.md](./GATE_REVIEW.md) |
+| want history, direction, or the decision record | [CHANGELOG.md](./docs/CHANGELOG.md) · [ROADMAP.md](./docs/ROADMAP.md) · [GATE_REVIEW.md](./docs/GATE_REVIEW.md) |
 
-Bug reports and questions: [Issues](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues) and [Discussions](https://github.com/Dowon-Kim7949/llm-wiki-governance/discussions). Before a pull request, read [CONTRIBUTING.md](./CONTRIBUTING.md) and the [Code of Conduct](./CODE_OF_CONDUCT.md). Licensed under [MIT](./LICENSE).
+Bug reports and questions: [Issues](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues) and [Discussions](https://github.com/Dowon-Kim7949/llm-wiki-governance/discussions). Before a pull request, read [CONTRIBUTING.md](.github/CONTRIBUTING.md) and the [Code of Conduct](.github/CODE_OF_CONDUCT.md). Licensed under [MIT](./LICENSE).

@@ -50,8 +50,8 @@ llm-wiki validate
 <!-- Context: `sensitive.*` rules are in NON_TOGGLEABLE_CATEGORIES, so they cannot be
      turned off by llm-wiki.config.json `rules` or a `rulesPreset` — by design. There is
      deliberately no per-document exception mechanism yet; the condition for revisiting
-     that is the first real reported false positive. See SECURITY.md → "Reporting a
+     that is the first real reported false positive. See .github/SECURITY.md → "Reporting a
      sensitive-info false positive".
      참고: `sensitive.*`는 NON_TOGGLEABLE_CATEGORIES에 속해 설계상 config `rules`/`rulesPreset`으로
      끌 수 없습니다. 문서별 예외 장치도 의도적으로 아직 없으며, 재검토 조건은 실제 오탐 신고 1건입니다.
-     자세한 내용은 SECURITY.md의 "Reporting a sensitive-info false positive" 절을 보세요. -->
+     자세한 내용은 .github/SECURITY.md의 "Reporting a sensitive-info false positive" 절을 보세요. -->

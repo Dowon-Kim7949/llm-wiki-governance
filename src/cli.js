@@ -1132,7 +1132,7 @@ Purpose:
   previews the upgrade report and planned changes and writes nothing; --apply
   applies them.
 
-Scope (see GATE_REVIEW.md "Migration Apply Scope Decision", Gate 8):
+Scope (see docs/GATE_REVIEW.md "Migration Apply Scope Decision", Gate 8):
   - Reuses the accepted fix scope: fills missing Tier A frontmatter fields,
     reconciles the body ## Evidence section, creates needs_review stubs for
     broken links, and refreshes last_updated on modified documents.
@@ -1186,7 +1186,7 @@ Usage:
 Purpose:
   Applies a narrow, accepted set of safe autofixes inside docs/llm-wiki. Without --write it previews the planned fixes and writes nothing; --write applies them.
 
-Scope (see GATE_REVIEW.md "Autofix (--fix) Scope Decision"):
+Scope (see docs/GATE_REVIEW.md "Autofix (--fix) Scope Decision"):
   - Inserts missing mechanical required frontmatter fields (status, visibility, contains_sensitive_info, wiki_block_version, last_updated, last_edited_by, and empty tags/source_files/related).
   - Adds or completes the body ## Evidence section from existing frontmatter evidence entries.
   - Creates needs_review stubs for broken related/markdown-link targets under docs/llm-wiki/*.md.
@@ -1203,7 +1203,7 @@ Usage:
 Purpose:
   Keeps docs/llm-wiki/log.md readable by moving entries older than a retention window into monthly volumes next to it (docs/llm-wiki/log-YYYY-MM.md). Without --write it previews the move and writes nothing; --write applies it.
 
-Scope (see GATE_REVIEW.md "Change-Log Volume Scope Decision"):
+Scope (see docs/GATE_REVIEW.md "Change-Log Volume Scope Decision"):
   - An entry is a "## " block outside frontmatter and fenced code (CommonMark fences). Entries whose heading starts with a real calendar date (YYYY-MM-DD) are dated. Undated entries, impossible dates (invalid-date), and dates after tomorrow in UTC (future-dated) stay in log.md and are listed under skipped.
   - --keep-months <n> (default 2) keeps the newest n months, counted back from the newest valid dated entry rather than from today.
   - Entries move whole without editing. A new volume takes them byte for byte; entries added to an existing volume go above its entries and take its line endings. Before writing, the planned files are re-parsed and every original entry must come back exactly once, or nothing is written (archive.integrity, blocked).
@@ -1262,7 +1262,7 @@ Options:
                         default exit code stays 0, so adding drift to an existing
                         pipeline cannot break it.
 
-Scope (see GATE_REVIEW.md "Drift Downgrade Scope Decision", Gate 9):
+Scope (see docs/GATE_REVIEW.md "Drift Downgrade Scope Decision", Gate 9):
   - Changes only status (verified -> needs_review) and last_updated — plus the
     tags: status tag, and only when the document already carries one — on
     verified documents that have drifted.
@@ -1284,7 +1284,7 @@ Purpose:
   untracked); with --since <ref> it diffs <ref>..working-tree (a PR/CI baseline).
   An empty change set is a no-op. Run it from the repo root.
 
-Strict / CI (see GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
+Strict / CI (see docs/GATE_REVIEW.md "Reverse-Impact ... Scope Decision", Gate 23):
   - Error by default (decision 21, 2026-08-03): this command exits 1 on its own
     when a verified document's cited source moved without it, so --strict is a
     no-op for impact.source_changed. Dial it down per project with
@@ -1347,7 +1347,7 @@ Purpose:
   trail warns as run.test_evidence_missing. The intent-anchored complement to
   impact (diff-anchored). Run it from the repo root.
 
-Strict / CI (see GATE_REVIEW.md "Agent Update Runner ... Scope Decision", Gate 26):
+Strict / CI (see docs/GATE_REVIEW.md "Agent Update Runner ... Scope Decision", Gate 26):
   - Default warning; --strict makes run.* findings fail (exit 1) so CI catches a
     code change whose wiki update was skipped.
   - Read-only: check-run never writes. The manifest is authored by the agent
@@ -1420,7 +1420,7 @@ Purpose:
   evidence summary so a human can spot-check the backlog quickly. Restricted/
   sensitive docs are excluded from the list unless --include-sensitive.
 
-Approve (writes ONLY the review stamp; see GATE_REVIEW.md "Review Workflow Scope Decision", Gate 20):
+Approve (writes ONLY the review stamp; see docs/GATE_REVIEW.md "Review Workflow Scope Decision", Gate 20):
   - --approve <path> promotes the named needs_review docs to verified, stamping
     status: verified + reviewed_by + reviewed_at, plus the tags: status tag when
     the document already carries one, plus source_digests (one content digest

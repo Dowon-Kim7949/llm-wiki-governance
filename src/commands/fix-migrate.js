@@ -132,7 +132,7 @@ export function buildUpgradeReport(analysis) {
 }
 
 // ---- fix command (scoped autofix) --------------------------------------
-// The accepted scope is recorded in GATE_REVIEW.md ("Autofix (--fix) Scope
+// The accepted scope is recorded in docs/GATE_REVIEW.md ("Autofix (--fix) Scope
 // Decision"). fix applies only safe, mechanically decidable remediations under
 // docs/llm-wiki/, never edits verified documents' content, never writes outside
 // docs/llm-wiki/, and never invents meaning-bearing values.
@@ -447,7 +447,7 @@ function formatContentAnchor(report) {
 }
 
 // ---- drift command (opt-in verified -> needs_review downgrade) ---------
-// The accepted scope is recorded in GATE_REVIEW.md ("Drift Downgrade Scope
+// The accepted scope is recorded in docs/GATE_REVIEW.md ("Drift Downgrade Scope
 // Decision", Gate 9). drift reports evidence.stale drift on verified documents
 // and, with --downgrade, flips only those documents to needs_review (status +
 // last_updated). It never promotes to verified and never edits other content.

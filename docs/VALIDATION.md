@@ -152,7 +152,7 @@ class listed for it.
 | Each citation is checked to resolve | Executed tests; scripted walkthroughs | Resolving does not make the sentence true |
 | `drift` / `impact` flag documents whose cited sources changed | Executed tests; scripted walkthroughs | A flag means "re-read", not "wrong"; date checks have the limits above |
 | An approved requirement is a plan, not an implementation | Executed tests; scripted walkthrough | `impact.plan_changed` lists files; it judges nothing |
-| Every MCP tool is read-only | Executed tests (1.40.0) | Was not true before 1.40.0 ([GHSA-qwp4-w8vx-r72r](https://github.com/Dowon-Kim7949/llm-wiki-governance/security/advisories/GHSA-qwp4-w8vx-r72r)); `cwd` is not a sandbox ([SECURITY.md](../SECURITY.md#mcp-server-trust-model)) |
+| Every MCP tool is read-only | Executed tests (1.40.0) | Was not true before 1.40.0 ([GHSA-qwp4-w8vx-r72r](https://github.com/Dowon-Kim7949/llm-wiki-governance/security/advisories/GHSA-qwp4-w8vx-r72r)); `cwd` is not a sandbox ([SECURITY.md](../.github/SECURITY.md#mcp-server-trust-model)) |
 | Keyword retrieval, hit@5 85.0% | Executed on this repository's own wiki | Held-out queries on one corpus; not a general accuracy figure |
 | A wiki that was never enriched measured worse than none | Real model runs, recorded | One external repository, one model, six tasks ([BENCHMARK_DISCLOSURE.md](./BENCHMARK_DISCLOSURE.md)) |
 | It saves development time or reduces hallucinations | **Not verified** | Not measured |

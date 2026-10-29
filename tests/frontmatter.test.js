@@ -132,7 +132,7 @@ contains_sensitive_info: false
 });
 
 test("published frontmatter JSON Schema matches runtime contract", async () => {
-  const schemaPath = path.join(process.cwd(), "rules", "frontmatter.schema.json");
+  const schemaPath = path.join(process.cwd(), "templates", "rules", "frontmatter.schema.json");
   const publishedSchema = JSON.parse(await readFile(schemaPath, { encoding: "utf8" }));
 
   assert.deepEqual(publishedSchema, FRONTMATTER_SCHEMA);

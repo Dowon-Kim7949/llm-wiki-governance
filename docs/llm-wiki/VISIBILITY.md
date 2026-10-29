@@ -22,7 +22,7 @@ evidence:
   - src/sensitive-info.js#symbol:scanSensitiveInfo
 related:
   - docs/llm-wiki/project-profile.md
-  - GATE_REVIEW.md
+  - docs/GATE_REVIEW.md
 visibility: internal
 contains_sensitive_info: false
 source_digests:

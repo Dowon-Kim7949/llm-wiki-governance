@@ -37,7 +37,7 @@ GitHub issue or improvement idea
         ↓  human reads the diff, merges, and — separately — approves docs
 ```
 
-Roles and their start prompts are in [`.orca/agents/`](../.orca/agents/); the
+Roles and their start prompts are in [`docs/orca/agents/`](orca/agents/); the
 rules every role inherits are in [`AGENTS.md`](../AGENTS.md).
 
 ## Setup
@@ -78,7 +78,7 @@ review/<issue>-<topic>
 ```bash
 orca worktree create --repo name:llm-wiki-governance \
   --name feat/142-compact-retrieval --issue 142 --agent claude \
-  --prompt "$(cat .orca/agents/03-implement.md)"
+  --prompt "$(cat docs/orca/agents/03-implement.md)"
 
 orca worktree ps                       # what every agent is doing
 orca terminal read --terminal <handle> # bounded output from one of them
@@ -229,7 +229,7 @@ relying on it.
 
 The server is stdio-only and unauthenticated by design. Never expose it on a
 network port. It exposes read-only commands only — document approval is not
-among them. See [SECURITY.md](../SECURITY.md) for the trust model.
+among them. See [SECURITY.md](../.github/SECURITY.md) for the trust model.
 
 ## Orca skills
 

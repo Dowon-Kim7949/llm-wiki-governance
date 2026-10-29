@@ -1077,7 +1077,7 @@ function documentSubstance(text) {
 // exclusion is also the only way the standard remediation clears a finding
 // (downgrade, then re-stamp), so enforcing it here would leave a real drift
 // finding with no resolution path — which is defect N-11 in the other direction.
-// Closing both needs a decision about what re-affirmation IS; see GATE_REVIEW.md
+// Closing both needs a decision about what re-affirmation IS; see docs/GATE_REVIEW.md
 // ("Stamp-Only Exemption"). Until then the reader gets told, and the exit code
 // does not move.
 async function stampOnlyDocExclusions(cwd, sinceRef, changed) {
@@ -1103,7 +1103,7 @@ async function stampOnlyDocExclusions(cwd, sinceRef, changed) {
 // Opt-in `impact.stamp_only`: the stamp_only_exclusions report above, as findings.
 // OFF unless a project names the rule in config `rules`, so a default run's
 // findings, output, and exit code are exactly what they were. When on, it is a
-// warning by default: GATE_REVIEW.md "Stamp-Only Exemption" (N-9/N-11) is still
+// warning by default: docs/GATE_REVIEW.md "Stamp-Only Exemption" (N-9/N-11) is still
 // open, and until it is decided a stamp-only resolution is made VISIBLE on request
 // rather than refused, because a re-stamp is also how the documented remediation
 // clears a real finding. Raising it to error closes that path again (N-11);
@@ -1215,7 +1215,7 @@ async function unattestedPromotionFindings(cwd, since, changed) {
 // ERROR by default since decision 21 (2026-08-03), so this command fails CI on
 // its own and `--strict` is a no-op for it; a project dials it down through
 // config `rules` or `rulesPreset: "relaxed"`. Empty change set = no-op.
-// Scope: GATE_REVIEW.md ("Reverse-Impact (Changed-Source → Wiki) Scope Decision").
+// Scope: docs/GATE_REVIEW.md ("Reverse-Impact (Changed-Source → Wiki) Scope Decision").
 export async function impactCommand(options) {
   const cwd = options.cwd;
 
@@ -1274,7 +1274,7 @@ export async function impactCommand(options) {
     : await scanPlanChanges(cwd, { since: options.since, changed, changedSet });
   findings.push(...applyRuleConfig(planChanges.findings, options));
   const { changedPlans } = planChanges;
-  // Reported, not enforced — see stampOnlyDocExclusions and GATE_REVIEW.md.
+  // Reported, not enforced — see stampOnlyDocExclusions and docs/GATE_REVIEW.md.
   const stampOnlyExclusions = await stampOnlyDocExclusions(cwd, options.since, changed);
   // ...unless the project opted into impact.stamp_only. Skipped while
   // impact.source_changed itself is off (lite, or an explicit "off"): with that
@@ -1733,7 +1733,7 @@ function finishCheckRun(options, relManifest, findings, extra = {}) {
 // severity), and never edits body / source_files / evidence / last_updated.
 // reviewed_by resolves explicit --reviewer > config reviewer > git
 // user.name, and the command refuses to stamp (never blank/fabricated) when none
-// resolves. Scope: GATE_REVIEW.md ("Review Workflow Scope Decision", Gate 20). MCP
+// resolves. Scope: docs/GATE_REVIEW.md ("Review Workflow Scope Decision", Gate 20). MCP
 // exposes the LIST surface only (buildToolOptions copies no approve fields).
 const REVIEW_RISK_WEIGHTS = {
   "content.not_enriched": 40,
@@ -3154,7 +3154,7 @@ async function inspectPackageReadiness(cwd) {
 
   if (!packageJson?.bin?.["llm-wiki"]) return [];
 
-  const checklistExists = await pathExists(path.join(cwd, "RELEASE_CHECKLIST.md"));
+  const checklistExists = await pathExists(path.join(cwd, "docs", "RELEASE_CHECKLIST.md")) || await pathExists(path.join(cwd, "RELEASE_CHECKLIST.md"));
   return [
     `package_name: ${packageJson.name ?? "missing"}`,
     `version: ${packageJson.version ?? "missing"}`,

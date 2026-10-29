@@ -15,6 +15,6 @@ labels: [enhancement]
 ## Alternatives considered / 검토한 대안
 
 ## Scope / 범위
-- [ ] I checked ROADMAP.md and this is not already planned. / ROADMAP.md를 확인했고 이미 계획된 항목이 아닙니다.
+- [ ] I checked docs/ROADMAP.md and this is not already planned. / docs/ROADMAP.md를 확인했고 이미 계획된 항목이 아닙니다.
 
 ## Additional context / 추가 정보
