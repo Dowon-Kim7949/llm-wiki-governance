@@ -5,5 +5,5 @@
   "reviewer": "Claude Code (delegated by Dowon-Kim)",
   "agentReviewers": ["Claude Code (delegated by Dowon-Kim)"],
   "sourceDigests": true,
-  "checkRun": { "ignore": ["outputs/", "tests/", "README.md", "README.ko.md", "ROADMAP.md", "ROADMAP.ko.md", "CHANGELOG.md", "CHANGELOG.ko.md"] }
+  "checkRun": { "ignore": ["docs/outputs/", "tests/", "README.md", "README.ko.md", "docs/ROADMAP.md", "docs/ROADMAP.ko.md", "docs/CHANGELOG.md", "docs/CHANGELOG.ko.md"] }
 }

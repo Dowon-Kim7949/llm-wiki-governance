@@ -168,4 +168,4 @@ refuses to stamp rather than write a blank/fabricated reviewer.
 
 - [`../docs/OPERATIONS.md`](../docs/OPERATIONS.md) — running this at small-repo / medium-repo / monorepo scale.
 - [`../docs/llm-wiki/PUBLIC_API.md`](../docs/llm-wiki/PUBLIC_API.md) — full command / option reference.
-- [`../GATE_REVIEW.md`](../GATE_REVIEW.md) — the accepted safety scope for every write path (including `review`, Gate 20).
+- [`../GATE_REVIEW.md`](../docs/GATE_REVIEW.md) — the accepted safety scope for every write path (including `review`, Gate 20).

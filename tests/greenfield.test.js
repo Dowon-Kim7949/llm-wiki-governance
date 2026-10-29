@@ -367,7 +367,9 @@ test("quickstart on a new repository names the mode it actually records (lite), 
     const config = JSON.parse(await readFile(path.join(cwd, "llm-wiki.config.json"), "utf8"));
     assert.equal(config.governance.mode, "lite");
     assert.equal(result.handoff.governanceMode, "lite", `greenfield=${greenfield}`);
-    assert.match(result.text, /Governance mode: lite\./);
+    assert.match(result.text, /Governance mode: lite[.\s]/);
+    // 1.42.0: outside greenfield, say that lite switched the change checks off.
+    if (!greenfield) assert.match(result.text, /change checks are off: impact and drift report nothing/);
   }
 });
 

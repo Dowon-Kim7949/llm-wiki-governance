@@ -1,0 +1,2959 @@
+> Language: [English](./CHANGELOG.md) | [한국어](./CHANGELOG.ko.md)
+
+# Changelog
+
+All notable changes to `llm-wiki-governance` (formerly `@dowonk-7949/llm-wiki-standard`)
+are documented here. This project follows [Semantic Versioning](https://semver.org/).
+Entries are newest-first.
+
+## 1.42.0 — 2026-10-29
+
+What a new user sees now matches what the tool does. A walkthrough of the published 1.41.0
+in a fresh project, following only the README, found four places where it did not.
+
+- **A lite project says its change checks are off.** `quickstart` starts a new project in
+  `lite`, where `impact` and `drift` report nothing. `impact` used to print `result: pass`
+  and no documents to re-review, which reads like "checked, all clear". Its summary now
+  says `impact.source_changed: off … no document was checked`, and `status`, `next`, and
+  the `quickstart` next step name the mode and how to turn the checks on
+  (`mode set standard --write`).
+- **The approve command is named, and approval is not described as human-only.**
+  `quickstart` and `help` said "a human reviews and marks them verified" without naming
+  `review --approve`, and the tool cannot prove who ran it. They now name the command and
+  say the tool records who approved.
+- **Writing docs by hand is documented.** The CLI has never required an agent, but the
+  README said the agent writes the content. New guide:
+  [docs/WRITING_DOCS_BY_HAND.md](./WRITING_DOCS_BY_HAND.md) (and `.ko.md`). `quickstart`
+  points to it.
+- **Generated documents explain approval instead of forbidding it.** Their Review Notes
+  said "Do not promote this document to `verified`", which a person filling the document
+  in reads as addressed to them. They now say to approve with `review --approve` once
+  reviewed, and that an agent does not approve its own edits. Agent prompts keep their
+  rule unchanged.
+- **README:** the Quick start no longer pins `--type frontend`, explains the `llm-wiki`
+  command name (an unrelated npm package is called `llm-wiki`), and adds troubleshooting
+  rows for a silent change check and `command not found`.
+- **First-run feedback form** (`.github/ISSUE_TEMPLATE/first_run.yml`). It asks for
+  versions, the mode, and the commands run, and nothing that identifies the reporter.
+- **Repository layout.** The root went from 26 files and 18 folders to 11 and 10. Community
+  files moved to `.github/`, project records (this changelog, `ROADMAP`, `GATE_REVIEW`, …)
+  to `docs/`, and `rules/`, `profiles/`, and `adapters/README.md` under `templates/`.
+  Generated skill copies for Cursor and agent-neutral prompts are no longer tracked.
+  Links to the old paths on `main` now 404; tagged URLs still work.
+
+**Behaviour changes, named:**
+- Text output of `impact` (under a gate that is off), `status`, `next`, `quickstart`, and
+  `handoff` gained lines. JSON output is unchanged except `handoff.changeChecksOff`, a new
+  field.
+- Newly generated documents carry the new Review Notes; existing documents are untouched.
+- The npm package no longer has top-level `rules/`, `profiles/`, or `adapters/`. Nothing at
+  runtime read them; they are now under `templates/`. If you referenced
+  `node_modules/llm-wiki-governance/rules/frontmatter.schema.json`, use
+  `templates/rules/frontmatter.schema.json`.
+
+Sized as a MINOR: generated document text changes, which adopters receive on
+`init --write --skills --refresh` (VERSIONING, "What Bumps the Version"). The default mode
+is unchanged; why is recorded in `GATE_REVIEW.md`, "First-Run Default Mode".
+
+## 1.41.0 — 2026-10-28
+
+Content digests take their first decision. Upgrade if your project sets
+`"sourceDigests": true` and squashes or rebases reviewed branches.
+
+- **`drift` narrowing checks the stamped digest (opt-in).** With `"sourceDigests": true`, a
+  line-range or section citation is narrowed away only if the digest `review --approve`
+  stamped for it still matches the region at `HEAD`. Both git baselines can contain a change the
+  reviewer never saw when the review branch was squashed or rebased on the review day itself;
+  the digest was taken from what the reviewer read. If it differs, the region is reported as
+  `evidence.stale`. Without a stamped digest the citation narrows as before. This can only add
+  findings.
+- **`drift --anchor content` compares against `HEAD`,** not the working tree, so both verdicts
+  read committed history. An uncommitted edit no longer shows as a disagreement.
+- **A root or workspace `package.json` is digested without its `version`,** as `impact` already
+  treats it (N-13). A whole-file digest stamped by an earlier version is still accepted while the
+  file is unchanged, and reads as changed after the next version bump until the document is
+  approved again.
+
+**Behaviour changes, named:**
+- With `"sourceDigests": true`, `drift` can report a citation it used to narrow: the cited region
+  differs from the stamped digest. That includes a line range whose lines moved because text was
+  inserted above it, since its line numbers now point at different text.
+- `drift --anchor content` reports `HEAD`, not the working tree. Its JSON shape is unchanged.
+- Newly stamped digests of a manifest of record differ from earlier ones for the same file.
+
+Why: on this repository every content-versus-date disagreement was the content verdict being
+right where the date verdict could not see (same-day changes, version-only manifests,
+uncommitted edits), and none was a date over-report that content cleared. `GATE_REVIEW.md`,
+"Same-Day Squash Narrowing", records the analysis and the options not taken.
+
+Sized as a MINOR: an opt-in setting starts deciding something, and only in the direction of more
+findings. Tests: 802 → 807.
+
+## 1.40.1 — 2026-10-28
+
+A hardening patch. No output changes.
+
+- **git queries switch off the repository's `core.fsmonitor`.** Every git command this package
+  runs is a read, and some of them compare against the working tree, where git runs the
+  command that setting names. Pointing the CLI or the MCP server at a repository whose own
+  configuration names such a command no longer runs it. What remains is listed in
+  [SECURITY.md](../.github/SECURITY.md#mcp-server-trust-model): a clean or process filter the
+  repository configures still runs (switching filters off would misreport Git LFS files), so
+  point the tool only at repositories you would run `git status` in.
+- **Recorded, not changed:** a `drift` narrowing gap when a review branch is squashed or
+  rebased on the review day itself. Options and costs are in `GATE_REVIEW.md` ("Same-Day
+  Squash Narrowing"); the current behaviour stays pinned by a test.
+- `docs/USABILITY_PROTOCOL.md` gains an invitation text and a session record; no session has
+  been run yet.
+
+Tests: 801 → 802.
+
+## 1.40.0 — 2026-10-28
+
+A validation release. The tool was run end to end outside this repository — on an existing
+Python (FastAPI) service and on a React + Express npm workspace — and the runs found three
+detection defects that this repository's own tests could not see. All three are fixed, and the
+walkthroughs now run in `npm test`. What has been shown on which stack, how to reproduce it,
+and what has not is in [`docs/VALIDATION.md`](./VALIDATION.md). Upgrade if you initialize
+Python or Rust projects or npm-workspace repositories.
+
+- **Security: a caller-supplied git revision can no longer be read as a git option.** The MCP
+  `validate` tool (`changed` with `since`) and the programmatic API (`commands.validate` with
+  `changed`, `commands.impact` and `commands["release-notes"]`, each with `since`) passed
+  `since` to git unchecked. A value git reads as an option could make git write a file at a
+  path the caller chose, on an MCP server whose contract is read-only. The `llm-wiki` CLI was
+  not exposed: its parser refuses a `--since` value that starts with `-`. Affected: every
+  published `llm-wiki-governance` version (1.16.0–1.38.0) and `@dowonk-7949/llm-wiki-standard`
+  1.5.0–1.15.1 (MCP from 1.6.0), each checked against its published tarball. A revision that
+  starts with `-` is now refused, and every revision is followed by `--`, so a value naming a
+  file instead of a revision is refused too rather than read as a path; the run reports that
+  it could not compute the change set (`changed.unavailable`, `impact.unavailable`). No
+  revision git accepts starts with `-`. Upgrade if an MCP client, an agent, or code you do not
+  fully control can supply `since`. Advisory:
+  [GHSA-qwp4-w8vx-r72r](https://github.com/Dowon-Kim7949/llm-wiki-governance/security/advisories/GHSA-qwp4-w8vx-r72r).
+- **`drift` trusts the review-stamp commit in fewer histories.** Re-checking the 1.39.0 fix
+  found two that still hid a cited change the reviewer never saw. A body line starting with
+  `reviewed_at:`, such as a fenced example, made a later edit of that line count as the stamp
+  commit. A review branch squashed or rebased onto newer commits put the stamp on top of them.
+  A stamp commit now counts only if it changed the stamp's value and is dated on or before the
+  review day; otherwise the citation is checked at file level, as before 1.37.0. A squash or
+  rebase on the review day itself is still taken as reviewed (the date granularity every date
+  check shares), and N-15 is unchanged. Git history cannot name what a reviewer looked at;
+  both baselines approximate it, and narrowing happens only when they agree.
+- **`init` suggests a type for an npm-workspace repository.** When the root `package.json`
+  declares workspaces and names no framework itself, detection says `unknown`. `init` (without
+  `--type`) now reads the member manifests and suggests `--type fullstack`, `frontend` or
+  `backend`: a `hint:` line under Detected Project and a `typeHint` JSON key. The detected type
+  is not changed. `init` records a type in the config only when it is not `unknown`, so such a
+  repository detects again on every `validate`, and a new type there would make new documents
+  required.
+- **An explicit type is no longer a review item when detection found nothing.** Recording
+  `--type fullstack`, as the hint says, made every `validate` report `project.review_item`
+  ("Explicit type 'fullstack' differs from detected 'unknown'"), a warning that fails
+  `--strict`. A real disagreement — a configured `library` where detection finds `frontend` —
+  is still reported.
+- **Python and Rust projects are named from their manifest.** Without a `package.json`,
+  generated documents took the directory name for `project:`. They now read `name` from
+  `pyproject.toml` (`[project]` or `[tool.poetry]`) or `Cargo.toml` (`[package]`). A `name`
+  under an array-of-tables header such as `[[bin]]` is not taken for the project's. No check
+  compares the name, so existing documents are unaffected.
+- **Runnable stack walkthroughs.** `examples/python-fastapi-brownfield` (21 checks) and
+  `examples/react-node-fullstack` (15 checks) each run with one command and need only Node.js
+  and git. The greenfield demo adds a requirement changed ahead of its code, so
+  `impact.plan_changed` is shown with its linked files unchanged (20 → 23 checks).
+- **`docs/VALIDATION.md`** (English and Korean): a stack matrix with evidence labels, the
+  commands that reproduce each claim, the limits the walkthroughs demonstrate, and what was not
+  measured (agent behaviour, efficacy, independent usability).
+
+**Behaviour changes, named:**
+- A `since` value (MCP or programmatic) that starts with `-`, or that names a file rather
+  than a revision, is refused instead of being passed to git.
+- In repositories that squash or rebase reviewed branches, a narrowed `drift` citation whose
+  stamp commit is dated after the review day is reported at file level: more findings, never
+  fewer.
+- `init` text gains a `hint:` line, and its JSON a `typeHint` key, only for an npm-workspace
+  repository detected as `unknown` without `--type`.
+- `validate` and `audit` no longer report `project.review_item` for an explicit type when
+  detection is `unknown`, so a `--strict` run that failed only on that can pass.
+- Newly generated documents of a Python or Rust project carry the manifest's name in
+  `project:`.
+
+**Limits.** Detection alone still says `unknown` for such a workspace; the hint is advice. Go,
+JVM, PHP, Ruby, .NET, mobile and infrastructure projects are covered by detection tests only,
+not end to end, and pnpm workspaces are not parsed. The walkthroughs never run the applications.
+No model was run: agent adapters and skills are checked to exist and to point at the wiki, not
+to be followed. No independent developer has followed the README.
+
+Sized as a MINOR: one additive JSON key, one review item that no longer fires where it carried
+no information, and a generated-document field; the security fix refuses only input git would
+have read as an option or a path, and the `drift` change can only add findings. Tests:
+783 → 801.
+
+## 1.39.0 — 2026-10-28
+
+Prepared but not published on its own: it lacked the security fix above, so its changes
+reach npm in 1.40.0.
+
+A correctness release with one new signal. Two gates could pass something they exist to
+stop: `drift` narrowing could hide a cited region that had changed, and lite could approve a
+document that strict and standard refuse. Both are fixed and pinned by tests that fail on
+1.38.0. `impact` also gains the reverse direction: when an approved requirement or decision
+changes, it names the files the plan links. Upgrade if your wiki cites line ranges or
+Markdown sections, if any repository runs in lite with `"strict": true`, or if you plan with
+requirement documents.
+
+- **`drift` no longer narrows a citation away on the review-day snapshot alone.**
+  - 1.37.0 said a wrong snapshot "can only flag a document, not hide one". That was false.
+    The snapshot is the newest commit dated on or before the review day, and a date walk can
+    return a side-branch commit dated that day but merged after the review, a commit made
+    later on the review day, or a commit made after the review with an older committer date.
+    The cited section then read the same on both sides and was narrowed away, although the
+    file-level check (triggered by any later edit to the file) would have reported the
+    document. Line ranges, narrowed with `git log -L --since` since before 1.37.0, hid the
+    same changes. Reproduced with controlled commit dates in
+    `tests/drift-narrowing-baseline.test.js` (5 of its 12 tests fail on 1.38.0).
+  - A citation is now narrowed only when the commit that wrote the document's current
+    review stamp agrees as well: no commit between it and `HEAD` touched a cited line range
+    (`git log -L <stamp>..HEAD`, decided by ancestry, not dates), and every cited section
+    reads the same there as at `HEAD`. The stamp commit is the newest commit whose diff
+    touches the document's `reviewed_at` line (else `last_updated`), accepted only if the
+    committed value matches the working tree.
+  - When that commit cannot be established (the stamp is not committed, or the committed
+    value differs), the file is checked at file level, as before 1.37.0.
+- **A governance mode no longer changes what `review` can approve.** With `"strict": true`
+  in the config, `evidence.missing` is an error, and an error finding blocks approval. Lite
+  turns that rule off, so a document citing a file that does not exist was refused under
+  strict and standard and approved under lite. `review` now measures the rules the mode's
+  floor switched off (and nothing else did) for its approval gate. A rule a project
+  switched off by name stays off, in every mode. `validate`, `audit` and `status` still
+  report what the mode says.
+- **`stats` lists approved documents that still carry scaffold placeholder text**
+  (`verifiedNotEnriched`, and a `verified_not_enriched:` summary line when non-empty).
+  Before 1.38.0, lite or `content.not_enriched: "off"` let `review --approve-all` promote
+  untouched scaffolds, and nothing re-checks a verified document. The list is measured in
+  every mode; it is a fact about the text, not a finding that an approval was wrong, and
+  nothing is changed.
+- **`impact.plan_changed` (info).** When an approved planned document (`doc_type`
+  `requirement`, `decision`, `decision_log`, `adr`; verified before or after the diff)
+  changes in a section that states the plan, `impact` lists the local files it links and,
+  for each, whether it changed in the same diff, is unchanged, is missing, or cannot be
+  matched (`changed` / `unchanged` / `missing` / `uncertain`).
+  - Edits only to Review Notes, Evidence, Alternatives Considered or Open Questions,
+    whitespace, and frontmatter other than the title do not count; any other heading does,
+    custom and translated ones included. Added, deleted and renamed plans are followed; a
+    draft that was never approved is not.
+  - It is info in every mode, lite included, and never fails a build unless `rules` raises
+    `"impact.plan_changed"`. A linked file that changed in the same diff is reported too,
+    because changing does not show it implements the new text.
+  - JSON adds `changedPlans` (every such plan, with `kind`, `status`, `meaningful`,
+    `changedSections`, `ignoredSections`, `linked[{path, change}]`, and `renamedFrom` on a
+    rename). Text output adds a `changed_plans:` summary line and a "Plans changed" section
+    only when a plan is in the diff, so other runs print what they printed before.
+
+**Behaviour changes, named:**
+- `drift`, and `stats` (`staleVerified`), can report more `evidence.stale` findings for
+  files cited only through line ranges or Markdown sections: for any citation whose review
+  stamp is not committed, and for the hidden cases above. Never fewer.
+- In lite with `"strict": true`, `review` refuses a document with an error-level finding
+  that lite does not report (today only `evidence.missing`), and the `review` list in lite
+  shows `evidence.missing` and `encoding.bom` findings on `needs_review` documents.
+- `impact` can report `impact.plan_changed` info findings, so `findingSummary.info` and the
+  `findings:` count grow; `result` and the exit code do not change.
+- Additive JSON: `impact.changedPlans`, `stats.verifiedNotEnriched`.
+
+**Limits.** A late merge with no other later commit to the cited file is still not seen at
+all (N-15, `tests/known-gaps.test.js` GAP 5). Squash and rebase merges of a branch reviewed
+before merging are still over-reported. The review-day boundary is read in the local time
+zone. `impact.plan_changed` names candidates for review; it never shows that code satisfies
+or violates a requirement, it cannot find code a plan does not link, and links are per file,
+so changing one acceptance criterion lists every linked file. Section matching uses the
+English headings the templates generate. `next` in lite still does not suggest repairing
+evidence paths lite does not report.
+
+Sized as a MINOR: one new info rule and additive JSON. The two gate fixes are named
+exceptions: they can add findings or refuse an approval, and they restore what the
+documentation already promised. Tests: 757 → 783.
+
+## 1.38.0 — 2026-10-28
+
+Start a project before its code exists, on the same wiki and the same engine.
+`--greenfield` records requirements and decisions as planned knowledge; once code exists,
+the same documents link implementation evidence and join the existing checks. Building it
+surfaced a gate that lite had been switching off since 1.30.0: `review --approve-all`
+promoted untouched scaffolds. Upgrade if you start new projects with this tool, or if any
+repository runs in lite.
+
+- **`init` / `quickstart` / `handoff --greenfield`.**
+  - `init` and `quickstart` add `docs/llm-wiki/requirements/00_overview.md` and
+    `docs/llm-wiki/templates/REQUIREMENT.template.md`, and write planning bodies into a
+    new `project-profile.md` (purpose, scope, non-goals, constraints) and `index.md`.
+    Existing files are never overwritten, and the two added documents are not required
+    documents.
+  - `handoff --greenfield` (and `quickstart --greenfield`) prints a planning prompt instead
+    of the code-enrichment one: record what the user states and nothing else, cite no
+    source that does not exist, keep everything `needs_review`, approve nothing.
+  - Requirements live one per document (`requirements/REQ-NNN-<slug>.md`,
+    `doc_type: requirement`), decisions as `decisions/ADR-NNNN-<slug>.md`
+    (`doc_type: decision`).
+- **Planned knowledge.** A document whose `doc_type` is `requirement`, `decision`,
+  `decision_log` or `adr` states intended behaviour; approving it approves the plan, not an
+  implementation. An approved one with no local `source_files` or `evidence` gets
+  `evidence.planned_unlinked` (info) instead of `evidence.ungrounded` (warning). `stats`
+  counts these documents in `plannedKnowledge { documents, approved, linked, unresolved,
+  unlinked }`, where linked means every local reference resolves: it shows where a plan is
+  implemented, not that it is complete. `review` labels such a document `planned` instead
+  of `no-evidence`. No new frontmatter field and no new status value.
+- **No fabricated source in an empty repository.** When the detected manifest does not
+  exist, `init` writes `source_files: []` instead of citing `package.json`; an empty
+  repository used to get 10 `validate` warnings and 100% evidence coverage.
+  `detection.primaryManifest` keeps its value and shape. The first `log.md` entry now
+  cites the manifest that was detected (`pyproject.toml`, `go.mod`, ...) instead of always
+  `package.json`.
+- **The decision template is an ADR skeleton for every `init`** (Decision Status, Context,
+  Decision, Alternatives Considered, Consequences, Evidence). It and the requirement
+  template cite no source, so a copied document does not count as linked on day one.
+- **`quickstart` names the mode it writes.** On a new repository it recorded `lite` in the
+  config and told the handoff prompt `strict`. The mode is now resolved before `init`
+  writes.
+- **A rule a mode switches off stops being reported, not being true.** Lite turns
+  `content.not_enriched`, `evidence.missing` and `evidence.stale` off, and three commands
+  read facts from those findings. On an empty repository in lite, `stats` reported 12 of 12
+  documents enriched, `next` an empty enrichment checklist, and `review --approve-all
+  --yes` promoted 8 of 8 `needs_review` documents, scaffolds included (standard on the same
+  repository: 6 of 12, 6, and 2). `stats`, `next` and `review` now restore just the rules
+  they read, for that one audit run, the way `backfill` already measured drift.
+  `validate`, `audit`, `status` and `drift` still report what the mode says.
+- Inline `key: []` in frontmatter is read as an empty list. It used to be the string
+  `"[]"`, a `frontmatter.array` error.
+- The governance budget in generated prompts (all three modes) tells the agent to update
+  the evidence of a requirement document its change implements.
+- `examples/greenfield-vue-demo/` runs the whole path: an empty repository, the plan and
+  its approval, a Vue 3 + TypeScript implementation, linked evidence, a code change that
+  `impact` flags, and re-approval, with 20 checks
+  (`node examples/greenfield-vue-demo/scripts/demo.mjs walkthrough`; the app's own tests
+  need Node 22.6+ and are reported as skipped below it).
+
+**Behaviour changes, named:**
+- In lite, or with `content.not_enriched` set to `off` in `rules`, `review --approve
+  <scaffold>` now exits 1 with `review.not_enriched`, and `--approve-all` skips scaffolds.
+  This restores the documented gate; it is the one exit-code change in this release.
+- In lite, `stats` reports what is true for `enriched`, `evidenceTiers` and
+  `staleVerified`, so the numbers drop, and `stats` now pays for the drift scan the way
+  `backfill` does. `next` lists the documents to fill, and its `auditFindings` include
+  them.
+- An approved decision record (`decision`, `decision_log`, `adr`) with no linked evidence
+  moves from `evidence.ungrounded` (warning) to `evidence.planned_unlinked` (info), so a
+  `--strict` run that failed on it can pass. It is still reported.
+- A new `init` writes the ADR-shaped decision template with `source_files: []`.
+- Additive JSON: `stats.plannedKnowledge`, `planned` on `review` entries, and
+  `greenfield: true` on `init` and `handoff` results when the flag is given.
+
+**Limits.** A linked reference shows where a requirement is implemented, not that it is
+done; no command runs your tests or judges a requirement. Editing a requirement does not
+flag code (`impact` works from code to documents). Acceptance criteria inside a document
+are not traced one by one. A new project starts in lite, where `impact` and `drift` are
+off. Whether an agent follows the planning prompt was not measured.
+
+Sized as a MINOR: one new option and additive JSON. The lite approval refusal is a named
+exception: it changes an exit code, and it restores a contract the code already stated.
+Tests: 731 → 757.
+
+## 1.37.0 — 2026-10-27
+
+A follow-through release for 1.36.0. The date-based `drift` reads a cited Markdown section
+the way `impact` already does, `search-docs` gets its old match rule back as an option, and
+the search numbers are re-measured on queries the ranker was never chosen on. Upgrade if
+your wiki cites sections of long Markdown files, or if a script relied on search matching
+every term.
+
+- **`drift` honors Markdown section citations.**
+  - A file cited only in `evidence`, and only through line ranges or sections of a Markdown
+    file (`#section:Usage`), is now checked region by region. Line ranges were already
+    narrowed with `git log -L`. A section is compared between the repository as of the end
+    of the review day (the same committer-date boundary the date check uses) and `HEAD`.
+  - When the file changed but no cited region did, the citation is listed under the new
+    JSON key `locatorNarrowed` and the summary line `locator_narrowed`, the same shape
+    `impact` uses, instead of drifting. Line-range narrowings are now reported there too;
+    they used to be silent.
+  - Everything that cannot be compared exactly still drifts at file level: a file also in
+    `source_files` or cited bare, `#symbol:` and `#route:`, a section of a non-Markdown file,
+    no review-day snapshot, and a heading that matches zero or several headings on either
+    side. Renaming the cited heading therefore drifts the document.
+  - The snapshot is chosen by committer date, so it inherits the late-merge limit (N-15).
+    ~~When it is wrong, it can only flag a document, not hide one.~~ **Corrected in 1.39.0:
+    this was false.** A snapshot chosen by date could hide a changed citation; see 1.39.0.
+- **`search-docs --all-terms`** (MCP `search_docs`: `allTerms`) keeps only documents that
+  contain every query term, the rule before 1.36.0, ranked the same way. The flag filters
+  and does not rescore. The JSON adds `terms` (the query as the ranker used it, after
+  function words and particles are dropped) and `allTerms`, so `matchedTerms` can be read
+  against the term list.
+- **Held-out search evaluation.** `bench/search-eval/heldout.json` holds 40 new queries,
+  written after the 1.36.0 ranker was chosen by an agent that never ran a search over the
+  wiki. `run.js --queries <file>` selects the set. On it, the shipped ranker scores hit@5
+  85.0% and MRR 0.600, against 10.0% and 0.100 for the 1.35.0 AND rule (34 of 40 queries
+  returned nothing); `--all-terms` scores 17.5%, with 27 queries returning nothing. The
+  1.36.0 figure of 92.5% was measured on the selection set, so it is an upper bound; 85.0%
+  is the estimate. The corpus is the wiki itself, and editing the wiki moved the held-out
+  MRR from 0.589 to 0.600 while this release was written, so smaller differences are not
+  findings.
+
+**Behaviour changes, named:**
+- `drift` can report fewer `evidence.stale` findings, for files cited only through Markdown
+  sections (or sections plus line ranges).
+- `drift --format json` adds `locatorNarrowed`; `search-docs --format json` adds `terms` and
+  `allTerms`. The `drift` summary gains a `locator_narrowed:` line, and the `search-docs`
+  summary a `terms:` line.
+
+Sized as a MINOR: one new option, new JSON keys, and a gate that can only report less for a
+citation whose text provably did not change. Tests: 725 → 731. (*Corrected in 1.39.0:* the
+text was not provably unchanged — the review-day snapshot could be a commit the reviewer never
+saw. 1.39.0 requires the review's own commit to agree.)
+
+## 1.36.0 — 2026-10-27
+
+A precision release. `impact` stops failing a document whose cited section did not change,
+search answers questions instead of returning nothing, and two shadow records start measuring
+what review dates and self-reports cannot show. It also ships the hardening merged since
+1.35.0. Upgrade if your wiki cites sections or line ranges, or if agents search it.
+
+- **`impact` honors line-range and section citations.** A file cited only in `evidence`, and
+  only as line ranges (`#L10-L20`, `path:10-20`) or sections of a Markdown file
+  (`#section:Usage`), is compared region by region between the baseline (`--since`, else
+  `HEAD`) and the working tree. When every cited region reads the same, the citation is listed
+  under the new JSON key `locatorNarrowed` and the summary line `locator_narrowed` instead of
+  failing the document. Everything that cannot be compared exactly stays file-level: a file
+  also in `source_files` or cited bare, `#symbol:` and `#route:` citations (their extent
+  cannot be computed without parsing the language), a file with no baseline copy, and a
+  section heading that matches zero or several headings. Line ranges compare positions, so a
+  line inserted above a range is still reported.
+- **`search-docs` ranks by relevance and matches any term.** It required every query term to
+  appear in one document, which returned nothing for 18 of 40 queries in a new evaluation set
+  over this repository's wiki (`bench/search-eval`). It now ranks with BM25 over substring
+  counts, adds weight for title and tags/aliases hits, drops English function words and
+  trailing Korean particles from the query, and gives each result `matchedTerms`. On the same
+  set: hit@5 42.5% → 92.5%, MRR 0.272 → 0.660, no empty results. The ranker was chosen on
+  that set (40 agent-labeled queries, one wiki), so read the numbers as an in-sample upper
+  bound. `onboard` and `prepare` use the same ranker.
+- **`check-run` can leave prose out.** `"checkRun": { "ignore": ["outputs/", "*.md",
+  "README.md"] }` in `llm-wiki.config.json` removes those paths from both `run.doc_gap` and
+  `run.change_set_undeclared`. A documentation-only run in this repository produced 13
+  warnings for files no wiki document is meant to cite. Both rules read the one list, because
+  excluding a path from only one moves the warning to the other. Ignored paths are reported as
+  `ignored[]`. Entries are `"dir/"`, `"*.ext"`, or exact paths; anything else is a config
+  error.
+- **Content digests, in shadow mode.** With `"sourceDigests": true`, `review --approve` also
+  stamps `source_digests`: one `path sha256:<16 hex>` line per local anchor, covering only the
+  cited region for line-range or section citations, with line endings normalized.
+  `drift --anchor content` then prints the date verdict next to the content verdict and lists
+  the documents where they disagree, for example a change committed on the review day, which
+  the date check cannot see, or a late merge (N-15). It adds no finding and never changes the
+  exit code; nothing replaces the date check until the two have been compared on real
+  repositories.
+- **Opt-in `review.unattested_promotion`.** With the rule named in `rules`, `impact` reports a
+  wiki document that became `verified` in the diff while its review stamp did not move with
+  it: `reviewed_at` missing, or unchanged and older than today, or `reviewed_by` empty —
+  the hand-edited status that `validate` cannot see. A same-day date is withheld because a
+  document downgraded and approved again on one day keeps its date; replayed over this
+  repository's 316 commits, that shape was all 43 of 187 promotions the first version named,
+  and the shipped rule names none. It is a cheap signal, not proof.
+- **`llm-wiki --version`** (or `-v`) prints the installed version and exits 0, so a script can
+  check which version `npx` served. A bare `llm-wiki help` no longer prints "Missing help
+  topic." to stderr.
+- **Hardening merged since 1.35.0.**
+  - Link extraction in `validate` and `audit` ran in quadratic time on pull-request content:
+    one 50,000-character line of `[` held `validate` for 4.3 s. The three link regexes are now
+    linear scanners; a regex audit found two more quadratic paths reachable from `validate`
+    (the enrichment checklist and the heading anchor rule), now linear too. Three CodeQL
+    alerts on quadratic regexes were fixed; three were false positives in tests.
+  - The publish workflow authenticates with OIDC only; the unused npm token fallback is gone.
+  - `examples/vue3-typescript-demo` runs the whole loop on a Vue 3 app (`npm run demo`), and a
+    test runs the scenario against the current CLI so its README cannot drift.
+  - MCP `get_doc` now describes the redaction 1.35.0 added.
+
+**Behaviour changes, named:**
+- `search-docs`, MCP `search_docs`, `onboard` and `prepare` return documents that contain
+  only some of the query terms, in a different order, with a fractional `score` and a new
+  `matchedTerms`. Every document a query matched before still matches (it holds all the terms, so it holds
+  one); with the default limit of 20 it can now rank below documents that weigh more.
+- `impact` can report fewer `impact.source_changed` findings, for files cited only by line
+  ranges or Markdown sections.
+- `validate` and `audit` now check an inline link glued to the end of the previous one
+  (`[a](b)[c](d)`) and every one of consecutive reference definitions. Broken targets in
+  those shapes, previously skipped, are reported as `markdown_link.missing`. Measured on nine
+  local wikis: no change, because the shapes do not occur there.
+- `llm-wiki --version` exits 0 instead of 3.
+
+Sized as a MINOR: new options, config keys, JSON keys, and one opt-in rule; the search change
+alters ranking and match semantics but no command, option, or exit-code contract was removed.
+Tests: 683 → 725.
+
+## 1.35.0 — 2026-10-26
+
+A trust release. What the product promised about secrets now holds in more places, the
+detector sees the credential lines people actually write, and a failing `impact` tells a
+pull-request reviewer what to fix. Upgrade if you serve a wiki over MCP.
+
+- **Retrieval stopped returning sensitive-looking values on two paths.** `get-doc` (the CLI
+  and MCP `get_doc`) echoed frontmatter without redaction, so a value that would have been
+  redacted as a body line came back raw — even for a document `list-docs`/`search-docs`
+  excluded as sensitive, because `get-doc` by path has no sensitivity gate. And because
+  detection flags only a PEM block's header line while redaction is line-level, the key body
+  came back from `get-doc`, `search-docs` snippets, `onboard`, and `prepare`. Frontmatter
+  scalars are now scanned as `key: value` and only the values that trip the scan are replaced;
+  a detected PEM header is redacted through its END line. Reproduced with fake values before
+  the fix (CLI 1 / MCP 1 exposures for frontmatter; 2 lines, 2 snippets, 4 MCP hits for PEM)
+  and 0 after. Clean documents return byte-identical output.
+- **Sensitive-info detection sees keys like `access_token:` and vendor tokens.** The
+  `\b(token|secret|password)\b` pattern found no word boundary inside `access_token`,
+  `client_secret`, or `db_password`, so those common YAML and config lines passed `validate`
+  and could be approved. Keys whose last segment names a credential (snake, kebab, dotted, and
+  camelCase) are now caught as `token_assignment` — but only when the value is
+  credential-shaped (12+ characters of a token alphabet, letters and digits mixed, not a
+  placeholder), so code (`response.data.token`), references (`${CLIENT_SECRET}`,
+  `process.env.X`), and placeholders (`<your-token>`, `xxxx…`) stay quiet. Vendor-prefixed
+  tokens (`ghp_`, `github_pat_`, `AKIA`/`ASIA`, `xox?-`, `sk-`, `AIza`, `sk_live_`/`rk_test_`,
+  `npm_`) are caught as the new type `vendor_token`. Measured before shipping: across eleven
+  local wikis (394 files, 84,231 lines) 0 new hits and 0 lost; on their source trees (1,219
+  files) the unshaped variant added 45 hits, all code references, and the shipped one 1.
+  Every pattern is bounded, so a pathological line scans in linear time; a regression test
+  pins it (the first version, caught by CodeQL before release, took seconds on one long line).
+- **`impact` reads as a pull-request report.** The text output gains a "Documents to
+  re-review" table (document, and the changed sources it cites) with the next step, and
+  `--format json` gains `changedPaths` and `impactedDocuments: [{ path, sources }]`.
+  `changedFiles` stays a count and the findings are unchanged. The composite action appends
+  the text report to the job summary when one exists (new input `summary`, default `"true"`);
+  the step's exit code is unchanged. The workflow template does not do this: its steps run
+  under `bash -e` without `pipefail`, where piping into the summary would swallow a failing
+  gate.
+- **Claims narrowed to what the code does.** The README was restructured (how it works, why
+  not just `AGENTS.md`, what it does not do, troubleshooting, a documentation map) and
+  corrected where it said more than the product does: "every claim tied to real code" (the
+  tool checks that citations resolve, not that prose is true), "only a human promotes" (the
+  tool records who ran `review --approve`, it cannot prove a human did), and "any stack, any
+  agent". `help`'s "fewer tokens, fewer errors" now states its condition. This repository's
+  own agent-approval policy is stated in the README and in `docs/ORCA_PARALLEL_DEV.md`, which
+  had contradicted it.
+
+**Behaviour changes, named:**
+- A wiki or adapter file holding a credential-shaped value under a key such as
+  `client_secret:`, or a vendor-prefixed token, now fails `validate` with `sensitive.redacted`
+  (blocked, exit 2). `sensitive.*` cannot be dialed down; remove the value or use a
+  placeholder.
+- The composite action writes a job summary by default.
+- `get-doc` can now show `[redacted: …]` for a frontmatter value, and `redacted: true`, where
+  it returned the raw value before.
+
+**Considered and left out:** exempting a wiki's own review-notes archive from `impact` (that
+document type is this repository's convention, not a product concept), and narrowing
+`check-run`'s `run.doc_gap` to code files (which files count as source is a design decision
+that would also hide real prose gaps).
+
+Sized as a MINOR: new JSON keys, a new action input, and broader detection; no command,
+option, or exit-code contract changed. Tests: 672 → 683.
+
+## 1.34.0 — 2026-10-21
+
+A weight release: less to download, less to wait for, less to read. Three cuts, each
+measured before and after on this repository and, for the speed change, on eleven local
+repositories that carry a wiki.
+
+- **The date-anchored drift scan stops spawning one `git log` per anchor.** `validate`,
+  `audit`, `stats`, `status`, `review`, and `drift` spent 80–90% of their time there —
+  72 spawns on this repository, about 45 ms each on Windows. Each review baseline now gets one
+  listing of every path changed after it (`pathsChangedSince`), used only as a negative
+  filter: an anchor absent from it is one the per-file query would have answered "unchanged",
+  and an anchor present in it still gets the per-file query. Findings are byte-identical:
+  `drift` and `validate --strict` produced the same JSON before and after on all eleven
+  repositories, two of them with real drift (8 and 28 `evidence.stale`). Measured here:
+  `validate --strict` 4.0–4.4 s → 0.7 s, `drift` 3.7 s → 0.3 s; elsewhere `drift`
+  17.9 s → 0.7 s and 12.2 s → 0.4 s. The listing pins four flags so a user's git config cannot
+  make it smaller than what the per-file query sees (`--diff-merges=separate`, `--root`,
+  `--no-renames`, `--no-relative`); a git too old for them fails the listing, and the scan
+  falls back to the per-file query. Each flag is pinned by a mutation check in
+  `tests/drift-batched-listing.test.js`.
+- **The npm tarball carries only what runs.** The project documents — `CHANGELOG`,
+  `ROADMAP`, `GATE_REVIEW`, `VERIFICATION`, `RELEASE_CHECKLIST`, `CONTRIBUTING`,
+  `CODE_OF_CONDUCT`, `SECURITY` and their Korean pairs — were 46% of the unpacked package,
+  and nothing at runtime reads them: `src/` resolves only `package.json` and `templates/`
+  against its own location. They stay on GitHub. Packed 557,702 → 278,450 bytes, unpacked
+  1,704,003 → 941,286, 80 → 67 files.
+- **The delegation budget is removed from every generated prompt and skill.** Added in 1.29.2
+  to tell an agent *who* reads, it was measured twice: a paid A/B (2026-08-19) found no cost
+  difference outside noise, and a blind re-grade of the stored answers (2026-10-21) found no
+  accuracy difference — 33 of 36 answers hit every rubric claim. It was 1,318 characters,
+  about a quarter of every write prompt. Write prompts shrink about 25% (`fix` 5,200 → 3,881
+  characters) and the seven generated Claude skills 42,876 → 36,241 bytes. `slim` never
+  carried the block and is unchanged, so its ratio to `full` moved from 44–50% to 54–67%.
+  Existing skills keep the block until `llm-wiki init --write --skills --refresh`. The
+  limits stay with the decision (n=1 per pass, one fixture, a saturated rubric): no effect
+  was found, which is not a proof of none. See GATE_REVIEW "Delegation Policy Scope Decision".
+
+**Behaviour changes, named:** generated prompt and skill text is shorter (above); the tarball
+no longer contains the project documents. Findings, exit codes, and JSON shapes are unchanged.
+
+**Found while proving the speed change, not changed by it:** the drift scan does not flag a
+change that reaches the branch only through a merge made after the review when the branch's
+own commit predates it, because `git log -- <path>` simplifies history by following the
+parent the merge is identical to. That is how the per-file query has always behaved; the new
+test pins it as preserved behavior, and fixing it is a separate decision.
+
+Sized as a MINOR: no command, option, or JSON shape changed, but adopters who refresh their
+skills receive different text. Tests: 669 → 671.
+
+## 1.33.0 — 2026-10-21
+
+A read-cost release. A wiki that lives long enough gets expensive to read in two
+places nobody budgets for: the change log, which only grows, and knowledge
+documents that slowly accrete "how we found it" history. Two adopting projects
+cut the same costs by hand in 2026-09/10 and filed the result in opposite places
+— one appended everything to the tail of `log.md` (append-only kept, log at ~1 MB),
+the other moved it outside `docs/llm-wiki/` (log kept small, but outside every
+scan and against the write boundary). This release gives both a supported path.
+
+- **New command `archive-log` (preview by default, `--write` applies).** Moves
+  change-log entries older than a retention window (`--keep-months <n>`, default
+  2, counted back from the newest valid dated entry rather than from today) out
+  of `docs/llm-wiki/log.md` into monthly volumes next to it,
+  `docs/llm-wiki/log-YYYY-MM.md`. Entries move whole and are never edited: a new
+  volume takes them byte for byte, and an entry added to an existing volume takes
+  that volume's line endings. Before anything is written the planned files are
+  re-parsed and every original entry must come back exactly once, or the command
+  refuses (`archive.integrity`, blocked, exit 2). Each file is written to a
+  temporary sibling and renamed into place, volumes first and `log.md` last; a
+  rerun after an interruption finds entries already in their volume and only
+  removes them from `log.md` (`alreadyArchived[]`). Also refused before writing:
+  an unterminated code fence (with its line), a `log.md` or volume that does not
+  decode cleanly (`encoding.mojibake`), and a file differing from a planned volume
+  only by letter case (new rule `archive.volume_conflict`). Entries dated after
+  tomorrow (UTC) or on impossible dates stay put and are reported as
+  `future-dated` / `invalid-date`, so one typo cannot archive the whole log.
+  Volumes sit next to `log.md` so the relative links inside entries keep working
+  without being rewritten. Not exposed over MCP; the programmatic
+  `archiveLogCommand` rejects an invalid `keepMonths` with a `RangeError`.
+- **The append-only principle is restated, not dropped:** entries are never
+  edited; whole entries may move verbatim into a volume. See GATE_REVIEW
+  "Change-Log Volume Scope Decision".
+- **Monthly volumes are change-log records** everywhere `log.md` already was:
+  `isAppendOnlyLog` now matches them, so `fix`/`migrate`/`init` never rewrite
+  them, `review`/`drift`/`impact`/`backfill` leave them out, and retrieval
+  deprioritizes them. Sensitive-info and link scans still read them. `stats` and
+  orphan detection count the record once, as `log.md` (`isLogVolume`), so
+  archiving moves no percentage.
+- **Four opt-in rules — silent unless you turn them on:**
+  `markdown_link.anchor_missing` and `content.dated_heading` via config `rules`;
+  `budget.log_over` and `budget.doc_over` via a new config block
+  `"wikiBudget": { "logTokens": <n>, "docTokens": <n> }` (positive integers,
+  chars/4 proxy, no default threshold; an empty block or an unknown key is a
+  config error, so a misspelled budget cannot sit there looking armed).
+  `markdown_link.missing` keeps dropping the `#fragment`; the anchor check is a
+  separate rule so enabling it is a choice. The anchor check follows GitHub's
+  slugs (duplicate suffixes, setext headings, emphasis markers,
+  `#user-content-`), and `content.dated_heading` exempts change logs, release
+  notes, and decision records. None of the four is in the `strict` preset or
+  mode.
+- **Measured on real logs, not claimed:** dry runs on copies of the two adopting
+  projects' logs moved 37 of 120 and 226 of 263 entries; an independent
+  re-parse found every original entry exactly once, byte for byte.
+
+**Also in this release — less to read, and who approved what.** Prompted by an
+outside practitioner's account (2026-10) of a team that found long agent
+procedures hurting newer models, docs costing more to maintain than they
+returned, and rules being satisfied on the surface:
+
+- **`--prompt-profile slim` (config `promptProfile`).** Renders every generated
+  prompt and `init --skills` skill with only this tool's commands and paths, the
+  contracts the prompts state, the stop conditions, and the exit criteria — no
+  delegation budget, no generic engineering advice (about 44–50% of `full` by
+  characters). Accepted by `prompt`, `handoff`, `backfill`, `init`, and
+  `quickstart`. **The default stays `full`, byte for byte** (8,520 rendered
+  prompts, skills, and outputs compared): the shorter text is unmeasured, and the
+  default moves only on a measurement.
+- **`prompt --task issue`.** A read-only preset that drafts a GitHub issue body
+  from the conversation and the wiki — background, goal, out of scope, done-when,
+  linked wiki docs, risks, open questions — written for an agent that was not in
+  the conversation. Work-unit history goes in the issue, not the wiki. Not a
+  generated skill, so the always-loaded surface does not grow. The shipped
+  adapter templates gain one rule line saying the same.
+- **`agentReviewers` (config).** `stats` counts a verified document whose
+  `reviewed_by` names a listed agent as `evidenceTiers.agentVerified` instead of
+  `humanVerified`; without the list `agentVerified` is `null` (not
+  distinguishable), never `0`.
+- **`impact.stamp_only` (opt-in rule).** The existing `stamp_only_exclusions`
+  report as one finding per verified, locally anchored document; a stamp-only
+  downgrade is not reported. Raising it to `error`, or `--strict` while it is a
+  warning, reopens N-11 — use `info` there. GATE_REVIEW "Stamp-Only Exemption"
+  stays open.
+- **One definition of evidence shape.** The published schema's evidence pattern
+  (`EVIDENCE_REFERENCE_PATTERN`) is now the runtime's too. Before, the schema
+  rejected `#l10` and `#route:/` (an adopter's real root-route anchor) that the
+  CLI accepted, and the CLI accepted a bare `#anchor` that the schema rejected.
+
+**Behaviour changes, named:**
+
+- `prompt` now renders the governance mode it is given. It accepted `--mode` but
+  never passed it on, so `lite` and `standard` projects were handed the strict
+  budget. No mode and no config still render strict.
+- A bare `#anchor` in `evidence` is now `evidence.shape` (error). It grounded a
+  verified document while pointing at no source. 0 of 1,292 evidence entries
+  across 11 local adopting wikis are affected.
+- The `stats` text summary line gains an `agent_verified …` tail; JSON gains
+  `evidenceTiers.agentVerified`.
+- A document already named `docs/llm-wiki/log-YYYY-MM.md` (month 01–12) is now a
+  change-log volume: review, drift, impact, and fix skip it, and stats and
+  orphan detection leave it out.
+
+Sized as a MINOR: one new command, new config keys, one new task preset, two new
+opt-in rules, all additive apart from the named changes above; the frozen
+`commands` map gains `archive-log`. Tests: 580 → 669.
+
+## 1.32.0 — 2026-09-14
+
+A cost release. The CI channel this project hands adopters ran on GitHub-hosted
+runners and said nothing anywhere about what that costs. On a public repository
+those minutes are free, which is exactly why the gap stayed invisible here — but
+on a private repository every minute is billed, and on an organization account
+that allowance is shared by every repository in it. So the price of adopting a
+governance tool was being drawn from a budget other teams were also spending.
+
+No CLI behaviour changed. The shipped workflow template did, and it is now
+trimmed to the cheapest shape that still gates.
+
+### Behavior changes worth reading before you upgrade
+
+- **The template no longer installs your dependencies.** The gates need exactly
+  one package — this one, which has no runtime dependencies — so installing a
+  whole dependency tree bought them nothing while usually being the longest step
+  in the file. Each step now runs `npx -y llm-wiki-governance@1.32 <command>`
+  instead of `npm ci` plus `npx --no-install llm-wiki <command>`. **Direction of
+  change:** llm-wiki-governance no longer has to be a devDependency for the
+  workflow to work, and the version is pinned in the workflow rather than your
+  lockfile. If you prefer the lockfile, the old shape still works and is written
+  out in the template's comments.
+- **The template no longer runs your test suite.** No gate depended on it, and
+  on a private repository a full suite is usually the single most expensive step
+  — paid for twice when your own CI already runs it. Add it back if this
+  workflow is the only CI the repository has.
+- **`runs-on` follows an `LLM_WIKI_RUNNER` variable.** Set that repository or
+  organization variable to a self-hosted runner's label and the workflow moves
+  there without editing the file; leave it unset and it stays on
+  `ubuntu-latest`. Self-hosted minutes are not billed while a required status
+  check keeps its blocking power. Two cautions, both in the template: do not set
+  the variable before a runner with that label is online (the job does not fail,
+  it queues for 24h, and a required check that never reports blocks the PR
+  silently), and never attach a self-hosted runner to a public repository.
+- **`timeout-minutes: 10` and `concurrency` with `cancel-in-progress`.** The
+  gates finish in seconds, but without a cap a hung step ran to GitHub's 6-hour
+  default; and a superseded run used to keep going — and keep billing — after a
+  newer commit made its verdict worthless.
+
+These apply to a **fresh copy** of the template. A workflow you already copied is
+your file and does not change on upgrade: re-copy it, or apply those edits by
+hand. `docs/OPERATIONS.md` gains a section on running the gates with no billed
+minutes at all, including why the two free channels — the pre-commit hook and a
+self-hosted runner — are not equivalent.
+
+How much this saves was **not measured**: the test-suite step depends on your
+suite, and the rest depends on whether you move to a self-hosted runner.
+
+## 1.31.0 — 2026-09-08
+
+A consistency release: the gates, the reports, and the shipped text were each
+telling a slightly different story about how this tool behaves, and this closes the
+gaps rather than documenting them. Two of the changes can newly fail a build; both
+are named below rather than filed under "fixes".
+
+### Behavior changes worth reading before you upgrade
+
+- **`drift` now honours the governance mode and the configured rule severity.**
+  `audit` and `validate` have gated the drift scan on the effective rule map since
+  1.30.0; `drift` did not. So a project on `lite` — where `evidence.stale` is
+  `off` — still got warnings from `llm-wiki drift`, `drift --strict` could fail a
+  build on a rule its own mode had switched off, and `drift --downgrade` would
+  rewrite documents to `needs_review` for it. The findings also never passed
+  through `applyRuleConfig`, so a project that had set the rule to `"info"` or
+  `"error"` by hand was ignored here as well. **Direction of change:** under `lite`
+  or with the rule off, `drift` now reports nothing and its exit code drops from 1
+  to 0 — a build that was failing on this passes. Under `strict` nothing moves.
+- **`impact` now flags a directory anchor (defect N-8).** The reverse-impact scan
+  compared exact strings while git only ever lists files, so a `verified` document
+  anchored to `src/commands/` was **never** flagged when a file under it changed —
+  a false negative in the one gate this product exists for — even though the
+  date-anchored `drift` scan fires on the same edit via `git log -- <dir>`. The two
+  scans now agree. **Direction of change: more findings, and
+  `impact.source_changed` is an error under `strict`, so a repository with
+  directory anchors can get a red build on its first commit after upgrading.** The
+  ways back are unchanged and config-only: `"impact.source_changed": "warning"`
+  (or `"info"`/`"off"`) in `llm-wiki.config.json` `rules`, `rulesPreset:
+  "relaxed"`, or `governance.mode` `standard`/`lite`. A file anchor cannot gain a
+  false positive from this — no path can begin with "\<a file\>/" — and
+  `src/command` still does not match `src/commands/scans.js`.
+- **`llm-wiki.config.json` validates `type` and `agents` against the same
+  vocabulary the CLI flags use.** `--type` has been checked against
+  `KNOWN_TYPES` since the 2026-07-27 audit and `--agent` against its own list, but
+  the config surface checked only "is it a string" / "is it an array of strings".
+  So `{"type": "frontendd"}` was accepted and then behaved as an unknown type, and
+  `{"agents": ["all"]}` passed the literal string `all` to the adapter scan while
+  the CLI path had already expanded it to three names — one config, two answers,
+  which contradicts the documented promise that CLI, programmatic API and MCP
+  resolve the same effective options. Both are now usage errors (exit 3) naming the
+  allowed values, and `all` expands in the config path too. **Direction of change:
+  a config that was silently wrong now fails loudly.**
+
+### Reports say which policy was in force
+
+- **`mode:` in a report no longer means `--strict`.** Four surfaces — `validate`,
+  `impact`, `check-run`, `harness-health` — printed `mode: strict` or `mode:
+  standard` to mean "was `--strict` passed". Since 1.30.0 those are also the names
+  of two governance levels, so the line read as the thing it was not, and the level
+  is exactly what a reader needs in order to interpret a green result. Each now
+  prints `strict: true|false` and a separate `governance_mode: <level>`.
+  `drift`'s summary changed the same way: `mode: report|downgrade` became `run:`,
+  and it gained `evidence.stale: on|off (scan skipped — governance mode or
+  config)` so a green drift run under `lite` cannot be read as freshness.
+- **`impact`'s caveat is mode-aware.** It said `impact.source_changed` "is an
+  error by default", which stopped being the whole truth in 1.30.0: under `lite`
+  the rule is off and under `standard` it is a warning, so a green `impact` run can
+  mean "nothing was checked". The caveat now names all three levels, which one this
+  run resolved to and where that came from, and the precedence chain (mode floor <
+  `rulesPreset` < explicit `rules`). `tests/impact-default-gate.test.js` pins every
+  half of that sentence.
+- **`impact` reports what its own self-exclusion let through (defect N-9).** A
+  document that appears in the diff is not flagged, on the reading "it was updated
+  in this change". A review stamp satisfies that test without anyone re-reading
+  anything, so one unrelated `review --approve-all` inside a PR's range exempts
+  every document it stamped for the whole PR — measured harm: a stale contract
+  description passed the gate that way. The new `stamp_only_exclusions` line (and
+  `stampOnlyExclusions` in `--format json`) names the documents whose only change
+  in this diff is a review stamp. **It is a report and it never moves the exit
+  code**, deliberately: the same exclusion is how the documented remediation clears
+  a finding, so enforcing it would leave real drift with no resolution path (defect
+  N-11). Closing both needs a decision about what re-affirmation *is*; that
+  decision is now recorded as open in `GATE_REVIEW.md` rather than left implicit in
+  a scan.
+
+### Findings that could not be cleared, can be
+
+- **`init --refresh` re-stamps a managed artifact whose body is current but whose
+  marker is behind.** `harness-health` reported eight skill artifacts as stamped
+  v4 against a v5 generator, and its own message named the dead end: `--refresh`
+  compared bodies only — `stripMarker()` on both sides — so a file whose body
+  already matched was "already up to date" and its stale marker was never
+  rewritten. The finding had no resolution path at all: not a flag, not a re-run.
+  An artifact is up to date when its body **and** its stamp match; when only the
+  stamp is behind it is now re-stamped, and reported as `re-stamped (body already
+  current; marker v4 -> v5)` rather than as a refresh, because saying "refreshed"
+  about a file whose content is identical is how a reader learns to distrust the
+  next message. Still confined to package-generated, unmodified artifacts, so the
+  safety contract does not move. Measured on this repository: `harness-health` goes
+  from 9 findings to 0.
+- **The `harness.marker_drift` message for an adapter names the fix.** "Nothing
+  re-generates it" was true and useless. It now says that an existing adapter file
+  is never overwritten, and that the way out is to bring the block between the
+  marker and `<!-- /llm-wiki-adapter -->` up to `templates/adapters/*` keeping any
+  project-specific rules, or to delete the file and re-run `init --write --agent
+  <agent>`.
+- **The append-only change log is out of scope for both freshness gates.** Same
+  reason templates were removed in 1.29.1 (N-14): `review` refuses to stamp
+  `log.md`, so a flagged `log.md` would be a finding with no way to clear it. Today
+  it is unreachable only because the log happens to sit at `needs_review`; the skip
+  is now explicit, so the two enumerators cannot disagree if that ever changes.
+- **`source_files.missing` says what to do when the entry carries a locator.** It
+  reported `src/cli.js#symbol:main` as a path that "does not exist", about a file
+  that plainly does. `source_files` is the broad anchor by contract, so the message
+  now says to move the locator to `evidence` — where a line range also narrows the
+  freshness check.
+
+### Defect N-7, re-examined and not changed
+
+N-7 recorded that line-range narrowing never fires when the same file also appears
+in `source_files`, measured 58 of 58 line-range anchors masked across five
+repositories, and proposed a one-line semantic change. Re-examined here and **the
+conclusion is different: that is the published contract, not a bug.**
+`GLOSSARY.md` defines `source_files` as the broad anchor and `evidence` as the
+precise one, so a document that lists a file in `source_files` has declared a
+whole-file dependency and the scan is doing what the vocabulary says. The way to
+ask for narrowing already exists: cite the file **only** in `evidence` with a line
+range and leave it out of `source_files` — verified on a fixture to narrow drift
+and to raise no `evidence.ungrounded` or `source_files.missing` finding.
+
+Reading a locator in `source_files` as precise was implemented and then reverted.
+No document in this repository writes one, so it had no local consumer, while for
+an adopter it would silently narrow anchors they had written as broad — a false
+negative in a freshness gate, which is the one direction a fix here must never
+move. What N-7 leaves behind is a discoverability gap, and that is fixed in the
+docs. `tests/anchor-semantics.test.js` pins the contract in both directions so a
+future change has to argue with a test rather than with a comment.
+
+### Faster, quieter
+
+- **`scanEvidenceDrift` memoizes its git queries.** It shelled out to `git log`
+  once per (document, file, baseline) triple, and documents share both anchors and
+  review dates, so the same query was re-spawned many times per run. Now once per
+  (file, baseline). Pure memoization of a read-only query inside a single scan — no
+  behavior change.
+
+### Shipped text that disagreed with the product
+
+Every item here is a place where the text a user reads said something the code does
+not do. They are listed individually because this repository treats "shipped text
+outrunning behavior" as its top defect class, and a list of counts would hide that.
+
+- **A copied CI template could run a stranger's npm package.**
+  `templates/github-actions/llm-wiki-validate.yml` ran `npm ci` and then `npx
+  llm-wiki …` three times, and never said that `llm-wiki-governance` must be a
+  devDependency. This package's bin is named `llm-wiki`, but npm also hosts an
+  **unrelated** package under that name, so on a runner without the devDependency
+  those steps downloaded and executed someone else's code — and, because that
+  package has no such subcommands, in a way that reads as a configuration problem
+  rather than as the supply-chain event it is. The template now uses `npx
+  --no-install llm-wiki`, matching this repository's own CI and the `pre-commit`
+  hook template, so a missing devDependency fails loudly; the prerequisite is
+  stated in the template. `docs/llm-wiki/EXAMPLES.md`'s CI recipe was changed the
+  same way, and the first-run surfaces
+  (`outputs/distribution/reddit-post.md`, `launch-post.md`) and the MCP registry
+  snippets (`registries.md`) now name the real package, since there is nothing
+  installed there to resolve against. `tests/verification.test.js` pinned the old
+  strings and was updated, with an added assertion that **no** `npx` call in the
+  template lacks `--no-install`, so the class cannot come back one line at a time.
+- **`README.md` promised an exit-code reference `help` did not have.** It said
+  `help <command>` gives "the full command, option, and exit-code reference
+  offline". Exit codes appeared nowhere in the help output. `help` now ends with an
+  `Exit codes` block (0 pass / 1 error, or a warning under `--strict` / 2 blocked /
+  3 usage), bilingual like the rest of it.
+- **`help` never mentioned `--mode`, which thirteen commands accept.** Only
+  `backfill`'s usage line advertised it. The Governance modes block now says the
+  level comes from `llm-wiki.config.json`, that `--mode <level>` overrides it for a
+  single run, and which commands take it.
+- **`help mode` described the wrong default.** It said "new projects created by
+  `init --mode <level>` default to lite", which is neither what happens nor
+  self-consistent — an explicit `--mode` is not a default. `init`/`quickstart`
+  scaffold `lite` only for a repository with **no** config **and** no wiki; one
+  that has either keeps `strict`, so an existing project is never silently
+  narrowed; and an explicit `--mode` wins over both.
+- **The release-readiness report claimed `migrate --apply` is blocked.** It emitted
+  `migrate_apply: keep blocked`, which stopped being true in 1.2. Now
+  `migrate_apply: unblocked since 1.2 (previews by default; writes only with
+  --apply)`.
+- **Both READMEs listed four of the seven generated skills.** `bootstrap`,
+  `feature`, `fix`, `docs-sync` — omitting `onboard`, `prepare` and `backfill`,
+  which have shipped since 1.24.0 and 1.30.0.
+- **`SECURITY.md` / `SECURITY.ko.md` understated the write surface and the MCP tool
+  list.** The threat model said the CLI writes "wiki/adapter files" under
+  `--write`/`--apply`, which omitted `review --approve`, `drift --downgrade`, and —
+  since 1.30.0 — `mode set --write`, the one command that writes a non-wiki file
+  (`llm-wiki.config.json`). The complete surface is now enumerated. The MCP section
+  named five excluded write commands; it now lists all eighteen exposed tools and
+  names `backfill`, `drift --downgrade` and `mode set --write` as absent, plus the
+  fact that `mode` is exposed as the read-only report only.
+- **`docs/OPERATIONS.md` sized every recipe by repo size and never mentioned the
+  governance mode**, which is what actually decides whether those recipes can fail
+  a build. A new section up front says to read `llm-wiki mode` first, tabulates
+  what each level does to the three gate rules, and states the two consequences
+  plainly: a project on `lite` gets a green `impact` step that catches nothing, and
+  an existing repository is already on `strict`. The "Wiring the gate" section and
+  the preview-first note were corrected to match.
+- **`PUBLIC_API.md` counted 30 commands and omitted the 1.30.0 exports.**
+  `COMMAND_OPTION_RULES` holds 32. The programmatic-API section now documents
+  `GOVERNANCE_MODES`, `getGovernancePolicy`, `effectiveGovernanceMode` — including
+  that it takes normalized flat options, not a config-shaped object — and
+  `governanceCapabilityMatrix`.
+- **`templates/git-hooks/README.md` described a one-check hook.** The script has
+  run two since 2026-07-31, and the second one — the omission gate — is the whole
+  point. Both are now described, along with the two things that decide whether the
+  second can block: the governance mode, and per-project config.
+- **`GATE_REVIEW.md` said the next release would be a SemVer MAJOR.** Written on
+  2026-08-03 for what shipped as 1.28.0, a MINOR, five weeks earlier. The original
+  paragraph stays as the record of what was decided; a correction beside it states
+  what actually happened and where the reasoning lives.
+- **`docs/llm-wiki/RELEASE_FLOW.md` was wrong about how this package is
+  published.** It recorded that authentication comes from an `npm-release`
+  environment token and that OIDC-only Trusted Publishing "does not work in this
+  repository". Registry metadata says otherwise: `npm view
+  llm-wiki-governance@<version> --json` reports
+  `_npmUser.trustedPublisher.oidcConfigId` for 1.29.5, 1.30.0 and 1.30.1 — OIDC
+  authenticated all three, and the only version published by a human account is
+  1.16.0. The likelier cause of the v1.29.3/v1.29.4 failures is the 2026-09-03
+  repository swap: a Trusted Publisher registration binds to the repository
+  **object**, not its name. Four false statements are named in a Review Note, and
+  what remains unknown is stated rather than smoothed over — whether the
+  re-registration happened before or after the v1.29.4 attempt, and whether a
+  publish succeeds with `NODE_AUTH_TOKEN` removed. `npm publish --dry-run` issues
+  no registry PUT and therefore verifies no credential. Removing the token env is
+  recorded as an open decision.
+- **Four decisions had shipped with no record**, which is the failure this
+  repository's decision log exists to prevent: 1.29.2's `delegationPolicy`
+  (including its **negative** A/B measurement — no detectable saving), 1.30.0's
+  governance modes, the `mode set` / `backfill` write scope, and the `npx`
+  resolution change above. All four are now in `GATE_REVIEW.md`.
+
+### English / Korean parity
+
+- **`SECURITY.ko.md` was missing an entire 68-line section** — the sensitive-info
+  false-positive report path — which existed only in English.
+- **`ROADMAP.md` carried `last_updated: 2026-07-30`** while its own body documented
+  the 1.30.0 release, and still called `1.7.0` "(this release)" twenty-three
+  releases later. The Korean pair had already dropped both.
+- **A prose escape was doubled.** `\\u0000` appeared where the source contains
+  `\u0000`, in `CHANGELOG.ko.md` and `docs/llm-wiki/releases/v1.7.1.md`. The
+  occurrence in `docs/llm-wiki/log.md` is left as written — the log is append-only,
+  and the correction goes in the new entry instead.
+- **`ROADMAP.ko.md` named the wrong artefact**: "run 매니페스트" where the signal is
+  a `run.*` finding, which is what reads the manifest.
+- **This changelog's own 1.30.1 entry over-claimed.** It said three missing 1.30.0
+  facts were added to the Korean README. Two were; the third — the mode floor's
+  place in the precedence chain — came out again with the trim later in the same
+  release. Corrected in both languages.
+- **Two Korean documents are English-only and now say so** in the English README's
+  link list (`BENCHMARK.md`, `EXAMPLES.md`); the Korean README already marked its
+  English-only links.
+
+### Team briefing deck
+
+- The slide counter still read `01 / 22` after the deck went to 23 slides; the
+  package size was given as "약 150KB" against a real 510.9 kB packed / 1.6 MB
+  unpacked (`npm pack --dry-run`, 1.31.0); the eyebrow promised "15–20 MIN" against a 17-minute script; and five
+  speaker-note cross-references still pointed at pre-restructure slide numbers.
+  The stale benchmark summary "(정확도 동률·토큰 ~10%↓)" was replaced with the
+  three-arm figures the benchmark actually reports.
+
+### Tests
+
+568 → 579. `tests/anchor-semantics.test.js` (7) covers the broad/precise contract,
+the narrowing escape hatch end to end, N-8 in both directions with a partial-path
+control, and the log's scope. `tests/stamp-only-exclusion.test.js` (4) covers the
+N-9 report, including that it never moves the exit code. RED was confirmed per
+test, not as a file-level failure: with the three fixes reverted, three of the seven
+anchor tests fail and four pass — the four that pass pin the contract, which was
+deliberately not changed.
+
+**Sized as a MINOR, with the two exceptions stated.** Two new report keys, one new
+help section, no new command, no removed option. The `impact` directory-anchor fix
+and the config vocabulary check can each newly fail a build, which by the strict
+SemVer reading argues for a MAJOR; both are recorded here as named exceptions the
+same way 1.28.0 was, because both replace a silent wrong answer with a loud correct
+one and both have a documented, config-only way back.
+
+## 1.30.1 — 2026-09-08
+
+Documentation only. No runtime, CLI, or public-API change — published so the rewritten
+README reaches the npm package page, the same reason 1.26.1–1.26.3 shipped.
+
+- **The README is an introduction again, not a specification.** `README.md` and
+  `README.ko.md` drop from 270 lines to 104 each and are kept structurally identical.
+  What stays: the intro, quick start, the five things governance buys you, a command
+  table with one line per group, the governance-mode table, MCP, supported environments,
+  the CI one-liner, and the links. What goes: the RAG comparison table, the model-tier
+  table, the pipeline diagram with its sample output, the *Governance in practice*
+  bullets (including a fifteen-line paragraph on exemption rules), the entire
+  *Upgrading* section, and the benchmark section. **Nothing was dropped from the
+  repository.** All eight topics were checked against `GATE_REVIEW.md`, this changelog,
+  `PUBLIC_API.md`, `BENCHMARK.md`, and `docs/OPERATIONS.md`, which carry them at equal
+  or greater depth.
+- **Two things were deliberately kept in the shorter README.** The warning to read
+  before putting `impact` in a required check, with all three ways to soften it: a
+  project on `^1.27.2` picks that gate up automatically and should not learn about it
+  from a red build. And one benchmark conclusion that changes how you use the tool — a
+  wiki that exists but was never enriched measured *worse* than no wiki at all — while
+  the numbers moved to `BENCHMARK.md`. Moving the numbers out also matches this
+  project's standing ban on performance headlines in the README.
+- **The Korean documents now read as Korean rather than as a translation.**
+  `README.ko.md`, `CHANGELOG.ko.md`, `ROADMAP.ko.md`, `CONTRIBUTING.ko.md`,
+  `SECURITY.ko.md`, and `docs/BENCHMARK_DISCLOSURE.ko.md` were rewritten: the English
+  sentence structure showed through, em dashes used as English parentheticals fell from
+  491 to 69 across the set, bold markers sat on Korean particles, and the register
+  switched mid-document. Section titles in `CHANGELOG.ko.md` had been splitting three
+  ways (`### Added`, `### 추가`, `### 추가 (Added)`) and are now consistent. Every
+  measurement, judgement, and recorded caveat is unchanged; `CODE_OF_CONDUCT.ko.md` was
+  left alone because it is the standard Contributor Covenant 2.1 translation.
+- **`SECURITY.ko.md` regained a section it never had.** The English "Reporting a
+  sensitive-info false positive" — what to do while blocked, what to put in a report,
+  why there is no per-document exception, and what a sensitive finding costs while it
+  stands — was missing from the Korean file entirely: 68 lines that only English readers
+  could see. Also corrected: three links in `CONTRIBUTING.ko.md` pointed at English
+  documents that have Korean counterparts, and `ROADMAP.ko.md` carried a transliterated
+  mistranslation ("breadth") plus two release entries in the wrong order.
+- **Missing 1.30.0 facts added to the Korean README while rewriting it:** governance
+  modes set the default severity of `impact.source_changed`, and `governance.mode` is a
+  third way to soften the gate. A third fact — that the mode floor sits under `rulesPreset`
+  and explicit `rules` in the precedence chain — went in during the rewrite and came out
+  again when the README was trimmed later in this same release; it lives in this changelog's
+  1.28.0 and 1.30.0 entries instead.
+- Wiki upkeep, per this repository's own gate: trimming the README made
+  `impact.source_changed` fire on the three `verified` documents that cite it
+  (`EXAMPLES.md`, `index.md`, `docs/llm-wiki/README.md`). Each was re-read rather than
+  re-stamped blind; all three bodies survived unchanged, two gained a review note, and
+  the oldest note in each rotated into `REVIEW_HISTORY.md`.
+
+## 1.30.0 — 2026-09-07
+
+**Governance modes: `lite` / `standard` / `strict`.** One engine, three policy levels, switchable
+at any time in the same repository. The problem they solve was measured in real adoption rather
+than imagined: the governance this package enforces can cost more than the work it protects. A
+three-line fix would trip `impact.source_changed` (an error by default since 1.28.0), pull the
+agent into a doc-sync pass, and re-open a drift scan that shells out to `git log` once per
+`verified` document. On a personal project or a fast-moving frontend, that price buys nothing. On
+a handoff, an audit, or an offboarding it is the entire point.
+
+> **Existing projects are unaffected until they opt in.** A project with no `governance` block in
+> `llm-wiki.config.json` resolves to `strict`, and strict's rule floor is **empty** — the finding
+> registry's own default severities already *are* the strict baseline. Effective options and
+> report output are identical to 1.29.5. The new-project default (`lite`) is deliberately NOT the
+> legacy-project default: silently relaxing an existing project's gate would be a breaking change
+> wearing a default's clothes, and a CI job that quietly stopped failing is the worst possible way
+> to learn about a new feature. See **Migration** below.
+
+- **`llm-wiki mode` reads; `llm-wiki mode set <level> --write` changes.** The read path reports the
+  effective level, where it came from (`--mode` > `llm-wiki.config.json` > legacy default), the
+  rule severities that level contributes, and the full capability matrix. `mode set` previews by
+  default and writes only with `--write`, touching exactly one config key (`governance.mode`) and
+  preserving every other key, including keys this version does not know about. A malformed config
+  is refused, never rewritten (`structure.config_invalid`).
+- **Changing the mode never audits.** Escalating to `strict` writes one key and runs no scan, no
+  drift check, and no document generation — so the switch is instant and the expensive
+  reconstruction stays an explicit, separate `backfill`. Hidden expensive work was treated as the
+  failure mode to avoid, and there is a test that asserts a mode change produces no findings.
+- **`lite` is light by construction, not by suppression.** It plans the core document set only, so
+  a missing profile document is not "missing" — it was never expected. `evidence.stale`,
+  `impact.source_changed`, `content.not_enriched`, `evidence.missing` and `evidence.ungrounded`
+  are off, `structure.required_doc` drops to `info`, and the two scans whose *only* output is a
+  disabled rule are skipped outright rather than run and filtered (`scanEvidenceDrift` shells out
+  to git once per verified document; `scanReverseImpact` walks every document's anchors). That
+  saving reads the effective rule map, so a project that switched a rule off by hand earns it too,
+  without adopting a mode.
+- **`standard` keeps the detection and drops the block.** `impact.source_changed` becomes a
+  warning: governance still reports that source moved without its documentation, but an ordinary
+  build is not gated on a documentation omission. Everything else stays at its registry default,
+  on purpose — spelling the defaults out would fight the push-time `--strict` escalations, the same
+  reasoning that keeps `rulesPreset: "standard"` empty.
+- **`llm-wiki backfill`: the `lite` → `strict` escalation path.** For the scenario the modes exist
+  for — a repository sat in `lite` for months, the wiki was deliberately not kept complete, and now
+  somebody is leaving. It inventories what the repository actually contains (tracked source, tests,
+  manifests, language mix, domain boundaries, git history), measures the wiki against the effective
+  mode's planned document set, and grades handoff readiness as a named checklist rather than a
+  percentage. `--write` creates the missing documents as `needs_review` stubs using the same
+  generator `init` uses — no prose claims, no `verified` stamps, existing files never overwritten,
+  the append-only log kept even under `--existing overwrite`. It writes no adapter files and no
+  skills: it reconstructs documentation, it does not re-provision the harness. `--strict` makes an
+  incomplete readiness report fail the build (`backfill.not_ready`) — the pre-handoff gate.
+- **Backfill never invents history.** Every fact it reports carries one of three labels: *verified*
+  (read from the current source, tests, or configuration), *inferred* (derived from directory
+  boundaries, naming, or git history — and said to be inferred), or *unknown*. The `unknown` list
+  is an output of the command, not a shortfall in it. With no ADR and no commit that explained
+  itself, "why was this chosen?" stays `unknown` and becomes a question for the outgoing maintainer
+  (`backfill.unknown_history`, and a `decision_history` readiness check whose own text says it
+  cannot be closed by generating text). The CLI composes no prose at all — it measures, and the
+  printed prompt hands the writing to an agent under the same three labels.
+- **New `backfill` task prompt and `/llm-wiki-backfill` skill.** The reconstruction workflow an
+  agent runs to fill the stubs, carrying an explicit evidence ladder (current source > tests >
+  configuration > existing docs > ADRs > commit messages > diff/history > local issue metadata),
+  the three confidence labels, and the standing rule not to reconstruct a rationale from file
+  layout, naming, dependency choices, or commit subjects. `SKILL_TASKS` grows from six workflows
+  to seven.
+- **A governance budget in the generated agent prompts.** The third lever, joining `contextBudget`
+  (how much gets read, 1.27.1) and `delegationPolicy` (who reads it, 1.29.2): this one decides
+  *whether* the documentation work happens at all. In `lite` the workflow tells an agent to finish
+  at the code and the tests and report "no wiki change needed (lite)" as a complete result; in
+  `standard` to inspect only the documents the change affects; in `strict` to update every affected
+  document and refresh its anchors. Cost, stated honestly: the block adds **173–234 estimated
+  tokens** (a `chars/4` proxy, never a measured count) to a ~1130-token write prompt — a 15–21%
+  increase in the prompt body. Whether it pays for itself by removing doc-sync passes is **not
+  measured**; this release makes no savings claim.
+- **`--mode <lite|standard|strict>`** on `mode`, `backfill`, `init`, `quickstart`, `audit`,
+  `validate`, `status`, `next`, `stats`, `drift`, `impact`, `handoff`, and `prompt`. Validated at
+  parse time like `--type`, so a typo is a usage error (exit 3) and never a silent fallback to some
+  other level. On the read commands it previews another level's gate without editing the config.
+- **`mode` over MCP, read-only by construction.** The tool schema exposes `cwd` only, and
+  `additionalProperties: false` is enforced before dispatch, so the `set` sub-action is unreachable
+  — an agent can ask which level the project runs at, and changing it stays a CLI action. The MCP
+  tool set grows from 17 to 18.
+- **`doctor` reports the governance level**, its source, and what the gates currently do
+  (`impact gate on (error)` / `advisory (warning)` / `off`, and whether the drift scan runs) —
+  because doctor is where somebody looks when CI stopped failing and nobody knows why.
+  `llm-wiki.config.json` in the same report echoes `governance.mode` by name.
+- **`handoff` names the mode it generated for** (additive `governanceMode` field, additive Next
+  Step line) and points at `mode set strict --write` + `backfill` for a real handoff. The existing
+  handoff payload, message, and prompt contract are otherwise unchanged.
+- Centralized policy layer: `src/governance.js` (a leaf module — no imports beyond `config.js`, no
+  I/O) is the single place a mode's meaning lives, and every other layer asks it a question instead
+  of branching on the mode name. The mode's rule floor is expressed in the vocabulary the engine
+  already had — the same rule-id → severity toggles `rules` accepts — and layers **under** both:
+  mode floor < `rulesPreset` < explicit `rules`, key by key. `GOVERNANCE_MODES`,
+  `getGovernancePolicy`, `governanceCapabilityMatrix`, and `effectiveGovernanceMode` are exported
+  from the programmatic API, and `commands.mode` / `commands.backfill` join the command map.
+- 43 tests added (**522 → 565**), including an end-to-end acceptance fixture for the whole
+  scenario: initialize in `lite`, add source across two domains, change behavior and architecture
+  without syncing the wiki, escalate to `strict`, run `backfill` to detect the gaps, `--write` the
+  stubs, confirm the source mappings and that nothing was promoted to `verified`, and produce the
+  handoff.
+
+### Migration
+
+- **No action required.** Upgrading changes no gate, no exit code, and no document set for a
+  project that already has an `llm-wiki.config.json`, or already has a `docs/llm-wiki/index.md`.
+  Both resolve to `strict`, whose rule floor is empty.
+- **`init` / `quickstart` on a brand-new repository now scaffold `lite`** — no config file *and* no
+  wiki means a genuinely new project, and it gets the core document set plus
+  `"governance": { "mode": "lite" }` in the config it scaffolds. To keep the previous behavior for
+  a new project, pass `--mode strict` (or `--mode standard`).
+- **Generated skills embed the workflow of the mode active when they were written.** After changing
+  the mode, run `llm-wiki init --write --skills --refresh` so an agent reads the new one; `--refresh`
+  still updates only unmodified package-generated artifacts and preserves your edits. The refreshed
+  set includes the new `llm-wiki-backfill` skill.
+- **No existing command gains a finding.** The three new rules fire only in the new commands:
+  `backfill.unknown_history` and `backfill.not_ready` in `backfill`, `structure.config_invalid` in
+  `mode`. An existing CI step cannot turn red because of this release.
+- The `--format json` shape is additive only (`schemaVersion` unchanged at 1): `handoff` gains
+  `governanceMode`, and `mode` / `backfill` are new commands with new payloads.
+
+## 1.29.5 — 2026-09-07
+
+Documentation and artifact hygiene, plus a release-workflow authentication fix.
+**No runtime, CLI, or public API changes.**
+
+> **1.29.3 and 1.29.4 were tagged but never published.** Both publish runs failed to
+> authenticate to the registry. 1.29.3 sent `actions/setup-node`'s placeholder
+> `NODE_AUTH_TOKEN` as a credential (the registry answered 404). 1.29.4 removed that input so
+> npm could fall back to OIDC Trusted Publishing, and npm then found no credential at all
+> (`ENEEDAUTH`) — the OIDC token exchange did not complete in this repository. 1.29.5
+> authenticates with a package-scoped granular access token held as an `npm-release`
+> environment secret — the path every earlier release actually used — while provenance still
+> comes from the OIDC identity. **1.29.3 and 1.29.4 are skipped version numbers on npm.**
+
+- **Public benchmark artifacts sanitized.** The benchmark records under `bench/` were measured
+  against an external, privately owned application. Target-specific identifiers and
+  implementation details have been replaced with stable, role-named pseudonyms, and the raw
+  model-answer prose is withheld rather than published.
+- **Recorded metrics and experimental metadata preserved.** Token counts, wall-clock times,
+  tool-call counts, scores, sample sizes, arm definitions, model identifiers, execution dates,
+  and every recorded caveat and negative result are the originals — nothing was recomputed.
+- **Disclosure documents added.** `docs/BENCHMARK_DISCLOSURE.md` and its Korean counterpart
+  state what was redacted, what was preserved, and the limits on reproducing the historical
+  measurement from this repository alone.
+- **Release workflow authenticates with a package-scoped token again.** The publish job passes
+  `registry-url` to `actions/setup-node` and supplies `NODE_AUTH_TOKEN` from the `npm-release`
+  environment secret. `--provenance` and the publish target are unchanged.
+
+## 1.29.2 — 2026-08-18
+
+Adds the fourth lever to the token discipline the generated prompts carry: a **delegation budget**.
+`contextBudget` (1.27.1) decides how much gets read; this decides **who** reads it — the sweep that
+locates and scopes belongs in a cheap, disposable context that hands back a brief, while the judgment
+and the prose stay with the agent holding the reasoning.
+
+### Added
+
+- **The recurring write workflows and `bootstrap` now carry a delegation budget.** `delegationPolicy()`
+  in `src/task-prompts.js` is a pure, exported block joined immediately after `contextBudget()` in
+  `feature` / `fix` / `refactor` / `docs-sync`, and inside `initialEnrichmentWorkflow()` (shared verbatim
+  by `bootstrap` and `handoff`). It states four things: locating and scoping **is** dispatchable — take
+  back a brief (findings, `file:line` evidence, what stayed unconfirmed), not the raw material; judgment
+  is **not** — the design decision, the regression call, the edit, and the wiki/log prose stay put,
+  because a cheaper agent can apply text you already wrote but cannot write the sentence that explains
+  why; mechanical finishing **is** — the checks, the run manifest, applying edits already decided; and
+  the economics — dispatch only when it pays, a delegate that hands back the raw material has bought
+  nothing, and **delegation never buys an unverified claim** (either the delegate reads the actual source
+  and reports the evidence, or you do).
+
+- **The block is agent-neutral by contract, not by accident.** The generated artifact body is one shared
+  text rendered into every skill format (Claude / Codex / Cursor / neutral, built with `agents: []`), and
+  `initialEnrichmentWorkflow()` embeds it inside the chunk pinned as a verbatim substring of both
+  `bootstrap` and `handoff`. A first draft gated a Claude-specific sentence on `agents` and leaked it into
+  the neutral prompt and the Cursor rule, because `buildTaskPrompt` widens an empty `agents` list to
+  `["codex", "claude"]`. Naming a specific harness belongs in that harness's adapter under
+  `templates/adapters/`; `tests/agent-token-discipline.test.js` now pins that no argument changes the text.
+
+- Read-only scoping (`onboard`, `prepare`) and the format conversion (`okf-extract`) deliberately do **not**
+  carry it: there the delegated reading *is* the task, so the block would be noise.
+
+### Changed
+
+- The 16 managed skill artifacts for the four delegating tasks were refreshed
+  (`init --write --refresh --skills`). The `onboard` / `prepare` artifacts came back byte-identical, which
+  is the check that the block landed only where it was meant to.
+
+**The cost, stated plainly:** each affected skill body grows about 30% (`fix` proxy 1077 → 1406,
+`bootstrap` 1171 → 1501 — a `chars/4` proxy, not a measured token count). It is the same trade as 1.27.1:
+a fixed instruction cost paid to bound what execution pulls in. For an adopter who never dispatches, it is
+pure cost.
+
+## 1.29.1 — 2026-08-06
+
+Resolves the known issue 1.29.0 shipped with (**N-14**): the freshness gates flagged documents
+`review` structurally cannot re-stamp. Two enumerators disagreed — `review` loads content docs
+through a helper that excludes `docs/llm-wiki/templates/`, while `validate`, `drift`, and `impact`
+walk all of `docs/llm-wiki` — so a verified template could be reported stale with **no way to clear
+it**. Scope is recorded in `GATE_REVIEW.md` under *"Template Scope Decision (N-14, 2026-08-06)"*.
+
+### Changed
+
+- **`drift` and `impact` no longer flag documents under `docs/llm-wiki/templates/`.** Templates are
+  skeletons an adopting repository copies, not documentation of the repository they sit in, so they
+  are not review targets — and it follows that they must not be freshness targets either. This
+  matters most for `impact.source_changed`, which is `error` by default: an adopter keeping
+  documents under `docs/llm-wiki/templates/` could get a **failing build with no remedy**. The
+  predicate is the one `review` already filtered on (`isTemplateDoc`), shared rather than
+  duplicated, so the two answers cannot drift apart again.
+
+- **`review` states the boundary instead of denying the file exists.** Naming a template explicitly
+  used to answer `not found under docs/llm-wiki` — false, and it sent people hunting for a typo.
+  It now refuses with the scope as the reason. The same applies to the append-only log, and there
+  the behaviour changes: `--approve-all` always skipped it, but naming it explicitly **stamped it
+  verified**. Both paths now refuse it.
+
+Measured on this repository: `evidence.stale` goes **7 → 5**. The two that disappear are exactly the
+templates with no resolution path; the rest is ordinary post-release drift that a re-baseline clears.
+This does not reach zero and is not meant to.
+
+**Why this is a PATCH.** No command, option, or report field is added or removed — the content is two
+defect fixes plus the caveat and refusal text that states the boundary. That is the `patch` row of
+`docs/llm-wiki/VERSIONING.md` verbatim; 1.29.0 was a MINOR because it *added* `anchoring_files` and
+`versionOnlyExcluded[]` to `impact`'s output, and this release adds nothing of the kind. Behaviour
+moves in the permissive direction only — a finding stops firing, so an exit 1 becomes an exit 0 — so
+no consumer's build can newly break, which is exactly the asymmetry that made 1.28.0 an exception.
+The cost is stated rather than smoothed over: `review --approve <path>` on the append-only log no
+longer stamps it, and there is no flag to put templates back under the freshness gates.
+
+## 1.29.0 — 2026-08-05
+
+One change, and it exists because the gate 1.28.0 turned on fired on the commit that shipped it.
+A release commit changes `package.json` by definition, and ten non-exempt `verified` documents in
+this repository cite that file — so every release produced a fanout of findings nobody could act
+on, from a rule that now fails a build with no flag. `llm-wiki impact` no longer anchors on a
+manifest whose diff moves **nothing but the `version` value**. The file is still **reported as
+changed**; it is simply not used to decide which documents are impacted.
+
+Filed as N-13 in `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` chapter H, where the two rejected
+alternatives are priced next to it; this is option (c), the maintainer's decision on 2026-08-04.
+Scope is recorded in `GATE_REVIEW.md` under *"Version-Only Manifest Scope Decision"*.
+
+### Changed
+
+- **`impact` no longer anchors on a version-only `package.json`.** Nothing else about the rule
+  moves: it is still `error` by default, `--strict` is still a no-op for it, and `release_notes`
+  are still exempt. Only the change set the rule anchors against is narrower.
+
+  **Conservative in every direction.** Anything the check cannot *prove* is a version bump stays in
+  the change set and still counts: any other key moving, a `version` field added or removed rather
+  than changed, a `version` that did not actually move (a reformat or a CRLF conversion is not a
+  version bump and must not be reported as one), an unparseable manifest on either side, a manifest
+  with no baseline blob to compare against (new, untracked, or a ref git cannot read), a deleted
+  working-tree file, and a nested manifest in a repository that declares no workspaces.
+
+  **The comparison is order-sensitive, and that is not pedantry.** Node resolves conditional
+  `exports` / `imports` in **key order**, so `{node, default}` and `{default, node}` load different
+  files. Everything but `version` is compared as a `JSON.stringify` string, which keeps order
+  significant while still ignoring indentation, a BOM, and line endings — those genuinely carry no
+  meaning here.
+
+  **Scope: `package.json` only.** The root manifest always, and a nested one only when the root
+  declares `workspaces` and the path sits under the literal prefix of one of its globs — matching
+  on basename alone would swallow test fixtures, samples, and vendored copies, where the `version`
+  value may be the thing under test. Never `pyproject.toml` or `Cargo.toml`: those need a parser,
+  and the zero-dependency invariant is worth more than the symmetry.
+
+  **`drift` is unchanged, deliberately.** `evidence.stale` is date-anchored — it asks *when* a file
+  changed, not *what* changed in it — so a version-only bump still flags every document citing the
+  manifest there. The exclusion is `impact`'s alone.
+
+### Added
+
+- **`anchoring_files` in every `impact` report**, printed next to `changed_files`, with the excluded
+  paths named inline (`anchoring_files: 23 (version-only manifest excluded: package.json)`). A
+  silent exclusion was ruled out at design time: this project has twice shipped text that ran ahead
+  of behaviour, and an invisible carve-out is the same failure in the other direction.
+- **`versionOnlyExcluded[]` in `impact --format json`** — additive, and a matching sentence in the
+  command's Caveats block.
+- **`fileAtRef(cwd, ref, relPath)` in `src/git.js`** — the stored content of a path at a ref
+  (`git show <ref>:<path>`), because a decision about whether a change is *meaningful* needs the
+  before side of the diff, which `changedFiles` (names only) cannot supply. A failure returns
+  `null` meaning "unknown", never "the file was empty": a bad ref and a path absent at that ref both
+  exit 128 and `runGit` discards stderr, so the two cannot be told apart, and callers fail closed on
+  that distinction.
+
+### Honesty note
+
+**It does not go to zero, and the numbers are measured, not estimated.** A `package.json`-only diff
+goes from **10 findings to 0**. Across the eight version-bearing files a release actually touches,
+it goes from **11 to 4** — and this release commit measured exactly **4**, every one of them citing
+`README.md` or `.github/actions/validate/action.yml`, whose contents genuinely changed. Those four
+are closer to true positives than to noise, and they were resolved by re-reading the documents, not
+by re-stamping them: three carried a claim that had gone stale and were edited. Resolving them then
+raised **one second-order finding** — the review-notes archive cites the documents that were just
+edited — so the honest count for this commit is five findings handled, not four. Fanout in a wiki is
+not one hop from source to document.
+
+**The first implementation was wrong in three ways, and one of them had already been written into
+shipped documentation as a fact.** Adversarial verification before release caught: the order-blind
+comparison above (justified in six wiki documents by "key order carries no meaning in JSON" — true
+of JSON, false of `package.json`); an exclusion that fired when `version` had not changed at all;
+and a basename match that reached manifests that were not manifests of record. All three are fixed
+and fenced. The wiki sentences that asserted the false premise were corrected — except one, in the
+N-13 entry itself, which survived that sweep and was found only when this release's gate flagged
+the document again. Stale claims are found by the next gate firing, not by the batch that made them.
+
+**The fence was weaker than the claim it was protecting.** Mutation testing found four holes in the
+first test set — a `--since` test whose fixture made `sinceRef` and a hardcoded `HEAD`
+indistinguishable, zero assertions pinning the decision that the filter lives in `impactCommand`
+rather than in the shared `changedFiles` primitive, an output assertion matching a caveat that
+always prints, and no negative case for "`package.json` only". **9 tests → 17.** Separately, a
+prose census in `tests/impact-default-gate.test.js` commented that it covered the shipped surface
+while reading three files under `src/`; widened to fourteen surfaces it immediately found two more
+stale claims, in `docs/OPERATIONS.md` and `GATE_REVIEW.md`.
+
+**Known issue, unfixed (N-14).** `review` enumerates documents through a helper that excludes a
+`templates/` subdirectory of the wiki, while `validate` / `impact` / `drift` enumerate everything.
+A document under `docs/llm-wiki/templates/` can therefore be flagged by a gate and has **no
+promotion or re-stamp path** — downgrading one drops it out of the approval list and reports
+`needs_review_remaining: 0`. Two documents in this repository sit in that state on purpose, left
+there rather than papered over. Recorded as roadmap item 46; adopters with wiki documents under a
+`templates/` directory hit the same trap.
+
+## 1.28.0 — 2026-08-03
+
+**Read the Breaking section before upgrading.** This release turns the omission gate on by
+default: `llm-wiki impact --since <ref>` now fails a build with no flag at all. By SemVer that
+is a MAJOR; it ships as a **MINOR by the maintainer's explicit decision**, which means a project
+depending on `^1.27.2` **picks it up automatically**. There are two documented ways back, both
+config-only — put one in place *before* upgrading if you are not ready for the gate.
+
+Otherwise: the four channels this project ships (pre-commit hook, workflow template, composite
+action, our own CI) finally run the gate they were selling, the v2 adapter shape reaches the seven
+adapters it missed in 1.27.2, a new read-only `harness-health` inspects the agent harness itself,
+and eight detectors that could see but could not report are connected. Scope decisions are recorded
+in `GATE_REVIEW.md` ("Phase 0 Gate Wiring", "Phase 0 Defect Batch", "Monorepo CLI Contract Parity")
+and in `docs/llm-wiki/HARNESS_GOVERNANCE_ROADMAP.md` chapter J.
+
+### Breaking
+
+- **`impact.source_changed` is now an `error` (was `warning`).** `llm-wiki impact --since <ref>`
+  exits **1 with no flag**, and `--strict` is a **no-op** for this rule. In practice: after
+  upgrading, the first commit that changes source without touching a document citing it turns the
+  build red. It was turned on because it is the only rule that catches the omission this tool
+  exists to catch, and the only detection rule a project had to opt into before it could block.
+
+  **Two ways back**, per project, neither a code change:
+
+  ```json
+  { "rules": { "impact.source_changed": "warning" } }
+  ```
+
+  `"warning"` (or `"info"` / `"off"`) in the `rules` map of `llm-wiki.config.json` restores the
+  advisory behaviour. Or:
+
+  ```json
+  { "rulesPreset": "relaxed" }
+  ```
+
+  which holds the rule at `info`. An explicit `rules` entry still beats the preset. The `strict`
+  preset no longer lists the rule, since escalating an error is a no-op; the preset invariant was
+  restated from "never touch an error-or-blocked default" to "never touch a safety rule or anything
+  that blocks", with an explicit allow-list (`PRESET_DIALABLE_ERROR_RULES`) for error defaults a
+  preset may dial.
+
+  **On the record:** this rule's baseline false-positive rate was measured at **27% or 57%**
+  depending on one policy call that is still unmade (whether a shifted line anchor counts as a true
+  positive), and a hub file cited by many documents fans out to as many as **14 findings**. On the
+  commit that enabled it, the gate produced **6 findings of which 1 was actionable**. The default
+  was turned on with those numbers known.
+- **`doc_type: release_notes` documents are exempt from `evidence.stale` and
+  `impact.source_changed`** (OKF `type: release_notes` too). A release note is an immutable record
+  of a release that already shipped, and it anchors `package.json`, which changes every release —
+  so without this the new default would fail builds on documents nobody should edit. State the cost
+  plainly: this **removes documents from a check they were previously inside** (33 of 52 here), and
+  a release note will no longer be flagged when the source it cites moves. On the enabling commit
+  it took the finding count from 23 to 9.
+- **`monorepo` validates its options like every other command.** It was the only command missing
+  from the option and help tables, so `monorepo --strict --write` exited 0 while silently ignoring
+  the option, and `help monorepo` answered "Unknown help topic". Accepted set, derived from the code
+  path rather than from documentation: `--cwd`, `--strict`, `--agent`, `--format`, `--out`.
+  `--write`, `--apply`, `--type`, `--profile` and anything else now **exit 3**. No JSON shape,
+  frozen `commands` entry, MCP tool, or programmatic export changed.
+- **`validate-frontmatter` reports on the four-state ladder** every other command uses. A run whose
+  worst finding was a warning printed `result: pass` and exited 1 on the same findings — which in a
+  CI log reads as passed-but-failed.
+- **`review --approve` refuses an unenriched scaffold** (`content.not_enriched`), matching on the
+  rule id rather than on severity. That rule is a warning, so previously whether a placeholder
+  document could be stamped `verified` depended on whether the operator happened to pass `--strict`.
+  Stale evidence and broken links are still approvable — those are what a reviewer signs off on.
+- **`check-run` selects the manifest by its own `timestamp` field**, not by the lexicographically
+  last filename. Manifests are named `run-<task>-<timestamp>`, so the task name beat the timestamp:
+  measured here, the newest was a 2026-07-30 feature run while `check-run` inspected a 2026-07-27
+  fix run and reported pass — the worst failure mode for a completion gate.
+
+### Added
+
+- **`llm-wiki harness-health [--agent <agent>] [--preload-budget <n>] [--skill-token-cap <n>]
+  [--strict]`** — the 30th command, and the first that inspects the **harness** (agent adapters,
+  generated skill artifacts, the always-preloaded context surface) rather than the wiki. Read-only,
+  deterministic, zero-dependency, writes nothing; CLI-only (not exposed over MCP, like `impact` /
+  `check-run` / `drift` / `monorepo`). Four toggleable rules, all `warning` by default and `error`
+  under `--strict`: `harness.marker_drift` (an artifact stamped below the version this package
+  ships), `harness.user_modified` (a skill artifact that no longer hashes to its own marker, or
+  carries none), `harness.preload_budget` and `harness.skill_too_long` (both **silent until you
+  supply a number** via the flags or `"harnessHealth": { "preloadBudget": <n>, "skillTokenCap":
+  <n> }` in config). It exists because of two defects confirmed in the shipped tool: `scanAdapters`
+  never reads the adapter marker, so an adapter generated by an old version passes `audit` clean
+  forever; and `init --refresh` compares artifact *bodies*, not stamped versions, so a v4-stamped
+  artifact from a v5 generator reports "already up to date". Adapters report `userModified: null`
+  on purpose — they carry a version marker but no content hash, and diffing against the shipped
+  template would flag every deliberate customization.
+- **`drift --watch-needs-review`** (off by default, accepted by `drift` only) widens the
+  date-anchored freshness check to `needs_review` documents as well as `verified` ones. It
+  deliberately does not widen `impact`.
+- **`drift` accepts `--strict`**, and **`explain` accepts `--cwd`** (earned by a code path:
+  `applyProjectConfig` runs for every command and config `lang` decides `explain`'s prose language).
+- **`run.change_set_undeclared` (warning)** — cross-checks the manifest's self-reported
+  `changedSource` against the working tree, because an agent that declares an empty or partial
+  change set makes `run.doc_gap` structurally unable to fire. Compares against **tracked**
+  modifications only (the first cut fired on `.obsidian/` config and a personal note) and is quiet
+  when git reports no changes at all.
+- **`run.manifest_untracked` (info)** — says when the selected manifest is not tracked by git, so a
+  clean checkout would not see it. Informational on purpose: gitignoring manifests is a legitimate
+  policy, and two of five measured repositories do it.
+- **`doctor` reports `ci_governance`** — which workflow or hook actually *invokes* `llm-wiki`, and
+  whether anything can **block**. A workflow whose only step was `doctor` (a report that always
+  exits 0) used to read as governance. Omission commands count as blocking only with `--strict`;
+  when no omission gate exists it says so in a sentence instead of printing a reassuring number.
+  Detection matches an invocation, not a mention (an unrelated `llm-wiki-review:` job name used to
+  count), and it learns the `node bin/llm-wiki.js` form.
+- **The composite action takes a `command` input** instead of hardcoding `validate` as `args[0]`,
+  which had made an omission gate physically unreachable through it. It accepts only the eleven
+  read-only commands, refuses a write command with exit 3, and passes each flag only to commands
+  that accept it.
+
+### Changed
+
+- **The four channels we ship now run the omission gate.** `templates/git-hooks/pre-commit` runs
+  `impact --strict` after `validate --changed`; `templates/github-actions/llm-wiki-validate.yml`
+  runs `impact --since origin/<base> --strict` with `fetch-depth: 0` (without it `--since` cannot
+  resolve the base ref and the gate degrades quietly, which is the worst way for a gate to break);
+  this repository grew a `governance` job so it passes the gate it sells.
+- **The v2 prompt shape reaches all eight adapters.** 1.27.2 bumped only
+  `templates/adapters/claude-code/CLAUDE.md`; the other seven were still `wiki-block v1`, untouched
+  since the package's first commit — so the release's headline benefit only ever reached Claude Code
+  users. Codex, Gemini, Copilot, Cursor, Windsurf, JetBrains and Antigravity now carry the same
+  small-core-plus-on-demand-retrieval shape, each keeping its own idiom (the Cursor `.mdc`
+  frontmatter, the JetBrains info-level caveat, Antigravity's marker and UTF-8 rule, the Codex
+  `# Project Agent Guide` structure). Bodies are unified to English to match the reference
+  implementation and the 1.16.0 English-first direction. Compatibility is unchanged: `scanAdapters`
+  still only checks for a `docs/llm-wiki/index.md` reference, and existing adapter files are still
+  never overwritten.
+- **`check-run` prefers a git-tracked manifest**, so a local run predicts CI. Not tracked-only —
+  repositories that gitignore manifests fall back to the untracked one and get the `info` finding
+  above rather than a permanently red `--strict`.
+- **The composite action's `version` input defaults to `1.28`** (it was left at `1.26` through the
+  whole 1.27 line, so consumers pinned at `@v1.27.2` ran CLI 1.26.x). `RELEASE_CHECKLIST.md` now
+  verifies this value so it stops going stale.
+- **The write-scope caveats now name every field written.** `review --approve` printed "stamps ONLY
+  status + reviewed_by + reviewed_at" and `drift --downgrade` printed "status + last_updated only";
+  since both started writing the `tags:` status tag through a shared helper, the boundary they
+  stated was false. Corrected in eight places across `commands.js`, `cli.js` and `fix-migrate.js`.
+- **The tool stopped claiming to know who is at the keyboard.** Five shipped surfaces (two `review`
+  caveats, the `--help` summary, the `help review` topic, the MCP `review` tool description)
+  asserted that "verified is a human decision". What is actually guaranteed is narrower: nothing
+  promotes on its own, only an explicit `--approve` stamps, and `reviewed_by` records whoever ran
+  it. Each surface now also points at the mechanism — a project delegating the approval run should
+  set config `reviewer` to name the real approver. The recommendations *to adopters* in the
+  generated prompts are deliberately unchanged.
+- **`prompt --task` help renders from `SUPPORTED_TASK_PROMPTS`** instead of a hand-copied list that
+  had drifted to 6 of 8 values, and `help drift` / the usage summary now list `--strict` and
+  `--watch-needs-review`.
+
+### Fixed
+
+- **`drift` reported `result: pass` and exit 0 on a wiki it had just proved stale** — it put stale
+  evidence in a separate array while `exitCodeFor` reads `findings` — and it rejected `--strict`
+  outright. It now reports through `findings`. The default exit code stays 0, so adding `drift` to
+  an existing pipeline still cannot break it.
+- **A document could sit at `status: verified` while still tagged `needs-review`.**
+  `review --approve` and `drift --downgrade` each rewrote `status:` and left `tags:` alone, and
+  which way it broke depended on which path ran. In one adopting repository that was 12 of 22
+  documents. Both paths now go through one helper that rewrites a status tag already present and
+  never invents one.
+- **Polynomial backtracking in that same tag helper** (found by CodeQL, not by the local gates):
+  the inline-list patterns allowed `[` in the prefix before the opening bracket, so document bodies
+  — exactly the uncontrolled input this helper runs on — could backtrack quadratically. Measured
+  before the fix: 25k brackets 350ms, 50k 1692ms; after: under a millisecond.
+- **`impact --since` was blind to source created but not yet committed** — `changedFiles` added
+  untracked files only on the no-ref path, which is the state of every PR working tree.
+- **`fix --write` can no longer rewrite the append-only log** (latent: no plan qualifies today).
+
+### Honesty note
+
+The SemVer call is the maintainer's: a change that flips an exit-code contract is a MAJOR, and it
+ships as `1.28.0`. That is recorded here rather than smoothed over, and it is why both escape
+hatches appear in the CHANGELOG, both READMEs and the release notes.
+
+`harness-health` was measured read-only across five real repositories — 91 artifacts inspected, 33
+findings, **0 false positives**, and one repository genuinely clean. Two limits travel with that
+number: "true" means the reported fact is correct, not that it is worth acting on; and the run used
+this working tree's templates, so adopters on the released 1.27.2 will see fewer adapter findings.
+All size figures anywhere in this release are the product's existing `chars/4` **proxy**, not
+measured token counts, and they under-count non-English text — no token or speed headline ships.
+
+`doctor`'s `ci_governance` counts are an **upper bound**: the check sees invocations, not the
+directory they run in, so a packaging smoke test against a scratch directory still counts. Doing
+better needs a YAML parser, which costs the zero-dependency stance. A repository that relocates
+hooks via `core.hooksPath` reads as "none detected", which is the safe error.
+
+One decision that was recommended was **measured and not shipped**: gating on approvals that skip
+the `review` command fired 42 times across 129 verified documents with **zero live bypasses**, so
+its precondition failed. Pilot-repo confirmation of the new CI templates was skipped by direction,
+so whether the three unconfirmed adopting repositories stay green after adopting them is unmeasured.
+
+## 1.27.2 — 2026-07-30
+
+Prompt-shape discipline ("unhobbling"). Applies a simple triage to every generated instruction
+line — steering / contract / safety — and removes only steering, on the grounds that the
+verification machinery (`validate`, `check-run`, tests) already enforces the contract at the exit.
+No new commands or options; the frozen programmatic `commands` map, the `--format json` shapes, the
+frontmatter contract, and the zero-dependency invariant are unchanged. Scope decision recorded in
+`GATE_REVIEW.md` as *"Prompt-Shape Discipline (Unhobbling) Scope Decision"*.
+
+### Changed
+
+- **The Claude Code adapter template stops preloading the whole wiki** (block marker v1→v2).
+  `templates/adapters/claude-code/CLAUDE.md` now `@`-includes only `docs/llm-wiki/index.md` and
+  `project-profile.md`, and lists the heavy documents (`README`, `ARCHITECTURE_CONVENTIONS`,
+  `DOMAIN_FEATURES`) as load-on-demand with the retrieval commands (`search-docs`,
+  `prepare --task ... --compact`, `get-doc --section --strict-section`). On this repository the
+  per-session preload drops from ~30.3k to ~1.4k tokens (`chars/4` proxy — file-size arithmetic,
+  not a measurement). Existing adapter files are never overwritten (unchanged contract), and
+  `scanAdapters` still only checks the `index.md` entrypoint, so existing adapters keep validating.
+  The other adapter templates already pointed only at `index.md` and are unchanged.
+- **The recurring write workflows are now goal / hard-lines / exit-criteria prompts** (skill marker
+  v4→v5). The generated `feature`/`fix`/`refactor` and `docs-sync` prompts and skills replace the
+  numbered step list with three blocks — *Goal*, *Hard lines (never cross these)*, *Exit criteria
+  (done means all of these)* — plus an explicit autonomy line ("how you work between those lines is
+  your call"). Every load-bearing line survives: read the entrypoint, inspect actual source before
+  claims, STOP on doc/code conflict or scope growth, `needs_review` / verified-is-human-only, no
+  sensitive values, the context budget, the append-only log, and test/validation reporting. The
+  one-shot procedural workflows (`bootstrap` — shared verbatim with `handoff` —, `onboard`,
+  `prepare`, `okf-extract`) deliberately keep their checklists; that boundary is regression-tested.
+  Managed, unmodified skill artifacts refresh via `init --write --skills --refresh` as usual.
+
+### Honesty note
+
+The effect of the prompt restructure on task outcomes is **unmeasured** (no bench arm was run;
+maintainer's call to ship without one). The preload figures are `chars/4` proxy arithmetic. No
+token or speed headline ships in the README.
+
+## 1.27.1 — 2026-07-29
+
+Three batches land together: the remaining findings of the 2026-07-27 quality audit, four
+techniques adapted from an external agent harness (ECC, MIT — read as a source of technique, never
+added as a dependency), and a context-discipline pass on the generated prompts. Everything is
+additive: the frozen programmatic `commands` map, the `--format json` shapes, the frontmatter
+contract, and the zero-dependency invariant are unchanged. Version note: `1.27.0` was never
+published — upgrading from `1.26.3` to `1.27.1` picks up everything below.
+
+### Added
+
+- **`import-memory [<path>] [--apply]`** — converts an agent harness's portable `ecc.memory.v1`
+  Markdown memories into `needs_review` wiki drafts under `docs/llm-wiki/imported/`
+  (`doc_type: imported_memory`). Preview by default. Frontmatter is only ever produced through the
+  template seam, so an import **cannot** create a `verified` document; memories whose text trips the
+  sensitive-info scan are skipped with a redacted count and no values; existing files are never
+  overwritten; inactive (rejected/superseded) memories are skipped. `source_files`/`evidence` are
+  left empty on purpose — grounding belongs to the human review step, and provenance is recorded in
+  the body. Not exposed over MCP (it writes). New findings: `import.source_missing` (error),
+  `import.invalid_memory` · `import.unsupported_schema` · `import.sensitive_skipped` (warning).
+- **`rulesPreset: "relaxed" | "standard" | "strict"`** in `llm-wiki.config.json` — a named severity
+  bundle for projects that do not want to learn individual rule IDs. `relaxed` softens 11
+  heuristic/alignment warnings, `standard` is a deliberate no-op baseline, `strict` enables the
+  opt-in lints (`content.thin_body`, `visibility.*`) and raises four governance rules to `error`.
+  Expansion happens at config-merge time, so CLI, programmatic API, MCP, and per-package monorepo
+  merges all inherit it. An explicit `rules` entry always beats the preset, `sensitive.*` still
+  cannot be switched off, and an unknown value is a config error (exit 3). `doctor` echoes the
+  applied preset. Presets move finding severities only — they are independent of the `--strict` flag,
+  which governs exit codes.
+- **A `testEvidence { red, green }` field on run manifests**, verified by `check-run`: for a
+  `feature`/`fix` run with a non-empty `changedSource`, a missing or incomplete trail raises
+  `run.test_evidence_missing` (warning, toggleable). Documentation-only runs (`docs-sync`,
+  `bootstrap`) and older manifests are exempt and stay warning-free. The finding names the missing
+  keys only, never their values.
+- **`estimated-tokens` on every generated skill artifact** so an agent can weigh a skill *before*
+  loading its body — a frontmatter key for the Claude/Codex `SKILL.md` contracts and a leading HTML
+  comment for the third-party Cursor `.mdc` and the neutral prompt. The figure is a `chars/4`
+  **proxy** and always carries that disclaimer inline; this project publishes no measured token
+  counts. Older managed artifacts are refreshed normally by `--refresh`.
+- **`npm run test:quiet`** — the same suite under the `dot` reporter, so re-running tests during a
+  long agent session does not pull ~380 result lines into context each time. `npm test`, `npm run
+  verify`, and CI keep the verbose reporter for diagnosis.
+
+### Changed
+
+- **The generated skills and task prompts now carry a context budget.** Every workflow
+  (`bootstrap`/`feature`/`fix`/`refactor`/`docs-sync`/`okf-extract`/`onboard`/`prepare`, plus the
+  `handoff` prompt) tells the agent to locate before reading, to read a large file by line range or
+  section rather than whole, to use the compact retrieval flags for wiki documents, and to report
+  tests as failures plus the summary line. The budget narrows **how** source is read and never
+  **whether** it is read: it states outright that evidence outranks brevity and that the answer to a
+  claim you cannot verify narrowly is to read more. One shared source (`contextBudget`), so no
+  workflow drifts. This adds roughly 30% to each skill artifact's fixed body (the `feature` skill's
+  proxy figure goes from 775 to 1010) in exchange for bounding what a run pulls in — a designed
+  trade-off, not a measured saving.
+- **The run-manifest contract now bounds itself.** It states that the listed fields are the whole
+  contract and that `check-run` reads no others, allows an optional summary of at most two
+  sentences, and forbids pasting diffs, file contents, logs, or test output into the manifest. Agents
+  had been writing multi-sentence summaries and extra fields that no check ever reads.
+- Generated-artifact format version `3` → `4`. Refresh detection still uses the content hash, so
+  `--refresh` updates unmodified managed artifacts and never touches user-edited or foreign files.
+
+### Fixed
+
+- **Duplicated YAML frontmatter keys are now surfaced instead of silently applying last-wins.**
+  `parseFrontmatter` keeps its last-wins semantics (no document changes shape) but additionally
+  reports `duplicateKeys`, and both consuming seams raise `frontmatter.duplicate_key` (warning,
+  toggleable). A duplicate key could quietly discard grounding — an earlier `source_files`/`evidence`
+  list — or flip `status`/`contains_sensitive_info` with no visible error. The finding names the key
+  only, never its value.
+- **The MCP server now enforces the `inputSchema` it advertises.** Violating calls — wrong type,
+  out-of-enum value, missing required argument, below `minimum`, unknown argument, non-object
+  arguments — are rejected before the command runs, with JSON-RPC `-32602 Invalid params` and
+  `data: {tool, errors}`. Previously they were silently coerced or filtered and ran anyway
+  (`validate {strict: "true"}` ran non-strict; `status {type: "banana"}` produced
+  `active_profiles: core, banana`). Execution-level failures keep their distinct `isError: true`
+  shape. The validator is a pure, zero-dependency module covering only the JSON-Schema subset the
+  tool definitions actually use. The tool `type` enum is now derived from the single source
+  (`KNOWN_TYPES`), fixing a stale hand-maintained list that had been missing `mobile` (1.12) and
+  `infra` (1.13).
+- **`--type` is now validated like `--format`/`--lang`.** An unsupported value is a usage error
+  (exit 3) against the same `KNOWN_TYPES` single source. **Small behaviour change:** `--type banana`
+  previously flowed into detection and exited 0 with `active_profiles: core, banana`.
+
+### Tests
+
+- 384 tests (up from 330), including negative-path unit tests for the frontmatter parser/validator
+  seams. Each new behaviour was confirmed to fail against the pre-change source before being fixed.
+
+## 1.26.3 — 2026-07-27
+
+Two bug fixes reproduced by a repository quality audit. No new command or option; the `1.0.0`
+command / `--format json` shape / frontmatter contracts and the zero-dependency invariant are
+unchanged.
+
+### Fixed
+
+- **A UTF-8 BOM in `llm-wiki.config.json` no longer breaks every command.** Windows PowerShell's
+  `Out-File -Encoding utf8` and older Notepad prepend a byte-order mark; `JSON.parse` then threw on
+  otherwise-valid JSON, so **every** command exited 3 with `llm-wiki.config.json is not valid JSON`
+  and the message named no cause. The config file is now read through the BOM-aware reader
+  (`readTextAuto`) that detector manifests have used since 1.14.1, so UTF-8-BOM and UTF-16 (LE/BE)
+  config files load. Genuinely malformed JSON still exits 3, and wiki documents keep the raw UTF-8
+  read so the mojibake scan is unaffected.
+- **`init --no-adapters` no longer depends on flag order, and config no longer refills the list it
+  cleared.** The flag now records the intent declaratively and is applied once after argument
+  parsing, so `--agent claude --no-adapters` and `--no-adapters --agent claude` agree. And because
+  an emptied `agents` list read as "unspecified", the config's `agents` was merged back in — in this
+  repository `init --agent claude --no-adapters` produced `agents=[codex, claude]`, so the flag that
+  turns adapters *off* added an agent the user never named. Both merge paths (`src/cli.js`,
+  `src/config-file.js`) now honour the opt-out. Only `init` accepts the flag, so nothing else moves.
+
+### Changed (additive)
+
+- `defaultOptions()` gains `noAdapters: false`. `normalizeOptions` spreads it, so the programmatic
+  API's returned options object carries one additional key; no existing key or value changes.
+
+### Documentation
+
+- **The README's core-command table now lists the read-only retrieval commands**
+  (`list-docs` · `search-docs` · `get-doc` · `get-related`), which had been missing from the table
+  since they shipped in 1.18.0 — the npm page advertised the MCP surface but not the CLI one. `init`'s `--with-adapters`/`--no-adapters` are likewise now documented in `PUBLIC_API.md`.
+- The composite-action example pin moved from `@v1.26.0` to `@v1.26.3` (EN + KO).
+
+## 1.26.2 — 2026-07-27
+
+Documentation only, again for the npm package page. No code, no CLI, no contract change.
+
+### Documentation
+
+- **The benchmark's grading is now human-ratified, and the README says so precisely.** The scope
+  line read "agent-graded"; it now reads **"agent-graded with the grading standard ratified by the
+  maintainer on a sampled review"**.
+  - What that means: on 2026-07-27 the maintainer reviewed a deliberately adversarial 7-answer
+    sample — matched per-arm triplets covering the task with the largest spread, the task where
+    the *no-wiki* arm wins, the harshest grade given, and a leniency check — and confirmed the
+    grading standard was applied consistently across arms. No scores changed.
+  - What it does **not** mean: it is not an independent human re-grade of all 54 answers, and it
+    is never described as "human-graded". The worksheet also records a sensitivity analysis
+    showing the conclusion survives if the most contestable judgment is discarded.
+  - Record: `bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-ratification.md`.
+- **The performance-headline ban is unchanged.** Ratification raises confidence in the grading; it
+  does not enlarge the sample. One repository, one model, six tasks, N=3.
+
+## 1.26.1 — 2026-07-27
+
+Documentation only. No code, no CLI, no contract change — published so the corrected README
+reaches the npm package page, which otherwise keeps serving the text from 1.26.0.
+
+### Documentation
+
+- **The "Does it actually help?" section now states the controlled benchmark result** and drops a
+  superseded figure. It previously cited a 2026-07-22 run ("~10% fewer tokens") measured with a
+  single total-token count. It now reports the three-arm measurement: an agent querying a current,
+  verified wiki used **about 41% fewer input tokens** (the conservative pooled figure) than one
+  reading source, at slightly better rubric accuracy — and the control arm, which is the part that
+  matters: the **same retrieval tools over a wiki with its content stripped out cost 14% *more*
+  than having no wiki at all**. So the saving comes from the maintained content, not from giving
+  the agent a search tool, and an unenriched wiki is worse than no wiki.
+  - The scope conditions travel with the number — one repository, one model, six tasks, N=3,
+    agent-graded — along with the one task where retrieval *lost* at 3.17×. Full method, including
+    the runs that went against us: `docs/llm-wiki/BENCHMARK.md`.
+  - No performance headline: the figure stays inside a paragraph, never in the title, the tagline,
+    or a badge.
+- **The CI example pins a current tag.** It suggested `actions/validate@v1.7.0`, nineteen releases
+  old; now `@v1.26.0`.
+
+Both changes applied to `README.md` and `README.ko.md` together.
+
+## 1.26.0 — 2026-07-27
+
+**Harden & Adopt: make human review cheap enough to actually do.** The headline is `review`,
+a read-only command that turns the `needs_review` backlog into something a maintainer can work
+through in minutes — the weakest, most manual part of the governance loop. Alongside it: CI and
+supply-chain hygiene that preserves the zero-dependency identity (no runtime dependencies **and**
+no devDependencies), and the adoption docs an outside reader asked for. Additive throughout; the
+`1.0.0` command / `--format json` / frontmatter contracts are unchanged.
+
+### Added
+
+- **`review` — the human review → `verified` workflow (Gate 20).** Read-only by default: lists the
+  `needs_review` backlog **risk-ranked** (never-enriched, thin body, no evidence, broken links
+  first) with a per-doc quality and evidence summary, so a reviewer can spot-check the risky docs
+  instead of reading the pile in file order. Promotion happens **only** on an explicit
+  `review --approve <path>` (or `review --approve-all --yes`), and it stamps nothing but
+  `status: verified` + `reviewed_by` + `reviewed_at` — body, `source_files`, `evidence`, and
+  `last_updated` are never touched. It is the exact reverse of `drift --downgrade`.
+  - **The CLI still cannot self-approve.** Docs carrying blocking or structural findings
+    (`blocked`/`error`) are refused until fixed, and `reviewed_by` must resolve from
+    `--reviewer` > config `reviewer` > git `user.name` — with no reviewer identity, the stamp is
+    refused rather than left blank or invented.
+  - Exposed on all three surfaces, asymmetrically: CLI and the frozen programmatic `commands` map
+    get the full command; **MCP gets the LIST mode only**, so an agent can read the backlog but
+    promotion stays a human CLI action.
+- **`reviewer` config key** in `llm-wiki.config.json` (`--reviewer` takes precedence).
+- **Engineering hygiene, zero-dep preserved.** Test coverage via the Node built-in
+  (`node --test --experimental-test-coverage`, not nyc/c8); a `node --check` syntax gate
+  (`npm run lint`, no linter dependency) plus `.editorconfig`; a GitHub-native CodeQL workflow;
+  `npm sbom` and bench scripts; `CODEOWNERS` and `MAINTAINERS.md`.
+- **Adoption documentation.** An MCP trust-model section in `SECURITY.md` (local stdio subprocess,
+  stdout-as-protocol, no authentication, do not expose over a network); `docs/OPERATIONS.md`, a
+  per-scale operator guide (small repo / medium repo / monorepo); an `examples/` end-to-end
+  walk-through of `init → enrich → validate → review`; and a `## How it works` pipeline diagram
+  plus sample audit output in the README. All EN/KO.
+
+### Changed
+
+- **The composite GitHub Action pins the CLI version it runs.** `.github/actions/validate/action.yml`
+  defaulted its `version` input to `latest`, so pinning the action by tag still floated the CLI
+  underneath it. The default is now a pinned minor (`1.26`); pass `version: latest` explicitly if
+  you want the floating behavior.
+
+### Documentation
+
+- `BENCHMARK.md` now records the 2026-07-24 real SDK-path measurement (input **0.516×**, cost
+  **0.581×**, pooled **−40.7%**, blind-to-arm rubric grade 0.910 vs 0.971 with zero hallucinations)
+  **together with** what it does not establish: the one task where retrieval loses (3.17×), an
+  unexplained gap against the earlier −10% run on the same repo, a missing empty-wiki control arm
+  that leaves "wiki content" and "retrieval tooling" unseparated, and an agent — not human — grader.
+- **The README performance headline remains forbidden.** A scoped, linked footnote is the most
+  these numbers support until a multi-repo / multi-model measurement exists.
+
+## 1.25.0 — 2026-07-23
+
+**Token efficiency: pick the cheapest safe path.** Additive, opt-in, zero-dependency changes
+that reduce the tokens spent reaching a correct, verified change — without trading away
+accuracy, doc freshness, or human review. Default output is unchanged; `1.0.0` command /
+`--format json` / frontmatter contracts are preserved. The `--doc-lang` help-usage gap is also
+fixed. Diagnostic token figures are a `chars/4` proxy only — no measured performance claim ships.
+
+### Added
+
+- **`get-doc` token controls (opt-in):** `--strict-section` withholds the full body when no
+  section matches (instead of falling back to a whole-document read), `--max-chars <n>` caps the
+  returned body exactly (clamped after redaction), and `--compact` drops the frontmatter echo. With
+  any of these the document carries a diagnostic `estimatedTokens` (a `chars/4` proxy). Also wired
+  to the MCP `get_doc` tool.
+- **`prepare --compact`:** one bounded context bundle in a single call — a chosen path
+  (`source_direct` / `wiki_first` / `hybrid`) with a reason, at most three candidate docs with
+  status-derived freshness, only the top doc's most-relevant section (never the full corpus, never a
+  silent full-body dump), candidate source files, and next-lookup calls to expand. Also on MCP.
+- **Deterministic task-path selection** (internal, reused by `prepare --compact`): from the task
+  text, candidate count, and doc statuses only — never answer filenames or symbols. Risk-sensitive
+  work (auth / permission / payment / crypto / privacy / data-deletion / migration / public-API),
+  stale/`needs_review` candidates, and any code change force reading the real source and are never
+  `source_direct`.
+- **Section-heading-weighted retrieval ranking** and an exact-character clamp (`clampText`),
+  clamped after redaction so a truncated tail can never expose a secret.
+- **Safe skill `--refresh`** for `init`/`quickstart`: updates only package-generated skills you have
+  not edited (verified by a content-hash marker embedded in each generated artifact); user-modified
+  and custom skills are never overwritten (reported as conflicts), and a dry-run distinguishes
+  create / refresh / conflict / up-to-date.
+
+### Changed
+
+- **Simpler `feature`/`fix`/`docs-sync` skills:** they now assemble the wiki map at run time (via
+  `prepare --compact` / `onboard`) instead of baking in a generation-time domain-map snapshot, so
+  the fixed prompt no longer grows with the domain count and never goes stale; the run-manifest
+  contract is stated as a field list instead of a full JSON echo. Every safety rule is retained
+  (`needs_review`, no self-`verified`, log append, tests, `check-run`). The `bootstrap` skill keeps
+  its fuller first-time-enrichment guidance and domain-map snapshot.
+- **MCP:** investigated the `content` vs `structuredContent` body duplication (`get_doc` mirrors the
+  body into both); the default is unchanged, and only the opt-in `compact` path keeps the body in
+  `structuredContent` with a pointer in the text content to avoid duplication.
+- **`--help`:** `init`/`quickstart`/`handoff`/`prompt` usage now advertises `--doc-lang en|ko`; the
+  generated-doc language was previously discoverable only from the README and from runtime output.
+
+### Fixed
+
+- A failed `get-doc --section` no longer silently balloons into a whole-document read when
+  `--strict-section` is set.
+
+### Benchmark (proxy only — not a shipped claim)
+
+- New proxy arm `B3_retrieval_compact` (`bench/`) models compact/section-scoped reads: on this
+  self-referential corpus it costs ~34% fewer tokens than `B2` but drops grounding from 100% to
+  83.3% (evidence in an unselected section) — reported honestly, so `--strict-section`/compact is an
+  opt-in trade-off. A whole-task `guided-compact` arm was added (dry). All figures are a `chars/4`
+  proxy; real / paid measurement remains deferred.
+
+## 1.24.0 — 2026-07-23
+
+Two additive, zero-dependency changes ship together: **English-first documentation language
+selection** (an urgent i18n fix) and **guided onboarding and task preparation**. `1.0.0`
+command / `--format json` shape / frontmatter contracts are unchanged; default English output
+is preserved.
+
+### Fixed
+
+- **Generated LLM-WIKI documents are now English by default.** `init`/`quickstart` previously
+  hardcoded Korean prose in several generated bodies (`index.md`, the wiki `README.md`, the
+  initial `log.md` entry, the domain overview's empty-domains note, and per-domain docs), so an
+  overseas user running the English-first product received partly-Korean documentation. All
+  generated document prose now defaults to English, with **no Korean** left in bodies, titles,
+  placeholders, review notes, or the initial log entry.
+
+### Added
+
+- **`--doc-lang en|ko` (default `en`) and config `docLanguage`.** New global option and config key
+  that select the language of *generated wiki document content* and the *agent doc-writing
+  instructions* (handoff / bootstrap / feature / fix / docs-sync / okf-extract prompts and the
+  generated skill bodies). This is independent of `--lang`, which continues to control
+  findings/`explain`/CLI-message prose. CLI `--doc-lang` overrides config `docLanguage`; an invalid
+  value is a usage error (exit code 3). `--doc-lang ko` reproduces (and completes) the Korean
+  experience. Technical identifiers — paths, code symbols, JSON keys, frontmatter fields, status
+  values, CLI commands, and evidence locators — are never translated in either language. A single
+  language-selection layer (`src/commands/doc-content.js`) holds the localized prose; English output
+  is byte-identical to before for docs that were already English. `init`/`quickstart` report the
+  selected documentation language in text and `--format json` (`docLanguage`).
+- **`onboard [--domain <name>] [--goal <text>]` (read-only).** Deterministically assembles a
+  domain learning path for a newcomer from the existing wiki — documents to read, source and
+  test entrypoints (from the docs' `source_files`/`evidence`), invariants/risks recorded in the
+  docs, freshness/`needs_review` warnings, and evidence-anchored comprehension checks. An unknown
+  `--domain` lists the available domains and how to generate them (never a silent empty result).
+  The CLI invents no explanation — the `/llm-wiki-onboard` skill does the teaching.
+- **`prepare --task <text>` (read-only).** Scopes a change before implementing: most-relevant
+  wiki docs (reusing the `search-docs` ranking via a shared `rankDocsByQuery`), graph neighbors,
+  candidate domains/source/test files, related API/state/screen/config docs, invariants, and a
+  scope checklist. Phrases everything as candidates ("verify before editing"), never concludes a
+  file is the cause or a change is safe.
+- Both on CLI, the programmatic API (frozen `commands` map), and MCP (read-only `onboard`/`prepare`
+  tools). New `llm-wiki-onboard`/`llm-wiki-prepare` skills (Claude/Codex/Cursor/neutral); the
+  feature/fix skills gain prepare-awareness and stop-on-conflict without changing their contract.
+- A separate whole-task experiment scaffold under `bench/whole-task/` (methodology, task format,
+  rubric, dry-run runner, sample fixture, result template only — no model calls, no fabricated numbers).
+
+### Unchanged (frozen contract)
+
+- Read-only; restricted/sensitive docs excluded from results, returned text redacted. Zero
+  dependency; frozen `commands` map grows additively; default output byte-identical when the new
+  surfaces are not used. AI-edited wiki docs stay `needs_review`.
+
+## 1.23.0 — 2026-07-23
+
+Adds a first-time wiki-writing `bootstrap` skill/task and Codex-native skill generation.
+Additive and zero-dependency: the frozen programmatic `commands` map, the `--format json`
+shape, and the frontmatter contract are unchanged, and output is byte-identical when skills
+are not requested.
+
+### Added
+
+- **`bootstrap` task — repeatable first-time enrichment of an `init --write` skeleton.**
+  Available as a skill (`/llm-wiki-bootstrap`) and as `prompt --task bootstrap`. It turns the
+  generated skeleton into code-grounded docs (read `docs/llm-wiki/index.md` first → inspect
+  real source → replace placeholders → enrich domains → record `source_files`/`evidence` →
+  keep `needs_review`, never auto-`verified` → append `log.md` → run validate/audit/stats).
+  The initial-enrichment rules live in a single source (`initialEnrichmentWorkflow` in
+  `src/task-prompts.js`) shared by both the `handoff` prompt and the `bootstrap` task, so the
+  two can never drift apart.
+- **Codex native skills — `.agents/skills/llm-wiki-<task>/SKILL.md`** with `name`/`description`
+  frontmatter. Format selection is symmetric across agents: `--agent codex` emits the Codex
+  format, `--agent claude`/`cursor` their formats, and `--skills` emits every native format
+  (Claude + Codex + Cursor + agent-neutral prompt). Skill/task set is now bootstrap, feature,
+  fix, docs-sync.
+
+### Unchanged (frozen contract)
+
+- Preview-first; writes only on `--write`; existing skill files are never overwritten
+  (kept/skipped reported); no machine-absolute paths or usernames in artifacts;
+  recognize-don't-run. Zero-dependency; frozen `commands` map, `--format json` shape, and
+  frontmatter contract unchanged. `--agent codex` alone now emits Codex skills (previously no
+  artifacts) — the only behavior change, and only when that agent is explicitly selected.
+
+## 1.22.0 — 2026-07-22
+
+Optional Korean localization of human-facing findings prose (the last external-feedback
+item, P4). Additive and zero-dependency: rule IDs, the `--format json` shape, the
+programmatic API, and the frontmatter contract are unchanged, and default English output
+stays byte-identical in every format.
+
+### Added
+
+- **`--lang ko|en` (global, default `en`) + config `lang` — Korean localization of findings
+  prose (Gate 27, P4).** Localizes only human-facing prose: a finding's `message` (via the
+  shared `applyRuleConfig` seam, so both the text sections and the `--format json` `message`
+  pick it up) and `explain`'s meaning / why / remediation. A new zero-dependency catalog
+  (`src/i18n.js`) with `{param}` interpolation and a strict English fallback (a missing KO
+  key keeps the English string, never blank). Resolved through the shared
+  `applyProjectConfig`/`resolveOptions` seam, so CLI, programmatic API, and MCP all honor the
+  same language.
+- Localized all 47 `explain` entries plus the finding messages surfaced by
+  `validate`/`audit`/`status`/`next` (the `scans` / `frontmatter` / `structure` families);
+  operational/edge messages fall back to English until a follow-up.
+
+### Unchanged (frozen contract)
+
+- Rule IDs, all `--format json` keys and its shape, category names, config keys,
+  command/option names, evidence-locator syntax, the CLI commands shown by `explain`, and
+  file paths stay English — only prose localizes. `--format json` `message` localizes only
+  under an explicit `--lang ko` (`rule` and shape unchanged; consumers must key on `rule`).
+  Default `en` output is byte-identical in every format. Report chrome (section headers,
+  severity words), languages beyond KO/EN, and OS-locale auto-detection stay out of scope.
+
+## 1.21.0 — 2026-07-22
+
+More external-usage developer-experience improvements, additive and zero-dependency: the
+`llm-wiki` command surface, `--format json`, the programmatic API, and the frontmatter
+contract are unchanged, and backend/fullstack domain detection stays byte-identical.
+
+### Added
+
+- **Domain docs are pre-wired into the two top-level entry points (external feedback P6).**
+  When `init`/`quickstart` plans per-domain docs (auto-detected or via `--domains`), the
+  generated `index.md` now links the domain overview (in the read order and `related`) and
+  `DOMAIN_FEATURES.md` lists each per-domain doc under a `## Domains` section — complementing
+  the existing overview↔per-domain wiring so the domain map is reachable from the entry point,
+  and automating the linking a tester previously did by hand. Gated on domains being planned:
+  a domain-less scaffold is byte-identical. Scope is scaffold-time (`init`/`quickstart`);
+  `fix`-time re-wiring is a follow-up. Additive and zero-dependency.
+- **Per-document enrichment checklist in `next` (external feedback P5).** `next` now surfaces
+  an "Enrich placeholder documents" action and an **Enrichment Checklist** that lists, for each
+  not-yet-enriched document, which `##` sections still hold generated placeholder text (with a
+  hint). Backed by a pure `enrichmentChecklist` helper and an additive `checklist` field on the
+  `content.not_enriched` audit finding; an additive `enrichmentChecklist` field is added to the
+  `next` result, and `explain content.not_enriched` now points at it.
+- **Detection & `not_enriched` heuristic transparency + regression tests (external feedback P7).**
+  Documented the domain-detection and enrichment criteria (parent conventions, exclusion sets,
+  placeholder sentinels) in the wiki, and added a deterministic `planDomainDocs` snapshot test
+  plus broader `FILE_DOMAIN_EXCLUDE` coverage to lock the heuristics against regressions.
+
+## 1.20.0 — 2026-07-22
+
+Retrieval and frontend developer-experience improvements, most driven by external usage
+feedback (building an LLM-WIKI on a Vue/Quasar SPA). Additive and zero-dependency: the
+`llm-wiki` command surface, `--format json`, the programmatic API, and the frontmatter
+contract are unchanged, and backend/fullstack domain detection is byte-identical.
+
+### Added
+
+- **Frontend/SPA domain detection.** `init` now detects per-domain docs for `frontend` and
+  `mobile` projects, not only backend/fullstack: the 1-depth folders under
+  `pages`/`views`/`features`/`modules`/`screens`, plus the top-level route groups parsed
+  (regex, no parser dependency) from vue-router/react-router files. SPA UI-plumbing folders
+  (`components`/`layouts`/`composables`/…) are excluded, and backend/fullstack detection is
+  unchanged.
+- **`--domains <a,b,c>` + an explicit no-domains notice.** `init`/`quickstart` can now name
+  domains explicitly (for when auto-detection can't find them), and — instead of silently
+  producing zero per-domain docs for a domain-capable project — print an explicit notice
+  pointing to `--domains` or manual creation under `docs/llm-wiki/domains/`.
+- **`llm-wiki get-doc --section <terms>` — focused read.** Returns only the most relevant
+  `##` sections (plus the preamble) instead of the full document body, falling back to the
+  full body when there is no `##` section or nothing matches. An additive `document.section`
+  `{query, returned, total}` appears only when it filtered; default `get-doc` output is
+  unchanged. Wired across the CLI, MCP (`get_doc.section`), and the programmatic API.
+
+### Changed
+
+- **`search-docs` deprioritizes the append-only change log.** `docs/llm-wiki/log.md`
+  (a `change_log`) accumulated every keyword and previously dominated results; it now ranks
+  after all other matches (still returned, not excluded) so reference docs surface first.
+  Output shape unchanged.
+- **`evidence.section_unlisted` matches by source path, not verbatim.** A body `## Evidence`
+  entry satisfying a frontmatter `evidence` reference no longer needs a verbatim substring: a
+  `path:60-70` body reference satisfies a `path#L60-L70` frontmatter entry (and locator-format
+  differences generally), removing spurious warnings. External `http(s)`/`repo:` references
+  still require a verbatim mention.
+
+## 1.19.0 — 2026-07-21
+
+Evidence semantic tiers (Gate 25) + agent update runner (Gate 26). Deepens the
+"code-grounded, verified" promise from format-only checks to meaning, and makes the
+wiki-grounded skill workflow auditable end-to-end. Additive and opt-in: the existing
+`llm-wiki` command surface, `--format json`, the programmatic API, and the frontmatter
+contract are unchanged, and no runtime dependency is added.
+
+### Added
+
+- **Evidence target-existence checks (Gate 25).** `evidence`/`source_files` references
+  with a `#symbol:` or `#section:` locator are now checked for the *target's* existence,
+  not just the file's: `evidence.symbol_unverified` fires when the referenced file mentions
+  none of the symbol name(s) (a `·`/`,`/`/`-joined value is a list), and
+  `evidence.section_unverified` when a Markdown source has no heading matching the section.
+  Conservative textual-presence check (not an AST resolver — avoids false positives).
+  Default warning; `--strict` escalates. `route` locators stay format-only in v1.
+- **`evidence.ungrounded` (Gate 25).** Flags a `verified` document with no `source_files`
+  and no `evidence` — "verified" with no code grounding. Default warning; not escalated by
+  `--strict` (toggle/escalate via `llm-wiki.config.json` `rules`).
+- **Computed evidence tiers (Gate 25).** `llm-wiki stats` now reports `evidenceTiers`
+  (`reference_checked` = has grounding and every reference resolves; `human_verified` =
+  verified with reviewer metadata) — computed and report-only, **not** a new frontmatter
+  field or `status` value.
+- **`llm-wiki check-run` — agent update runner (Gate 26, read-only).** Verifies a
+  wiki-grounded skill run's manifest under `.llm-wiki/runs/` (the newest, or `--run <path>`):
+  every `changedSource` file is referenced by some `touchedDocs` document, the change log was
+  appended, and validation ran and passed. The intent-anchored complement to `impact`
+  (diff-anchored). New toggleable `run.*` findings (`run.doc_gap`/`run.log_missing`/
+  `run.unvalidated` warning, `run.manifest_missing` warning, `run.manifest_invalid` error).
+  Default warning; `--strict` fails CI.
+- **Skill completion contract (Gate 26).** The generated `/llm-wiki-<task>` skill bodies now
+  embed a final step to write the run manifest, so the completion contract travels with the
+  skill. Regenerate committed skill artifacts with `init --write --skills --existing overwrite`
+  to pick it up.
+
+### Safety
+
+- **Read-only.** The evidence checks, tiers, and `check-run` never write. `check-run`'s only
+  associated write is the manifest the agent authors during its own run (not by the tool).
+- **Conservative by design.** The target-existence checks flag only unambiguous absences, so
+  enabling them does not retroactively break correctly-grounded `verified` documents.
+- **Zero-dependency.** Bounded text scans and the existing parsers only — no AST/language
+  server, no network.
+
+## 1.18.0 — 2026-07-21
+
+Read-only retrieval (Gate 24). Adds four commands that return document **content**,
+not governance reports — the "the agent queries the wiki instead of re-deriving from the
+code" surface. Additive and opt-in: the existing `llm-wiki` command surface stays
+backward-compatible, `--format json`, the programmatic API, and the frontmatter contract
+are unchanged, and no runtime dependency is added.
+
+### Added
+
+- **`llm-wiki list-docs` — enumerate documents with metadata (read-only).** Lists content
+  docs with their path, title, status, doc_type, visibility, last_updated, and tags (no
+  bodies). Filter with `--status`, `--visibility`, `--doc-type`.
+- **`llm-wiki search-docs <query>` — keyword search (read-only).** Deterministic
+  keyword/substring match over titles, bodies, and frontmatter — **NOT semantic/vector
+  search**. Every whitespace-separated term must appear (AND); results are ranked (title
+  hits weighted highest) with a short snippet per match. `--limit` caps results (default 20).
+- **`llm-wiki get-doc <path>` — read one document (read-only).** Returns a document's
+  frontmatter and body. `<path>` may be repo-relative (`docs/llm-wiki/GLOSSARY.md`),
+  wiki-relative (`GLOSSARY.md`), or a bare name (`GLOSSARY`).
+- **`llm-wiki get-related <path>` — resolved graph neighbors (read-only).** Returns a
+  document's outbound and inbound neighbors over wiki links, related frontmatter, and local
+  markdown links.
+- **MCP retrieval tools.** The four commands are exposed over MCP as `list_docs`,
+  `search_docs`, `get_doc`, and `get_related` (read-only, like every other MCP tool), and
+  over the programmatic API under their kebab-case command names.
+
+### Safety
+
+- **Read-only.** No command in this set writes, edits, or downgrades anything.
+- **Visibility + sensitive-info honored.** Restricted/sensitive documents (visibility
+  `restricted`, `contains_sensitive_info: true`, or a sensitive-info scan match) are
+  **excluded** from `list-docs`/`search-docs` unless `--include-sensitive` is passed; every
+  returned body/snippet **redacts** sensitive-looking lines, so a raw secret is never
+  returned (`get-doc` still returns the document, with those lines redacted).
+- **Zero-dependency.** Keyword/substring matching and the existing wiki graph only — no
+  embeddings, index, or network.
+
+## 1.17.0 — 2026-07-21
+
+Reverse-impact gate (Gate 23). Adds a read-only `impact` command that catches the case
+date-based drift misses — code and its `verified` doc changing in **separate** PRs. It is
+additive and opt-in: the `llm-wiki` command surface stays backward-compatible, `--format
+json`, the programmatic API, and the frontmatter contract are unchanged, and no runtime
+dependency is added.
+
+### Added
+
+- **`llm-wiki impact` — diff-anchored reverse-impact check (read-only).** Builds a reverse
+  index from every `verified` doc's local `source_files`/`evidence`, then flags a `verified`
+  doc whose referenced source is in the current change set **but the doc itself is not
+  changed in the same diff**. This is the pre-merge, diff-anchored complement to the
+  date-anchored `evidence.stale` (drift): it answers "this PR touches governed code without
+  updating its doc," which a date baseline cannot.
+  - Baseline is the **working tree** by default, or `--since <ref>` for a PR/CI base
+    (`git diff --name-only <ref>`), reusing the same `changedFiles` primitive as
+    `validate --changed`.
+  - New finding `impact.source_changed` (new **toggleable** `impact` category, default
+    **warning**); `impact.unavailable` (error) when git is not available.
+  - `--strict` escalates impact findings to a failing error so CI fails a PR that changes
+    governed code without updating its `verified` doc; the severity is also adjustable via
+    the config `rules` map. An **empty change set is a no-op** (result `pass`).
+  - Read-only: remediation stays human (re-review, or `drift --downgrade`). v1 is
+    file-level (line-level / per-doc `reviewed_sha` / write-back / MCP exposure are out of
+    scope). External `http(s)://` and `repo:<name>/<path>` references are ignored.
+
+### Internal
+
+- `scans.js` factors a pure, shared anchor extractor `verifiedSourceAnchors` used by both
+  the date-anchored drift (`driftTargets` now delegates to it — behavior-preserving) and
+  the new diff-anchored `scanReverseImpact`. Reuses existing git primitives; mostly wiring,
+  zero-dep.
+
+## 1.16.1 — 2026-07-21
+
+Follow-up polish for the 1.16.0 rename. No code behavior change: the `llm-wiki`
+command, `--format json`, the programmatic API, and the frontmatter contract are
+unchanged, and no runtime dependency is added.
+
+### Changed
+
+- **README title corrected** to "LLM-WIKI Governance" (was "LLM-WIKI Standard"),
+  matching the governance positioning and the package name.
+- **CONTRIBUTING** wording updated to the governance framing; the internal frontmatter
+  schema `$id` (a local placeholder identifier, not used for validation) aligned to the
+  new name.
+- **Added `keywords`** to `package.json` for npm discoverability.
+
+## 1.16.0 — 2026-07-21
+
+Rename + reposition. The package is renamed `@dowonk-7949/llm-wiki-standard` →
+**`llm-wiki-governance`** (unscoped) and repositioned as **governance for AI-written
+project docs (OKF-compatible)**. CLI output is now English-first. Additive and
+presentational: the `llm-wiki` command, `--format json`, the frozen programmatic API,
+and the frontmatter contract are unchanged, and no runtime dependency is added. The old
+scoped package is deprecated and points here.
+
+### Changed
+
+- **Package renamed to `llm-wiki-governance`** (was `@dowonk-7949/llm-wiki-standard`).
+  The `llm-wiki` command name is unchanged; install / `npx` targets and the programmatic
+  import specifier use the new name. The old package is deprecated with a pointer here.
+- **Repositioned as a governance layer** — verify, catch drift, keep AI-written docs
+  code-grounded, enforce in CI — positioned OKF-compatible. README (EN/KO) reframed.
+- **English-first CLI output.** The handoff prompt you paste into a coding agent is now
+  fully English; `help`, the quickstart `About` section, and the handoff `Next Step`
+  guidance lead with English (a short Korean note is retained). No finding IDs, command
+  names, or JSON fields changed.
+
+## 1.15.1 — 2026-07-21
+
+Skill-generation onboarding fix — dogfooded: this change was made by running the tool's
+own `/llm-wiki-feature` skill on itself. No command, option, `--format json`, or
+frontmatter contract change; no runtime dependency added.
+
+### Changed
+
+- **`init`/`quickstart --write` now prints a restart-required note when it generates
+  skills.** Claude Code discovers skills at session start (not hot-reload), so a freshly
+  generated skill's `/llm-wiki-*` command reads as "unknown" until the agent is
+  restarted. The note (bilingual, one line) is shown only when a skill was actually
+  created, so users are not left guessing why the new command is missing.
+
+## 1.15.0 — 2026-07-20
+
+Skill generation (Gate 21) — wiki-grounded automation prompts for feature/fix/docs-sync
+work, so a generated wiki actually gets USED. Additive and opt-in; existing commands,
+`--format json`, and the frontmatter contract are unchanged, and no runtime dependency
+is added.
+
+### Added
+
+- **`init`/`quickstart` can generate invocable, wiki-grounded automation prompts** for
+  the `feature`, `fix`, and `docs-sync` workflows, in each agent's native shape:
+  - Claude Code skill — `.claude/skills/llm-wiki-<task>/SKILL.md` (invoke as `/llm-wiki-feature`),
+  - Cursor rule — `.cursor/rules/llm-wiki-<task>.mdc`,
+  - agent-neutral prompt — `.llm-wiki/prompts/llm-wiki-<task>.md` (for Codex and any other agent).
+  Each body reuses the existing wiki-grounded workflow (read the wiki → ground the change
+  → update docs `needs_review` → append `log.md` → never auto-`verified`) and embeds a
+  generation-time snapshot of the project's **domain map** (from `docs/llm-wiki/domains/`),
+  so the agent immediately knows which docs to read for a change.
+- **A `--skills` flag** on `init`/`quickstart` requests the artifacts; they are also
+  emitted when the `claude` or `cursor` agent is selected. Opt-in and preview-first
+  (`--dry-run` lists what would be created); existing skill/rule/prompt files are never
+  overwritten. The tool only WRITES the artifacts — the agent runs them
+  (recognize-don't-run). A repository that does not request skills is byte-identical.
+
+## 1.14.4 — 2026-07-20
+
+Domain-detection fix, from a maintainer review of a tester's output. No command,
+option, `--format json`, or frontmatter contract change; zero runtime dependency added.
+
+### Fixed
+
+- **Domain detection no longer scans into virtualenvs / installed dependencies.** On a
+  Python project with a version-suffixed virtualenv (e.g. `venv3.10/`), the scan
+  descended into `venv3.10/Lib/site-packages/` and generated dozens of empty domain
+  docs for third-party libraries (passlib's `handlers/`, boto3's `resources/`, …),
+  because the venv name was not in the skip list and `site-packages` was not excluded.
+  Now: a directory containing `pyvenv.cfg` is treated as a virtualenv and skipped
+  wholesale (name-agnostic, so `venv3.10`/`.venv-py39`/etc. are all caught),
+  `site-packages`/`dist-packages` are excluded from traversal, and version-suffixed
+  `venv*`/`env<N>` directory names are skipped. A repository without a virtualenv is
+  unaffected (byte-identical); the project's own `handlers`/`routers`/… domains are
+  still detected.
+
+## 1.14.3 — 2026-07-20
+
+Onboarding orientation, from a second exposure report. A first-time user could not tell
+what the tool does from the bare command, and a Korean tester asked for Korean output.
+No command, option, `--format json`, or frontmatter contract change; zero runtime
+dependency added.
+
+### Added
+
+- **A bilingual (KO+EN) orientation header on `llm-wiki` / `--help`.** The bare command
+  now leads with what LLM-WIKI is, why it helps (the agent grounds on a verified wiki
+  instead of re-deriving from code), and the 3-step flow (scaffold → paste the handoff
+  prompt into your coding agent → human review & verify) — instead of opening straight
+  into the Usage list.
+- **The package version and an `@latest` tip in `--help`.** Help now shows `llm-wiki
+  vX.Y.Z` and recommends `npx …@latest`, so a stale npx cache (which silently reuses an
+  old version) is noticeable.
+- **A bilingual `About · 소개` line on `quickstart` output**, so a user who runs
+  `quickstart` directly (without reading `--help`) still gets oriented.
+
+## 1.14.2 — 2026-07-20
+
+Usability polish following the first successful external end-to-end run (a backend
+developer ran the handoff prompt and extracted a full wiki). Reduces the confusing
+noise a reviewer sees and surfaces one silent failure. No command, option,
+`--format json`, or frontmatter contract change; no runtime dependency added.
+
+### Fixed
+
+- **Colon-line evidence notation (`file:10`) is now accepted** alongside `file#L10`
+  (and `file:10-20` alongside `file#L10-L20`). An enriching agent that writes evidence
+  the way editors and grep emit it no longer trips a false `evidence.missing`; the
+  reference resolves to the source with a validated line range.
+- **Generated `templates/*.template.md` are no longer reported as orphans.** They are
+  intentional, expected-unlinked scaffolds, so a freshly created wiki stops showing
+  false-positive orphans in `graph`/`stats`. Genuinely unlinked docs are still flagged.
+
+### Added
+
+- **A warning when the wiki output path is gitignored.** If `docs/llm-wiki` is ignored
+  by git, `init --write`/`quickstart` now emit a `structure.output_gitignored` warning
+  (never a block) and `doctor` reports it — catching the silent case where generated
+  docs are created but never tracked by git.
+- **A reassurance summary on `init --write`.** A one-line `N created, N overwritten,
+  N kept (existing files preserved)` summary makes it clear what was and was not touched.
+
+## 1.14.1 — 2026-07-20
+
+Bug-fix batch from the post-1.14 exposure test. On-ramp and brownfield-fit fixes; no
+new commands, options, `--format json` fields, or frontmatter changes, and no runtime
+dependency added.
+
+### Fixed
+
+- **Non-UTF-8 manifests no longer mis-type the project.** A manifest saved as UTF-16
+  or UTF-8-with-BOM (common on Windows, e.g. a PowerShell-redirected `requirements.txt`)
+  was read as UTF-8, turned into mojibake, and made detection miss the framework
+  keyword — so a FastAPI backend was mis-typed as `library`. A BOM-aware reader now
+  backs every detector manifest/source read (UTF-16LE, UTF-16BE, and UTF-8 BOM). Files
+  without a BOM decode exactly as before; the wiki-doc encoding scan is unchanged.
+- **Handoff prompt no longer points at adapter files that were never created.** Without
+  an explicit `--agent`, `quickstart`/`init` create no adapter files, yet the handoff
+  prompt still opened by telling the receiving agent to first read a non-existent
+  `AGENTS.md`/`CLAUDE.md`. The prompt now names adapter files only for explicitly
+  selected agents and otherwise points at `docs/llm-wiki/index.md`.
+
+### Changed
+
+- **`init`/`quickstart` with no mode flag now reads as guidance, not an error.** Running
+  either with neither `--dry-run` nor `--write` previously printed a `Blocked` report
+  (exit 2), which read as a failure. It now renders `Ready (needs --write)` with a
+  `Next Step` and exits 0 (matching the `next` command's `ready` result). Requesting
+  both `--dry-run` and `--write` at once is still rejected.
+- **The handoff `Next Step` now explains the workflow.** It spells out that the
+  `Handoff Prompt` is not run by the CLI but pasted into a coding agent (Claude Code /
+  Codex) opened in the repo — which then reads the code and fills in the docs
+  (including per-domain `domains/*.md`) for a human to review and mark `verified`.
+- **`quickstart` output is brownfield-aware.** The skipped count is annotated with its
+  reason (e.g. `skipped: 18 (18 already exist, kept)`), and when a wiki already exists
+  so nothing new is created, a note points to enriching the existing docs via the
+  handoff prompt (or re-scaffolding with `--existing overwrite`) instead of reading as
+  "the tool did nothing".
+
+## 1.14.0 — 2026-07-16
+
+Stdlib-server detection (Gate 19) — the final minor of the "detect & adapt breadth"
+line. Additive and opt-in; CLI, `--format json`, the programmatic API, and the
+frontmatter contract are unchanged, and no runtime dependency is added.
+
+### Changed
+
+- Role inference now classifies a Go `net/http` server and a Python stdlib HTTP server
+  (`http.server`/`socketserver`) as `backend` instead of `library`, via a bounded,
+  exclusion-guarded source scan: a Go file that imports `net/http` **and** calls
+  `ListenAndServe`/`http.Serve`, or a Python file that imports `http.server`/`socketserver`
+  **and** starts a server (`serve_forever` / `HTTPServer(...)`).
+
+### Notes
+
+- One-directional and conservative: the signal only promotes `library`→`backend`, only on
+  a strong import + server-start pair, and never demotes an existing `backend`. An
+  `http.client`-only library stays `library`. Recognition only — a read-only source scan
+  (maxDepth 4, file cap, skips vendored/test/example dirs); no framework dependency
+  required; zero-dependency preserved. Scope: `GATE_REVIEW.md` (Gate 19). This completes
+  the `1.12`–`1.14` detect & adapt breadth line.
+
+## 1.13.0 — 2026-07-16
+
+Infra/DevOps project profile (Gate 18) — the second minor of the "detect & adapt
+breadth" line. Additive and opt-in; CLI, `--format json`, the programmatic API, and
+the frontmatter contract are unchanged, and no runtime dependency is added.
+
+### Added
+
+- A new `infra` project type. `detectInfra` recognizes Docker (`Dockerfile`), Docker
+  Compose (`docker-compose.y*ml`/`compose.y*ml`), Kubernetes (a top-level or
+  conventional-directory `*.yaml`/`*.yml` carrying both `apiVersion:` and `kind:`),
+  Helm (`Chart.yaml`), and Terraform (`*.tf`).
+- An infra document set created by `init` (`profiles/infra.md`, `DEPLOYMENT.md`,
+  `RUNBOOK.md`, `SERVICE_TOPOLOGY.md`).
+
+### Notes
+
+- `infra` is a **fallback** type: it is chosen only when no app signal
+  (frontend/backend/library/mobile) is present, so a containerized app repo (a backend
+  with a `Dockerfile`) keeps its app type and existing outputs are byte-identical — only
+  genuine IaC-first repos (previously `unknown`) become `infra`.
+- Recognition only: no cluster/registry access, no deploy, no dependency graph parsed
+  (zero-dependency preserved); a bounded, exclusion-guarded scan. Scope: `GATE_REVIEW.md`
+  (Gate 18).
+
+## 1.12.0 — 2026-07-16
+
+Mobile project profile (Gate 17) — the lead minor of the post-`1.11` "detect &
+adapt breadth" line. Additive and opt-in; CLI, `--format json`, the programmatic
+API, and the frontmatter contract are unchanged, and no runtime dependency is added.
+
+### Added
+
+- A new `mobile` project type. `detectMobile` recognizes Android
+  (`build.gradle`(.kts)/`settings.gradle` with the Android Gradle plugin or AndroidX,
+  or a nested `AndroidManifest.xml`), Flutter (`pubspec.yaml` with a `flutter:` section
+  / `sdk: flutter`), Apple/iOS (a `Podfile`, an Apple-platform `Package.swift`, or an
+  `*.xcodeproj`/`*.xcworkspace`), and React Native (a `react-native` dependency).
+- A mobile document set created by `init` (`profiles/mobile.md`, `PLATFORM_MATRIX.md`,
+  `SCREENS.md`, `BUILD_RELEASE.md`).
+
+### Fixed
+
+- An Android `build.gradle` project was misclassified as JVM `library`; mobile signals
+  now take precedence in `decideType`, so it is detected as `mobile`.
+
+### Notes
+
+- Recognition only: no build tool (Gradle/Xcode/CocoaPods) is invoked and no dependency
+  graph is parsed (zero-dependency preserved). Detection uses manifest signals plus a
+  bounded, exclusion-guarded scan. Repos with no mobile signal are byte-identical
+  (a plain JVM/Dart project is not reclassified). Scope: `GATE_REVIEW.md` (Gate 17).
+
+## 1.11.1 — 2026-07-16
+
+Behavior-preserving internal refactor: the monolithic `src/commands.js` was split
+into focused sibling modules under `src/commands/`. No user-facing change — the
+CLI, `--format json` output, the programmatic API (the frozen `commands` map and
+individual exports), and the frontmatter contract are byte-identical, and no
+runtime dependency is added.
+
+### Changed
+
+- Extracted reusable logic out of `src/commands.js` (~4,119 → ~1,612 lines) into
+  `src/commands/{references,findings,scans,wiki-graph,adapters,wiki-files,fix-migrate,domains,doc-templates}.js`,
+  wired back through a barrel re-export so every `from "./commands.js"` import and
+  the public API surface stay identical. Dependencies are one-directional (leaf
+  parsers → wiki-graph/adapters → scans → fix-migrate → `commands.js`);
+  `migrateCommand` stays in `commands.js` because it calls the `audit` pipeline,
+  which keeps the module graph acyclic (same pattern as `graphCommand`/`statsCommand`).
+
+## 1.11.0 — 2026-07-15
+
+Cross-repository knowledge links (Gate 15→16). Recognize a reserved, non-fetching
+cross-repo reference scheme so cross-repo references stop tripping the missing-target
+rules — the last planned `1.x` minor. Additive; CLI, JSON, programmatic-API, and
+frontmatter contracts unchanged, and no runtime dependency is added.
+
+### Added
+
+- A reserved cross-repo reference scheme `repo:<name>/<path>` (alongside existing
+  `http(s)://` URLs) recognized as external in `[[wiki links]]` and in
+  `source_files` / `evidence` / `related`. Recognized references are treated as
+  external — not flagged `wiki_link.missing` / `related.missing` /
+  `source_files.missing` / `evidence.missing` / `markdown_link.missing` — but are
+  NEVER fetched or verified (verification would need network/git). This also hardens
+  the classifier so URL-form `[[..]]` wiki links stop emitting false
+  `wiki_link.missing`. Source: `src/commands.js` (`isCrossRepoReference`,
+  `isExternalSourceReference`).
+
+### Notes
+
+- Recognition only — no network, no git, no new dependency (zero-runtime-dependency
+  preserved). Additive: local (in-repo) resolution is unchanged; a genuinely missing
+  local link is still flagged. Scope: `GATE_REVIEW.md` (Gate 16, accepted). Actually
+  following/resolving cross-repo references stays out of scope (a future major, if
+  ever). This completes the split `1.7`–`1.11` roadmap line.
+
+## 1.10.0 — 2026-07-15
+
+Monorepo profile (Gate 15). An opt-in `monorepo` command validates each workspace
+package's wiki and aggregates the results. Additive; the single-repo CLI, JSON,
+programmatic-API, and frontmatter contracts are unchanged, and no runtime
+dependency is added.
+
+### Added
+
+- `llm-wiki monorepo` — detects npm/yarn `workspaces` (an array or `{ packages }`),
+  runs the existing cwd-parameterized validate over each package that has a
+  `docs/llm-wiki/`, and aggregates. The result carries a strictly additive
+  `packages[]` roll-up (path, per-package result, finding count) plus
+  package-path-prefixed `findings` that drive the exit code. Each package honors its
+  own `llm-wiki.config.json`. pnpm / `pnpm-workspace.yaml` are reported as
+  unsupported (YAML is not parsed — zero dependency). Source: `src/detector.js`
+  (`detectWorkspaces`), `src/commands.js` (`monorepoCommand`). Exposed on the CLI
+  and the programmatic-API `commands` map.
+
+### Notes
+
+- Opt-in and additive: the new `packages[]` field and per-package findings appear
+  only in the `monorepo` command, so single-repo command output is byte-identical.
+  Read-only aggregation; the `1.0.0` contracts and zero-runtime-dependency policy are
+  preserved. Scope: `GATE_REVIEW.md` (Gate 15, accepted). Deeper globs and
+  pnpm/YAML workspaces are deferred; cross-repo links are the next minor (`1.11`).
+
+## 1.9.0 — 2026-07-15
+
+Visibility governance (Gate 14). Opt-in consistency lints for the already-required
+`visibility` field, built on the 1.8 config `rules` toggle. Additive and opt-in;
+CLI/JSON/programmatic-API/frontmatter contracts unchanged; no runtime dependency
+added.
+
+### Added
+
+- Two opt-in, off-by-default, warning-level, read-only lints that reuse the
+  sensitive-info scan:
+  - `visibility.public_sensitive` — a `visibility: public` document whose content
+    matches the sensitive-info scan (a public doc must not carry sensitive-looking
+    values).
+  - `visibility.declared_mismatch` — a `contains_sensitive_info: false` document
+    whose content matches the scan (the declaration contradicts the content).
+  Enable either per project via the `rules` map (e.g.
+  `"visibility.public_sensitive": "warning"`). The raw sensitive value is never
+  included in the finding — only a redacted count. Source: `src/commands.js`.
+- Policy: `docs/llm-wiki/VISIBILITY.md` documents the `internal`/`restricted`/`public`
+  levels and the value-vs-content consistency policy.
+
+### Notes
+
+- Additive/opt-in and read-only; the rules never default to `error`/`blocked`
+  (preserving the additive `1.0.0` invariant), the `sensitive.*` category stays
+  non-toggleable, and this checks value-vs-content consistency only — not access
+  control. Scope: `GATE_REVIEW.md` (Gate 14, accepted). Next planned minor: `1.10`
+  monorepo profile.
+
+## 1.8.1 — 2026-07-15
+
+Config schema growth, part 2 — custom document sets and template overrides. These
+complete Gate 13's three config features (rule toggles shipped in 1.8.0). Additive
+and opt-in; CLI/JSON/programmatic-API/frontmatter contracts unchanged; no runtime
+dependency added.
+
+### Added
+
+- Custom document sets: a `requiredDocs` array in `llm-wiki.config.json` adds
+  project-specific required documents to the core/profile set, checked by the same
+  `structure.required_doc` machinery (validation only — `init` does not scaffold
+  arbitrary custom docs). Source: `src/config-file.js`, `src/commands.js`.
+- Template overrides: a `templates` map points a generated wiki doc at a
+  project-local template. Only the override's body is used — the standard CLI
+  frontmatter always wraps it, so an override can NEVER set `status: verified` (a
+  hard, structural guardrail); a missing override file falls back to the built-in
+  template. Source: `src/commands.js`.
+- `doctor` echoes `requiredDocs` and `templates` counts in its config line.
+
+### Notes
+
+- Additive/opt-in; the `1.0.0` contracts and the zero-runtime-dependency policy are
+  preserved. Scope: `GATE_REVIEW.md` (Gate 13, accepted). This completes the config
+  schema growth line; visibility governance is the next planned minor (`1.9`).
+
+## 1.8.0 — 2026-07-15
+
+Config schema growth — per-project rule toggles (Gate 13). The first feature slice
+of the config-schema-growth line, built on the 1.7.2 enabling prep. Additive and
+opt-in; the CLI, JSON, programmatic-API, and frontmatter contracts are unchanged,
+and no runtime dependency is added.
+
+### Added
+
+- Per-project **rule toggles**: a `rules` map in `llm-wiki.config.json` turns a
+  finding rule off or overrides its severity —
+  `{ "rule.id": "off" | "blocked" | "error" | "warning" | "info" }`. Applied
+  centrally over `audit`/`status`/`validate-frontmatter` findings (so `validate`
+  and `next` inherit it), across the CLI, programmatic API, and MCP via the 1.7.2
+  unified `resolveOptions`. Only registry rules are toggleable, and the
+  sensitive-info category is never toggleable — config can never disable secret
+  detection. Source: `src/config-file.js`, `src/commands.js`.
+- `content.thin_body` — an opt-in enrichment lint (off by default) that flags wiki
+  content documents with very little body prose. Enable it per project by setting
+  `"content.thin_body"` in the `rules` map. It dogfoods the toggle machinery.
+  Source: `src/commands.js`.
+- `doctor` echoes the active rule-toggle count in its `llm_wiki_config` line.
+
+### Notes
+
+- Additive/opt-in; explicit/CLI values still win and the zero-runtime-dependency
+  policy is preserved. Scope: `GATE_REVIEW.md` (Gate 13, accepted). The
+  severity-registry consolidation pre-work was audited as behavior-preserving (0
+  push-site/registry mismatches). Custom document sets and template overrides —
+  the rest of Gate 13 — follow in `1.8.x`.
+
+## 1.7.2 — 2026-07-15
+
+Enabling prep for config schema growth (Gate 13). Additive and backward-compatible
+— no CLI, JSON, programmatic-API, or frontmatter contract change, and no runtime
+dependency added. Config now resolves consistently across all three surfaces, and
+init/quickstart/doctor make it observable.
+
+### Added
+
+- `resolveOptions(overrides)` — a config-aware async companion to `normalizeOptions`
+  in the programmatic API: it merges the project's `llm-wiki.config.json` (from
+  `cwd`) like the CLI does and returns `{ options, errors }`. The sync
+  `normalizeOptions` and the frozen `commands` map are unchanged. Source:
+  `src/index.js`, `src/cli.js`.
+- `init` / `quickstart --write` scaffold a minimal `llm-wiki.config.json` at the
+  project root (seeded with the detected type and selected agents), additive and
+  preview-first, and never overwriting an existing config. Source: `src/commands.js`.
+- `doctor` echoes the effective config (`llm_wiki_config: present (type=...,
+  agents=...)`, or a `present (invalid: N errors)` note) instead of a bare
+  present/absent.
+
+### Changed
+
+- Config loading moved below the command layer: the MCP server now merges the
+  inspected project's `llm-wiki.config.json` on every `tools/call` (a malformed
+  config surfaces as `isError`), so the CLI, programmatic API, and MCP resolve the
+  same effective options. Source: `src/cli.js` (`applyProjectConfig`),
+  `src/mcp/dispatch.js`. Previously only the CLI merged config (the Gate 11 honest
+  limit).
+
+### Notes
+
+- Additive/opt-in: explicit/CLI values still win, config only fills unset fields and
+  can additively turn `strict` on; the `1.0.0` contracts and the zero-runtime-
+  dependency policy are preserved. Scope: `GATE_REVIEW.md` (Gate 13, proposed). This
+  is the enabling prep that lets real config usage accrue before `1.8` grows the
+  schema (custom document sets, rule toggles, template overrides).
+
+## 1.7.1 — 2026-07-15
+
+Patch. Repository hygiene only — no CLI, JSON, programmatic-API, or frontmatter
+contract change, and no runtime behavior change.
+
+### Fixed
+
+- `src/commands.js` embedded a raw `U+0000` (NUL) control byte as the delimiter in
+  the `wikiGraph` edge-dedup key (`collectWikiGraph` → `addEdge`). Git's
+  `text=auto` classified the file as binary, so it was the one source file exempt
+  from the repo's `.gitattributes` `eol=lf` normalization and was stored with CRLF.
+  Replaced the raw byte with the `\u0000` escape and renormalized the file to LF, so
+  it now conforms to the line-ending policy like every other source file.
+
+### Notes
+
+- No functional change: `\u0000` in the template literal produces the same NUL code
+  point at runtime, so edge deduplication is byte-identical. The bulk of the commit
+  diff is the one-time CRLF→LF renormalization of `src/commands.js`.
+
+## 1.7.0 — 2026-07-15
+
+CI/CD adoption. Make the wiki easy to wire into GitHub Actions and release
+automation. This is the lead slice of the split "Team & org scale" line.
+Backward-compatible — an additive command mode, a composite action, and a
+release job only; the CLI, JSON, programmatic-API, and frontmatter contracts are
+unchanged, and no runtime dependency is added.
+
+### Added
+
+- `release-notes --body-only` — emits only the change-section body (no
+  frontmatter, no H1 title, no "review before publishing" scaffold line) for use
+  as a GitHub Release body. Commit subjects flow into the body, so it is scanned
+  for sensitive-looking values and BLOCKED (exit 2, body withheld) on a match.
+  Source: `src/release-notes.js`, `src/commands.js`, `src/cli.js`.
+- A composite GitHub Action at `.github/actions/validate/action.yml` that wraps
+  the read-only `validate` via `npx`. It pulls in NO other actions (only bash +
+  npx), preserving the zero-runtime-dependency ethos, and can only read. Pin it
+  by an exact `vX.Y.Z` tag or commit SHA.
+- GitHub Release automation on a `v*` tag push: an isolated `contents: write` job
+  in `.github/workflows/publish.yml` (`needs: publish`), body sourced from
+  `release-notes --body-only`, created with the runner's built-in `gh` CLI (no
+  third-party release action).
+- Per-command `--format json` examples in `help` for the ten read-only report
+  commands (`doctor`, `validate`, `validate-frontmatter`, `audit`, `status`,
+  `next`, `stats`, `graph`, `explain`, `release-notes`).
+
+### Notes
+
+- Additive and backward-compatible; the zero-runtime-dependency policy is
+  preserved. Scope: `GATE_REVIEW.md` (Gate 12). The CI/CD line was split, so
+  `1.7.0` ships only the lead slice — Marketplace listing, a floating `@v1` tag,
+  the config-loading/init-scaffolding/doctor-echo enabling prep, and `1.8`–`1.11`
+  are deferred.
+
+## 1.6.0 — 2026-07-14
+
+Agent-native (MCP). Let agents query and check the wiki as tools instead of
+shelling out. Backward-compatible — a new command and module only; the CLI,
+JSON, programmatic-API, and frontmatter contracts are unchanged.
+
+### Added
+
+- `llm-wiki mcp` — a Model Context Protocol server over stdio (newline-delimited
+  JSON-RPC 2.0), implemented with Node built-ins only (no third-party MCP SDK),
+  preserving the zero-runtime-dependency policy. Register it in an MCP client
+  with `{ "command": "npx", "args": ["-y", "@dowonk-7949/llm-wiki-standard", "mcp"] }`.
+- Read-only MCP tools: `validate`, `audit`, `next`, `status`, `doctor`, `stats`,
+  `graph`, `explain`, `handoff`, `prompt`. No write/mutating command is exposed —
+  no MCP tool writes files (`annotations.readOnlyHint`). Each `tools/call` returns
+  the command's structured result (with `schemaVersion`) as `structuredContent`
+  plus a human-readable text summary; a thrown command surfaces as `isError`.
+- Programmatic MCP surface from the package entry point: `startMcpServer`,
+  `MCP_TOOLS`, `handleMcpMessage`, `MCP_PROTOCOL_VERSION`. Scope: `GATE_REVIEW.md`
+  (Gate 11).
+
+### Notes
+
+- Backward-compatible and additive. Batching is not supported (removed in the
+  pinned MCP protocol `2025-06-18`); an array message is answered with a single
+  `-32600`. `llm-wiki.config.json` defaults are not merged into MCP tool calls in
+  this version (explicit arguments only).
+
+## 1.5.2 — 2026-07-14
+
+Community standards. Repository-facing docs so the project meets GitHub's
+recommended community standards. No CLI/API changes.
+
+### Added
+
+- Community health files at the repository root, bilingual (EN/KO):
+  `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md` (each with a `.ko.md`
+  pair), listed in `package.json` `files` so they ship with the package.
+- GitHub templates: `.github/ISSUE_TEMPLATE/` (bug report, feature request,
+  config) and `.github/pull_request_template.md`.
+
+### Notes
+
+- Repository/GitHub-facing only; the CLI command surface, JSON output, and
+  programmatic API are unchanged. `.github/` templates are not shipped to npm.
+
+## 1.5.1 — 2026-07-14
+
+Programmatic API and output fixes found while smoke-testing the new 1.5 API from
+a consuming project. All additive/refinements — the stable CLI, JSON, and
+frontmatter contracts are unchanged.
+
+### Fixed
+
+- Command result objects now carry a top-level `schemaVersion` (equal to the
+  exported `SCHEMA_VERSION`), so a programmatic result self-describes its output
+  contract without importing the constant separately. `.text` remains the
+  rendered text report in every case — `--format` affects only CLI/`run()`
+  stdout and `--out` files, not the returned object; this is now documented.
+- `normalizeOptions` accepts a `parseArgs(argv)` result directly (it reads the
+  nested `.options`), so `normalizeOptions(parseArgs(argv))` no longer silently
+  falls back to defaults. Passing a plain partial still works unchanged.
+- `run(argv)` now returns the numeric exit code (`0`/`1`/`2`/`3`) in addition to
+  setting `process.exitCode`, so in-process callers can branch on success.
+- The `--format html` dashboard's Document Index links are now computed relative
+  to the `--out` file's directory, so a dashboard written to a subfolder no
+  longer produces broken (404) document links.
+
+## 1.5.0 — 2026-07-14
+
+Programmatic API. Let CI wrappers, editors, and tests use LLM-WIKI in-process
+instead of spawning the binary. Backward-compatible — a new import surface and
+one additive JSON field only.
+
+### Added
+
+- Importable programmatic API via `package.json` `exports` (`.` → `src/index.js`).
+  It exposes a frozen `commands` map keyed by CLI command name, the individual
+  command functions, `parseArgs`, `run`, `normalizeOptions` (builds a complete
+  options object from a partial override), and `SCHEMA_VERSION`. Return shapes
+  are documented with JSDoc typedefs and in `docs/llm-wiki/PUBLIC_API.md`.
+- `--format json` output now carries an additive top-level `schemaVersion`
+  integer (equal to the exported `SCHEMA_VERSION`), so wrappers can pin the
+  output contract. Single source: `src/config.js` `JSON_SCHEMA_VERSION`.
+
+### Notes
+
+- Additive and backward-compatible: existing JSON fields are unchanged, so
+  current `--format json` consumers keep working; non-JSON output (text,
+  markdown, html, and graph mermaid/dot) is unaffected. Deep external imports of
+  internal modules are now encapsulated by the `exports` map; the `llm-wiki`
+  binary is unaffected.
+
+## 1.4.0 — 2026-07-14
+
+Knowledge you can see. Make the wiki's knowledge navigable and measurable, and
+broaden domain detection. Backward-compatible — new read-only commands and
+additive detection only.
+
+### Added
+
+- `llm-wiki graph` — emit the knowledge graph (documents + doc→doc links resolved
+  from wiki `[[links]]`, `related`, and markdown links) as text, JSON, Mermaid
+  (fenced `graph TD`), or Graphviz DOT. `--format` for `graph` accepts
+  `text|json|mermaid|dot`.
+- `llm-wiki stats` — a read-only health snapshot: a health score (mean of
+  verified %, enrichment %, and evidence coverage %) plus document status mix,
+  stale-verified, and orphan counts.
+- The `--format html` dashboard gains a navigable **Document Index** (every
+  document with inbound-link count and orphan flags), and a "Publishing for
+  Human Readers" guide (GitHub/GitLab, Obsidian, MkDocs) in the README.
+- File-based domain detection for `init`: backend/fullstack domains defined as
+  route/resource module files (FastAPI/Flask/Express/Rails/Go —
+  `endpoints/routers/routes/resources/controllers/handlers/*.ext`) are now
+  detected alongside directory-per-domain layouts, via a bounded, exclusion-
+  guarded scan tuned for near-zero false positives (`GATE_REVIEW.md`, Gate 10).
+
+## 1.3.0 — 2026-07-14
+
+Detect & adapt breadth. Fit more projects and more tools out of the box.
+Backward-compatible — new detection, adapters, and opt-in acceptance only.
+
+### Added
+
+- Backend/fullstack `init` now detects business-domain directories (immediate
+  subdirectories of `src|app/{domains,domain,modules,features}` and
+  `internal/{domain,domains,modules}`, excluding common technical dirs) and
+  creates a per-domain document (`domains/NN_<name>.md`, `doc_type: domain`,
+  `source_files` = detected dirs) linked from `domains/00_overview.md`.
+  Deterministic ordering; duplicate domains across locations merge into one doc.
+- Ecosystem detection for PHP (`composer.json`), Ruby (`Gemfile`/`gems.rb`), and
+  .NET (`*.csproj`/`*.fsproj`), classified backend vs library by web-framework
+  signals.
+- Adapters for Windsurf (`.windsurf/rules/llm-wiki.md`) and Gemini CLI
+  (`GEMINI.md`) as writable adapters; JetBrains AI (`.junie/guidelines.md`) as an
+  info-level candidate. `--agent all` stays codex/claude/antigravity for
+  backward compatibility.
+
+### Changed
+
+- `type` (OKF) is now accepted as an alias for the required `doc_type` field, so
+  OKF-style documents validate without duplicating the field. Additive — nothing
+  is removed or renamed.
+
+## 1.2.0 — 2026-07-14
+
+Safe upgrades & migration. Keep an existing wiki in step with the CLI's contract
+instead of deleting and regenerating it. Backward-compatible — new opt-in
+behavior only.
+
+### Added
+
+- `wiki_block_version`-aware upgrade report: `migrate` (and `doctor`) show the
+  contract gap between each document's recorded block version and the installed
+  CLI. `CURRENT_WIKI_BLOCK_VERSION` is now the single source for the stamped value.
+- `migrate --apply` is unblocked under an accepted, preview-first scope
+  (`GATE_REVIEW.md`, Gate 8). It reuses the `fix` engine plus a
+  `wiki_block_version` upgrade: it brings a document to the current contract and
+  stamps its block version once it conforms. It never edits `verified` documents'
+  content or changes `status`, and never downgrades documents stamped by a newer
+  CLI.
+- `llm-wiki drift`: reports `evidence.stale` drift on `verified` documents, and
+  with `--downgrade` moves drifted documents to `needs_review` (`status` +
+  `last_updated` only, never a promotion to `verified`; `GATE_REVIEW.md`, Gate 9).
+
+### Changed
+
+- `evidence.stale` gains line-level granularity: when a source is cited only by
+  exact `#Lx-Ly` evidence, drift is checked against those lines instead of the
+  whole file, so unrelated edits no longer flag it. Any broad reference keeps the
+  file-level check.
+- `VERSIONING.md` and `project-profile.md` are now version-agnostic — they point
+  at `package.json` as the single version source instead of hardcoding a number.
+
+## 1.1.0 — 2026-07-14
+
+The "inner-loop cleanup" line: faster, quieter day-to-day validation.
+Backward-compatible — no breaking changes.
+
+### Added
+
+- `validate --changed` scopes reported findings to the wiki documents changed vs
+  the working tree (or a `--since <ref>` base), for fast pre-commit and PR CI.
+  Cross-document checks still run over the whole wiki.
+- A `pre-commit` hook template (`templates/git-hooks/pre-commit`) that runs
+  `validate --changed`, with install notes in `templates/git-hooks/README.md`.
+- The CI consumer-install job now runs Quick Start commands (`doctor`,
+  `init --dry-run`, `validate-frontmatter`) against the packed tarball.
+
+### Fixed
+
+- `evidence.stale` no longer flags a verified document reviewed on the same day
+  its source files were committed. The drift baseline is anchored to end-of-day,
+  so only later-day commits count.
+
+### Changed
+
+- Replanned `ROADMAP.md` as a forward-looking, dateless `1.x` line (implementation
+  history now lives in this changelog and `docs/llm-wiki/log.md`).
+- Added EN–KO pairs for the externally-visible root docs — `CHANGELOG.ko.md` and
+  `ROADMAP.ko.md` — cross-linked with their English canonicals and shipped in the
+  package; established the EN–KO pair convention (`docs/llm-wiki/README.md`).
+
+## 1.0.0 — 2026-07-14
+
+First stable release. `1.0.0` promotes the `0.1.8` contract to a stable 1.0
+milestone with **no functional command changes**; it declares the public contract
+stable and hardens release quality.
+
+### Stability
+
+- Declared the CLI command/option surface, `--format json` output shape, and the
+  required frontmatter contract stable. Breaking changes to these now require a
+  major version bump. See `GATE_REVIEW.md` ("1.0.0 Stability Milestone") and
+  `docs/llm-wiki/VERSIONING.md`.
+
+### Added
+
+- Release-quality CI: a Node 18.18.0 / 20 / 22 / 24 × Windows / macOS / Linux
+  verify matrix and a packed-tarball consumer install smoke test
+  (`.github/workflows/ci.yml`).
+- This accumulating root `CHANGELOG.md`, shipped in the npm package.
+
+### Notes
+
+- The conservative write policy is unchanged: `init` / `quickstart` / `fix` write
+  only under `--write`, `migrate --apply` remains blocked, `log.md` and existing
+  adapter files are never overwritten, and CLI- or agent-authored docs remain
+  `needs_review`.
+
+## Earlier (0.1.x)
+
+Pre-1.0 history is recorded in `docs/llm-wiki/log.md` and the per-release notes
+under `docs/llm-wiki/releases/`. Highlights:
+
+- `0.1.8` — scoped `fix` autofix command and evidence drift detection (`evidence.stale`).
+- `0.1.7` — multi-ecosystem detection (Python/Go/Rust/JVM), Cursor and Copilot
+  adapters, `llm-wiki.config.json`, and the `release-notes` command.
+- `0.1.6` — real generation dates, `related.missing` and `content.not_enriched`
+  validation, wiki-graph orphan detection, and the `--format html` dashboard.

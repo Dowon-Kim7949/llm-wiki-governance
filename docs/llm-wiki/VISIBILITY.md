@@ -10,7 +10,7 @@ last_updated: 2026-10-27
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - src/frontmatter-schema.js
@@ -22,7 +22,7 @@ evidence:
   - src/sensitive-info.js#symbol:scanSensitiveInfo
 related:
   - docs/llm-wiki/project-profile.md
-  - GATE_REVIEW.md
+  - docs/GATE_REVIEW.md
 visibility: internal
 contains_sensitive_info: false
 source_digests:

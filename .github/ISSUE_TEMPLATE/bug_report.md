@@ -25,7 +25,8 @@ llm-wiki ...
 ```
 
 ## Environment / 환경
-- Package version / 패키지 버전:
+- `npx llm-wiki-governance --version` output / 출력:
+- Governance mode (first line of `npx llm-wiki-governance mode`) / 거버넌스 모드(`mode` 출력 첫 줄):
 - Node.js version / Node 버전:
 - OS / 운영체제:
 

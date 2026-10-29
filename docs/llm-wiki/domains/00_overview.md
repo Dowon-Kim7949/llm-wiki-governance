@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - src/commands.js
@@ -42,14 +42,14 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/commands.js sha256:9de9e64b3a165a88
-  - src/cli.js sha256:7d0df7982416faef
-  - src/mcp/tools.js sha256:b29ae9218ef87f1c
+  - src/commands.js sha256:27428d45e7046786
+  - src/cli.js sha256:d9a6cc7effc2dac5
+  - src/mcp/tools.js sha256:31d4a4f7379b5ccc
   - src/commands/retrieval.js sha256:36e3f0e8b46fe723
   - src/commands/guided.js sha256:cc78b4eff07f93a7
   - src/commands/import-memory.js sha256:36c43fde4eb90a81
   - src/commands/harness-health.js sha256:adf57d45219e5d3c
-  - src/commands/fix-migrate.js sha256:b5cb0accb9da1c85
+  - src/commands/fix-migrate.js sha256:a6ada3ac53705144
 ---
 
 # Domain Overview
@@ -79,6 +79,7 @@ source_digests:
 - **Detection** (`src/detector.js`) — package.json 신호로 project type/profile 추론.
 - **Safety** — 기존 wiki/adapter 보존, `log.md` append-only, 민감정보 redaction, UTF-8 강제.
 - **Reporting** (`src/report.js`) — 모든 명령이 공통 finding/summary 구조와 text/json/markdown 출력을 공유.
+- **꺼진 규칙의 표시**(1.42.0) — 모드가 규칙을 끄면 보고 명령은 그 침묵을 "문제없음"처럼 보여 줄 수 있다. 그래서 `impact`는 게이트가 꺼졌을 때 요약에 "no document was checked"를 적고, `status`·`next`는 `governance_mode` 줄에 변경 점검이 꺼져 있다고 적는다. `quickstart`/`handoff`는 다음 단계에 같은 사실과 켜는 명령을 넣고 JSON에 `changeChecksOff`를 더한다. 판정과 종료 코드는 바뀌지 않는다.
 
 ## Evidence
 

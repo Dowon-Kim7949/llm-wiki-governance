@@ -24,6 +24,22 @@ contains_sensitive_info: false
 
 이 문서는 append-only 변경 로그입니다. 기존 항목은 수정하지 말고 새 변경 사항을 위에 추가합니다.
 
+## 2026-10-29 - release: 1.42.0 — 첫 실행이 하는 일을 말한다, 저장소 루트 정리
+
+- status: needs_review (편집 시점, 이후 `review --approve-all --yes`)
+- actor: Claude Code (delegated by Dowon-Kim)
+- scope: src, test, docs, wiki, repo layout, release
+- changed:
+  - `src/commands.js` — lite에서 꺼진 `impact` 게이트를 요약에 표시, `status`·`next`의 `governance_mode` 줄, `quickstart`/`handoff` 다음 단계(승인 명령, 직접 쓰기 안내, 꺼진 변경 점검), `handoff.changeChecksOff`(부가), 한국어 줄의 "or" 정리, 사람 검토 단정 문구 정정
+  - `src/cli.js`(help) · `src/commands/doc-content.js`·`doc-templates.js`(생성 문서 Review Notes) · `fix-migrate.js`·`report.js`(문구)
+  - `tests/first-run-clarity.test.js` 신규 6건, `tests/greenfield.test.js` 단언 조정
+  - README 2종, `docs/WRITING_DOCS_BY_HAND(.ko).md` 신규, `.github/ISSUE_TEMPLATE/first_run.yml` 신규, `bug_report.md`, `docs/VALIDATION(.ko).md`, `docs/GATE_REVIEW.md`("First-Run Default Mode"), CHANGELOG·ROADMAP 2종, 버전 1.42.0 정렬
+  - 저장소 루트 26파일·18폴더 → 11·10(직전 커밋 `2bce8c4`)
+  - 위키: `VERSIONING`(1.42.0 판정)·`PUBLIC_API`·`ARCHITECTURE_CONVENTIONS`·`GLOSSARY`·`domains/00_overview`·`REVIEW_HISTORY`, 인용 경로가 바뀐 문서 재승인
+- summary: 배포된 1.41.0을 새 프로젝트에서 README만 따라 써 보니, lite가 변경 점검을 조용히 끄고 `impact`가 "pass / none"을 출력해 검사하지 않은 것이 문제없음처럼 읽혔다. 기본값은 바꾸지 않고(CI 템플릿의 종료 코드가 새 저장소에서 바뀌는 1.28.0형 변경이라) 출력과 문서로 고쳤다. 에이전트 프롬프트의 "verified is human-approved only"는 `tests/self-approval-policy.test.js`에 기록된 결정대로 그대로 두고, 사람이 읽는 생성 문서 본문만 바꿨다.
+- evidence: `tests/first-run-clarity.test.js`, 게이트 결과는 커밋 메시지에 남긴다.
+- caveats: 점검은 유지보수자의 에이전트가 했으므로 독립 사용성은 여전히 Unknown이다. `main` 기준 옛 루트 경로 링크는 404가 된다(태그 URL은 유효).
+
 ## 2026-10-28 - release: 1.41.0 준비 — 내용 digest가 처음으로 판정에 쓰인다
 
 - status: needs_review (편집 시점, 이후 `review --approve-all --yes`)

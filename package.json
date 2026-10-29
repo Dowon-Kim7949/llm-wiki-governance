@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki-governance",
-  "version": "1.41.0",
+  "version": "1.42.0",
   "private": false,
   "type": "module",
   "description": "Governance for AI-written project docs: verify, catch drift, keep them code-grounded, enforce in CI. OKF-compatible, zero-dependency.",
@@ -34,9 +34,6 @@
     "bin",
     "src",
     "templates",
-    "rules",
-    "adapters",
-    "profiles",
     "README.md",
     "README.ko.md",
     "LICENSE"
@@ -53,7 +50,7 @@
     "test": "node --test tests/*.test.js",
     "test:quiet": "node --test --test-reporter=dot tests/*.test.js",
     "test:coverage": "node --test --experimental-test-coverage tests/*.test.js",
-    "lint": "node scripts/lint-syntax.mjs",
+    "lint": "node .github/scripts/lint-syntax.mjs",
     "verify": "node --test tests/*.test.js && node bin/llm-wiki.js validate-frontmatter",
     "doctor": "node bin/llm-wiki.js doctor",
     "audit": "node bin/llm-wiki.js audit",

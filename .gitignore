@@ -1,6 +1,14 @@
 # Node
 node_modules/
 
+# Generated agent-skill copies for Cursor and agent-neutral prompts. `init --write
+# --skills` regenerates them from src/commands/skills.js; the Codex and Claude Code
+# copies (.agents/skills, .claude/skills) stay tracked because this repository's
+# own agents load them. Removed from tracking in 1.42.0 to shorten the repository
+# root; the generator, not these copies, is the source of truth.
+.cursor/
+.llm-wiki/prompts/
+
 # Agent-authored run manifests (Gate 26 `check-run` input; ephemeral, per-run — never committed)
 .llm-wiki/runs/
 
@@ -19,6 +27,10 @@ bench/real/agent.js
 outputs/dev-guide/
 outputs/*.pptx
 outputs/*.inspect.ndjson
+# Since 1.42.0 the tracked outputs live under docs/outputs/; keep the same guard there.
+docs/outputs/dev-guide/
+docs/outputs/*.pptx
+docs/outputs/*.inspect.ndjson
 
 # docs/plans/ — internal planning documents (schedules, staffing, rollout).
 # They are not wiki documents and must not sit under docs/llm-wiki/, where the

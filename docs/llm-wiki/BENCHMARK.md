@@ -11,7 +11,7 @@ last_updated: 2026-10-27
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-27
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - bench/run.js
@@ -39,11 +39,11 @@ evidence:
   - bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27.md
   - bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-grading.md
   - bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-ratification.md
-  - GATE_REVIEW.md#section:Impact Measurement Scope Decision
+  - docs/GATE_REVIEW.md#section:Impact Measurement Scope Decision
 related:
   - docs/llm-wiki/project-profile.md
-  - GATE_REVIEW.md
-  - ROADMAP.md
+  - docs/GATE_REVIEW.md
+  - docs/ROADMAP.md
 visibility: internal
 contains_sensitive_info: false
 source_digests:
@@ -63,12 +63,12 @@ source_digests:
   - bench/results/baseline.md sha256:3e59650aaf3dd51b
   - bench/results/current.md sha256:04af0e8e3df6293a
   - bench/results/real-driver-external-vue-app-sdk-2026-07-24-grading.md sha256:6e9e1678c4d871c9
-  - GATE_REVIEW.md#section:Impact Measurement Scope Decision sha256:ebc2d452c3b78016
+  - docs/GATE_REVIEW.md#section:Impact Measurement Scope Decision sha256:ebc2d452c3b78016
 ---
 
 # Impact Measurement Baseline
 
-이 문서는 Gate 22(Impact Measurement, `GATE_REVIEW.md` accepted)의 결과 기록이다.
+이 문서는 Gate 22(Impact Measurement, `docs/GATE_REVIEW.md` accepted)의 결과 기록이다.
 "거버넌스 코어는 실재하나 가치 사슬(durable memory → 재발견 감소 → 토큰 절감)은 아직
 입증되지 않았다"는 product-identity 감사 결론에 대응해, **feature 게이트를 더 쌓기 전에**
 위키가 실제로 코드 작업 컨텍스트를 줄이는지 측정하는 재현 가능·zero-dep·repo-내부
@@ -363,7 +363,7 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
   **인과 주장 자체는 스코프 안에서 성립**하므로, 각주에는 "retrieval 툴이 아니라 **보강된 내용**이
   절감을 만든다(통제 arm으로 확인, 이 픽스처 한정)"까지 쓸 수 있다. 함께 쓸 수 있는 더 강한
   문장은 효율이 아니라 거버넌스 쪽이다: **"미보강 위키는 없느니만 못하다(+14%)."**
-- **1.33.0 `--prompt-profile slim`의 크기 수치에도 같은 규율을 적용한다.** `GATE_REVIEW.md`
+- **1.33.0 `--prompt-profile slim`의 크기 수치에도 같은 규율을 적용한다.** `docs/GATE_REVIEW.md`
   "Delegation Policy Scope Decision"이 적은 "`full`의 약 44–50%"는 렌더된 프롬프트의 **문자 수
   비교**다. 토큰이나 답변 품질을 잰 것이 아니다. 같은 절은 1.29.2 `delegationPolicy` A/B를 "반증되지
   않았을 뿐 입증된 이득이 아니다"로 판정한다. 그래서 slim은 opt-in으로 출하하고, 기본값은 측정된 A/B
@@ -424,14 +424,14 @@ evidence 100% · staleVerified 0**, `validate --strict` 0, `drift` 0. 2026-07-22
 - `bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-ratification.md` — 사람 비준 워크시트와 판정(승인, Dowon-Kim 2026-07-27): 불리하게 고른 7개 표본·매칭 3중쌍·항목별 판정 근거·민감도 분석(가장 논쟁적 판정 제외 시에도 결론 불변).
 - `bench/results/real-driver-external-vue-app-sdk-empty-control-2026-07-27-grading.md` — 3-arm 54개 답변 블라인드 채점 기록(방법·arm별 집계·태스크별·답변별 표·B 재현 검증).
 - `bench/real/make-grading-worksheet.mjs` — 블라인드 채점 워크시트 생성기: arm 라벨 제거 + 해시 기반 결정적 셔플, 정답 map은 별도 파일로 분리(채점 전 열지 않음).
-- `GATE_REVIEW.md#section:Impact Measurement Scope Decision` — 수용된 Gate 22 범위·불변식·수용 기준.
+- `docs/GATE_REVIEW.md#section:Impact Measurement Scope Decision` — 수용된 Gate 22 범위·불변식·수용 기준.
 
 ## Review Notes
 
 Older review notes (12 entries, 2026-07-22 → 2026-08-06) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 인용 앵커 `GATE_REVIEW.md#section:Impact Measurement Scope Decision`을 확인했다. 이번 커밋의 `GATE_REVIEW.md` diff는 (a) `Detection Defaults and Freshness Scope Decision` 절 안의 "SemVer MAJOR" 문단에 정정 문단을 붙인 것과 (b) 파일 끝에 신규 결정 절 7개를 더한 것뿐이며, **인용된 절은 글자 하나 바뀌지 않았다.** 이것은 N-7 계열의 알려진 노이즈다 — `scanReverseImpact`가 로케이터를 버리고 base path만 비교하므로 섹션 앵커가 판정에 쓰이지 않는다. 1.31.0이 N-8(디렉터리)은 고쳤지만 **섹션·심볼 로케이터 존중은 여전히 미구현**이고, 그 이유도 기록됐다: diff hunk를 심볼/헤딩 범위에 매핑하려면 해석기가 필요해서 서술된 노이즈를 조용한 위음성과 바꾸게 된다. 본문 **불변**.
-- 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `GATE_REVIEW.md`를 대조했다. 이번 diff는 그 파일 끝에 "Trust Batch Scope Decision" 절을 덧붙였을 뿐이고, 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로다. 벤치 수치·조건·한계에 영향이 없으므로 본문 **불변**이다. 같은 검토에서 `bench/REAL_LLM_METHODOLOGY.md` 상단의 낡은 "not executed, no real numbers" 문구 위에 현행 상태 노트를 덧붙였다. 그 파일은 이 문서가 인용하지 않으므로 지목 대상은 아니었다.
-- 2026-10-27(보안 검토)에 `impact`가 인용 소스 `GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 이번 diff는 "Security Review Batch" 절을 추가했고 "Publish Credential Cleanup" 절에 결정 문단과 헤더 변경을 더했다. 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로다. 벤치 수치·조건·한계와 무관하므로 본문은 **불변**이다.
-- 2026-10-27(정규식 감사 후속)에 `impact`가 인용 소스 `GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 추가된 것은 "Regex Audit Follow-up"·"Link-Extraction False Negatives" 두 절이다. 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로이고 벤치 수치·조건·한계와 무관하므로, 본문은 **불변**이다.
-- 2026-10-27(링크 추출 결함 수정)에 `impact`가 인용 소스 `GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. "Link-Extraction False Negatives" 절의 헤더와 결정 문단만 바뀌었다. 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로이므로 본문은 **불변**이다.
+- 2026-09-08(1.31.0)에 `impact`가 이 문서를 지목해 인용 앵커 `docs/GATE_REVIEW.md#section:Impact Measurement Scope Decision`을 확인했다. 이번 커밋의 `docs/GATE_REVIEW.md` diff는 (a) `Detection Defaults and Freshness Scope Decision` 절 안의 "SemVer MAJOR" 문단에 정정 문단을 붙인 것과 (b) 파일 끝에 신규 결정 절 7개를 더한 것뿐이며, **인용된 절은 글자 하나 바뀌지 않았다.** 이것은 N-7 계열의 알려진 노이즈다 — `scanReverseImpact`가 로케이터를 버리고 base path만 비교하므로 섹션 앵커가 판정에 쓰이지 않는다. 1.31.0이 N-8(디렉터리)은 고쳤지만 **섹션·심볼 로케이터 존중은 여전히 미구현**이고, 그 이유도 기록됐다: diff hunk를 심볼/헤딩 범위에 매핑하려면 해석기가 필요해서 서술된 노이즈를 조용한 위음성과 바꾸게 된다. 본문 **불변**.
+- 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 `docs/GATE_REVIEW.md`를 대조했다. 이번 diff는 그 파일 끝에 "Trust Batch Scope Decision" 절을 덧붙였을 뿐이고, 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로다. 벤치 수치·조건·한계에 영향이 없으므로 본문 **불변**이다. 같은 검토에서 `bench/REAL_LLM_METHODOLOGY.md` 상단의 낡은 "not executed, no real numbers" 문구 위에 현행 상태 노트를 덧붙였다. 그 파일은 이 문서가 인용하지 않으므로 지목 대상은 아니었다.
+- 2026-10-27(보안 검토)에 `impact`가 인용 소스 `docs/GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 이번 diff는 "Security Review Batch" 절을 추가했고 "Publish Credential Cleanup" 절에 결정 문단과 헤더 변경을 더했다. 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로다. 벤치 수치·조건·한계와 무관하므로 본문은 **불변**이다.
+- 2026-10-27(정규식 감사 후속)에 `impact`가 인용 소스 `docs/GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 추가된 것은 "Regex Audit Follow-up"·"Link-Extraction False Negatives" 두 절이다. 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로이고 벤치 수치·조건·한계와 무관하므로, 본문은 **불변**이다.
+- 2026-10-27(링크 추출 결함 수정)에 `impact`가 인용 소스 `docs/GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. "Link-Extraction False Negatives" 절의 헤더와 결정 문단만 바뀌었다. 이 문서가 인용하는 `#section:Impact Measurement Scope Decision`은 그대로이므로 본문은 **불변**이다.

@@ -1,0 +1,64 @@
+name: "First run: confusing docs, setup failure, or friction / 첫 사용: 헷갈린 문서, 설치 실패, 불편"
+description: "You tried LLM-WIKI Governance and something got in the way. No bug required. / 써 보다가 막히거나 헷갈린 점. 버그가 아니어도 됩니다."
+title: "[First run] "
+labels: [first-run]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying it. Short answers are fine; skip anything you do not know.
+        Please do **not** include your name, employer, private code, or private paths. You may shorten paths in error messages.
+
+        써 주셔서 고맙습니다. 짧게 적어도 되고, 모르는 칸은 비워 두세요.
+        이름, 회사, 비공개 코드나 경로는 적지 **마세요**. 오류 메시지의 경로는 줄여도 됩니다.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: "What happened? / 어떤 일이었나요?"
+      options:
+        - "The docs were confusing / 문서가 헷갈렸다"
+        - "Setup or a command failed / 설치나 명령이 실패했다"
+        - "It worked, but got in the way of my workflow / 동작은 했지만 작업 흐름을 방해했다"
+        - "A suggestion / 제안"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: "What did you expect, and what happened instead? / 무엇을 기대했고 실제로는 어땠나요?"
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: "Commands you ran and their output / 실행한 명령과 출력"
+      render: text
+  - type: input
+    id: where
+    attributes:
+      label: "Where in the docs, if anywhere / 헷갈린 문서 위치(있다면)"
+      placeholder: "e.g. README, Quick start / 예: README 빠른 시작"
+  - type: input
+    id: version
+    attributes:
+      label: "`npx llm-wiki-governance --version`"
+  - type: input
+    id: mode
+    attributes:
+      label: "First line of `npx llm-wiki-governance mode` / `mode` 출력 첫 줄"
+      placeholder: "- mode: lite"
+  - type: input
+    id: env
+    attributes:
+      label: "OS and Node.js version / OS와 Node 버전"
+      placeholder: "e.g. macOS 15, Node 22.11"
+  - type: dropdown
+    id: agent
+    attributes:
+      label: "How were the docs written? / 문서는 어떻게 채웠나요?"
+      options:
+        - "Not yet / 아직 안 채움"
+        - "By hand / 직접"
+        - "Claude Code"
+        - "Codex"
+        - "Another agent / 다른 에이전트"

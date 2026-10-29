@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 // Not switched off: a clean or process filter the repository configures, because that
 // would report unchanged Git LFS files as changed; and git's own refresh of
 // .git/index, which `git diff` writes even with GIT_OPTIONAL_LOCKS=0 and which changes
-// no project file. SECURITY.md tells users not to point the tool at a repository they
+// no project file. .github/SECURITY.md tells users not to point the tool at a repository they
 // would not run `git status` in.
 const READ_ONLY_CONFIG = ["-c", "core.fsmonitor="];
 

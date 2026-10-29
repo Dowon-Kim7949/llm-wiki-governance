@@ -13,7 +13,7 @@ last_updated: 2026-10-28
 author: ai-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - package.json
@@ -33,8 +33,8 @@ source_files:
   - .github/actions/validate/action.yml
   - templates/git-hooks/pre-commit
   - templates/github-actions/llm-wiki-validate.yml
-  - GATE_REVIEW.md
-  - ROADMAP.md
+  - docs/GATE_REVIEW.md
+  - docs/ROADMAP.md
 evidence:
   - src/commands/wiki-files.js#symbol:listTargetMarkdown
   - src/commands/scans.js#symbol:verifiedSourceAnchors
@@ -60,37 +60,37 @@ related:
   - docs/llm-wiki/DOMAIN_FEATURES.md
   - docs/llm-wiki/PUBLIC_API.md
   - docs/llm-wiki/BENCHMARK.md
-  - GATE_REVIEW.md
-  - ROADMAP.md
+  - docs/GATE_REVIEW.md
+  - docs/ROADMAP.md
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:a18a7e2bc101d0dd
-  - src/cli.js sha256:7d0df7982416faef
+  - package.json sha256:6917cd4e241bf53a
+  - src/cli.js sha256:d9a6cc7effc2dac5
   - src/index.js sha256:ee1d42734ade2f15
-  - src/commands.js sha256:9de9e64b3a165a88
+  - src/commands.js sha256:27428d45e7046786
   - src/commands/scans.js sha256:7744bb5ee7415ca1
   - src/commands/findings.js sha256:58afc2face119e02
   - src/commands/wiki-files.js sha256:141842053b78cc2c
   - src/commands/adapters.js sha256:1329c62a8fd74c06
   - src/commands/skills.js sha256:b7ecf90972a2857b
-  - src/commands/fix-migrate.js sha256:b5cb0accb9da1c85
+  - src/commands/fix-migrate.js sha256:a6ada3ac53705144
   - src/commands/references.js sha256:16ff5b183865242b
-  - src/mcp/tools.js sha256:b29ae9218ef87f1c
-  - src/git.js sha256:368235704e10ed2e
-  - .github/workflows/ci.yml sha256:0055dbb54de5761b
-  - .github/actions/validate/action.yml sha256:d3be88da29be597b
+  - src/mcp/tools.js sha256:31d4a4f7379b5ccc
+  - src/git.js sha256:fd9a57a0fc930c4d
+  - .github/workflows/ci.yml sha256:44350d36bd0aa0ee
+  - .github/actions/validate/action.yml sha256:e875a1c8b8202b2a
   - templates/git-hooks/pre-commit sha256:1c5faacaf78b5ad4
-  - templates/github-actions/llm-wiki-validate.yml sha256:4434aa02eb421f91
-  - GATE_REVIEW.md sha256:657d2c226b11ad3e
-  - ROADMAP.md sha256:42b380b6f3a21bd5
+  - templates/github-actions/llm-wiki-validate.yml sha256:b57506f63529776e
+  - docs/GATE_REVIEW.md sha256:5bc02c2d932b0110
+  - docs/ROADMAP.md sha256:e9741221c365e8b5
 ---
 
 # 자기관리형 하네스 거버넌스 로드맵
 
 > 이 문서는 2026-07-31 조사 결과에 기반한 **제안**입니다. 대부분은 아직 승인되지 않았습니다. 다만 **Phase 1의 `harness-health`는 2026-08-03에 승인돼 구현·배선까지 끝났습니다**(결정 27번 권고 (b) 채택; `fleet`은 보류). 나머지 Phase는 여전히 제안입니다.
 > 이 문서의 `status`는 프론트매터가 정본입니다. 확정된 계획으로 인용하기 전에 해당 절의 근거 등급을 보십시오.
-> 이미 배포된 기능의 이력은 `CHANGELOG.md`, 릴리스별 계획은 `ROADMAP.md`, 게이트 결정은 `GATE_REVIEW.md`가 소유합니다. 이 문서는 그 위에 얹는 **제품 방향** 문서입니다.
+> 이미 배포된 기능의 이력은 `CHANGELOG.md`, 릴리스별 계획은 `docs/ROADMAP.md`, 게이트 결정은 `docs/GATE_REVIEW.md`가 소유합니다. 이 문서는 그 위에 얹는 **제품 방향** 문서입니다.
 
 > **2026-08-03 전제 변경 — 이 문서를 읽는 두 가지 방식.** 이 저장소는 같은 날 위키 문서의 확인·승격·드리프트 해소를
 > 에이전트에게 넘겼습니다(`AGENTS.md` "Wiki discipline"이 정본). 이 로드맵은 그 전에 쓰였고 **"`verified`는 사람이
@@ -250,8 +250,8 @@ run manifest는 에이전트가 스스로 씁니다(Gate 26에서 "새 쓰기 �
 
 | 대상 | 현재 |
 | --- | --- |
-| 스캔 범위 | `listTargetMarkdown`이 `docs/llm-wiki/` 하위만 봅니다. 루트의 `ROADMAP.md`·`GATE_REVIEW.md`·`VERIFICATION.md`는 위키 frontmatter를 가졌는데 검사되지 않습니다 |
-| 그 결과 | `VERIFICATION.md`의 `last_updated`가 15개 릴리스 전이고 `check-run`·`review`·`impact`·retrieval을 전혀 언급하지 않는데, npm `files`에 포함돼 배포됩니다 |
+| 스캔 범위 | `listTargetMarkdown`이 `docs/llm-wiki/` 하위만 봅니다. 루트의 `docs/ROADMAP.md`·`docs/GATE_REVIEW.md`·`docs/VERIFICATION.md`는 위키 frontmatter를 가졌는데 검사되지 않습니다 |
+| 그 결과 | `docs/VERIFICATION.md`의 `last_updated`가 15개 릴리스 전이고 `check-run`·`review`·`impact`·retrieval을 전혀 언급하지 않는데, npm `files`에 포함돼 배포됩니다 |
 | 어댑터 파일 | 마커·체크섬이 없습니다. 사용자 수정 감지 0, **갱신 경로 자체가 없습니다**(존재하면 영구 skip) |
 | 실측 드리프트 | 자기 저장소 스킬 6종이 마커 v4 3종 / v5 3종으로 갈라져 있습니다. 파일럿 한 곳은 4종이 마커 없음, 다른 곳은 어댑터가 v1(1.27.2 선적재 축소 미도달) |
 | 길이 상한 | 없습니다. `estimated-tokens`를 스탬프만 하고 임계값·finding이 없습니다. 길이 규칙은 하한(본문 25단어)만 있습니다 |
@@ -493,7 +493,7 @@ flowchart LR
 
 **구현 후보**: `.github/actions/validate/action.yml`(명령 파라미터화), `templates/git-hooks/pre-commit`, `templates/github-actions/llm-wiki-validate.yml`, `.github/workflows/ci.yml`, `src/commands.js`(`describeCiGovernance`), `src/commands/findings.js`(`RULE_PRESETS`), `src/git.js`(`changedFiles`), `src/cli.js`(`COMMAND_OPTION_RULES`)
 
-**관련 문서 후보**: `DOMAIN_FEATURES.md`, `PUBLIC_API.md`, `docs/OPERATIONS.md`, `GATE_REVIEW.md`(새 게이트 기록), `VERIFICATION.md`(15개 릴리스분 갱신)
+**관련 문서 후보**: `DOMAIN_FEATURES.md`, `PUBLIC_API.md`, `docs/OPERATIONS.md`, `docs/GATE_REVIEW.md`(새 게이트 기록), `docs/VERIFICATION.md`(15개 릴리스분 갱신)
 
 **관련 테스트 후보**: `tests/ci-governance-check.test.js`(차단력 기준 케이스 추가), `tests/config-presets.test.js`(strict 프리셋 승격), `tests/verification.test.js`의 impact·CLI 파싱 섹션
 
@@ -550,7 +550,7 @@ flowchart LR
 
 #### 게이트를 처음 켜서 배운 것 (2026-07-31, PR #1)
 
-- **`drift`와 `impact`의 상보성이 실물로 확인됐습니다.** `VERSIONING.md`는 `drift`에 안 걸리고 `impact`에만 걸렸습니다. `RELEASE_CHECKLIST.md` 변경일(2026-07-30)과 문서의 `reviewed_at`(2026-07-30)이 같은 날이라 날짜 앵커는 "검토가 덮었다"고 보지만, diff 앵커는 pre-merge에서 봅니다. 설계 의도가 맞았다는 증거입니다.
+- **`drift`와 `impact`의 상보성이 실물로 확인됐습니다.** `VERSIONING.md`는 `drift`에 안 걸리고 `impact`에만 걸렸습니다. `docs/RELEASE_CHECKLIST.md` 변경일(2026-07-30)과 문서의 `reviewed_at`(2026-07-30)이 같은 날이라 날짜 앵커는 "검토가 덮었다"고 보지만, diff 앵커는 pre-merge에서 봅니다. 설계 의도가 맞았다는 증거입니다.
 - **기준 ref를 틀리면 게이트를 통과했다고 착각합니다.** 로컬에서 `impact --since main`으로 통과를 확인했으나 CI는 `origin/main` 기준이라 실패했습니다 — 로컬 `main`이 origin보다 **2커밋 앞서** 있었기 때문입니다. 게이트를 로컬에서 예행할 때는 **CI와 같은 ref**(`origin/<base>`)를 써야 합니다. 이 함정은 게이트를 켜지 않았다면 영원히 안 보였을 것입니다.
 
 #### 게이트 도입처 예행 결과 (2026-07-31 실측, 백로그 19 해소)
@@ -769,7 +769,7 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 
 - **TP-loss 실례**: external-frontend-a `12e4ded`이 `<common-util>`에 신규 export 헬퍼를 추가했고, 그 파일의 **공용 헬퍼를 열거하는 문서**(`domains/08_shared_platform.md`)의 열거가 불완전해진다. (a)는 앵커(`#symbol:kmOrMl` → L534-562)와 헝크(L406-407)가 겹치지 않아 이 finding을 지운다.
 - **noise 실례(사람 판정과 일치)**: external-frontend-a `domains/01_auth.md`의 Review Notes에 "참조 소스 변경분 재검토 완료 — 인증/인터셉터 서술에 영향 없음(신규 서비스 메서드 추가뿐)"이라고 사람이 직접 적어 둔 3건을 (a)가 자동으로 같은 판정으로 지운다. (a)가 지우는 17건 중 11건이 이 유형이다.
-- **borderline이 지배적이다**: external-vue-app `91406ac`은 `<main-layout>` 471행에 **1줄만** 추가했는데 세 문서의 라인 근거가 동시에 1줄씩 밀린다. 유지보수자는 실제로 손으로 고쳤다(`profiles/frontend.md` Review Notes: ":254-354 → :255-355, :524 → :525, :536-538 → :537-539").
+- **borderline이 지배적이다**: external-vue-app `91406ac`은 `<main-layout>` 471행에 **1줄만** 추가했는데 세 문서의 라인 근거가 동시에 1줄씩 밀린다. 유지보수자는 실제로 손으로 고쳤다(`templates/profiles/frontend.md` Review Notes: ":254-354 → :255-355, :524 → :525, :536-538 → :537-539").
 
 **이 한 판정이 모든 결론을 뒤집습니다** — borderline을 참 양성으로 보면 (c)의 손실률이 30%→90%, (a)가 17.6%→35.3%가 됩니다. 그리고 이 저장소들의 실제 문서 유지비 대부분이 바로 그 라인 근거 밀림입니다.
 
@@ -918,7 +918,7 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 
 **N-11이 자기승격 정책의 직접적 귀결이라는 점이 중요합니다.** 사람 검토 체제에서는 `reviewed_at`이 오늘인 문서가 소수라 이 상황이 드물지만, 배치마다 전체를 스탬프하는 체제에서는 **하루에 두 번째 배치를 하는 순간 항상 발생**합니다. 즉 이 저장소에서 `impact --strict`를 0으로 만드는 도구 경로는 **하루 한 배치까지만 존재**합니다. 우회 수단(내용 없는 `last_updated` 갱신 등)은 문서가 바뀌지 않았는데 바뀐 것처럼 만드는 것이므로 채택하지 않았습니다 — 게이트를 초록으로 만들려고 기록을 위조하는 것이 이 로드맵이 막으려는 바로 그 행위입니다.
 
-**2026-09-08 추가(1.31.0):** N-11은 여전히 열려 있고, 이제 N-9와 **한 결정으로 묶여** 있습니다. `impact`가 스탬프만 바뀐 문서를 보고하기 시작했으므로 두 결함이 같은 질문의 두 얼굴이라는 것이 리포트에서도 보입니다 — 스탬프가 자기제외를 사 주는 것(N-9)과, 스탬프가 아무것도 사지 못하는 것(N-11)은 "재확인이란 무엇인가"에 대한 서로 반대 방향의 귀결입니다. 권고안은 재확인을 기록된 문장으로 만드는 것(신선도 finding 해소에 Review Note를 요구)이고, 그러면 N-11이 사라지고 N-9를 강제할 수 있습니다. 비용은 도입처가 finding마다 문장을 써야 한다는 것이며, 그래서 단독 집행하지 않았습니다 — `GATE_REVIEW.md`의 "Stamp-Only Exemption"이 소유합니다.
+**2026-09-08 추가(1.31.0):** N-11은 여전히 열려 있고, 이제 N-9와 **한 결정으로 묶여** 있습니다. `impact`가 스탬프만 바뀐 문서를 보고하기 시작했으므로 두 결함이 같은 질문의 두 얼굴이라는 것이 리포트에서도 보입니다 — 스탬프가 자기제외를 사 주는 것(N-9)과, 스탬프가 아무것도 사지 못하는 것(N-11)은 "재확인이란 무엇인가"에 대한 서로 반대 방향의 귀결입니다. 권고안은 재확인을 기록된 문장으로 만드는 것(신선도 finding 해소에 Review Note를 요구)이고, 그러면 N-11이 사라지고 N-9를 강제할 수 있습니다. 비용은 도입처가 finding마다 문장을 써야 한다는 것이며, 그래서 단독 집행하지 않았습니다 — `docs/GATE_REVIEW.md`의 "Stamp-Only Exemption"이 소유합니다.
 
 **대신 이번 배치에서 확인한 것**: CI의 push 게이트는 `impact --since HEAD~1`(직전 커밋 1건)이므로 누적 diff를 보지 않습니다. 로컬의 `--since origin/main` 숫자와 CI의 숫자는 **원리적으로 다르며**, 둘을 같은 값으로 기대하면 안 됩니다. 이번 23건의 대부분(16건)은 변경 불가능한 과거 릴리스 노트가 `src/commands.js`를 인용해 생기는 **N-1 허브 팬아웃**이고, 결정 21번이 기다리는 정책 판단의 대상입니다.
 
@@ -935,10 +935,10 @@ N-1과 N-6은 **로컬 예행이 CI 결과를 예측하지 못하게 만드는**
 **기준선 오탐률 두 번째 데이터 포인트** (결정 21번에 남은 유일한 공백): 이 배치의 전체 diff에 `impact`가 `verified` **11문서**를 발화했고, 각 문서를 직접 대조해 분류하면 **참 양성 5 / 노이즈 6 = TP 45%**다(최초 판정 4/7·36%를 같은 날 정정 — 아래 방법론 주의 참조).
 
 - **참 양성 5건** — `ARCHITECTURE_CONVENTIONS.md`·`DOMAIN_FEATURES.md`·`PUBLIC_API.md`(각각 `## Evidence` 재서술) · `HARNESS_GOVERNANCE_ROADMAP.md`(인벤토리 표·공백 표 2곳) · `domains/00_overview.md`(`drift [--downgrade]` 서술이 같은 `tags` 동기화를 빠뜨림). 전부 현재형 거짓 또는 불완전 문장을 담고 있었고 이 배치에서 고쳤다.
-- **노이즈 6건** — `EXAMPLES.md` · `GLOSSARY.md` · `index.md` · `profiles/library.md` · `project-profile.md`(이상 5건은 `src/cli.js`/`src/commands.js`를 광의로 인용하지만 이번에 바뀐 계약을 서술하지 않는다) · `BENCHMARK.md`.
+- **노이즈 6건** — `EXAMPLES.md` · `GLOSSARY.md` · `index.md` · `templates/profiles/library.md` · `project-profile.md`(이상 5건은 `src/cli.js`/`src/commands.js`를 광의로 인용하지만 이번에 바뀐 계약을 서술하지 않는다) · `BENCHMARK.md`.
 - **방법론 주의 — 라벨러가 틀릴 수 있고, 이번엔 TP를 과소 계상하는 방향으로 틀렸다.** `domains/00_overview.md`를 처음에 노이즈로 판정한 근거는 "`review --approve` 서술이 이미 정확하다"였는데, **같은 문서의 `drift` 서술이 같은 계약을 빠뜨리고 있었다.** 변경이 "무엇에 관한 것인지"를 기준으로 문서를 훑으면 놓친다 — N-4가 두 명령을 한 helper로 묶었으므로 계약도 두 곳에 있어야 했다. **무작위 30건 라벨링은 "이 변경과 관련된 문장"이 아니라 문서의 계약 문장 전수를 훑는 규칙으로 해야 한다.** 이 정정으로 게이트는 11건 중 5건에서 옳았고, 옳았던 건수를 사람이 한 번 잘못 셌다.
-- **`BENCHMARK.md`는 기계적으로 예방 가능한 노이즈다** — 인용이 `GATE_REVIEW.md#section:Impact Measurement Scope Decision`이라는 **섹션 앵커**인데 이번 변경은 그 문서의 **다른 섹션**(새로 추가한 "Shipped-Text Honesty Batch")이다. `scanReverseImpact`가 로케이터를 버리고 base path만 비교하므로(`scans.js:584-587`·`:702`) 섹션 정보가 판정에 쓰이지 않는다. N-7·N-8이 라인 범위·디렉터리에서 관측한 것과 **같은 뿌리이며 섹션 앵커에서도 성립한다**는 첫 실물이다. 나머지 6건은 순수 경로 앵커라 파일 단위에서는 피할 수 없는 노이즈다 — **즉 이 커밋의 노이즈 7건 중 1건은 로케이터를 존중하면 사라지고 6건은 남는다.**
-- **문서화 자체가 게이트 사정거리를 넓혔다**: 11건 중 1건(`BENCHMARK.md`)은 소스가 아니라 이 배치가 `GATE_REVIEW.md`에 절을 추가했기 때문에 발화했다. 근거를 남기는 행위가 발화 수를 늘리는 방향으로 작동한다.
+- **`BENCHMARK.md`는 기계적으로 예방 가능한 노이즈다** — 인용이 `docs/GATE_REVIEW.md#section:Impact Measurement Scope Decision`이라는 **섹션 앵커**인데 이번 변경은 그 문서의 **다른 섹션**(새로 추가한 "Shipped-Text Honesty Batch")이다. `scanReverseImpact`가 로케이터를 버리고 base path만 비교하므로(`scans.js:584-587`·`:702`) 섹션 정보가 판정에 쓰이지 않는다. N-7·N-8이 라인 범위·디렉터리에서 관측한 것과 **같은 뿌리이며 섹션 앵커에서도 성립한다**는 첫 실물이다. 나머지 6건은 순수 경로 앵커라 파일 단위에서는 피할 수 없는 노이즈다 — **즉 이 커밋의 노이즈 7건 중 1건은 로케이터를 존중하면 사라지고 6건은 남는다.**
+- **문서화 자체가 게이트 사정거리를 넓혔다**: 11건 중 1건(`BENCHMARK.md`)은 소스가 아니라 이 배치가 `docs/GATE_REVIEW.md`에 절을 추가했기 때문에 발화했다. 근거를 남기는 행위가 발화 수를 늘리는 방향으로 작동한다.
 - 성격이 N-1 허브 팬아웃의 실물이면서, **그 팬아웃의 45%가 참이었던 사례**다. 다음 측정(무작위 30건 라벨링)과 다른 점은 표본 방식이다 — 이것은 한 커밋 findings의 **전수**이며, 커밋 성격(계약 문장 수정)이 TP율을 위로 밀었을 가능성을 함께 기록한다.
 
 ---
@@ -1614,7 +1614,7 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 12. 루트 거버넌스 문서를 스캔 범위에 옵트인 포함
 13. 어댑터 마커 도입(Phase 5 선행 조건)
 14. 벤치 하네스 회귀 테스트와 배포 코드 정합
-15. `VERIFICATION.md`를 15개 릴리스분 갱신
+15. `docs/VERIFICATION.md`를 15개 릴리스분 갱신
 
 ### 근거가 더 필요함
 
@@ -1632,7 +1632,7 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 41. **N-6 `check-run`의 워킹트리 의존 제거** — 추적 파일만 보도록. 사람 결정 22번(매니페스트 커밋 정책)과 묶어서 결정해야 합니다
 42. ~~**N-7 라인 범위 앵커의 무력화 해소**~~ — **2026-09-08 종결. 결함이 아니라 공표된 계약이었습니다.** `GLOSSARY.md`가 `source_files`를 넓은 앵커로, `evidence`를 정밀 앵커로 정의하므로, 파일을 `source_files`에 올린 문서는 파일 전체 의존을 선언한 것이고 스캔은 그 어휘대로 동작하고 있었습니다. 좁히기를 요청하는 경로는 이미 있습니다 — 파일을 `evidence`에**만** 라인 범위로 인용하고 `source_files`에서 빼면 됩니다(픽스처로 확인: drift가 좁혀지고 `evidence.ungrounded`·`source_files.missing`도 나오지 않습니다). `source_files`의 로케이터를 정밀 앵커로 읽는 구현을 했다가 **되돌렸습니다**: 이 저장소에는 그렇게 쓴 문서가 0건이라 지역 소비자가 없고, 도입처에서는 넓게 써 둔 앵커를 조용히 좁혀 신선도 게이트에 위음성을 만들기 때문입니다. 남은 것은 발견 가능성 문제이며 문서와 `source_files.missing` 메시지에서 메꿨습니다. `tests/anchor-semantics.test.js`가 계약을 양방향으로 고정합니다. ⚠️ **완화안 (a)의 전제가 사라졌습니다** — (a)는 라인 범위 좁히기가 켜지면 팬아웃이 줄어든다고 가정했지만, 좁히기는 이미 동작하며 앵커를 어디에 쓰는지에 달려 있으므로, (a)를 다시 논하려면 근거를 새로 측정해야 합니다
 43. ~~**N-8 디렉터리 앵커의 양방향 오작동**~~ — **2026-09-08 종결(1.31.0). 두 스캔을 맞추는 쪽을 택했습니다.** `scanReverseImpact`가 변경 경로가 `<앵커>/`로 시작하면 매칭하므로, 디렉터리를 인용한 `verified` 문서가 이제 `drift`와 같은 편집에 발화합니다. **게이트가 더 엄격해지고 지금까지 통과하던 빌드를 새로 실패시킬 수 있습니다** — 그럼에도 택한 이유는 이 제품이 존재하는 이유인 게이트에서의 위음성이었고, 되돌리는 설정 경로가 그대로 있기 때문입니다. 앵커 문법을 좁히는 대안(디렉터리 앵커 금지)은 기각했습니다: 저장소 5곳에서 19건이 실제로 쓰고 있고, 문서가 모듈 디렉터리에 의존한다는 것은 정당한 주장입니다. 오탐 방향의 가드 2건을 테스트로 고정했습니다 — 파일 앵커는 어떤 경로도 `<파일>/`로 시작하지 않으므로 안전하고, 부분 세그먼트(`src/command` 대 `src/commands/…`)는 걸리지 않습니다
-44. **N-9 `impact` 자기제외의 범위 축소** — **2026-09-08에 관측만 붙였고 결정은 미결입니다(1.31.0).** `impact`가 이제 `stamp_only_exclusions`로 이번 diff에서 검토 스탬프만 바뀐 문서를 이름으로 보고하므로 C-1 유형의 피해가 보이지만, **자기제외 자체는 바꾸지 않았고 exit code도 움직이지 않습니다.** 강제하면 N-11과 정면으로 부딪칩니다 — 같은 자기제외가 문서화된 해소 경로(강등 후 재스탬프)가 finding을 지우는 방식이라, 강제하는 순간 실제 드리프트에 해소 경로가 없어집니다. 두 결함은 **"재확인이란 무엇인가"라는 한 질문의 두 얼굴**이며, 권고안(재확인은 타임스탬프가 아니라 기록된 문장이어야 한다 = 신선도 finding 해소에 Review Note를 요구한다)과 그 비용은 `GATE_REVIEW.md`의 "Stamp-Only Exemption"이 소유합니다. 도입처 워크플로를 바꾸는 결정이라 단독으로 집행하지 않았습니다
+44. **N-9 `impact` 자기제외의 범위 축소** — **2026-09-08에 관측만 붙였고 결정은 미결입니다(1.31.0).** `impact`가 이제 `stamp_only_exclusions`로 이번 diff에서 검토 스탬프만 바뀐 문서를 이름으로 보고하므로 C-1 유형의 피해가 보이지만, **자기제외 자체는 바꾸지 않았고 exit code도 움직이지 않습니다.** 강제하면 N-11과 정면으로 부딪칩니다 — 같은 자기제외가 문서화된 해소 경로(강등 후 재스탬프)가 finding을 지우는 방식이라, 강제하는 순간 실제 드리프트에 해소 경로가 없어집니다. 두 결함은 **"재확인이란 무엇인가"라는 한 질문의 두 얼굴**이며, 권고안(재확인은 타임스탬프가 아니라 기록된 문장이어야 한다 = 신선도 finding 해소에 Review Note를 요구한다)과 그 비용은 `docs/GATE_REVIEW.md`의 "Stamp-Only Exemption"이 소유합니다. 도입처 워크플로를 바꾸는 결정이라 단독으로 집행하지 않았습니다
 
 **13번(어댑터 마커 도입)은 실측으로 우선순위가 올라갔습니다** — N-2가 그 근거입니다(도입 3곳 중 2곳이 v1인데 audit은 clean).
 
@@ -1659,7 +1659,7 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     빼고(새 프리미티브 `src/git.js#symbol:fileAtRef`로 기준 내용을 읽어 `version`을 제외한
     나머지를 **키 순서를 구분해** 비교 — `JSON.stringify`), `changed_files`(무엇이 움직였는가)와 `anchoring_files`(무엇을
     대조했는가)를 따로 인쇄하며 JSON에 `versionOnlyExcluded[]`를 additive로 싣습니다.
-    범위 결정은 `GATE_REVIEW.md`의 "Version-Only Manifest Scope Decision", 테스트는
+    범위 결정은 `docs/GATE_REVIEW.md`의 "Version-Only Manifest Scope Decision", 테스트는
     `tests/impact-package-version-only.test.js`(**17건**)입니다.
 
     ⚠️ **이 문단 자체가 2026-08-05까지 폐기된 구현을 사실로 적고 있었습니다**: 비교를
@@ -1679,7 +1679,7 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     `package.json`을 인용하는 것은 **10건**입니다.
     (c)의 효과도 정직하게: `package.json` 단독이면 10 → **0**, 버전 담지 8종이면 11 → **4**,
     `src/cli.js`까지 바뀌는 실제 릴리스 커밋이면 14 → **10**입니다. 남는 문서들은 내용이 실제로
-    바뀐 `README.md`·`ROADMAP.md`·action.yml을 인용하므로 노이즈가 아니라 진짜 양성에 가깝습니다.
+    바뀐 `README.md`·`docs/ROADMAP.md`·action.yml을 인용하므로 노이즈가 아니라 진짜 양성에 가깝습니다.
 
     **함께 기각한 것**: (b) config 완화는 매니페스트만이 아니라 모든 소스 변경의 차단력을
     없애고(1.28.0에서 게이트가 실제로 잡은 진짜 1건 `VERSIONING.md`도 묻혔을 것), (a)는 11건 중
@@ -1723,7 +1723,7 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     **열거자가 둘이라는 사실 자체가 결함**이라 결정이 필요합니다.
 
     **2026-08-06 종결: 유지보수자가 권고대로 (c)+(b)를 골랐고 구현했습니다. 1.29.1로 배포했습니다**
-    (크기 판정은 유지보수자가 위임 → PATCH. 근거는 `GATE_REVIEW.md`의 Template Scope Decision 절과
+    (크기 판정은 유지보수자가 위임 → PATCH. 근거는 `docs/GATE_REVIEW.md`의 Template Scope Decision 절과
     `docs/llm-wiki/VERSIONING.md`: 명령·옵션·리포트 필드가 하나도 움직이지 않고 동작 변경은 발화가
     줄어드는 방향뿐이다. 구현 시점 메모는 "MINOR가 보수적 읽기"라고 적었고 그 판단은 뒤집혔으므로,
     이 문단이 그 경위를 남긴다). `isTemplateDoc`를 `wiki-files.js`에서 export해 `scanEvidenceDrift`·`scanReverseImpact`가
@@ -1907,7 +1907,7 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
     floor에 새로 낮추는 규칙이 생기면 실패하도록 `tests/rule-toggle-measurement.test.js`에 가드를
     넣었습니다.
 64. **리뷰 당일 squash의 `drift` 축소 위음성** — **1.41.0에서 C′로 부분 해소(사용자 결정 2026-10-28).** `sourceDigests: true`이고 영역 digest가 기록된 인용은 축소 전에 그 digest가 `HEAD`와 같아야 하고, 그 전제로 내용 비교를 `HEAD` 기준으로 바꾸고 매니페스트를 `version` 없이 digest한다. digest가 없는 문서에서는 한계가 그대로다. 아래는 결정 전 기록이다 — N-27 수정 뒤에도 남은 한 가지 이력입니다.
-    git 이력만으로는 이 경우와 리뷰어가 변경을 본 경우를 가를 수 없습니다. 선택지와 대가는 `GATE_REVIEW.md`의
+    git 이력만으로는 이 경우와 리뷰어가 변경을 본 경우를 가를 수 없습니다. 선택지와 대가는 `docs/GATE_REVIEW.md`의
     "Same-Day Squash Narrowing"에 있습니다. 내용 앵커가 날짜 판정과 어긋난 6/16건(1.40.1 뒤에는 4/16건)은
     2026-10-28에 모두 설명했습니다. 원인은 커밋하지 않은 편집, 같은 날 버전 값만 바뀐 `package.json`, 같은 날
     고친 위키 문서였고, 전부 날짜가 `fresh`, 내용이 `changed`인 방향이었습니다. 날짜의 과잉 보고를 내용이
@@ -2192,8 +2192,8 @@ R3은 "안전·계약·권한 변경"입니다. 아래 항목을 바꾸는 변�
 
 Older review notes (19 entries, 2026-07-31 → 2026-09-14) are archived in [REVIEW_HISTORY.md](REVIEW_HISTORY.md); this section keeps only the most recent 5. The append-only change log stays in [log.md](log.md).
 
-- 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 6건을 대조했다: `src/cli.js`·`src/commands.js`·`.github/actions/validate/action.yml`·`templates/github-actions/llm-wiki-validate.yml`·`GATE_REVIEW.md`·`ROADMAP.md`. H장에 1.35.0 검토에서 찾은 항목 48~52(N-16~N-19와 관찰 2건)를 더했다. 이 문서의 액션 서술("하드코딩된 인자 배열")은 이미 종결 표시된 과거 기록이다. 새 입력 `summary`는 이 문서가 다루는 하네스 게이트의 동작(종료 코드)을 바꾸지 않으며, 템플릿의 핀 상승은 MINOR 릴리스 절차 그대로다.
-- 2026-10-27(보안 검토)에 `impact`가 인용 소스 `skills.js`·`fix-migrate.js`·`references.js`·`GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 소스 셋은 정규식을 같은 결과의 선형 스캔으로 바꾼 것이다. 이 문서가 근거로 삼는 `parseEvidenceReference`·`runMechanicalRemediation`·`isManagedUnmodified`는 바뀌지 않았다. `GATE_REVIEW.md`에는 "Security Review Batch" 절이 추가됐고 "Publish Credential Cleanup"이 결정됐다. 하네스 로드맵의 서술과 결함 등록부는 그대로 유효하며 본문은 **불변**이다.
-- 2026-10-27(정규식 감사 후속)에 `impact`가 인용 소스 `scans.js`·`GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. `scans.js`는 `enrichmentChecklist`의 제목 정규식을 선형 처리로 바꾼 것뿐이다. `GATE_REVIEW.md`에는 "Regex Audit Follow-up" 절과, 결정을 기다리는 "Link-Extraction False Negatives" 절이 추가됐다. 로드맵 서술과 결함 등록부는 그대로 유효하며 본문은 **불변**이다.
-- 2026-10-27(링크 추출 결함 수정)에 `impact`가 인용 소스 `references.js`·`scans.js`·`fix-migrate.js`·`GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 이 문서가 근거로 삼는 `parseEvidenceReference`·`runMechanicalRemediation`은 바뀌지 않았다. `GATE_REVIEW.md`에서는 "Link-Extraction False Negatives"가 결정·구현됐다. 본문은 **불변**이다.
+- 2026-10-26(1.35.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 6건을 대조했다: `src/cli.js`·`src/commands.js`·`.github/actions/validate/action.yml`·`templates/github-actions/llm-wiki-validate.yml`·`docs/GATE_REVIEW.md`·`docs/ROADMAP.md`. H장에 1.35.0 검토에서 찾은 항목 48~52(N-16~N-19와 관찰 2건)를 더했다. 이 문서의 액션 서술("하드코딩된 인자 배열")은 이미 종결 표시된 과거 기록이다. 새 입력 `summary`는 이 문서가 다루는 하네스 게이트의 동작(종료 코드)을 바꾸지 않으며, 템플릿의 핀 상승은 MINOR 릴리스 절차 그대로다.
+- 2026-10-27(보안 검토)에 `impact`가 인용 소스 `skills.js`·`fix-migrate.js`·`references.js`·`docs/GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 소스 셋은 정규식을 같은 결과의 선형 스캔으로 바꾼 것이다. 이 문서가 근거로 삼는 `parseEvidenceReference`·`runMechanicalRemediation`·`isManagedUnmodified`는 바뀌지 않았다. `docs/GATE_REVIEW.md`에는 "Security Review Batch" 절이 추가됐고 "Publish Credential Cleanup"이 결정됐다. 하네스 로드맵의 서술과 결함 등록부는 그대로 유효하며 본문은 **불변**이다.
+- 2026-10-27(정규식 감사 후속)에 `impact`가 인용 소스 `scans.js`·`docs/GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. `scans.js`는 `enrichmentChecklist`의 제목 정규식을 선형 처리로 바꾼 것뿐이다. `docs/GATE_REVIEW.md`에는 "Regex Audit Follow-up" 절과, 결정을 기다리는 "Link-Extraction False Negatives" 절이 추가됐다. 로드맵 서술과 결함 등록부는 그대로 유효하며 본문은 **불변**이다.
+- 2026-10-27(링크 추출 결함 수정)에 `impact`가 인용 소스 `references.js`·`scans.js`·`fix-migrate.js`·`docs/GATE_REVIEW.md`의 변경으로 이 문서를 지목했다. 이 문서가 근거로 삼는 `parseEvidenceReference`·`runMechanicalRemediation`은 바뀌지 않았다. `docs/GATE_REVIEW.md`에서는 "Link-Extraction False Negatives"가 결정·구현됐다. 본문은 **불변**이다.
 - 2026-10-27(1.36.0 준비)에 `impact`가 이 문서를 지목해 인용 소스 6종을 대조했다. 이 문서의 기록은 시점 기록이라 소급해 고치지 않고, `scanReverseImpact`가 라인 범위를 존중하지 않는다는 관찰 아래와 N-15(47번) 아래에 1.36.0 후속을 한 단락씩 달았다.

@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - src/cli.js
@@ -23,8 +23,8 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - src/cli.js sha256:7d0df7982416faef
-  - README.md sha256:536dd7dd59614670
+  - src/cli.js sha256:d9a6cc7effc2dac5
+  - README.md sha256:92e9cb6b8ef90216
 ---
 
 # Examples
@@ -129,10 +129,10 @@ node bin/llm-wiki.js validate --type library
 # `npm ci`가 필요 없고(게이트가 쓰는 패키지는 런타임 의존성이 없는 이것 하나뿐이다) 이
 # 패키지를 devDependency로 둘 필요도 없다. 비공개 저장소에서 러너 분이 과금되는 쪽이라면
 # 그 의존성 설치가 보통 워크플로에서 가장 긴 스텝이다.
-npx -y llm-wiki-governance@1.41 validate-frontmatter
-npx -y llm-wiki-governance@1.41 validate --strict --agent codex
-npx -y llm-wiki-governance@1.41 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
-npx -y llm-wiki-governance@1.41 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
+npx -y llm-wiki-governance@1.42 validate-frontmatter
+npx -y llm-wiki-governance@1.42 validate --strict --agent codex
+npx -y llm-wiki-governance@1.42 impact --since origin/main   # 소스는 바뀌고 그 문서는 안 바뀐 verified 문서 — 플래그 없이 exit 1
+npx -y llm-wiki-governance@1.42 drift --strict               # 날짜 앵커 최신성 — 이쪽은 --strict가 있어야 실패한다
 ```
 
 🚨 **패키지 이름을 줄여 `npx llm-wiki`라고 쓰면 안 된다.** 이 패키지의 bin 이름이 `llm-wiki`인데
@@ -147,7 +147,7 @@ npm에는 **무관한** `llm-wiki` 패키지가 따로 있어서, 짧은 형태�
 
 `impact`는 예외다. 2026-08-03(결정 21)부터 `impact.source_changed`의 기본 severity가 warning이 아니라 **error**라, `--strict` 없이 exit 1이고 이 규칙에 대해 `--strict`는 no-op이다 — 즉 위 블록의 `impact` 줄을 필수 체크에 넣는 순간, 자기를 인용하는 문서를 함께 건드리지 않고 소스만 바꾼 첫 커밋에서 빌드가 빨개진다. 되돌리는 길은 코드가 아니라 설정이다: `llm-wiki.config.json`의 `rules`에 `"impact.source_changed": "warning"`(또는 `"info"`/`"off"`)을 두거나, `rulesPreset: "relaxed"`(이 규칙을 `info`로 유지)를 쓴다. `strict` 프리셋은 이 규칙을 더 이상 나열하지 않는다(no-op이라서다). `drift`·`check-run`의 규칙은 아직 warning이라 두 명령은 계속 `--strict`가 있어야 빌드를 실패시킨다 — 의도된 비대칭이다.
 
-릴리스 커밋에 대한 예외가 하나 있다(N-13, 1.29.0부터): `version` 값만 바뀐 `package.json`은 `changed_files`에는 계속 세지만 앵커 대조에서는 빠지므로, 버전만 올리는 커밋이 그 매니페스트를 인용하는 문서들 때문에 실패하지 않는다. 요약에 `anchoring_files`와 제외된 경로가 함께 인쇄되고 `--format json`에는 `versionOnlyExcluded[]`가 붙는다. 다른 키가 바뀌었거나, `version`이 실제로 움직이지 않았거나(재포맷·줄바꿈 변환), 조건부 `exports`의 키 순서가 바뀌었거나, 매니페스트가 파싱되지 않거나, 비교할 기준 내용이 없으면 그대로 센다. `impact` 한정이므로 위 블록의 `drift --strict` 줄은 버전만 올려도 계속 지목할 수 있다. **릴리스 커밋의 게이트 비용이 0이 되지는 않는다** — 같은 커밋에서 `README.md`·`ROADMAP.md`·action.yml처럼 내용이 실제로 바뀐 파일을 인용하는 문서는 계속 발화하고, 그건 진짜 양성에 가깝다.
+릴리스 커밋에 대한 예외가 하나 있다(N-13, 1.29.0부터): `version` 값만 바뀐 `package.json`은 `changed_files`에는 계속 세지만 앵커 대조에서는 빠지므로, 버전만 올리는 커밋이 그 매니페스트를 인용하는 문서들 때문에 실패하지 않는다. 요약에 `anchoring_files`와 제외된 경로가 함께 인쇄되고 `--format json`에는 `versionOnlyExcluded[]`가 붙는다. 다른 키가 바뀌었거나, `version`이 실제로 움직이지 않았거나(재포맷·줄바꿈 변환), 조건부 `exports`의 키 순서가 바뀌었거나, 매니페스트가 파싱되지 않거나, 비교할 기준 내용이 없으면 그대로 센다. `impact` 한정이므로 위 블록의 `drift --strict` 줄은 버전만 올려도 계속 지목할 수 있다. **릴리스 커밋의 게이트 비용이 0이 되지는 않는다** — 같은 커밋에서 `README.md`·`docs/ROADMAP.md`·action.yml처럼 내용이 실제로 바뀐 파일을 인용하는 문서는 계속 발화하고, 그건 진짜 양성에 가깝다.
 
 실패한 `impact`를 읽는 법(1.35.0부터). 텍스트 출력에는 `Finding Summary` 앞에 `## Documents to re-review` 표가 붙는다. 한 행이 문서 하나이고, 둘째 칸은 그 문서가 인용하는데 이번 diff에서 바뀐 소스다. 그 아래 한 줄이 다음 조치를 알려 준다(그 소스와 대조해 문서를 같은 변경에서 고치고 다시 승인, 다른 해소 경로는 `llm-wiki explain impact.source_changed`). 같은 내용이 `--format json`에는 `impactedDocuments[{path, sources[]}]`로, 바뀐 경로 전체는 `changedPaths[]`로 실린다(`changedFiles`는 개수 그대로). 컴포지트 액션(`uses: Dowon-Kim7949/llm-wiki-governance/.github/actions/validate@v1.35.0`, `command: impact`)은 이 text 리포트를 job summary에도 붙이므로, PR 화면에서 표를 바로 볼 수 있다. `summary: "false"`로 끄며, 스텝의 종료 코드는 그대로다.
 

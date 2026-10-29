@@ -10,7 +10,7 @@ last_updated: 2026-10-28
 author: cli-generated
 last_edited_by: Claude Code
 reviewed_by: Claude Code (delegated by Dowon-Kim)
-reviewed_at: 2026-10-28
+reviewed_at: 2026-10-29
 wiki_block_version: v1
 source_files:
   - package.json
@@ -27,9 +27,9 @@ related:
 visibility: internal
 contains_sensitive_info: false
 source_digests:
-  - package.json sha256:a18a7e2bc101d0dd
+  - package.json sha256:6917cd4e241bf53a
   - bin/llm-wiki.js sha256:6af8af1e6a7df978
-  - src/cli.js sha256:7d0df7982416faef
+  - src/cli.js sha256:d9a6cc7effc2dac5
 ---
 
 # Project Profile
@@ -52,13 +52,13 @@ source_digests:
 - 런타임: Node.js `>=18.18.0` (package.json `engines`), `type: module` (ESM).
 - 진입점: `bin/llm-wiki.js` → `src/cli.js`의 `main()`.
 - 의존성: 런타임 서드파티 의존성 없음(Node 내장 모듈만 사용).
-- tarball 구성(1.34.0): `bin/`·`src/`·`templates/`·`rules/`·`adapters/`·`profiles/`와 README 2종·`LICENSE`·`package.json`뿐이다. 런타임이 자기 위치에서 읽는 것은 `package.json`과 `templates/`가 전부라, 프로젝트 문서 md는 싣지 않는다(packed 557,702 → 278,450 B, unpacked 1,704,003 → 941,286 B).
+- tarball 구성(1.34.0): `bin/`·`src/`·`templates/`·`templates/rules/`·`adapters/`·`templates/profiles/`와 README 2종·`LICENSE`·`package.json`뿐이다. 런타임이 자기 위치에서 읽는 것은 `package.json`과 `templates/`가 전부라, 프로젝트 문서 md는 싣지 않는다(packed 557,702 → 278,450 B, unpacked 1,704,003 → 941,286 B).
 - 배포: `v*` 태그 push → `.github/workflows/publish.yml`의 npm Trusted Publishing. 1.7부터 같은 태그 트리거에 격리된 `contents: write` 잡이 추가돼 러너 `gh` CLI로 GitHub Release도 만든다(본문은 `release-notes --body-only`; GATE_REVIEW Gate 12). 자세한 내용은 [Release Flow](RELEASE_FLOW.md).
 
 ## Ownership
 
 - 저장소: `github.com/Dowon-Kim7949/llm-wiki-governance`.
-- 릴리스 게이트/의사결정 기록은 `GATE_REVIEW.md`, 방향성은 `ROADMAP.md` 참조.
+- 릴리스 게이트/의사결정 기록은 `docs/GATE_REVIEW.md`, 방향성은 `docs/ROADMAP.md` 참조.
 
 ## Evidence
 

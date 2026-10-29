@@ -371,7 +371,7 @@ ${renderedSections}
 ## Review Notes
 
 - Keep AI-extracted or AI-edited OKF-compatible documents as \`needs_review\` when stored in an LLM-WIKI project.
-- Do not promote this document to \`verified\`; verified status is human-approved only.
+- Once reviewed, approve it with \`llm-wiki review --approve <path>\`. An agent does not approve its own edits.
 `;
 }
 

@@ -152,7 +152,7 @@ class listed for it.
 | Each citation is checked to resolve | Executed tests; scripted walkthroughs | Resolving does not make the sentence true |
 | `drift` / `impact` flag documents whose cited sources changed | Executed tests; scripted walkthroughs | A flag means "re-read", not "wrong"; date checks have the limits above |
 | An approved requirement is a plan, not an implementation | Executed tests; scripted walkthrough | `impact.plan_changed` lists files; it judges nothing |
-| Every MCP tool is read-only | Executed tests (1.40.0) | Was not true before 1.40.0 ([GHSA-qwp4-w8vx-r72r](https://github.com/Dowon-Kim7949/llm-wiki-governance/security/advisories/GHSA-qwp4-w8vx-r72r)); `cwd` is not a sandbox ([SECURITY.md](../SECURITY.md#mcp-server-trust-model)) |
+| Every MCP tool is read-only | Executed tests (1.40.0) | Was not true before 1.40.0 ([GHSA-qwp4-w8vx-r72r](https://github.com/Dowon-Kim7949/llm-wiki-governance/security/advisories/GHSA-qwp4-w8vx-r72r)); `cwd` is not a sandbox ([SECURITY.md](../.github/SECURITY.md#mcp-server-trust-model)) |
 | Keyword retrieval, hit@5 85.0% | Executed on this repository's own wiki | Held-out queries on one corpus; not a general accuracy figure |
 | A wiki that was never enriched measured worse than none | Real model runs, recorded | One external repository, one model, six tasks ([BENCHMARK_DISCLOSURE.md](./BENCHMARK_DISCLOSURE.md)) |
 | It saves development time or reduces hallucinations | **Not verified** | Not measured |
@@ -203,3 +203,22 @@ class listed for it.
   one-hour session for a developer who has never seen the project, with a greenfield
   and a brownfield task, a checklist, and what to record. Results will be added here
   only from real sessions.
+- **Maintainer-side first-run review (2026-10-29), not independent.** The maintainer's
+  agent followed the README of the published 1.41.0 in a fresh sample project. It found
+  that a new project's change checks were off without saying so, that the CLI named no
+  approve command and described approval as human-only, that hand-written docs had no
+  guide, and that the `llm-wiki` command name in output did not run as typed. 1.42.0
+  addresses each. This is a heuristic walkthrough by the tool's own side and does not
+  change the **Unknown** above.
+
+### Unsolicited first-run reports
+
+Reports filed through the [first-run issue form](https://github.com/Dowon-Kim7949/llm-wiki-governance/issues/new?template=first_run.yml)
+are listed here with the date, platform, the step that got in the way, and what was done
+(fixed, tracked as an issue, or a recorded no-change decision). No reporter is
+identified. These are self-reports, not observed sessions, so they are kept apart from
+the protocol above and do not by themselves change the usability verdict.
+
+| Date | Platform | Where it got in the way | Outcome |
+| --- | --- | --- | --- |
+| none yet | | | |

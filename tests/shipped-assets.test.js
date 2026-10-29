@@ -1,7 +1,7 @@
 // The status field of assets we SHIP, which no other gate can see (2026-08-03).
 //
 // `validate` and `validate-frontmatter` scan `docs/llm-wiki`. Everything under
-// `templates/`, `adapters/`, `rules/`, and `profiles/` ships to npm via
+// `templates/` (which since 1.42.0 also holds `adapters/README.md`, `rules/`, and `profiles/`) ships to npm via
 // package.json `files[]` and is outside that scan, so the frontmatter contract
 // this product enforces on its users does not apply to its own shipped assets.
 //

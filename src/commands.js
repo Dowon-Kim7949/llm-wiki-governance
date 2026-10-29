@@ -358,6 +358,15 @@ function describeGovernanceCheck(options) {
   return `${mode} (source: ${source}, governance CI ${policy.governanceCi}; ${gates}, ${drift}) — change with: llm-wiki mode set <lite|standard|strict> --write`;
 }
 
+// status and next are where a new user looks first, and neither named the mode, so
+// a lite project never learned that its change checks were off (1.42.0).
+function governanceModeSummaryLine(options) {
+  const mode = effectiveGovernanceMode(options);
+  return ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact)
+    ? `governance_mode: ${mode} (change checks off — llm-wiki mode set standard --write turns them on)`
+    : `governance_mode: ${mode}`;
+}
+
 async function describeEffectiveConfig(cwd) {
   const { found, config, errors } = await loadProjectConfig(cwd);
   if (!found) return "absent";
@@ -524,6 +533,7 @@ export async function statusCommand(options) {
   const adapterStatus = await summarizeAdapterStatus(options.cwd, agents);
   const summary = [
     `result: ${result}`,
+    governanceModeSummaryLine(options),
     `initialized: ${initialized ? "yes" : "no"}`,
     `project_type: ${detection.projectType}`,
     `confidence: ${detection.confidence}`,
@@ -577,6 +587,7 @@ export async function nextCommand(options) {
     .sort((left, right) => left.path.localeCompare(right.path));
   const summary = [
     `result: ${result}`,
+    governanceModeSummaryLine(options),
     `project_type: ${auditResult.detection.projectType}`,
     `confidence: ${auditResult.detection.confidence}`,
     `active_profiles: ${auditResult.detection.activeProfiles.join(", ")}`,
@@ -1077,7 +1088,7 @@ function documentSubstance(text) {
 // exclusion is also the only way the standard remediation clears a finding
 // (downgrade, then re-stamp), so enforcing it here would leave a real drift
 // finding with no resolution path — which is defect N-11 in the other direction.
-// Closing both needs a decision about what re-affirmation IS; see GATE_REVIEW.md
+// Closing both needs a decision about what re-affirmation IS; see docs/GATE_REVIEW.md
 // ("Stamp-Only Exemption"). Until then the reader gets told, and the exit code
 // does not move.
 async function stampOnlyDocExclusions(cwd, sinceRef, changed) {
@@ -1103,7 +1114,7 @@ async function stampOnlyDocExclusions(cwd, sinceRef, changed) {
 // Opt-in `impact.stamp_only`: the stamp_only_exclusions report above, as findings.
 // OFF unless a project names the rule in config `rules`, so a default run's
 // findings, output, and exit code are exactly what they were. When on, it is a
-// warning by default: GATE_REVIEW.md "Stamp-Only Exemption" (N-9/N-11) is still
+// warning by default: docs/GATE_REVIEW.md "Stamp-Only Exemption" (N-9/N-11) is still
 // open, and until it is decided a stamp-only resolution is made VISIBLE on request
 // rather than refused, because a re-stamp is also how the documented remediation
 // clears a real finding. Raising it to error closes that path again (N-11);
@@ -1215,7 +1226,7 @@ async function unattestedPromotionFindings(cwd, since, changed) {
 // ERROR by default since decision 21 (2026-08-03), so this command fails CI on
 // its own and `--strict` is a no-op for it; a project dials it down through
 // config `rules` or `rulesPreset: "relaxed"`. Empty change set = no-op.
-// Scope: GATE_REVIEW.md ("Reverse-Impact (Changed-Source → Wiki) Scope Decision").
+// Scope: docs/GATE_REVIEW.md ("Reverse-Impact (Changed-Source → Wiki) Scope Decision").
 export async function impactCommand(options) {
   const cwd = options.cwd;
 
@@ -1274,7 +1285,7 @@ export async function impactCommand(options) {
     : await scanPlanChanges(cwd, { since: options.since, changed, changedSet });
   findings.push(...applyRuleConfig(planChanges.findings, options));
   const { changedPlans } = planChanges;
-  // Reported, not enforced — see stampOnlyDocExclusions and GATE_REVIEW.md.
+  // Reported, not enforced — see stampOnlyDocExclusions and docs/GATE_REVIEW.md.
   const stampOnlyExclusions = await stampOnlyDocExclusions(cwd, options.since, changed);
   // ...unless the project opted into impact.stamp_only. Skipped while
   // impact.source_changed itself is off (lite, or an explicit "off"): with that
@@ -1311,6 +1322,12 @@ export async function impactCommand(options) {
     `findings: ${findings.length}`,
     `stamp_only_exclusions: ${stampOnlyExclusions.length}${stampOnlyExclusions.length ? ` (${stampOnlyExclusions.join(", ")})` : ""}`
   ];
+  // With the rule off nothing below was checked, and "none / pass" would read as
+  // "checked, all clear" (2026-10-29 first-run review). Text only; JSON unchanged.
+  const gateOff = ruleSuppressed(options, SCAN_GATING_RULES.reverseImpact);
+  if (gateOff) {
+    summary.splice(1, 0, `impact.source_changed: off (governance mode ${effectiveGovernanceMode(options)} or config) — no document was checked; turn it on with llm-wiki mode set standard --write`);
+  }
   // Printed only when an approved plan is in the diff, so other runs read as before.
   if (changedPlans.length > 0) {
     const meaningful = changedPlans.filter((plan) => plan.meaningful);
@@ -1326,7 +1343,7 @@ export async function impactCommand(options) {
     .filter((finding) => finding.rule === "impact.source_changed")
     .map((finding) => ({ path: finding.path, sources: String(finding.params?.sources ?? "").split(", ").filter(Boolean) }));
   const reReview = impactedDocuments.length === 0
-    ? []
+    ? (gateOff ? ["not checked: impact.source_changed is off"] : [])
     : [
       "| Document | Changed source it cites |",
       "| --- | --- |",
@@ -1733,7 +1750,7 @@ function finishCheckRun(options, relManifest, findings, extra = {}) {
 // severity), and never edits body / source_files / evidence / last_updated.
 // reviewed_by resolves explicit --reviewer > config reviewer > git
 // user.name, and the command refuses to stamp (never blank/fabricated) when none
-// resolves. Scope: GATE_REVIEW.md ("Review Workflow Scope Decision", Gate 20). MCP
+// resolves. Scope: docs/GATE_REVIEW.md ("Review Workflow Scope Decision", Gate 20). MCP
 // exposes the LIST surface only (buildToolOptions copies no approve fields).
 const REVIEW_RISK_WEIGHTS = {
   "content.not_enriched": 40,
@@ -2367,15 +2384,15 @@ export async function quickstartCommand(options) {
     findings
   }, "LLM-WIKI Quickstart", [
     { title: "About · 소개", body: [
-      "A code-grounded knowledge base your AI agent reads: scaffold docs → paste the handoff prompt below into your coding agent to fill them from real code → a human reviews and marks them verified.",
-      "AI 에이전트가 읽는 코드-근거 지식베이스입니다. 문서 뼈대 생성 → 아래 handoff 프롬프트를 코딩 에이전트에 붙여넣어 실제 코드로 채움 → 사람이 검토해 verified 승인."
+      "A code-grounded knowledge base your AI agent reads: scaffold docs → fill them from real code, with the handoff prompt below in your coding agent or by hand → review them and approve with `llm-wiki review --approve <path>` (the tool records who approved; it cannot prove it).",
+      "AI 에이전트가 읽는 코드-근거 지식베이스입니다. 문서 뼈대 생성 → 아래 handoff 프롬프트를 코딩 에이전트에 붙여넣거나 직접 써서 실제 코드로 채움 → 검토 후 `llm-wiki review --approve <경로>`로 승인(누가 승인했는지 기록할 뿐 증명하지는 못합니다)."
     ] },
     { title: "Completed Steps", body: completedSteps },
     { title: "Init Summary", body: quickstartInitSummary(initResult) },
     { title: "Frontmatter Summary", body: frontmatterResult?.summary ?? ["not run"] },
     { title: "Next Step", body: handoffNextStep(handoff) },
     { title: "Handoff Prompt", body: `\`\`\`text\n${handoff.prompt}\n\`\`\`` },
-    { title: "Caveats", body: ["CLI-created or CLI-edited wiki documents remain needs_review until human review. Run llm-wiki validate separately for structure or CI validation."] }
+    { title: "Caveats", body: ["CLI-created or CLI-edited wiki documents remain needs_review until someone approves them with llm-wiki review --approve. Run llm-wiki validate separately for structure or CI validation."] }
   ]);
 }
 
@@ -2393,7 +2410,7 @@ export async function handoffCommand(options) {
   }, "LLM-WIKI Handoff", [
     { title: "Next Step", body: handoffNextStep(handoff) },
     { title: "Handoff Prompt", body: `\`\`\`text\n${handoff.prompt}\n\`\`\`` },
-    { title: "Caveats", body: ["Run this prompt in the selected agent after CLI setup. Keep generated or edited documents as needs_review until human review."] }
+    { title: "Caveats", body: ["Run this prompt in the selected agent after CLI setup. Keep generated or edited documents as needs_review until someone approves them with llm-wiki review --approve."] }
   ]);
 }
 
@@ -2436,7 +2453,7 @@ export async function promptCommand(options) {
     // report stays byte-identical to the pre-profile output.
     { title: "Task", body: [`task: ${taskPrompt.task}`, `project_type: ${taskPrompt.projectType}`, `active_profiles: ${taskPrompt.profiles.join(", ") || "none"}`, `selected_agents: ${taskPrompt.agents.join(", ")}`, ...(taskPrompt.promptProfile ? [`prompt_profile: ${taskPrompt.promptProfile}`] : [])] },
     { title: "Prompt", body: `\`\`\`text\n${taskPrompt.prompt}\n\`\`\`` },
-    { title: "Caveats", body: ["Run this prompt in the selected agent after the initial LLM-WIKI is created and enriched. AI-edited wiki documents remain needs_review until human review."] }
+    { title: "Caveats", body: ["Run this prompt in the selected agent after the initial LLM-WIKI is created and enriched. AI-edited wiki documents remain needs_review until someone approves them with llm-wiki review --approve."] }
   ]);
 }
 
@@ -3154,7 +3171,7 @@ async function inspectPackageReadiness(cwd) {
 
   if (!packageJson?.bin?.["llm-wiki"]) return [];
 
-  const checklistExists = await pathExists(path.join(cwd, "RELEASE_CHECKLIST.md"));
+  const checklistExists = await pathExists(path.join(cwd, "docs", "RELEASE_CHECKLIST.md")) || await pathExists(path.join(cwd, "RELEASE_CHECKLIST.md"));
   return [
     `package_name: ${packageJson.name ?? "missing"}`,
     `version: ${packageJson.version ?? "missing"}`,
@@ -3484,9 +3501,33 @@ function handoffNextStep(handoff) {
     "How to run — the 'Handoff Prompt' below is an instruction you give your coding agent, not a CLI command · 실행 방법 — 아래 'Handoff Prompt'는 CLI가 실행하는 게 아니라 코딩 에이전트에게 넘기는 지시문입니다:",
     "1) Paste the prompt below into a Claude Code or Codex session opened on this repo. If you are already inside Claude Code here, paste it right here. · 이 저장소를 연 세션에 아래 프롬프트를 그대로 붙여넣으세요.",
     "2) The agent reads the real code and fills docs/llm-wiki with evidence; backend/fullstack projects also enrich per-domain domains/*.md. · 에이전트가 실제 코드를 읽고 문서를 근거와 함께 채웁니다.",
-    "3) A human reviews the result and, if correct, promotes status to verified (structure check: llm-wiki validate). · 사람이 검토해 정확하면 verified로 올리세요.",
-    `Governance mode: ${handoff.governanceMode ?? "strict"}. For a real handoff, escalate and reconstruct first: llm-wiki mode set strict --write, then llm-wiki backfill (add --write to create the missing document stubs, --strict to gate on readiness). · 인수인계라면 strict로 올리고 backfill을 먼저 돌리세요.`
+    "3) Review the result. When it is right, approve it: llm-wiki review --approve <path> (llm-wiki validate checks structure only). Who may approve is your project's policy; the tool records who did. · 결과를 검토하고, 맞으면 llm-wiki review --approve <경로>로 승인하세요(validate는 구조만 검사합니다). 누가 승인할지는 프로젝트가 정합니다.",
+    `No coding agent? Fill the docs yourself: replace the placeholder bullets, cite the files you describe in source_files / evidence, then approve as in 3). Guide: ${WRITING_BY_HAND_URL} · 에이전트가 없다면 직접 채워도 됩니다. 안내: 위 링크`,
+    ...governanceModeNextStep(handoff)
   ];
+}
+
+const WRITING_BY_HAND_URL = "https://github.com/Dowon-Kim7949/llm-wiki-governance/blob/main/docs/WRITING_DOCS_BY_HAND.md";
+
+// lite switches the change checks off, and an impact run that checked nothing
+// otherwise reads exactly like one that found nothing (2026-10-29 first-run
+// review). Say so where a new user first looks, and how to turn them on.
+function governanceModeNextStep(handoff) {
+  const mode = handoff.governanceMode ?? "strict";
+  const handoffLine = "For a real handoff, escalate and reconstruct first: llm-wiki mode set strict --write, then llm-wiki backfill (add --write to create the missing document stubs, --strict to gate on readiness). · 인수인계라면 strict로 올리고 backfill을 먼저 돌리세요.";
+  if (!handoff.changeChecksOff) return [`Governance mode: ${mode}. ${handoffLine}`];
+  return [
+    `Governance mode: ${mode} — change checks are off: impact and drift report nothing when a cited file changes. Turn them on with llm-wiki mode set standard --write (warnings) or strict (fails the build). · 거버넌스 모드: ${mode} — 변경 점검이 꺼져 있어 인용한 파일이 바뀌어도 impact와 drift가 아무것도 보고하지 않습니다. 켜려면 mode set standard --write(경고) 또는 strict(빌드 실패).`,
+    handoffLine
+  ];
+}
+
+// Whether the omission gate is off for this run. The merged rule map wins when the
+// caller has one; a freshly scaffolded project may not have loaded its new config
+// yet, so fall back to the mode floor (only lite turns the gate off).
+function changeChecksOff(options) {
+  const rule = options.rules?.[SCAN_GATING_RULES.reverseImpact];
+  return rule ? rule === "off" : effectiveGovernanceMode(options) === "lite";
 }
 
 function buildHandoff(options, detection = null) {
@@ -3537,7 +3578,7 @@ function buildHandoff(options, detection = null) {
   const enLead = options.dryRun && !options.write
     ? `CLI preview is complete. After you write the files for real, hand off to ${label} and run the prompt below.`
     : `CLI setup is complete. Hand off to ${label} and run the prompt below.`;
-  const message = `${enLead} · ${completionPrefix} ${label}에게 넘어가서 아래 프롬프트를 실행하세요.`;
+  const message = `${enLead} · ${completionPrefix} ${label.split(" or ").join(" 또는 ")}에게 넘어가서 아래 프롬프트를 실행하세요.`;
   // The handoff prompt IS the initial-enrichment workflow, sourced from the single
   // shared builder so it never drifts from the `bootstrap` task/skill. Handoff names
   // the selected adapter file(s) as the entrypoint; the workflow itself is identical.
@@ -3562,6 +3603,9 @@ function buildHandoff(options, detection = null) {
     // in effect, so the payload names which one it was rather than leaving the
     // receiving agent's instructions unattributable.
     governanceMode: effectiveGovernanceMode(options),
+    // Additive (1.42.0): whether impact/drift are off for this mode, so the next
+    // step can say so instead of leaving a silent gate to be found later.
+    changeChecksOff: changeChecksOff(options),
     // Named only for a non-default profile, like the prompt command's result, so
     // the `full` handoff payload stays byte-identical.
     ...(promptProfile === DEFAULT_PROMPT_PROFILE ? {} : { promptProfile }),
